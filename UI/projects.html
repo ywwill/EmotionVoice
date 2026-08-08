@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目管理 - EmotionVoice</title>
+    <style>
+        :root {
+            --bg-primary: #0E0F12;
+            --bg-secondary: #15171B;
+            --bg-tertiary: #1C1F24;
+            --bg-elevated: #22262D;
+            --bg-sidebar: #0E0F12;
+            --accent-primary: #E8A968;
+            --accent-secondary: #D49B5B;
+            --accent-glow: #F2C088;
+            --text-primary: #F5F5F7;
+            --text-secondary: #A8ABB4;
+            --text-tertiary: #6B6E76;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            --status-success: #6BB87A;
+            --status-warning: #E8A968;
+            --status-error: #D96D6D;
+            --status-info: #6B8BC9;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: radial-gradient(ellipse at top, #1a1d24 0%, #0a0b0e 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .macos-app-window {
+            width: 100%; max-width: 1280px; height: 90vh; min-height: 800px;
+            background: var(--bg-primary); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 0 0 0.5px rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+        }
+        .title-bar {
+            height: 52px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(21, 23, 27, 0.75);
+            backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .traffic-lights { display: flex; gap: 8px; }
+        .traffic-light { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .traffic-light.close { background: #FF5F57; }
+        .traffic-light.minimize { background: #FEBC2E; }
+        .traffic-light.zoom { background: #28C840; }
+        .window-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        .window-controls { display: flex; gap: 12px; }
+        .window-control-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .app-body { flex: 1; display: flex; overflow: hidden; }
+        .sidebar {
+            width: 220px; background: rgba(14, 15, 18, 0.6);
+            backdrop-filter: blur(20px); border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .sidebar-section { padding: 16px 12px; }
+        .sidebar-section-title { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 12px; margin-bottom: 8px; }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            border-radius: var(--radius-sm); color: var(--text-secondary);
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+            margin-bottom: 2px; position: relative;
+        }
+        .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-item.active { background: var(--bg-elevated); color: var(--text-primary); }
+        .sidebar-item.active::before {
+            content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 16px; background: var(--accent-primary); border-radius: 0 2px 2px 0;
+        }
+        .sidebar-item-icon { font-size: 16px; width: 20px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-item-badge { margin-left: auto; font-size: 11px; color: var(--text-tertiary); background: var(--bg-elevated); padding: 2px 8px; border-radius: 999px; font-family: 'SF Mono', monospace; }
+        .sidebar-divider { height: 1px; background: var(--border-subtle); margin: 8px 16px; }
+        .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border-subtle); }
+        .credits-card { background: linear-gradient(135deg, rgba(232, 169, 104, 0.12), rgba(232, 169, 104, 0.04)); border: 1px solid rgba(232, 169, 104, 0.25); border-radius: var(--radius-md); padding: 12px; }
+        .credits-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .credits-value { font-size: 18px; font-weight: 700; color: var(--accent-glow); font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .credits-meta { font-size: 11px; color: var(--text-tertiary); }
+        .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .top-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border-subtle); background: rgba(14, 15, 18, 0.4); backdrop-filter: blur(12px); }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-btn { padding: 6px 12px; border-radius: var(--radius-sm); background: transparent; border: 1px solid var(--border-medium); color: var(--text-primary); font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .toolbar-btn:hover { background: var(--bg-tertiary); }
+        .toolbar-btn-primary { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: var(--bg-primary); border-color: transparent; font-weight: 600; }
+        .content-padding { padding: 24px 32px; }
+        
+        /* Filter Bar */
+        .filter-bar {
+            display: flex; gap: 12px; margin-bottom: 20px; align-items: center;
+        }
+        .filter-pills { display: flex; gap: 6px; }
+        .filter-pill {
+            padding: 5px 12px; border-radius: 999px; background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle); color: var(--text-secondary);
+            font-size: 12px; cursor: pointer;
+        }
+        .filter-pill.active { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-medium); }
+        .search-input {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm); padding: 6px 12px 6px 32px; color: var(--text-primary);
+            font-size: 12px; outline: none; width: 200px; margin-left: auto;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='7' cy='7' r='4.5' stroke='%236B6E76' stroke-width='1.5'/%3E%3Cline x1='10.5' y1='10.5' x2='13.5' y2='13.5' stroke='%236B6E76' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: 10px center;
+        }
+        .view-toggle { display: flex; background: var(--bg-tertiary); border-radius: 6px; padding: 2px; }
+        .view-btn {
+            padding: 4px 8px; border-radius: 4px; background: transparent; border: none;
+            color: var(--text-tertiary); cursor: pointer; font-size: 11px;
+        }
+        .view-btn.active { background: var(--bg-elevated); color: var(--text-primary); }
+        
+        /* Project Group */
+        .project-group { margin-bottom: 24px; }
+        .group-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px; padding: 8px 0;
+        }
+        .group-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+        .group-title .icon { font-size: 16px; }
+        .group-title .count { font-size: 11px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; font-weight: 400; margin-left: 4px; }
+        .group-actions { display: flex; gap: 6px; }
+        .group-action { font-size: 11px; color: var(--text-tertiary); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        .group-action:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        
+        /* Project List */
+        .project-list {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md); overflow: hidden;
+        }
+        .project-item {
+            display: grid; grid-template-columns: 32px 1fr 100px 140px 100px 100px 60px;
+            gap: 12px; align-items: center; padding: 10px 14px;
+            border-bottom: 1px solid var(--border-subtle); transition: background 0.2s ease;
+            cursor: pointer;
+        }
+        .project-item:last-child { border-bottom: none; }
+        .project-item:hover { background: var(--bg-tertiary); }
+        .project-icon { font-size: 16px; text-align: center; }
+        .project-info { min-width: 0; }
+        .project-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .project-meta { font-size: 11px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; }
+        .project-duration { font-size: 12px; color: var(--text-secondary); font-family: 'SF Mono', monospace; text-align: right; }
+        .project-voice { font-size: 12px; color: var(--text-secondary); }
+        .project-date { font-size: 11px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; text-align: right; }
+        
+        /* Status */
+        .status {
+            display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px;
+            border-radius: 999px; font-size: 11px; font-weight: 500;
+        }
+        .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+        .status.success { background: rgba(107, 184, 122, 0.12); color: var(--status-success); }
+        .status.success::before { background: var(--status-success); }
+        .status.warning { background: rgba(232, 169, 104, 0.12); color: var(--status-warning); }
+        .status.warning::before { background: var(--status-warning); }
+        .status.error { background: rgba(217, 109, 109, 0.12); color: var(--status-error); }
+        .status.error::before { background: var(--status-error); }
+        .status.info { background: rgba(107, 139, 201, 0.12); color: var(--status-info); }
+        .status.info::before { background: var(--status-info); }
+        
+        /* Progress Mini */
+        .progress-mini {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .progress-mini-bar {
+            flex: 1; height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden;
+        }
+        .progress-mini-fill {
+            height: 100%; background: linear-gradient(90deg, var(--accent-primary), var(--accent-glow));
+            border-radius: 2px;
+        }
+        .progress-mini-text { font-size: 10px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; min-width: 28px; text-align: right; }
+        
+        .project-actions { display: flex; gap: 4px; justify-content: flex-end; }
+        .project-action-btn {
+            width: 24px; height: 24px; border-radius: 4px; background: transparent;
+            border: none; color: var(--text-tertiary); cursor: pointer; font-size: 12px;
+        }
+        .project-action-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
+        
+        /* Summary Cards */
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md); padding: 14px;
+        }
+        .summary-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; }
+        .summary-value { font-size: 22px; font-weight: 700; font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .summary-value.accent { color: var(--accent-primary); }
+        .summary-trend { font-size: 10px; color: var(--text-tertiary); }
+        .summary-trend.up { color: var(--status-success); }
+        
+        @media (max-width: 1024px) {
+            body { padding: 20px 10px; }
+            .macos-app-window { height: 95vh; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .project-item { grid-template-columns: 32px 1fr 80px 80px 50px; }
+            .project-voice, .project-date { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="macos-app-window">
+        <div class="title-bar">
+            <div class="traffic-lights">
+                <div class="traffic-light close"></div>
+                <div class="traffic-light minimize"></div>
+                <div class="traffic-light zoom"></div>
+            </div>
+            <div class="window-title">项目管理 - EmotionVoice</div>
+            <div class="window-controls">
+                <button class="window-control-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="app-body">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🏠</span>
+                        <span>首页</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎭</span>
+                        <span>音色库</span>
+                        <span class="sidebar-item-badge">500+</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">我的项目</div>
+                    <div class="sidebar-item active">
+                        <span class="sidebar-item-icon">📚</span>
+                        <span>所有项目</span>
+                        <span class="sidebar-item-badge">12</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⭐</span>
+                        <span>收藏项目</span>
+                        <span class="sidebar-item-badge">3</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🔄</span>
+                        <span>进行中</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">✅</span>
+                        <span>已完成</span>
+                        <span class="sidebar-item-badge">8</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🗑️</span>
+                        <span>回收站</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">项目分类</div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📖</span>
+                        <span>有声书</span>
+                        <span class="sidebar-item-badge">3</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎙️</span>
+                        <span>播客</span>
+                        <span class="sidebar-item-badge">5</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📱</span>
+                        <span>短视频</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📢</span>
+                        <span>广告配音</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📊</span>
+                        <span>使用统计</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⚙️</span>
+                        <span>设置</span>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="credits-card">
+                        <div class="credits-label">积分余额</div>
+                        <div class="credits-value">1,280</div>
+                        <div class="credits-meta">有效期至 2027-08-08</div>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="main-content">
+                <div class="top-toolbar">
+                    <div class="breadcrumb">
+                        <span>所有项目</span>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="toolbar-btn">📥 导入</button>
+                        <button class="toolbar-btn toolbar-btn-primary">+ 新建项目</button>
+                    </div>
+                </div>
+                
+                <div class="content-padding">
+                    <!-- Summary Cards -->
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="summary-label">项目总数</div>
+                            <div class="summary-value">12</div>
+                            <div class="summary-trend up">↑ 本月 +3</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">总音频时长</div>
+                            <div class="summary-value">2.8<span style="font-size: 14px; color: var(--text-tertiary);">h</span></div>
+                            <div class="summary-trend up">↑ 28 个音频</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">已消耗积分</div>
+                            <div class="summary-value accent">4,560</div>
+                            <div class="summary-trend">本月</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">进行中项目</div>
+                            <div class="summary-value">2</div>
+                            <div class="summary-trend">需要关注</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter Bar -->
+                    <div class="filter-bar">
+                        <div class="filter-pills">
+                            <div class="filter-pill active">全部</div>
+                            <div class="filter-pill">最近 7 天</div>
+                            <div class="filter-pill">最近 30 天</div>
+                            <div class="filter-pill">已完成</div>
+                            <div class="filter-pill">进行中</div>
+                        </div>
+                        <input type="text" class="search-input" placeholder="搜索项目...">
+                        <div class="view-toggle">
+                            <button class="view-btn active">☰ 列表</button>
+                            <button class="view-btn">▦ 网格</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Project Group: 有声书 -->
+                    <div class="project-group">
+                        <div class="group-header">
+                            <div class="group-title">
+                                <span class="icon">📖</span>
+                                <span>有声书系列</span>
+                                <span class="count">3 个项目</span>
+                            </div>
+                            <div class="group-actions">
+                                <span class="group-action">展开</span>
+                                <span class="group-action">排序</span>
+                            </div>
+                        </div>
+                        <div class="project-list">
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">第1章·开场白</div>
+                                    <div class="project-meta">龙安灵心 · 327 字 · 28 积分</div>
+                                </div>
+                                <div class="project-duration">00:32</div>
+                                <div class="project-voice">龙安灵心</div>
+                                <div class="project-date">2026-08-07</div>
+                                <div><span class="status success">已完成</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">第2章·人物介绍</div>
+                                    <div class="project-meta">龙安灵心 · 1,248 字 · 112 积分</div>
+                                </div>
+                                <div class="project-duration">02:15</div>
+                                <div class="project-voice">龙安灵心</div>
+                                <div class="project-date">2026-08-07</div>
+                                <div><span class="status success">已完成</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">第3章·故事发展</div>
+                                    <div class="project-meta">龙安鲁风 · 2,481 字 · 224 积分</div>
+                                </div>
+                                <div class="project-duration">04:32</div>
+                                <div class="project-voice">龙安鲁风</div>
+                                <div class="project-date">2026-08-06</div>
+                                <div><span class="status warning">生成中</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">第4章·高潮部分</div>
+                                    <div class="project-meta">未生成</div>
+                                </div>
+                                <div class="project-duration">--</div>
+                                <div class="project-voice">--</div>
+                                <div class="project-date">--</div>
+                                <div><span class="status info">待处理</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Project Group: 播客 -->
+                    <div class="project-group">
+                        <div class="group-header">
+                            <div class="group-title">
+                                <span class="icon">🎙️</span>
+                                <span>播客系列</span>
+                                <span class="count">5 个项目</span>
+                            </div>
+                            <div class="group-actions">
+                                <span class="group-action">展开</span>
+                                <span class="group-action">排序</span>
+                            </div>
+                        </div>
+                        <div class="project-list">
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">E01·AI 的未来</div>
+                                    <div class="project-meta">龙安灵心 · 8,420 字 · 758 积分</div>
+                                </div>
+                                <div class="project-duration">18:32</div>
+                                <div class="project-voice">龙安灵心</div>
+                                <div class="project-date">2026-08-05</div>
+                                <div><span class="status success">已发布</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">E02·语音技术解析</div>
+                                    <div class="project-meta">龙安灵心 · 9,820 字 · 884 积分</div>
+                                </div>
+                                <div class="project-duration">22:15</div>
+                                <div class="project-voice">龙安灵心</div>
+                                <div class="project-date">2026-08-01</div>
+                                <div><span class="status success">已发布</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">E03·本期预告</div>
+                                    <div class="project-meta">龙安欢 · 680 字 · 62 积分</div>
+                                </div>
+                                <div class="project-duration">01:30</div>
+                                <div class="project-voice">龙安欢</div>
+                                <div class="project-date">2026-07-28</div>
+                                <div><span class="status success">已发布</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Project Group: 短视频 -->
+                    <div class="project-group">
+                        <div class="group-header">
+                            <div class="group-title">
+                                <span class="icon">📱</span>
+                                <span>短视频配音</span>
+                                <span class="count">2 个项目</span>
+                            </div>
+                        </div>
+                        <div class="project-list">
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">产品介绍·30秒</div>
+                                    <div class="project-meta">龙安欢 · 128 字 · 12 积分</div>
+                                </div>
+                                <div class="project-duration">00:30</div>
+                                <div class="project-voice">龙安欢</div>
+                                <div class="project-date">2026-08-02</div>
+                                <div><span class="status success">已完成</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                            <div class="project-item">
+                                <div class="project-icon">📄</div>
+                                <div class="project-info">
+                                    <div class="project-name">功能演示·60秒</div>
+                                    <div class="project-meta">龙安欢 · 248 字 · 22 积分</div>
+                                </div>
+                                <div class="project-duration">01:02</div>
+                                <div class="project-voice">龙安欢</div>
+                                <div class="project-date">2026-08-01</div>
+                                <div><span class="status success">已完成</span></div>
+                                <div class="project-actions">
+                                    <button class="project-action-btn">▶</button>
+                                    <button class="project-action-btn">⋯</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

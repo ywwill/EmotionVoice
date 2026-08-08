@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>设置 - EmotionVoice</title>
+    <style>
+        :root {
+            --bg-primary: #0E0F12;
+            --bg-secondary: #15171B;
+            --bg-tertiary: #1C1F24;
+            --bg-elevated: #22262D;
+            --bg-sidebar: #0E0F12;
+            --accent-primary: #E8A968;
+            --accent-secondary: #D49B5B;
+            --accent-glow: #F2C088;
+            --text-primary: #F5F5F7;
+            --text-secondary: #A8ABB4;
+            --text-tertiary: #6B6E76;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: radial-gradient(ellipse at top, #1a1d24 0%, #0a0b0e 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .macos-app-window {
+            width: 100%; max-width: 1280px; height: 90vh; min-height: 800px;
+            background: var(--bg-primary); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 0 0 0.5px rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+        }
+        .title-bar {
+            height: 52px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(21, 23, 27, 0.75);
+            backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .traffic-lights { display: flex; gap: 8px; }
+        .traffic-light { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .traffic-light.close { background: #FF5F57; }
+        .traffic-light.minimize { background: #FEBC2E; }
+        .traffic-light.zoom { background: #28C840; }
+        .window-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        .window-controls { display: flex; gap: 12px; }
+        .window-control-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .app-body { flex: 1; display: flex; overflow: hidden; }
+        
+        /* Sidebar - Same as other pages */
+        .sidebar {
+            width: 220px; background: rgba(14, 15, 18, 0.6);
+            backdrop-filter: blur(20px); border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .sidebar-section { padding: 16px 12px; }
+        .sidebar-section-title { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 12px; margin-bottom: 8px; }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            border-radius: var(--radius-sm); color: var(--text-secondary);
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+            margin-bottom: 2px; position: relative;
+        }
+        .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-item.active { background: var(--bg-elevated); color: var(--text-primary); }
+        .sidebar-item.active::before {
+            content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 16px; background: var(--accent-primary); border-radius: 0 2px 2px 0;
+        }
+        .sidebar-item-icon { font-size: 16px; width: 20px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-item-badge { margin-left: auto; font-size: 11px; color: var(--text-tertiary); background: var(--bg-elevated); padding: 2px 8px; border-radius: 999px; font-family: 'SF Mono', monospace; }
+        .sidebar-divider { height: 1px; background: var(--border-subtle); margin: 8px 16px; }
+        .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border-subtle); }
+        .credits-card { background: linear-gradient(135deg, rgba(232, 169, 104, 0.12), rgba(232, 169, 104, 0.04)); border: 1px solid rgba(232, 169, 104, 0.25); border-radius: var(--radius-md); padding: 12px; }
+        .credits-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .credits-value { font-size: 18px; font-weight: 700; color: var(--accent-glow); font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .credits-meta { font-size: 11px; color: var(--text-tertiary); }
+        
+        /* Settings Layout */
+        .main-content { flex: 1; display: flex; overflow: hidden; }
+        .settings-nav {
+            width: 240px; padding: 24px 16px; border-right: 1px solid var(--border-subtle);
+            background: rgba(14, 15, 18, 0.3); overflow-y: auto;
+        }
+        .settings-nav-title { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 12px; margin-bottom: 12px; font-weight: 600; }
+        .settings-nav-item {
+            display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+            border-radius: var(--radius-sm); color: var(--text-secondary);
+            font-size: 13px; cursor: pointer; margin-bottom: 2px;
+        }
+        .settings-nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .settings-nav-item.active { background: var(--bg-elevated); color: var(--accent-primary); font-weight: 600; }
+        .settings-nav-icon { font-size: 16px; width: 20px; }
+        
+        .settings-content {
+            flex: 1; padding: 32px 40px; overflow-y: auto;
+        }
+        .settings-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+        }
+        .settings-title { font-size: 24px; font-weight: 700; }
+        .settings-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        
+        .settings-section { margin-bottom: 28px; }
+        .settings-section-title {
+            font-size: 13px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .settings-section-title .icon { font-size: 16px; }
+        
+        .settings-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md); overflow: hidden;
+        }
+        .setting-row {
+            display: grid; grid-template-columns: 200px 1fr 80px;
+            gap: 16px; align-items: center; padding: 14px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 13px; font-weight: 500; }
+        .setting-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+        .setting-control { font-size: 12px; color: var(--text-secondary); }
+        .setting-value { font-size: 11px; color: var(--text-tertiary); text-align: right; font-family: 'SF Mono', monospace; }
+        
+        /* Toggle Switch */
+        .toggle {
+            width: 40px; height: 22px; background: var(--bg-elevated); border-radius: 11px;
+            position: relative; cursor: pointer; transition: background 0.2s ease;
+            border: 1px solid var(--border-subtle);
+        }
+        .toggle::after {
+            content: ""; width: 16px; height: 16px; background: var(--text-secondary);
+            border-radius: 50%; position: absolute; top: 2px; left: 2px;
+            transition: all 0.2s ease;
+        }
+        .toggle.on { background: var(--accent-primary); border-color: transparent; }
+        .toggle.on::after { left: 20px; background: var(--bg-primary); }
+        
+        /* Radio Group */
+        .radio-group { display: flex; gap: 16px; }
+        .radio-option { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .radio-circle {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 1.5px solid var(--border-medium);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .radio-option.selected .radio-circle { border-color: var(--accent-primary); }
+        .radio-option.selected .radio-circle::after {
+            content: ""; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-primary);
+        }
+        .radio-label { font-size: 12px; color: var(--text-secondary); }
+        .radio-option.selected .radio-label { color: var(--text-primary); }
+        
+        /* Select */
+        .select-control {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: 6px; padding: 5px 10px; color: var(--text-primary);
+            font-size: 12px; font-family: inherit; min-width: 140px;
+        }
+        
+        /* Shortcut */
+        .shortcut-keys { display: flex; gap: 4px; }
+        .key {
+            padding: 3px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: 4px; font-size: 11px; font-family: 'SF Mono', monospace;
+            color: var(--text-primary);
+        }
+        
+        /* Path Display */
+        .path-display {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px; background: var(--bg-tertiary); border-radius: 6px;
+            font-family: 'SF Mono', monospace; font-size: 11px; color: var(--text-secondary);
+            flex: 1; max-width: 280px;
+        }
+        .path-display .folder { color: var(--accent-glow); }
+        
+        @media (max-width: 1024px) {
+            body { padding: 20px 10px; }
+            .macos-app-window { height: 95vh; }
+            .settings-nav { display: none; }
+            .setting-row { grid-template-columns: 1fr; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="macos-app-window">
+        <div class="title-bar">
+            <div class="traffic-lights">
+                <div class="traffic-light close"></div>
+                <div class="traffic-light minimize"></div>
+                <div class="traffic-light zoom"></div>
+            </div>
+            <div class="window-title">设置 - EmotionVoice</div>
+            <div class="window-controls">
+                <button class="window-control-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="app-body">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🏠</span>
+                        <span>首页</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎭</span>
+                        <span>音色库</span>
+                        <span class="sidebar-item-badge">500+</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📚</span>
+                        <span>所有项目</span>
+                        <span class="sidebar-item-badge">12</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">💎</span>
+                        <span>积分中心</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📊</span>
+                        <span>使用统计</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item active">
+                        <span class="sidebar-item-icon">⚙️</span>
+                        <span>设置</span>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="credits-card">
+                        <div class="credits-label">积分余额</div>
+                        <div class="credits-value">1,280</div>
+                        <div class="credits-meta">有效期至 2027-08-08</div>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="main-content">
+                <div class="settings-nav">
+                    <div class="settings-nav-title">设置分类</div>
+                    <div class="settings-nav-item active">
+                        <span class="settings-nav-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="settings-nav-item">
+                        <span class="settings-nav-icon">⌨️</span>
+                        <span>快捷键</span>
+                    </div>
+                    <div class="settings-nav-item">
+                        <span class="settings-nav-icon">🎨</span>
+                        <span>外观</span>
+                    </div>
+                    <div class="settings-nav-item">
+                        <span class="settings-nav-icon">📁</span>
+                        <span>文件</span>
+                    </div>
+                    <div class="settings-nav-item">
+                        <span class="settings-nav-icon">🔔</span>
+                        <span>通知</span>
+                    </div>
+                    <div class="settings-nav-item">
+                        <span class="settings-nav-icon">🌐</span>
+                        <span>语言</span>
+                    </div>
+                    <div class="settings-nav-item" style="margin-top: 16px;">
+                        <span class="settings-nav-icon">ℹ️</span>
+                        <span>关于</span>
+                    </div>
+                </div>
+                
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <div>
+                            <div class="settings-title">语音合成</div>
+                            <div class="settings-subtitle">配置音色和音频输出选项</div>
+                        </div>
+                        <button class="window-control-btn" style="border: 1px solid var(--border-medium); border-radius: 6px; padding: 6px 14px; width: auto; height: auto; font-size: 12px;">完成</button>
+                    </div>
+                    
+                    <!-- Default Voice Settings -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">🎭</span>
+                            <span>默认音色</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">默认音色</div>
+                                    <div class="setting-desc">新项目自动使用</div>
+                                </div>
+                                <div class="setting-control">
+                                    <select class="select-control">
+                                        <option>龙安灵心 (旗舰)</option>
+                                        <option>龙安鲁风 (旗舰)</option>
+                                        <option>龙安欢</option>
+                                        <option>龙安风悦</option>
+                                    </select>
+                                </div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Audio Settings -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">🔊</span>
+                            <span>音频输出</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">默认格式</div>
+                                    <div class="setting-desc">导出音频文件格式</div>
+                                </div>
+                                <div class="setting-control">
+                                    <select class="select-control">
+                                        <option>MP3 (推荐)</option>
+                                        <option>WAV</option>
+                                        <option>OGG</option>
+                                        <option>FLAC</option>
+                                    </select>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">采样率</div>
+                                    <div class="setting-desc">音频质量</div>
+                                </div>
+                                <div class="setting-control">
+                                    <select class="select-control">
+                                        <option>48 kHz (推荐)</option>
+                                        <option>44.1 kHz</option>
+                                        <option>24 kHz</option>
+                                    </select>
+                                </div>
+                                <div class="setting-value">24-bit</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">自动添加元数据</div>
+                                    <div class="setting-desc">嵌入标题、艺术家信息</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="toggle on"></div>
+                                </div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Shortcut Settings -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">⌨️</span>
+                            <span>快捷键</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">生成语音</div>
+                                    <div class="setting-desc">立即开始合成音频</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="shortcut-keys">
+                                        <span class="key">⌘</span>
+                                        <span class="key">↵</span>
+                                    </div>
+                                </div>
+                                <div class="setting-value">编辑</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">预览播放</div>
+                                    <div class="setting-desc">播放/暂停当前预览</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="shortcut-keys">
+                                        <span class="key">⌘</span>
+                                        <span class="key">P</span>
+                                    </div>
+                                </div>
+                                <div class="setting-value">编辑</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">导出音频</div>
+                                    <div class="setting-desc">导出当前音频文件</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="shortcut-keys">
+                                        <span class="key">⌘</span>
+                                        <span class="key">E</span>
+                                    </div>
+                                </div>
+                                <div class="setting-value">编辑</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">保存草稿</div>
+                                    <div class="setting-desc">保存当前编辑</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="shortcut-keys">
+                                        <span class="key">⌘</span>
+                                        <span class="key">S</span>
+                                    </div>
+                                </div>
+                                <div class="setting-value">编辑</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">切换音色</div>
+                                    <div class="setting-desc">打开音色选择器</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="shortcut-keys">
+                                        <span class="key">⌘</span>
+                                        <span class="key">K</span>
+                                    </div>
+                                </div>
+                                <div class="setting-value">编辑</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Appearance Settings -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">🎨</span>
+                            <span>外观</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">主题</div>
+                                    <div class="setting-desc">应用外观模式</div>
+                                </div>
+                                <div class="radio-group">
+                                    <div class="radio-option">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">跟随系统</span>
+                                    </div>
+                                    <div class="radio-option">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">浅色</span>
+                                    </div>
+                                    <div class="radio-option selected">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">深色</span>
+                                    </div>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">情感标签样式</div>
+                                    <div class="setting-desc">文本编辑器中的标签显示</div>
+                                </div>
+                                <div class="radio-group">
+                                    <div class="radio-option">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">表情符号</span>
+                                    </div>
+                                    <div class="radio-option selected">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">图标</span>
+                                    </div>
+                                    <div class="radio-option">
+                                        <div class="radio-circle"></div>
+                                        <span class="radio-label">纯文字</span>
+                                    </div>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">波形动画</div>
+                                    <div class="setting-desc">播放时的视觉效果</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="toggle on"></div>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">减弱动效</div>
+                                    <div class="setting-desc">减少动画和过渡效果</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="toggle"></div>
+                                </div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- File Settings -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">📁</span>
+                            <span>文件</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">导出目录</div>
+                                    <div class="setting-desc">音频文件保存位置</div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="path-display">
+                                        <span class="folder">~/</span>Documents/EmotionVoice/
+                                    </div>
+                                </div>
+                                <div class="setting-value" style="color: var(--accent-primary);">更改</div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">自动清理缓存</div>
+                                    <div class="setting-desc">定期清理临时文件</div>
+                                </div>
+                                <div class="setting-control">
+                                    <select class="select-control">
+                                        <option>30 天</option>
+                                        <option>60 天</option>
+                                        <option>90 天</option>
+                                        <option>从不</option>
+                                    </select>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">文件名模板</div>
+                                    <div class="setting-desc">导出文件命名规则</div>
+                                </div>
+                                <div class="setting-control">
+                                    <input type="text" class="select-control" value="{项目}/{音色}_{日期}" style="font-family: 'SF Mono', monospace;">
+                                </div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- About -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <span class="icon">ℹ️</span>
+                            <span>关于</span>
+                        </div>
+                        <div class="settings-card">
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">EmotionVoice</div>
+                                    <div class="setting-desc">情感语音合成引擎</div>
+                                </div>
+                                <div class="setting-control" style="color: var(--text-secondary);">v1.0.0 (build 2026.08.08)</div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">检查更新</div>
+                                </div>
+                                <div class="setting-control">
+                                    <button class="window-control-btn" style="border: 1px solid var(--border-medium); border-radius: 6px; padding: 4px 12px; width: auto; height: auto; font-size: 11px;">检查</button>
+                                </div>
+                                <div></div>
+                            </div>
+                            <div class="setting-row">
+                                <div>
+                                    <div class="setting-label">用户协议 · 隐私政策</div>
+                                </div>
+                                <div class="setting-control" style="color: var(--accent-primary);">查看 →</div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

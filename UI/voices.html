@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>音色库 - EmotionVoice</title>
+    <style>
+        :root {
+            --bg-primary: #0E0F12;
+            --bg-secondary: #15171B;
+            --bg-tertiary: #1C1F24;
+            --bg-elevated: #22262D;
+            --bg-sidebar: #0E0F12;
+            --accent-primary: #E8A968;
+            --accent-secondary: #D49B5B;
+            --accent-glow: #F2C088;
+            --text-primary: #F5F5F7;
+            --text-secondary: #A8ABB4;
+            --text-tertiary: #6B6E76;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: radial-gradient(ellipse at top, #1a1d24 0%, #0a0b0e 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .macos-app-window {
+            width: 100%; max-width: 1280px; height: 90vh; min-height: 800px;
+            background: var(--bg-primary); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 0 0 0.5px rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+        }
+        .title-bar {
+            height: 52px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(21, 23, 27, 0.75);
+            backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .traffic-lights { display: flex; gap: 8px; }
+        .traffic-light { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .traffic-light.close { background: #FF5F57; }
+        .traffic-light.minimize { background: #FEBC2E; }
+        .traffic-light.zoom { background: #28C840; }
+        .window-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        .window-controls { display: flex; gap: 12px; }
+        .window-control-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .app-body { flex: 1; display: flex; overflow: hidden; }
+        .sidebar {
+            width: 220px; background: rgba(14, 15, 18, 0.6);
+            backdrop-filter: blur(20px); border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .sidebar-section { padding: 16px 12px; }
+        .sidebar-section-title { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 12px; margin-bottom: 8px; }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            border-radius: var(--radius-sm); color: var(--text-secondary);
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+            margin-bottom: 2px; position: relative;
+        }
+        .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-item.active { background: var(--bg-elevated); color: var(--text-primary); }
+        .sidebar-item.active::before {
+            content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 16px; background: var(--accent-primary); border-radius: 0 2px 2px 0;
+        }
+        .sidebar-item-icon { font-size: 16px; width: 20px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-item-badge { margin-left: auto; font-size: 11px; color: var(--text-tertiary); background: var(--bg-elevated); padding: 2px 8px; border-radius: 999px; font-family: 'SF Mono', monospace; }
+        .sidebar-divider { height: 1px; background: var(--border-subtle); margin: 8px 16px; }
+        .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border-subtle); }
+        .credits-card { background: linear-gradient(135deg, rgba(232, 169, 104, 0.12), rgba(232, 169, 104, 0.04)); border: 1px solid rgba(232, 169, 104, 0.25); border-radius: var(--radius-md); padding: 12px; }
+        .credits-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .credits-value { font-size: 18px; font-weight: 700; color: var(--accent-glow); font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .credits-meta { font-size: 11px; color: var(--text-tertiary); }
+        .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .top-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border-subtle); background: rgba(14, 15, 18, 0.4); backdrop-filter: blur(12px); }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-btn { padding: 6px 12px; border-radius: var(--radius-sm); background: transparent; border: 1px solid var(--border-medium); color: var(--text-primary); font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .toolbar-btn:hover { background: var(--bg-tertiary); }
+        .toolbar-btn-primary { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: var(--bg-primary); border-color: transparent; font-weight: 600; }
+        .search-input {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm); padding: 6px 12px 6px 32px; color: var(--text-primary);
+            font-size: 12px; outline: none; width: 240px; font-family: inherit;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='7' cy='7' r='4.5' stroke='%236B6E76' stroke-width='1.5'/%3E%3Cline x1='10.5' y1='10.5' x2='13.5' y2='13.5' stroke='%236B6E76' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: 10px center;
+        }
+        .search-input:focus { border-color: var(--accent-primary); }
+        .content-padding { padding: 24px 32px; }
+        
+        /* Filter Tabs */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-tab {
+            padding: 6px 14px; border-radius: 999px; background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle); color: var(--text-secondary);
+            font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;
+        }
+        .filter-tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .filter-tab.active { background: var(--accent-primary); color: var(--bg-primary); border-color: transparent; font-weight: 600; }
+        .filter-tab .count { opacity: 0.7; margin-left: 4px; font-family: 'SF Mono', monospace; }
+        
+        /* Voice Section */
+        .voice-section { margin-bottom: 28px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .section-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
+        .section-title .icon { font-size: 16px; }
+        .section-title .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(232, 169, 104, 0.15); color: var(--accent-glow); font-weight: 600; }
+        .section-title .count-text { font-size: 11px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; font-weight: 400; }
+        .section-action { font-size: 12px; color: var(--accent-primary); cursor: pointer; font-weight: 500; }
+        
+        /* Voice Grid */
+        .voice-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+        }
+        .voice-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md); padding: 16px; cursor: pointer;
+            transition: all 0.3s ease; position: relative;
+        }
+        .voice-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .voice-card.featured { border-color: rgba(232, 169, 104, 0.3); background: linear-gradient(135deg, var(--bg-secondary), rgba(232, 169, 104, 0.04)); }
+        .voice-card-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .voice-avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 700; color: var(--bg-primary);
+        }
+        .voice-card:nth-child(2n) .voice-avatar { background: linear-gradient(135deg, #6B8BC9, #5577B0); }
+        .voice-card:nth-child(3n) .voice-avatar { background: linear-gradient(135deg, #8AA5A0, #6F8A85); }
+        .voice-card:nth-child(5n) .voice-avatar { background: linear-gradient(135deg, #D96D6D, #B85555); }
+        .voice-favorite {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-tertiary); cursor: pointer; font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .voice-favorite:hover { color: var(--accent-primary); }
+        .voice-favorite.active { color: #D96D6D; background: rgba(217, 109, 109, 0.1); border-color: rgba(217, 109, 109, 0.3); }
+        .voice-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .voice-desc { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4; }
+        .voice-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .voice-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-tertiary); }
+        .voice-tag.premium { background: rgba(232, 169, 104, 0.15); color: var(--accent-glow); }
+        .voice-actions { display: flex; gap: 6px; }
+        .voice-play-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 6px 10px; border-radius: 6px; background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle); color: var(--text-primary);
+            font-size: 11px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .voice-play-btn:hover { background: var(--accent-primary); color: var(--bg-primary); border-color: transparent; }
+        .voice-use-btn {
+            padding: 6px 10px; border-radius: 6px; background: rgba(232, 169, 104, 0.15);
+            border: 1px solid rgba(232, 169, 104, 0.3); color: var(--accent-glow);
+            font-size: 11px; cursor: pointer; font-weight: 500;
+        }
+        .voice-use-btn:hover { background: var(--accent-primary); color: var(--bg-primary); }
+        
+        /* Waveform Playing State */
+        .voice-waveform {
+            display: flex; align-items: center; gap: 2px; height: 24px;
+            margin-bottom: 8px; padding: 0 4px;
+        }
+        .voice-waveform .wave-bar {
+            width: 2px; background: var(--accent-primary); border-radius: 1px;
+        }
+        .voice-waveform.playing .wave-bar {
+            animation: waveform 0.8s ease-in-out infinite;
+        }
+        @keyframes waveform {
+            0%, 100% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1); }
+        }
+        .voice-waveform.playing .wave-bar:nth-child(1) { animation-delay: 0s; }
+        .voice-waveform.playing .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .voice-waveform.playing .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .voice-waveform.playing .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .voice-waveform.playing .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+        .voice-waveform.playing .wave-bar:nth-child(6) { animation-delay: 0.5s; }
+        .voice-waveform.playing .wave-bar:nth-child(7) { animation-delay: 0.6s; }
+        .voice-waveform.playing .wave-bar:nth-child(8) { animation-delay: 0.7s; }
+        .voice-waveform.playing .wave-bar:nth-child(9) { animation-delay: 0.8s; }
+        .voice-waveform.playing .wave-bar:nth-child(10) { animation-delay: 0.9s; }
+        
+        @media (max-width: 1024px) {
+            body { padding: 20px 10px; }
+            .macos-app-window { height: 95vh; }
+            .voice-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="macos-app-window">
+        <div class="title-bar">
+            <div class="traffic-lights">
+                <div class="traffic-light close"></div>
+                <div class="traffic-light minimize"></div>
+                <div class="traffic-light zoom"></div>
+            </div>
+            <div class="window-title">音色库 - EmotionVoice</div>
+            <div class="window-controls">
+                <button class="window-control-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="app-body">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🏠</span>
+                        <span>首页</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="sidebar-item active">
+                        <span class="sidebar-item-icon">🎭</span>
+                        <span>音色库</span>
+                        <span class="sidebar-item-badge">500+</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">音色分类</div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⭐</span>
+                        <span>旗舰音色</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🌟</span>
+                        <span>基础音色</span>
+                        <span class="sidebar-item-badge">9</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">👶</span>
+                        <span>儿童音色</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎭</span>
+                        <span>角色扮演</span>
+                        <span class="sidebar-item-badge">2</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🌏</span>
+                        <span>方言</span>
+                        <span class="sidebar-item-badge">20+</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🌍</span>
+                        <span>多语言</span>
+                        <span class="sidebar-item-badge">20+</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">♡</span>
+                        <span>我的收藏</span>
+                        <span class="sidebar-item-badge">8</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📚</span>
+                        <span>所有项目</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⚙️</span>
+                        <span>设置</span>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="credits-card">
+                        <div class="credits-label">积分余额</div>
+                        <div class="credits-value">1,280</div>
+                        <div class="credits-meta">有效期至 2027-08-08</div>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="main-content">
+                <div class="top-toolbar">
+                    <div class="breadcrumb">
+                        <span>音色库</span>
+                    </div>
+                    <div class="toolbar-actions">
+                        <input type="text" class="search-input" placeholder="搜索音色...">
+                        <button class="toolbar-btn">⚙️ 筛选</button>
+                    </div>
+                </div>
+                
+                <div class="content-padding">
+                    <!-- Filter Tabs -->
+                    <div class="filter-tabs">
+                        <div class="filter-tab active">全部 <span class="count">513</span></div>
+                        <div class="filter-tab">中文 <span class="count">128</span></div>
+                        <div class="filter-tab">英文 <span class="count">86</span></div>
+                        <div class="filter-tab">方言 <span class="count">42</span></div>
+                        <div class="filter-tab">儿童 <span class="count">15</span></div>
+                        <div class="filter-tab">角色 <span class="count">23</span></div>
+                        <div class="filter-tab">多语言 <span class="count">120</span></div>
+                        <div class="filter-tab">我的收藏 <span class="count">8</span></div>
+                    </div>
+                    
+                    <!-- Featured Voices -->
+                    <section class="voice-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <span class="icon">⭐</span>
+                                <span>旗舰音色</span>
+                                <span class="badge">PLUS</span>
+                                <span class="count-text">2 个</span>
+                            </div>
+                            <div class="section-action">查看全部 →</div>
+                        </div>
+                        <div class="voice-grid">
+                            <div class="voice-card featured">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">灵</div>
+                                    <div class="voice-favorite active">♥</div>
+                                </div>
+                                <div class="voice-name">龙安灵心</div>
+                                <div class="voice-desc">知心温暖的女性声音，专业内容首选</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag premium">⭐ 旗舰</span>
+                                    <span class="voice-tag">25岁</span>
+                                    <span class="voice-tag">女</span>
+                                    <span class="voice-tag">中文</span>
+                                </div>
+                                <div class="voice-waveform playing">
+                                    <div class="wave-bar" style="height: 40%;"></div>
+                                    <div class="wave-bar" style="height: 60%;"></div>
+                                    <div class="wave-bar" style="height: 80%;"></div>
+                                    <div class="wave-bar" style="height: 90%;"></div>
+                                    <div class="wave-bar" style="height: 70%;"></div>
+                                    <div class="wave-bar" style="height: 90%;"></div>
+                                    <div class="wave-bar" style="height: 60%;"></div>
+                                    <div class="wave-bar" style="height: 80%;"></div>
+                                    <div class="wave-bar" style="height: 50%;"></div>
+                                    <div class="wave-bar" style="height: 40%;"></div>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听中</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card featured">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">鲁</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙安鲁风</div>
+                                <div class="voice-desc">明亮开朗的男性声音，播客纪录片</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag premium">⭐ 旗舰</span>
+                                    <span class="voice-tag">25岁</span>
+                                    <span class="voice-tag">男</span>
+                                    <span class="voice-tag">中文</span>
+                                </div>
+                                <div class="voice-waveform">
+                                    <div class="wave-bar" style="height: 30%;"></div>
+                                    <div class="wave-bar" style="height: 50%;"></div>
+                                    <div class="wave-bar" style="height: 70%;"></div>
+                                    <div class="wave-bar" style="height: 60%;"></div>
+                                    <div class="wave-bar" style="height: 80%;"></div>
+                                    <div class="wave-bar" style="height: 50%;"></div>
+                                    <div class="wave-bar" style="height: 70%;"></div>
+                                    <div class="wave-bar" style="height: 90%;"></div>
+                                    <div class="wave-bar" style="height: 60%;"></div>
+                                    <div class="wave-bar" style="height: 40%;"></div>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Basic Voices -->
+                    <section class="voice-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <span class="icon">🌟</span>
+                                <span>基础音色</span>
+                                <span class="count-text">9 个</span>
+                            </div>
+                            <div class="section-action">查看全部 →</div>
+                        </div>
+                        <div class="voice-grid">
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">欢</div>
+                                    <div class="voice-favorite active">♥</div>
+                                </div>
+                                <div class="voice-name">龙安欢</div>
+                                <div class="voice-desc">通用女声，温柔自然</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">25岁</span>
+                                    <span class="voice-tag">女</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">悦</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙安风悦</div>
+                                <div class="voice-desc">自然亲切，社交陪伴</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">30岁</span>
+                                    <span class="voice-tag">女</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">希</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙安灵希</div>
+                                <div class="voice-desc">可爱甜美，亲切对话</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">25岁</span>
+                                    <span class="voice-tag">女</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">昕</div>
+                                    <div class="voice-favorite active">♥</div>
+                                </div>
+                                <div class="voice-name">龙安小昕</div>
+                                <div class="voice-desc">亲切活泼，年轻用户</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">22岁</span>
+                                    <span class="voice-tag">女</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Kids Voices -->
+                    <section class="voice-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <span class="icon">👶</span>
+                                <span>儿童音色</span>
+                                <span class="count-text">2 个</span>
+                            </div>
+                            <div class="section-action">查看全部 →</div>
+                        </div>
+                        <div class="voice-grid">
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">豆</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙杰力豆</div>
+                                <div class="voice-desc">天真男童，儿童内容</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">5岁</span>
+                                    <span class="voice-tag">男童</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">泡</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙泡泡</div>
+                                <div class="voice-desc">软糯女童，亲切可爱</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">5岁</span>
+                                    <span class="voice-tag">女童</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Character Voices -->
+                    <section class="voice-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <span class="icon">🎭</span>
+                                <span>角色音色</span>
+                                <span class="count-text">2 个</span>
+                            </div>
+                            <div class="section-action">查看全部 →</div>
+                        </div>
+                        <div class="voice-grid">
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">火</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙火火</div>
+                                <div class="voice-desc">顽皮少年，游戏角色</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">8岁</span>
+                                    <span class="voice-tag">少年</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar">川</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">龙川叔</div>
+                                <div class="voice-desc">川普大叔，角色扮演</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">40岁</span>
+                                    <span class="voice-tag">男</span>
+                                    <span class="voice-tag">四川话</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- More Library -->
+                    <section class="voice-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <span class="icon">📚</span>
+                                <span>基础音色库</span>
+                                <span class="count-text">500+ 个</span>
+                            </div>
+                            <div class="section-action">浏览完整库 →</div>
+                        </div>
+                        <div class="voice-grid">
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar" style="background: linear-gradient(135deg, #B89BC9, #9577B0);">A</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">Emma</div>
+                                <div class="voice-desc">英式英语女声，专业播报</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">28岁</span>
+                                    <span class="voice-tag">女</span>
+                                    <span class="voice-tag">英文</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar" style="background: linear-gradient(135deg, #9BB5C9, #7793B0);">J</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">James</div>
+                                <div class="voice-desc">美式英语男声，纪录片</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">35岁</span>
+                                    <span class="voice-tag">男</span>
+                                    <span class="voice-tag">英文</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar" style="background: linear-gradient(135deg, #C9B89B, #B09777);">粤</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">小蓉</div>
+                                <div class="voice-desc">粤语女声，本地化内容</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">30岁</span>
+                                    <span class="voice-tag">女</span>
+                                    <span class="voice-tag">粤语</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                            <div class="voice-card">
+                                <div class="voice-card-header">
+                                    <div class="voice-avatar" style="background: linear-gradient(135deg, #C9A89B, #B08677);">日</div>
+                                    <div class="voice-favorite">♡</div>
+                                </div>
+                                <div class="voice-name">樱花</div>
+                                <div class="voice-desc">日语女声，动漫角色</div>
+                                <div class="voice-meta">
+                                    <span class="voice-tag">26岁</span>
+                                    <span class="voice-tag">女</span>
+                                    <span class="voice-tag">日语</span>
+                                </div>
+                                <div class="voice-actions">
+                                    <div class="voice-play-btn">▶ 试听</div>
+                                    <div class="voice-use-btn">使用</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

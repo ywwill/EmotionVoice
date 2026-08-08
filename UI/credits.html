@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>积分中心 - EmotionVoice</title>
+    <style>
+        :root {
+            --bg-primary: #0E0F12;
+            --bg-secondary: #15171B;
+            --bg-tertiary: #1C1F24;
+            --bg-elevated: #22262D;
+            --bg-sidebar: #0E0F12;
+            --accent-primary: #E8A968;
+            --accent-secondary: #D49B5B;
+            --accent-glow: #F2C088;
+            --text-primary: #F5F5F7;
+            --text-secondary: #A8ABB4;
+            --text-tertiary: #6B6E76;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            --status-success: #6BB87A;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: radial-gradient(ellipse at top, #1a1d24 0%, #0a0b0e 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .macos-app-window {
+            width: 100%; max-width: 1280px; height: 90vh; min-height: 800px;
+            background: var(--bg-primary); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 0 0 0.5px rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+        }
+        .title-bar {
+            height: 52px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(21, 23, 27, 0.75);
+            backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .traffic-lights { display: flex; gap: 8px; }
+        .traffic-light { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .traffic-light.close { background: #FF5F57; }
+        .traffic-light.minimize { background: #FEBC2E; }
+        .traffic-light.zoom { background: #28C840; }
+        .window-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        .window-controls { display: flex; gap: 12px; }
+        .window-control-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .app-body { flex: 1; display: flex; overflow: hidden; }
+        .sidebar {
+            width: 220px; background: rgba(14, 15, 18, 0.6);
+            backdrop-filter: blur(20px); border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .sidebar-section { padding: 16px 12px; }
+        .sidebar-section-title { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 12px; margin-bottom: 8px; }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            border-radius: var(--radius-sm); color: var(--text-secondary);
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+            margin-bottom: 2px; position: relative;
+        }
+        .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-item.active { background: var(--bg-elevated); color: var(--text-primary); }
+        .sidebar-item.active::before {
+            content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 16px; background: var(--accent-primary); border-radius: 0 2px 2px 0;
+        }
+        .sidebar-item-icon { font-size: 16px; width: 20px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-item-badge { margin-left: auto; font-size: 11px; color: var(--text-tertiary); background: var(--bg-elevated); padding: 2px 8px; border-radius: 999px; font-family: 'SF Mono', monospace; }
+        .sidebar-divider { height: 1px; background: var(--border-subtle); margin: 8px 16px; }
+        .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border-subtle); }
+        .credits-card { background: linear-gradient(135deg, rgba(232, 169, 104, 0.12), rgba(232, 169, 104, 0.04)); border: 1px solid rgba(232, 169, 104, 0.25); border-radius: var(--radius-md); padding: 12px; }
+        .credits-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .credits-value { font-size: 18px; font-weight: 700; color: var(--accent-glow); font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .credits-meta { font-size: 11px; color: var(--text-tertiary); }
+        .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .top-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border-subtle); background: rgba(14, 15, 18, 0.4); backdrop-filter: blur(12px); }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-btn { padding: 6px 12px; border-radius: var(--radius-sm); background: transparent; border: 1px solid var(--border-medium); color: var(--text-primary); font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .toolbar-btn:hover { background: var(--bg-tertiary); }
+        .toolbar-btn-primary { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: var(--bg-primary); border-color: transparent; font-weight: 600; }
+        .content-padding { padding: 24px 32px; }
+        
+        /* Balance Hero */
+        .balance-hero {
+            background: linear-gradient(135deg, rgba(232, 169, 104, 0.15), rgba(232, 169, 104, 0.04));
+            border: 1px solid rgba(232, 169, 104, 0.25);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .balance-hero::before {
+            content: "";
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 240px; height: 240px;
+            background: radial-gradient(circle, rgba(232, 169, 104, 0.2) 0%, transparent 70%);
+        }
+        .balance-content { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; }
+        .balance-info { }
+        .balance-label { font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+        .balance-value {
+            font-size: 56px; font-weight: 700; color: var(--accent-glow);
+            font-family: 'SF Mono', monospace; letter-spacing: -0.03em; line-height: 1;
+            margin-bottom: 12px;
+            display: flex; align-items: baseline; gap: 8px;
+        }
+        .balance-value .unit { font-size: 24px; color: var(--text-secondary); }
+        .balance-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); }
+        .balance-meta-item { display: flex; align-items: center; gap: 6px; }
+        .balance-meta-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-success); }
+        .balance-actions { display: flex; flex-direction: column; gap: 8px; }
+        .btn-primary {
+            padding: 10px 24px; border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary); font-size: 13px; font-weight: 600; border: none;
+            cursor: pointer; box-shadow: 0 4px 16px rgba(232, 169, 104, 0.3);
+        }
+        .btn-secondary {
+            padding: 10px 24px; border-radius: var(--radius-sm);
+            background: transparent; color: var(--text-primary); font-size: 13px;
+            font-weight: 500; border: 1px solid var(--border-medium); cursor: pointer;
+        }
+        
+        /* Two Column Layout */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+        
+        /* Stats Card */
+        .stats-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); padding: 20px;
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .card-title { font-size: 14px; font-weight: 600; }
+        .card-action { font-size: 12px; color: var(--accent-primary); cursor: pointer; }
+        
+        .usage-bar { margin-bottom: 16px; }
+        .usage-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+        .usage-bar-track { height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; }
+        .usage-bar-fill {
+            height: 100%; background: linear-gradient(90deg, var(--accent-primary), var(--accent-glow));
+            border-radius: 4px; position: relative;
+        }
+        .usage-bar-stats {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;
+            padding-top: 16px; border-top: 1px solid var(--border-subtle);
+        }
+        .usage-stat { text-align: center; }
+        .usage-stat-value { font-size: 18px; font-weight: 700; font-family: 'SF Mono', monospace; margin-bottom: 4px; }
+        .usage-stat-label { font-size: 11px; color: var(--text-tertiary); }
+        
+        /* Package Cards */
+        .packages-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+            margin-bottom: 24px;
+        }
+        .package-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); padding: 20px; position: relative;
+            transition: all 0.3s ease; cursor: pointer;
+        }
+        .package-card:hover {
+            border-color: var(--border-medium);
+            transform: translateY(-2px);
+        }
+        .package-card.recommended {
+            border-color: var(--accent-primary);
+            background: linear-gradient(135deg, var(--bg-secondary), rgba(232, 169, 104, 0.05));
+        }
+        .package-card.recommended::before {
+            content: "⭐ 推荐"; position: absolute; top: -8px; right: 12px;
+            background: var(--accent-primary); color: var(--bg-primary);
+            font-size: 10px; font-weight: 600; padding: 3px 8px;
+            border-radius: 4px; font-family: inherit;
+        }
+        .package-icon { font-size: 28px; margin-bottom: 12px; }
+        .package-name { font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px; }
+        .package-price {
+            font-size: 28px; font-weight: 700; font-family: 'SF Mono', monospace;
+            color: var(--text-primary); margin-bottom: 4px;
+        }
+        .package-price .currency { font-size: 16px; color: var(--text-secondary); margin-right: 2px; }
+        .package-points {
+            font-size: 18px; font-weight: 600; color: var(--accent-glow);
+            font-family: 'SF Mono', monospace; margin-bottom: 12px;
+        }
+        .package-unit {
+            font-size: 11px; color: var(--text-tertiary); margin-bottom: 16px;
+            padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+        }
+        .package-features { margin-bottom: 16px; }
+        .package-feature { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+        .package-feature::before { content: "✓"; color: var(--status-success); font-weight: 600; }
+        .package-btn {
+            width: 100%; padding: 8px; border-radius: var(--radius-sm);
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            color: var(--text-primary); font-size: 12px; font-weight: 500;
+            cursor: pointer; font-family: inherit;
+        }
+        .package-btn:hover { background: var(--bg-elevated); }
+        .package-card.recommended .package-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary); border-color: transparent; font-weight: 600;
+        }
+        
+        /* Transaction History */
+        .history-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); padding: 20px;
+        }
+        .history-list { }
+        .history-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-icon {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .history-icon.purchase { background: rgba(107, 184, 122, 0.15); color: var(--status-success); }
+        .history-icon.consume { background: rgba(107, 139, 201, 0.15); color: #6B8BC9; }
+        .history-icon.refund { background: rgba(232, 169, 104, 0.15); color: var(--accent-primary); }
+        .history-info { flex: 1; }
+        .history-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+        .history-meta { font-size: 11px; color: var(--text-tertiary); font-family: 'SF Mono', monospace; }
+        .history-amount { font-size: 14px; font-weight: 600; font-family: 'SF Mono', monospace; text-align: right; }
+        .history-amount.positive { color: var(--status-success); }
+        .history-amount.negative { color: var(--text-secondary); }
+        .history-amount.positive::before { content: "+"; }
+        .history-amount.negative::before { content: "-"; }
+        
+        /* Cost Reference */
+        .cost-table {
+            background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px;
+        }
+        .cost-table table { width: 100%; border-collapse: collapse; }
+        .cost-table th { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border-subtle); }
+        .cost-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid var(--border-subtle); }
+        .cost-table tr:last-child td { border-bottom: none; }
+        .cost-table .col-points { color: var(--accent-glow); font-weight: 600; font-family: 'SF Mono', monospace; text-align: right; }
+        .cost-table .col-type { color: var(--text-secondary); }
+        .cost-table .col-amount { font-family: 'SF Mono', monospace; color: var(--text-tertiary); }
+        
+        @media (max-width: 1024px) {
+            body { padding: 20px 10px; }
+            .macos-app-window { height: 95vh; }
+            .two-col { grid-template-columns: 1fr; }
+            .packages-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="macos-app-window">
+        <div class="title-bar">
+            <div class="traffic-lights">
+                <div class="traffic-light close"></div>
+                <div class="traffic-light minimize"></div>
+                <div class="traffic-light zoom"></div>
+            </div>
+            <div class="window-title">积分中心 - EmotionVoice</div>
+            <div class="window-controls">
+                <button class="window-control-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="app-body">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🏠</span>
+                        <span>首页</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎭</span>
+                        <span>音色库</span>
+                        <span class="sidebar-item-badge">500+</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📚</span>
+                        <span>所有项目</span>
+                        <span class="sidebar-item-badge">12</span>
+                    </div>
+                    <div class="sidebar-item active">
+                        <span class="sidebar-item-icon">💎</span>
+                        <span>积分中心</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📊</span>
+                        <span>使用统计</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⚙️</span>
+                        <span>设置</span>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="credits-card">
+                        <div class="credits-label">积分余额</div>
+                        <div class="credits-value">1,280</div>
+                        <div class="credits-meta">有效期至 2027-08-08</div>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="main-content">
+                <div class="top-toolbar">
+                    <div class="breadcrumb">
+                        <span>积分中心</span>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="toolbar-btn">📋 消费明细</button>
+                        <button class="toolbar-btn toolbar-btn-primary">+ 充值</button>
+                    </div>
+                </div>
+                
+                <div class="content-padding">
+                    <!-- Balance Hero -->
+                    <div class="balance-hero">
+                        <div class="balance-content">
+                            <div class="balance-info">
+                                <div class="balance-label">💰 当前余额</div>
+                                <div class="balance-value">
+                                    1,280 <span class="unit">积分</span>
+                                </div>
+                                <div class="balance-meta">
+                                    <div class="balance-meta-item">
+                                        <div class="dot"></div>
+                                        有效期至 2027-08-08
+                                    </div>
+                                    <div class="balance-meta-item">
+                                        本月已使用 4,560 积分
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="balance-actions">
+                                <button class="btn-primary">⚡ 立即充值</button>
+                                <button class="btn-secondary">📋 消费明细</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Two Column Stats -->
+                    <div class="two-col">
+                        <div class="stats-card">
+                            <div class="card-header">
+                                <div class="card-title">📊 本月使用情况</div>
+                                <div class="card-action">详细报告 →</div>
+                            </div>
+                            <div class="usage-bar">
+                                <div class="usage-bar-label">
+                                    <span>已使用</span>
+                                    <span style="font-family: 'SF Mono', monospace;">4,560 / 10,000</span>
+                                </div>
+                                <div class="usage-bar-track">
+                                    <div class="usage-bar-fill" style="width: 45.6%;"></div>
+                                </div>
+                            </div>
+                            <div class="usage-bar-stats">
+                                <div class="usage-stat">
+                                    <div class="usage-stat-value">152</div>
+                                    <div class="usage-stat-label">日均积分</div>
+                                </div>
+                                <div class="usage-stat">
+                                    <div class="usage-stat-value">28</div>
+                                    <div class="usage-stat-label">音频数量</div>
+                                </div>
+                                <div class="usage-stat">
+                                    <div class="usage-stat-value">4,560</div>
+                                    <div class="usage-stat-label">预计消耗</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="card-header">
+                                <div class="card-title">📈 消费趋势</div>
+                                <div class="card-action">最近 30 天</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-end; gap: 4px; height: 100px; padding-top: 12px;">
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 30%; opacity: 0.4;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 45%; opacity: 0.5;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 35%; opacity: 0.45;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 60%; opacity: 0.55;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 75%; opacity: 0.65;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 50%; opacity: 0.5;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 85%; opacity: 0.7;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 95%; opacity: 0.75;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 70%; opacity: 0.65;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 55%; opacity: 0.55;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 80%; opacity: 0.7;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 65%; opacity: 0.6;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 90%; opacity: 0.8;"></div>
+                                <div style="flex: 1; background: var(--accent-primary); border-radius: 2px 2px 0 0; height: 75%; opacity: 0.7;"></div>
+                                <div style="flex: 1; background: var(--accent-glow); border-radius: 2px 2px 0 0; height: 88%; opacity: 1; box-shadow: 0 0 8px rgba(232, 169, 104, 0.4);"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--text-tertiary); font-family: 'SF Mono', monospace;">
+                                <span>7月25日</span>
+                                <span>8月1日</span>
+                                <span>8月8日</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Packages -->
+                    <div class="card-header" style="margin-bottom: 14px;">
+                        <div class="card-title">💎 推荐套餐</div>
+                        <div class="card-action">查看完整定价 →</div>
+                    </div>
+                    <div class="packages-grid">
+                        <div class="package-card">
+                            <div class="package-icon">🌱</div>
+                            <div class="package-name">体验包</div>
+                            <div class="package-price"><span class="currency">¥</span>9.9</div>
+                            <div class="package-points">500 积分</div>
+                            <div class="package-unit">≈ ¥0.020 / 积分</div>
+                            <div class="package-features">
+                                <div class="package-feature">适合尝鲜体验</div>
+                                <div class="package-feature">12 个月有效</div>
+                            </div>
+                            <button class="package-btn">购买</button>
+                        </div>
+                        <div class="package-card">
+                            <div class="package-icon">⭐</div>
+                            <div class="package-name">基础包</div>
+                            <div class="package-price"><span class="currency">¥</span>49</div>
+                            <div class="package-points">3,000 积分</div>
+                            <div class="package-unit">≈ ¥0.016 / 积分</div>
+                            <div class="package-features">
+                                <div class="package-feature">个人创作首选</div>
+                                <div class="package-feature">12 个月有效</div>
+                            </div>
+                            <button class="package-btn">购买</button>
+                        </div>
+                        <div class="package-card recommended">
+                            <div class="package-icon">💎</div>
+                            <div class="package-name">专业包</div>
+                            <div class="package-price"><span class="currency">¥</span>199</div>
+                            <div class="package-points">15,000 积分</div>
+                            <div class="package-unit">≈ ¥0.013 / 积分</div>
+                            <div class="package-features">
+                                <div class="package-feature">高频使用推荐</div>
+                                <div class="package-feature">12 个月有效</div>
+                                <div class="package-feature">优先客服支持</div>
+                            </div>
+                            <button class="package-btn">购买</button>
+                        </div>
+                        <div class="package-card">
+                            <div class="package-icon">👑</div>
+                            <div class="package-name">旗舰包</div>
+                            <div class="package-price"><span class="currency">¥</span>599</div>
+                            <div class="package-points">50,000 积分</div>
+                            <div class="package-unit">≈ ¥0.012 / 积分</div>
+                            <div class="package-features">
+                                <div class="package-feature">专业创作者</div>
+                                <div class="package-feature">12 个月有效</div>
+                                <div class="package-feature">企业级 API</div>
+                            </div>
+                            <button class="package-btn">购买</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cost Reference -->
+                    <div class="cost-table">
+                        <div class="card-header" style="margin-bottom: 14px;">
+                            <div class="card-title">💡 积分消耗参考</div>
+                            <div class="card-action">计费规则 →</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>内容类型</th>
+                                    <th>字数范围</th>
+                                    <th>预估积分</th>
+                                    <th>场景示例</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="col-type">短句 / 文案</td>
+                                    <td class="col-amount">50-200 字</td>
+                                    <td class="col-points">1-5</td>
+                                    <td class="col-type">客服回复、朋友圈</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-type">中等段落</td>
+                                    <td class="col-amount">200-500 字</td>
+                                    <td class="col-points">5-15</td>
+                                    <td class="col-type">产品介绍、短视频</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-type">长文本</td>
+                                    <td class="col-amount">500-2,000 字</td>
+                                    <td class="col-points">15-60</td>
+                                    <td class="col-type">文章朗读、广告</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-type">有声书章节</td>
+                                    <td class="col-amount">2,000-5,000 字</td>
+                                    <td class="col-points">60-150</td>
+                                    <td class="col-type">有声书、广播剧</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-type">完整节目</td>
+                                    <td class="col-amount">5,000+ 字</td>
+                                    <td class="col-points">150+</td>
+                                    <td class="col-type">播客、纪录片</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- History -->
+                    <div class="history-card">
+                        <div class="card-header">
+                            <div class="card-title">📋 交易记录</div>
+                            <div class="card-action">查看全部 →</div>
+                        </div>
+                        <div class="history-list">
+                            <div class="history-item">
+                                <div class="history-icon purchase">+</div>
+                                <div class="history-info">
+                                    <div class="history-title">购买专业包</div>
+                                    <div class="history-meta">2026-08-01 14:32 · 微信支付</div>
+                                </div>
+                                <div class="history-amount positive">3,000</div>
+                            </div>
+                            <div class="history-item">
+                                <div class="history-icon consume">▶</div>
+                                <div class="history-info">
+                                    <div class="history-title">有声书·第一章合成</div>
+                                    <div class="history-meta">2026-08-07 10:24 · 龙安灵心</div>
+                                </div>
+                                <div class="history-amount negative">28</div>
+                            </div>
+                            <div class="history-item">
+                                <div class="history-icon consume">▶</div>
+                                <div class="history-info">
+                                    <div class="history-title">播客·E02 合成</div>
+                                    <div class="history-meta">2026-08-01 16:48 · 龙安灵心</div>
+                                </div>
+                                <div class="history-amount negative">884</div>
+                            </div>
+                            <div class="history-item">
+                                <div class="history-icon purchase">+</div>
+                                <div class="history-info">
+                                    <div class="history-title">购买基础包</div>
+                                    <div class="history-meta">2026-07-15 09:12 · 支付宝</div>
+                                </div>
+                                <div class="history-amount positive">3,000</div>
+                            </div>
+                            <div class="history-item">
+                                <div class="history-icon refund">↺</div>
+                                <div class="history-info">
+                                    <div class="history-title">生成失败返还</div>
+                                    <div class="history-meta">2026-07-12 22:05 · 系统自动</div>
+                                </div>
+                                <div class="history-amount positive">42</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
