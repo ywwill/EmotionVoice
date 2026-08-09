@@ -146,36 +146,99 @@ final class DatabaseManager {
 
     // MARK: - 种子数据
 
+    /// 旗舰音色：始终保留，不被 JSON 覆盖
+    private let premiumVoices: [(String, String, String, String, String)] = [
+        ("longanlingxin", "龙安灵心", "知心温暖·25岁女", "灵", "premium"),
+        ("longanlufeng", "龙安鲁风", "明亮开朗·25岁男", "鲁", "premium"),
+    ]
+
     private func seedIfNeeded() throws {
-        let count = try db.scalar(voices.count)
-        guard count == 0 else { return }
+        // 1. 确保 2 个旗舰音色始终存在（幂等）
+        try ensurePremiumVoices()
 
-        let seedVoices: [(String, String, String, String, String)] = [
-            ("longanlingxin", "龙安灵心", "知心温暖·25岁女", "灵", "premium"),
-            ("longanlufeng", "龙安鲁风", "明亮开朗·25岁男", "鲁", "premium"),
-            ("longanhuan_v3.6", "龙安欢", "通用女声·25岁", "欢", "basic"),
-            ("longanfengyue", "龙安风悦", "自然亲切·30岁女", "风", "basic"),
-            ("longanyuanfei", "龙安元妃", "高傲妃子·30岁女", "元", "basic"),
-            ("longanlingxi", "龙安灵希", "可爱甜美·25岁女", "希", "basic"),
-            ("longanxiaoxin", "龙安小昕", "亲切活泼·22岁女", "昕", "basic"),
-            ("longjielidou_v3.6", "龙杰力豆", "天真男童·5岁", "力", "child"),
-            ("longpaopao_v3.6", "龙泡泡", "软糯可爱·5岁女", "泡", "child"),
-            ("longhuohuo_v3.6", "龙火火", "顽皮少年·8岁男", "火", "role"),
-            ("longchuanshu_v3.6", "龙川叔", "川普大叔·40岁男", "川", "role"),
-        ]
-
-        for v in seedVoices {
-            try db.run(voices.insert(or: .ignore,
-                voiceKey <- v.0,
-                voiceName <- v.1,
-                voiceDesc <- v.2,
-                voiceAvatar <- v.3,
-                voiceCategory <- v.4,
-                voiceIsFavorite <- false
-            ))
+        // 2. 如果 voices 表数量过少（首次或老用户），从 JSON 基础音色种子数据补充
+        let totalCount = try db.scalar(voices.count)
+        if totalCount < 100 {
+            // 先清理旧的非旗舰音色（老 demo 种子数据）
+            try purgeLegacyNonPremiumVoices()
+            // 再批量插入 JSON 模板
+            try seedBasicVoicesFromTemplate()
         }
 
-        // 标记第一个旗舰音色为收藏
+        // 3. 默认收藏：第一个旗舰音色
         try db.run(voices.filter(voiceKey == "longanlingxin").update(voiceIsFavorite <- true))
+    }
+
+    /// 清理旧的非旗舰种子音色（仅删除以 'long' 开头的 demo key，避免误删真实数据）
+    private func purgeLegacyNonPremiumVoices() throws {
+        let premiumKeys = Set(premiumVoices.map { $0.0 })
+        // 取出全部非 premium 音色
+        let nonPremium = try db.prepare(voices.filter(voiceCategory != "premium"))
+        var toDelete: [String] = []
+        for row in nonPremium {
+            let key = row[voiceKey]
+            if !premiumKeys.contains(key) {
+                toDelete.append(key)
+            }
+        }
+        for key in toDelete {
+            try db.run(voices.filter(voiceKey == key).delete())
+        }
+        if !toDelete.isEmpty {
+            print("DatabaseManager: purged \(toDelete.count) legacy non-premium voices")
+        }
+    }
+
+    /// 旗舰音色幂等插入（已存在则跳过）
+    private func ensurePremiumVoices() throws {
+        for v in premiumVoices {
+            let exists = try db.scalar(
+                voices.filter(voiceKey == v.0).count
+            )
+            if exists == 0 {
+                try db.run(voices.insert(or: .ignore,
+                    voiceKey <- v.0,
+                    voiceName <- v.1,
+                    voiceDesc <- v.2,
+                    voiceAvatar <- v.3,
+                    voiceCategory <- v.4,
+                    voiceIsFavorite <- false
+                ))
+            }
+        }
+    }
+
+    /// 从基础音色 JSON 模板批量插入数据库
+    private func seedBasicVoicesFromTemplate() throws {
+        // 触发懒加载
+        BasicVoiceLoader.shared.loadFromBundle()
+        let templates = BasicVoiceLoader.shared.templates
+
+        guard !templates.isEmpty else {
+            print("DatabaseManager: no basic voice templates available, skipping seed")
+            return
+        }
+
+        // 开启事务加速批量插入
+        try db.transaction {
+            for t in templates {
+                let cat: String
+                switch t.category {
+                case .premium: cat = "premium"
+                case .basic:   cat = "basic"
+                case .child:   cat = "child"
+                case .role:    cat = "role"
+                }
+                try db.run(voices.insert(or: .ignore,
+                    voiceKey <- t.key,
+                    voiceName <- t.name,
+                    voiceDesc <- t.displayDesc,
+                    voiceAvatar <- t.avatar,
+                    voiceCategory <- cat,
+                    voiceIsFavorite <- false
+                ))
+            }
+        }
+        print("DatabaseManager: seeded \(templates.count) basic voice templates")
     }
 }

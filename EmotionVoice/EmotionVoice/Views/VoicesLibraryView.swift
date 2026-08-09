@@ -62,7 +62,7 @@ struct VoicesLibraryView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("音色库".localized())
                         .font(.system(size: 16, weight: .semibold))
-                    Text("浏览 500+ 精选音色，支持方言和角色".localized())
+                    Text("共 %d 个精选音色 · 支持方言和角色".localized(appState.voices.count))
                         .font(AppFont.bodySmall)
                         .foregroundStyle(AppColor.textTertiary)
                 }

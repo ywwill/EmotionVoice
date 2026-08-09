@@ -50,7 +50,9 @@ struct HomeView: View {
                     cta: "立即新建".localized(),
                     gradient: [AppColor.accentPrimary, AppColor.accentSecondary]
                 ) {
-                    appState.selectedSection = .voiceStudio
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        appState.selectedSection = .voiceStudio
+                    }
                 }
 
                 QuickActionCard(
@@ -60,7 +62,9 @@ struct HomeView: View {
                     cta: "浏览音色".localized(),
                     gradient: [Color(hex: 0x6B8BC9), Color(hex: 0x5577B0)]
                 ) {
-                    appState.selectedSection = .voices
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        appState.selectedSection = .voices
+                    }
                 }
 
                 QuickActionCard(
@@ -70,7 +74,9 @@ struct HomeView: View {
                     cta: "查看项目".localized(),
                     gradient: [Color(hex: 0x8AA5A0), Color(hex: 0x6F8A85)]
                 ) {
-                    appState.selectedSection = .projects
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        appState.selectedSection = .projects
+                    }
                 }
             }
         }
@@ -139,7 +145,9 @@ struct HomeView: View {
                     .font(AppFont.bodyMedium)
                     .foregroundStyle(AppColor.textTertiary)
                 Button {
-                    appState.selectedSection = .voiceStudio
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        appState.selectedSection = .voiceStudio
+                    }
                 } label: {
                     Text("新建项目".localized())
                         .font(.system(size: 12, weight: .medium))
@@ -165,7 +173,7 @@ private struct HeroSection: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 24) {
+        HStack(alignment: .top, spacing: 24) {
             // 左：文案
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -185,18 +193,24 @@ private struct HeroSection: View {
 
                 HStack(spacing: 12) {
                     PrimaryButton(title: "开始创作".localized(), icon: "play.fill") {
-                        appState.selectedSection = .voiceStudio
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            appState.selectedSection = .voiceStudio
+                        }
                     }
                     SecondaryButton(title: "浏览音色库".localized(), icon: nil) {
-                        appState.selectedSection = .voices
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            appState.selectedSection = .voices
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 280, alignment: .top)
 
-            // 右：波形可视化
+            // 右：波形可视化（填满左侧高度）
             heroVisual
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 280, alignment: .top)
         }
         .padding(40)
         .background(
@@ -246,10 +260,10 @@ private struct HeroSection: View {
             ZStack {
                 RoundedRectangle(cornerRadius: AppRadius.medium)
                     .fill(AppColor.bgTertiary)
-                    .frame(height: 180)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 WaveformView()
-                    .frame(height: 80)
+                    .frame(height: 100)
                     .padding(.horizontal, 30)
 
                 // 浮动情感标签
@@ -287,6 +301,8 @@ private struct HeroSection: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .layoutPriority(1)
 
             // 音色信息
             HStack {
@@ -310,6 +326,7 @@ private struct HeroSection: View {
             .background(AppColor.bgTertiary)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
         }
+        .frame(maxHeight: .infinity)
     }
 }
 

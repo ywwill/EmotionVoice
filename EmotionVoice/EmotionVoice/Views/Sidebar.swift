@@ -88,7 +88,9 @@ struct SidebarItem: View {
         let isActive = appState.selectedSection == section
 
         Button {
-            appState.selectedSection = section
+            withAnimation(.easeInOut(duration: 0.25)) {
+                appState.selectedSection = section
+            }
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: section.icon)
@@ -140,7 +142,9 @@ struct CreditsCardView: View {
 
     var body: some View {
         Button {
-            appState.selectedSection = .credits
+            withAnimation(.easeInOut(duration: 0.25)) {
+                appState.selectedSection = .credits
+            }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text("积分余额".localized())
