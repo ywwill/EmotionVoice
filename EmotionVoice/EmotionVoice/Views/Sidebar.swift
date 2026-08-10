@@ -16,9 +16,8 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             // 主导航
             VStack(alignment: .leading, spacing: 2) {
-                ForEach([SidebarSection.home, .voiceStudio, .voices]) { section in
-                    SidebarItem(section: section,
-                                badge: section == .voices ? "500+" : nil)
+                ForEach([SidebarSection.home, .voiceStudio]) { section in
+                    SidebarItem(section: section)
                 }
             }
             .padding(.horizontal, 12)
@@ -88,7 +87,7 @@ struct SidebarItem: View {
         let isActive = appState.selectedSection == section
 
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 appState.selectedSection = section
             }
         } label: {
@@ -132,6 +131,7 @@ struct SidebarItem: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .pointingHandCursor()
     }
 }
 
@@ -142,7 +142,7 @@ struct CreditsCardView: View {
 
     var body: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 appState.selectedSection = .credits
             }
         } label: {
@@ -180,6 +180,7 @@ struct CreditsCardView: View {
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
         }
         .buttonStyle(.plain)
+        .pointingHandCursor()
     }
 
     private func formattedDate(_ date: Date) -> String {

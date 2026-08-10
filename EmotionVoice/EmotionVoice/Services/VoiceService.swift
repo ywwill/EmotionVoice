@@ -26,11 +26,15 @@ final class VoiceService {
                         desc: row[db.voiceDesc],
                         avatar: row[db.voiceAvatar],
                         category: VoiceCategory(rawValue: row[db.voiceCategory]) ?? .basic,
-                        isFavorite: row[db.voiceIsFavorite]
+                        isFavorite: row[db.voiceIsFavorite],
+                        scene: row[db.voiceScene] ?? "",
+                        age: row[db.voiceAge],
+                        gender: row[db.voiceGender] ?? "",
+                        audio: row[db.voiceAudio] ?? ""
                     )
                 }
         } catch {
-            print("VoiceService.fetchAll error: \(error)")
+            Log(message: "VoiceService.fetchAll error: \(error)")
             return []
         }
     }
@@ -50,7 +54,7 @@ final class VoiceService {
             try db.db.run(db.voices.filter(db.voiceKey == key).update(db.voiceIsFavorite <- newValue))
             return newValue
         } catch {
-            print("VoiceService.toggleFavorite error: \(error)")
+            Log(message: "VoiceService.toggleFavorite error: \(error)")
             return false
         }
     }

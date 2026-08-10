@@ -10,8 +10,11 @@ import SwiftUI
 // MARK: - 主按钮
 
 struct PrimaryButton: View {
+    enum Size { case regular, large }
+
     let title: String
     var icon: String? = nil
+    var size: Size = .regular
     var action: () -> Void = {}
 
     var body: some View {
@@ -19,13 +22,13 @@ struct PrimaryButton: View {
             HStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: iconFontSize, weight: .semibold))
                 }
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: textFontSize, weight: .semibold))
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .padding(.horizontal, hPadding)
+            .padding(.vertical, vPadding)
             .background(
                 LinearGradient(
                     colors: [AppColor.accentPrimary, AppColor.accentSecondary],
@@ -35,9 +38,28 @@ struct PrimaryButton: View {
             )
             .foregroundStyle(AppColor.bgPrimary)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-            .shadow(color: AppColor.accentPrimary.opacity(0.25), radius: 8, y: 4)
+            .shadow(
+                color: AppColor.accentPrimary.opacity(0.28),
+                radius: size == .large ? 12 : 8,
+                x: 0,
+                y: size == .large ? 6 : 4
+            )
         }
         .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+
+    private var iconFontSize: CGFloat {
+        size == .large ? 14 : 12
+    }
+    private var textFontSize: CGFloat {
+        size == .large ? 15 : 13
+    }
+    private var hPadding: CGFloat {
+        size == .large ? 28 : 20
+    }
+    private var vPadding: CGFloat {
+        size == .large ? 14 : 10
     }
 }
 
@@ -69,6 +91,7 @@ struct SecondaryButton: View {
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
         }
         .buttonStyle(.plain)
+        .pointingHandCursor()
     }
 }
 
@@ -113,6 +136,7 @@ struct ToolbarButton: View {
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
         }
         .buttonStyle(.plain)
+        .pointingHandCursor()
     }
 
     private func toolbarBackground(isPrimary: Bool) -> AnyShapeStyle {
@@ -160,6 +184,7 @@ struct SectionTitle: View {
                     .foregroundStyle(AppColor.accentPrimary)
                 }
                 .buttonStyle(.plain)
+                .pointingHandCursor()
             }
         }
     }
@@ -345,6 +370,7 @@ struct SegmentedOption<Item: Hashable & Identifiable, Label: View>: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .pointingHandCursor()
             }
         }
         .background(AppColor.bgTertiary)

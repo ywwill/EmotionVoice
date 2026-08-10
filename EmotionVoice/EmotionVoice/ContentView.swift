@@ -36,9 +36,6 @@ struct ContentView: View {
             }
         }
         .id(appState.selectedSection)
-        .transition(.asymmetric(
-            insertion: .opacity.combined(with: .move(edge: .trailing)),
-            removal:   .opacity.combined(with: .move(edge: .leading))
-        ))
+        .transition(.opacity.animation(.easeInOut(duration: 0.1)))
     }
 }

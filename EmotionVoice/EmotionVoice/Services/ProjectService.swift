@@ -31,7 +31,7 @@ final class ProjectService {
                     )
                 }
         } catch {
-            print("ProjectService.fetchAllProjects error: \(error)")
+            Log(message: "ProjectService.fetchAllProjects error: \(error)")
             return []
         }
     }
@@ -49,7 +49,7 @@ final class ProjectService {
             ))
             return Project(id: id, name: name, folder: folder, createdAt: now, updatedAt: now)
         } catch {
-            print("ProjectService.createProject error: \(error)")
+            Log(message: "ProjectService.createProject error: \(error)")
             return nil
         }
     }
@@ -80,7 +80,7 @@ final class ProjectService {
                 )
             }
         } catch {
-            print("ProjectService.fetchAudios error: \(error)")
+            Log(message: "ProjectService.fetchAudios error: \(error)")
             return []
         }
     }
@@ -125,7 +125,7 @@ final class ProjectService {
                 createdAt: now
             )
         } catch {
-            print("ProjectService.createAudio error: \(error)")
+            Log(message: "ProjectService.createAudio error: \(error)")
             return nil
         }
     }

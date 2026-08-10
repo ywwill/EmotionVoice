@@ -69,7 +69,7 @@ final class CreditsService {
                     )
                 }
         } catch {
-            print("CreditsService.fetchTransactions error: \(error)")
+            Log(message: "CreditsService.fetchTransactions error: \(error)")
             return []
         }
     }
@@ -87,7 +87,7 @@ final class CreditsService {
             ))
             return true
         } catch {
-            print("CreditsService.addTransaction error: \(error)")
+            Log(message: "CreditsService.addTransaction error: \(error)")
             return false
         }
     }

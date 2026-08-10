@@ -47,11 +47,11 @@ struct BasicVoiceTemplate: Codable, Hashable {
         return .basic
     }
 
-    /// 展示用的描述（性别 + 年龄 + 特质）
+    /// 展示用的描述（仅 feature）
     var displayDesc: String {
         // 简洁形式：去除冗余的"音"字
         let shortFeature = feature.hasSuffix("音") ? String(feature.dropLast()) : feature
-        return "\(gender) · \(age)岁 · \(shortFeature)"
+        return shortFeature
     }
 
     /// 单字头像

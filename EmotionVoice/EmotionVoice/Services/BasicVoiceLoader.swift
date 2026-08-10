@@ -25,7 +25,7 @@ final class BasicVoiceLoader {
         guard !isLoaded else { return }
 
         guard let url = Bundle.main.url(forResource: "basic_voices", withExtension: "json") else {
-            print("BasicVoiceLoader: basic_voices.json not found in bundle")
+            Log(message: "BasicVoiceLoader: basic_voices.json not found in bundle")
             isLoaded = true
             return
         }
@@ -35,9 +35,9 @@ final class BasicVoiceLoader {
             let decoder = JSONDecoder()
             templates = try decoder.decode([BasicVoiceTemplate].self, from: data)
             isLoaded = true
-            print("BasicVoiceLoader: loaded \(templates.count) basic voice templates")
+            Log(message: "BasicVoiceLoader: loaded \(templates.count) basic voice templates")
         } catch {
-            print("BasicVoiceLoader: decode error: \(error)")
+            Log(message: "BasicVoiceLoader: decode error: \(error)")
             isLoaded = true
         }
     }

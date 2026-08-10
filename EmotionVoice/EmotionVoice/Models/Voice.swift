@@ -40,8 +40,65 @@ struct Voice: Identifiable, Hashable {
     let category: VoiceCategory
     /// 是否收藏
     var isFavorite: Bool
+    /// 适用场景（如 日常对话、有声阅读）
+    var scene: String = ""
+    /// 年龄（数字；无法解析时为 nil）
+    var age: Int? = nil
+    /// 性别（男 / 女 / 空）
+    var gender: String = ""
+    /// 预览音频文件名（如 longanlingxin.m4a）
+    var audio: String = ""
 
     var id: String { key }
 
     var isPremium: Bool { category == .premium }
+
+    /// 年龄桶（用于分组筛选）
+    var ageBucket: AgeBucket {
+        guard let a = age else { return .unknown }
+        switch a {
+        case ..<13: return .child
+        case 13..<18: return .teen
+        case 18..<36: return .young
+        case 36..<60: return .middle
+        default: return .senior
+        }
+    }
+}
+
+/// 年龄分组（用于 UI 筛选）
+enum AgeBucket: String, CaseIterable, Identifiable {
+    case any = "any"
+    case child = "child"
+    case teen = "teen"
+    case young = "young"
+    case middle = "middle"
+    case senior = "senior"
+    case unknown = "unknown"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .any:     return "全部"
+        case .child:   return "儿童"
+        case .teen:    return "青少年"
+        case .young:   return "青年"
+        case .middle:  return "中年"
+        case .senior:  return "老年"
+        case .unknown: return "未知"
+        }
+    }
+
+    var rangeDescription: String {
+        switch self {
+        case .any:     return "不限"
+        case .child:   return "≤12"
+        case .teen:    return "13–17"
+        case .young:   return "18–35"
+        case .middle:  return "36–59"
+        case .senior:  return "≥60"
+        case .unknown: return "—"
+        }
+    }
 }

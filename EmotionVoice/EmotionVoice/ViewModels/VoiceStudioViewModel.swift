@@ -16,17 +16,15 @@ final class VoiceStudioViewModel: ObservableObject {
     // 文本
     @Published var text: String = ""
 
-    // 模型
-    @Published var model: String = Constants.defaultModel
-    @Published var availableModels: [String] = [Constants.modelPlus, Constants.modelFlash]
-
     // 音色
     @Published var selectedVoiceKey: String = Constants.defaultVoice
 
     // 情感/语速/音量
-    @Published var selectedEmotions: Set<String> = []
     @Published var rate: Double = 1.0    // 0.5 - 2.0
     @Published var volume: Double = 100  // 0 - 100
+    
+    // 情感标签使用次数统计 [tag: count]
+    @Published var emotionUsageCounts: [String: Int] = [:]
 
     // 语言/采样率
     @Published var language: LanguageItem = Constants.languages[0]
@@ -70,18 +68,27 @@ final class VoiceStudioViewModel: ObservableObject {
 
     // MARK: - 操作
 
-    /// 在文本末尾插入情感标签
+    /// 在文本末尾插入情感标签，并统计使用次数
     func appendEmotion(tag: String) {
+        // 累积使用次数
+        emotionUsageCounts[tag, default: 0] += 1
+        
         if text.isEmpty || text.hasSuffix(" ") || text.hasSuffix("\n") {
             text += "[\(tag)]"
         } else {
             text += " [\(tag)]"
         }
     }
+    
+    /// 获取指定情感标签的使用次数
+    func usageCount(for tag: String) -> Int {
+        return emotionUsageCounts[tag] ?? 0
+    }
 
     /// 清空文本
     func clearText() {
         text = ""
+        emotionUsageCounts.removeAll()
         lastError = nil
     }
 
