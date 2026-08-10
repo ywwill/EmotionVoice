@@ -522,10 +522,8 @@ struct VoicesLibraryView: View {
                     VoiceCard(voice: voice,
                               isSelected: appState.selectedVoice?.key == voice.key,
                               isPlaying: player.isPlaying(key: voice.key)) {
-                        appState.selectedVoice = voice
-                        let newFav = VoiceService.shared.toggleFavorite(key: voice.key)
-                        var copy = voice
-                        copy.isFavorite = newFav
+                        // 仅切换收藏状态，不改变当前选中音色
+                        _ = VoiceService.shared.toggleFavorite(key: voice.key)
                         appState.refreshVoices()
                     } onPreview: {
                         // 试听 / 再次点击则停止

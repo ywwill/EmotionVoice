@@ -159,10 +159,14 @@ final class DatabaseManager {
         })
     }
 
-    /// 创建表（开发阶段：直接重置数据库，不做兼容）
+    /// 创建表（幂等：表存在则跳过，避免每次启动丢失数据）
     private func setupFreshSchema() throws {
-        try db.run("DROP TABLE IF EXISTS voices")
-        try createTables()
+        let hasVoices = try db.scalar(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='voices'"
+        ) as? Int64 ?? 0
+        if hasVoices == 0 {
+            try createTables()
+        }
     }
 
     /// 种子数据
@@ -202,8 +206,10 @@ final class DatabaseManager {
         // 2. 检测 JSON 是否变更，决定是否重新同步基础音色
         try syncBasicVoicesIfNeeded()
 
-        // 3. 默认收藏：第一个旗舰音色
-        try db.run(voices.filter(voiceKey == "longanlingxin").update(voiceIsFavorite <- true))
+        // 3. 默认收藏：两个旗舰音色
+        for v in premiumVoices {
+            try db.run(voices.filter(voiceKey == v.key).update(voiceIsFavorite <- true))
+        }
     }
 
     /// 计算当前 JSON 的指纹（基于排序后的 keys）
@@ -256,7 +262,7 @@ final class DatabaseManager {
         }
     }
 
-    /// 清理旧的非旗舰种子音色（仅首次安装 / 老库使用）
+    /// 清理旧的非旗舰种子音色（仅在首次发现旧数据时调用一次）
     private func purgeLegacyNonPremiumVoices() throws {
         let premiumKeys = Set(premiumVoices.map { $0.key })
         let nonPremium = try db.prepare(voices.filter(voiceCategory != "premium"))
@@ -393,7 +399,8 @@ final class DatabaseManager {
                         voiceScene <- t.scene,
                         voiceAge <- ageInt,
                         voiceGender <- t.gender,
-                        voiceAudio <- t.audio
+                        voiceAudio <- t.audio,
+                        voiceIsFavorite <- (savedFavorites[t.key] ?? false)
                     ))
                 } else {
                     try db.run(voices.insert(
@@ -416,8 +423,10 @@ final class DatabaseManager {
                 try db.run(voices.filter(voiceKey == key).update(voiceIsFavorite <- fav))
             }
 
-            // 5) 旗舰音色默认收藏
-            try db.run(voices.filter(voiceKey == "longanlingxin").update(voiceIsFavorite <- true))
+            // 5) 两个旗舰音色默认收藏
+            for v in premiumVoices {
+                try db.run(voices.filter(voiceKey == v.key).update(voiceIsFavorite <- true))
+            }
         }
         Log(message: "DatabaseManager: resynced \(templates.count) basic voice templates")
     }
