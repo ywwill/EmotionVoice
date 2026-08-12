@@ -19,7 +19,7 @@ struct ContentView: View {
             mainContent
         }
         .background(AppColor.bgPrimary)
-        .frame(minWidth: 1200, minHeight: 900)
+        .frame(minWidth: 1500, minHeight: 900)
     }
 
     @ViewBuilder
