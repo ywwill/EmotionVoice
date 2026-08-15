@@ -119,7 +119,6 @@ struct VoiceStudioView: View {
                     Text("插入文本或粘贴内容".localized())
                         .font(AppFont.bodyLarge)
                         .foregroundStyle(AppColor.textTertiary)
-                        .padding(.top, 4)
                         .allowsHitTesting(false)
                 }
 
@@ -424,10 +423,10 @@ struct VoiceStudioView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(
-                                selected ? AppColor.bgElevated : AppColor.bgTertiary
+                                selected ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary
                             )
                             .foregroundStyle(
-                                selected ? AppColor.textPrimary : AppColor.textSecondary
+                                selected ? AppColor.accentPrimary : AppColor.textSecondary
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }

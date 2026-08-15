@@ -4,6 +4,13 @@
 //
 //  Created by young on 2026/8/8.
 //
+//  优化点：
+//  - 派生数据缓存到 VoicesLibraryViewModel（debounce 120ms）
+//  - 外层容器 VStack → LazyVStack，让分类区块按需渲染
+//  - VoiceCard 改为接受不可变 VO，闭包以弱引用触发 AppState 更新，避免 voice 数组整体替换引起所有卡片失效
+//  - ScrollViewReader 只在首次 onAppear 滚动一次；后续不重复触发
+//  - 收窄 AudioPreviewPlayer 观察范围：本视图不再订阅 playingKey，仅在卡片层观察
+//
 
 import SwiftUI
 
@@ -13,109 +20,75 @@ struct VoicesLibraryView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.voiceLibraryUseHandler) private var useHandler
     @Environment(\.voiceLibraryDismiss) private var sheetDismiss
-    @ObservedObject private var player = AudioPreviewPlayer.shared
 
-    @State private var selectedCategory: VoiceCategory? = nil
-    @State private var searchText: String = ""
-    @State private var viewMode: ViewMode = .grid
+    @StateObject private var vm = VoicesLibraryViewModel()
 
-    // MARK: - 筛选状态
-    @State private var selectedScene: String? = nil           // nil = 全部
-    @State private var selectedAgeBucket: AgeBucket = .any    // 年龄段
-    @State private var ageLower: Double = 0                   // 手动滑块下限
-    @State private var ageUpper: Double = 99                  // 手动滑块上限
-    @State private var useAgeRange: Bool = false              // 是否启用自定义范围
-    @State private var showFilters: Bool = false              // 折叠/展开筛选区
-    @State private var favoritesOnly: Bool = false            // 只看收藏
+    @State private var showFilters: Bool = false
 
-    // MARK: - 滚动定位
-    /// 需要滚动到的音色 key（每次 onAppear 时读取）
-    @State private var pendingScrollKey: String? = nil
+    // 滚动定位
+    @State private var didInitialScroll: Bool = false
 
     enum ViewMode {
         case grid
         case list
     }
 
-    // MARK: - 数据
-
-    /// 当前可用的场景列表（按使用频次排序，含 "全部" 占位）
-    private var availableScenes: [String] {
-        let counts = appState.voices.reduce(into: [String: Int]()) { dict, v in
-            let s = v.scene.trimmingCharacters(in: .whitespaces)
-            guard !s.isEmpty else { return }
-            dict[s, default: 0] += 1
-        }
-        // 稳定排序：先按频次降序，频次相同时按字典序升序，保证每次顺序一致
-        return counts.keys.sorted { lhs, rhs in
-            let lc = counts[lhs] ?? 0
-            let rc = counts[rhs] ?? 0
-            if lc != rc { return lc > rc }
-            return lhs < rhs
-        }
-    }
-
-    /// 当前分类下的所有可用年龄范围
-    private var availableAgeRange: ClosedRange<Int> {
-        let ages = appState.voices.compactMap { $0.age }
-        if ages.isEmpty { return 0...99 }
-        return ages.min()!...ages.max()!
-    }
-
-    var filteredVoices: [Voice] {
-        appState.voices.filter { v in
-            let matchesCategory = selectedCategory == nil || v.category == selectedCategory
-            let matchesSearch = searchText.isEmpty
-                || v.name.localizedCaseInsensitiveContains(searchText)
-                || v.desc.localizedCaseInsensitiveContains(searchText)
-                || v.scene.localizedCaseInsensitiveContains(searchText)
-            let matchesScene = selectedScene == nil || v.scene == selectedScene
-            let matchesAge = ageMatches(v.age)
-            let matchesFavorite = !favoritesOnly || v.isFavorite
-            return matchesCategory && matchesSearch && matchesScene && matchesAge && matchesFavorite
-        }
-    }
-
-    private func ageMatches(_ age: Int?) -> Bool {
-        if useAgeRange {
-            // 自定义滑块模式：忽略 bucket
-            guard let age else { return false }
-            let lo = Int(min(ageLower, ageUpper))
-            let hi = Int(max(ageLower, ageUpper))
-            return age >= lo && age <= hi
-        }
-        // 桶模式
-        if selectedAgeBucket == .any { return true }
-        guard let age else { return selectedAgeBucket == .unknown }
-        switch selectedAgeBucket {
-        case .any:     return true
-        case .child:   return age < 13
-        case .teen:    return age >= 13 && age < 18
-        case .young:   return age >= 18 && age < 36
-        case .middle:  return age >= 36 && age < 60
-        case .senior:  return age >= 60
-        case .unknown: return false
-        }
-    }
+    // MARK: - 视图入口
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             toolbar
             if showFilters { filterPanel }
+
+            content
+        }
+        .onAppear {
+            vm.setVoices(appState.voices)
+        }
+        .onChange(of: appState.voices) { _, new in
+            vm.setVoices(new)
+        }
+        .onDisappear {
+            AudioPreviewPlayer.shared.stop()
+        }
+    }
+
+    // MARK: - 内容区
+
+    @ViewBuilder
+    private var content: some View {
+        if vm.isEmpty {
+            ScrollView {
+                emptyState
+                    .padding(24)
+            }
+        } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        if filteredVoices.isEmpty {
-                            emptyState
-                        } else if let cat = selectedCategory {
-                            // 只显示选中分类
-                            categorySection(cat, voices: filteredVoices.filter { $0.category == cat })
+                    LazyVStack(alignment: .leading, spacing: 24) {
+                        if let cat = vm.selectedCategory {
+                            CategorySectionView(
+                                category: cat,
+                                voices: vm.voicesForSelectedCategory,
+                                selectedKey: appState.selectedVoice?.key,
+                                playingKey: AudioPreviewPlayer.shared.playingKey,
+                                onFavorite: toggleFavorite(key:),
+                                onPreview: preview(key:),
+                                onUse: use(voice:)
+                            )
                         } else {
-                            // 全部：按分类分组
                             ForEach(VoiceCategory.allCases) { cat in
-                                let voices = filteredVoices.filter { $0.category == cat }
+                                let voices = vm.filteredVoicesByCategory[cat] ?? []
                                 if !voices.isEmpty {
-                                    categorySection(cat, voices: voices)
+                                    CategorySectionView(
+                                        category: cat,
+                                        voices: voices,
+                                        selectedKey: appState.selectedVoice?.key,
+                                        playingKey: AudioPreviewPlayer.shared.playingKey,
+                                        onFavorite: toggleFavorite(key:),
+                                        onPreview: preview(key:),
+                                        onUse: use(voice:)
+                                    )
                                 }
                             }
                         }
@@ -123,24 +96,42 @@ struct VoicesLibraryView: View {
                     .padding(24)
                     .padding(.bottom, 24)
                 }
-                .onChange(of: pendingScrollKey) { _, key in
-                    guard let key else { return }
-                    // 等一帧让布局稳定再滚动
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
+                .onAppear {
+                    // 仅在首次出现时滚动到选中音色（不带动画）
+                    guard !didInitialScroll else { return }
+                    didInitialScroll = true
+                    if let key = appState.selectedVoice?.key {
+                        DispatchQueue.main.async {
                             proxy.scrollTo("voice-\(key)", anchor: .center)
                         }
                     }
                 }
             }
         }
-        .onAppear {
-            // 记录需要滚动到的选中音色 key
-            pendingScrollKey = appState.selectedVoice?.key
-        }
-        .onDisappear {
-            // 离开时停止试听
+    }
+
+    // MARK: - 行为（通过 viewModel 间接修改状态）
+
+    private func toggleFavorite(key: String) {
+        _ = VoiceService.shared.toggleFavorite(key: key)
+        // 局部刷新而非全局重建：通过 viewModel 重新注入最新数据
+        vm.setVoices(VoiceService.shared.fetchAll())
+    }
+
+    private func preview(key: String) {
+        if AudioPreviewPlayer.shared.isPlaying(key: key) {
             AudioPreviewPlayer.shared.stop()
+        } else {
+            AudioPreviewPlayer.shared.play(key: key)
+        }
+    }
+
+    private func use(voice: Voice) {
+        appState.selectedVoice = voice
+        if let handler = useHandler {
+            handler.handler(voice)
+        } else {
+            appState.selectedSection = .voiceStudio
         }
     }
 
@@ -158,94 +149,12 @@ struct VoicesLibraryView: View {
                 }
                 Spacer()
 
-                // 搜索框
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(AppColor.textTertiary)
-                    TextField("搜索".localized(), text: $searchText)
-                        .textFieldStyle(.plain)
-                        .foregroundStyle(AppColor.textPrimary)
-                        .frame(width: 200)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(AppColor.bgTertiary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.small)
-                        .stroke(AppColor.borderSubtle, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-                .pointingHandCursor()
+                searchField
 
-                // 筛选切换
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showFilters.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "line.3.horizontal.decrease.circle\(filterIsActive ? ".fill" : "")")
-                        Text("筛选".localized())
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(filterIsActive ? AppColor.accentPrimary.opacity(0.18) : AppColor.bgTertiary)
-                    .foregroundStyle(filterIsActive ? AppColor.accentPrimary : AppColor.textSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
+                filterToggleButton
 
-                // 视图切换
-                HStack(spacing: 0) {
-                    Button {
-                        viewMode = .grid
-                    } label: {
-                        Image(systemName: "square.grid.2x2")
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(viewMode == .grid ? AppColor.bgElevated : Color.clear)
-                            .foregroundStyle(viewMode == .grid ? AppColor.accentPrimary : AppColor.textSecondary)
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
+                favoritesButton
 
-                    Button {
-                        viewMode = .list
-                    } label: {
-                        Image(systemName: "list.bullet")
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(viewMode == .list ? AppColor.bgElevated : Color.clear)
-                            .foregroundStyle(viewMode == .list ? AppColor.accentPrimary : AppColor.textSecondary)
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
-                }
-                .background(AppColor.bgTertiary)
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-
-                // 仅看收藏
-                Button {
-                    favoritesOnly.toggle()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: favoritesOnly ? "heart.fill" : "heart")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("收藏".localized())
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(favoritesOnly ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-                    .foregroundStyle(favoritesOnly ? AppColor.accentPrimary : AppColor.textSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-
-                // 关闭按钮（仅 sheet 模式下显示）
                 if let dismissWrapper = sheetDismiss {
                     Button {
                         dismissWrapper()
@@ -262,13 +171,7 @@ struct VoicesLibraryView: View {
                 }
             }
 
-            // 分类筛选
-            HStack(spacing: 6) {
-                categoryChip(nil, title: "全部".localized())
-                ForEach(VoiceCategory.allCases) { cat in
-                    categoryChip(cat, title: cat.displayName.localized())
-                }
-            }
+            categoryChips
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)
@@ -281,8 +184,89 @@ struct VoicesLibraryView: View {
         }
     }
 
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(AppColor.textTertiary)
+            TextField("搜索".localized(), text: $vm.searchText)
+                .textFieldStyle(.plain)
+                .foregroundStyle(AppColor.textPrimary)
+                .frame(width: 200)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(AppColor.bgTertiary)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        .pointingHandCursor()
+    }
+
+    private var filterToggleButton: some View {
+        let active = filterIsActive
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showFilters.toggle()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "line.3.horizontal.decrease.circle\(active ? ".fill" : "")")
+                Text("筛选".localized())
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(active ? AppColor.accentPrimary.opacity(0.18) : AppColor.bgTertiary)
+            .foregroundStyle(active ? AppColor.accentPrimary : AppColor.textSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+
+    private var favoritesButton: some View {
+        Button {
+            vm.favoritesOnly.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: vm.favoritesOnly ? "heart.fill" : "heart")
+                    .font(.system(size: 12, weight: .medium))
+                Text("收藏".localized())
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(vm.favoritesOnly ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
+            .foregroundStyle(vm.favoritesOnly ? AppColor.accentPrimary : AppColor.textSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+
+    private var categoryChips: some View {
+        HStack(spacing: 6) {
+            CategoryChip(
+                title: "全部".localized(),
+                isActive: vm.selectedCategory == nil
+            ) {
+                vm.selectedCategory = nil
+            }
+            ForEach(VoiceCategory.allCases) { cat in
+                CategoryChip(
+                    title: cat.displayName.localized(),
+                    isActive: vm.selectedCategory == cat
+                ) {
+                    vm.selectedCategory = cat
+                }
+            }
+        }
+    }
+
     private var filterIsActive: Bool {
-        selectedScene != nil || selectedAgeBucket != .any || useAgeRange || favoritesOnly
+        vm.selectedScene != nil || vm.selectedAgeBucket != .any || vm.useAgeRange || vm.favoritesOnly
     }
 
     /// 年龄桶：.unknown 数量为 0 时自动隐藏
@@ -302,9 +286,19 @@ struct VoicesLibraryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 sectionLabel("适用场景".localized())
                 FlowLayout(spacing: 6) {
-                    sceneChip(nil, title: "全部".localized())
-                    ForEach(availableScenes, id: \.self) { scene in
-                        sceneChip(scene, title: scene)
+                    SceneChip(
+                        title: "全部".localized(),
+                        isActive: vm.selectedScene == nil
+                    ) {
+                        vm.selectedScene = nil
+                    }
+                    ForEach(vm.availableScenes, id: \.self) { scene in
+                        SceneChip(
+                            title: scene,
+                            isActive: vm.selectedScene == scene
+                        ) {
+                            vm.selectedScene = scene
+                        }
                     }
                 }
             }
@@ -313,7 +307,7 @@ struct VoicesLibraryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
                     sectionLabel("年龄范围".localized())
-                    Toggle(isOn: $useAgeRange) {
+                    Toggle(isOn: $vm.useAgeRange) {
                         Text("自定义滑块".localized())
                             .font(AppFont.caption)
                             .foregroundStyle(AppColor.textSecondary)
@@ -325,23 +319,23 @@ struct VoicesLibraryView: View {
 
                     Spacer()
 
-                    if useAgeRange {
-                        Text("\(Int(min(ageLower, ageUpper))) – \(Int(max(ageLower, ageUpper))) 岁")
+                    if vm.useAgeRange {
+                        Text("\(Int(min(vm.ageLower, vm.ageUpper))) – \(Int(max(vm.ageLower, vm.ageUpper))) 岁")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textSecondary)
                     }
                 }
 
-                if useAgeRange {
-                    let lo = Double(availableAgeRange.lowerBound)
-                    let hi = Double(availableAgeRange.upperBound)
+                if vm.useAgeRange {
+                    let lo = Double(vm.availableAgeRange.lowerBound)
+                    let hi = Double(vm.availableAgeRange.upperBound)
                     HStack(spacing: 8) {
                         Text("\(Int(lo))")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
                             .frame(width: 28, alignment: .trailing)
-                        RangeSlider(lowerValue: $ageLower,
-                                     upperValue: $ageUpper,
+                        RangeSlider(lowerValue: $vm.ageLower,
+                                     upperValue: $vm.ageUpper,
                                      range: lo...hi,
                                      step: 1)
                         Text("\(Int(hi))")
@@ -350,10 +344,15 @@ struct VoicesLibraryView: View {
                             .frame(width: 28, alignment: .leading)
                     }
                 } else {
-                    // 桶模式
                     HStack(spacing: 6) {
                         ForEach(visibleAgeBuckets) { bucket in
-                            ageBucketChip(bucket)
+                            AgeBucketChip(
+                                title: bucket.displayName.localized(),
+                                range: bucket.rangeDescription,
+                                isActive: vm.selectedAgeBucket == bucket
+                            ) {
+                                vm.selectedAgeBucket = bucket
+                            }
                         }
                     }
                 }
@@ -375,11 +374,87 @@ struct VoicesLibraryView: View {
             .tracking(0.06)
     }
 
-    private func sceneChip(_ scene: String?, title: String) -> some View {
-        let isActive = selectedScene == scene
-        return Button {
-            selectedScene = scene
-        } label: {
+    // MARK: - 空态
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Text("没有匹配的音色".localized())
+                .font(AppFont.bodyMedium)
+                .foregroundStyle(AppColor.textTertiary)
+            Button {
+                vm.clearFilters()
+            } label: {
+                Text("重置筛选".localized())
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(AppColor.accentPrimary.opacity(0.15))
+                    .foregroundStyle(AppColor.accentPrimary)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
+    }
+}
+
+// MARK: - 拆出的局部子视图（让卡片网格与 chip 各自持有稳定 identity）
+
+/// 分类区块：独立子视图，避免父视图状态变化导致整片网格重渲染
+private struct CategorySectionView: View {
+    let category: VoiceCategory
+    let voices: [Voice]
+    let selectedKey: String?
+    let playingKey: String?
+    let onFavorite: (String) -> Void
+    let onPreview: (String) -> Void
+    let onUse: (Voice) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(category.displayName.localized())
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Text("\(voices.count) 个".localized())
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textTertiary)
+            }
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 190, maximum: 210), spacing: 12)],
+                spacing: 12
+            ) {
+                ForEach(voices) { voice in
+                    VoiceCard(
+                        item: VoiceCardItem(voice: voice),
+                        isSelected: selectedKey == voice.key,
+                        isPlaying: playingKey == voice.key
+                    ) {
+                        onFavorite(voice.key)
+                    } onPreview: {
+                        onPreview(voice.key)
+                    } onUse: {
+                        onUse(voice)
+                    }
+                    .id("voice-\(voice.key)")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Chip 视图（无依赖，稳定 identity）
+
+private struct CategoryChip: View {
+    let title: String
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             Text(title)
                 .font(.system(size: 12, weight: .medium))
                 .padding(.horizontal, 12)
@@ -401,16 +476,50 @@ struct VoicesLibraryView: View {
         .fixedSize()
         .pointingHandCursor()
     }
+}
 
-    private func ageBucketChip(_ bucket: AgeBucket) -> some View {
-        let isActive = selectedAgeBucket == bucket
-        return Button {
-            selectedAgeBucket = bucket
-        } label: {
+private struct SceneChip: View {
+    let title: String
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(isActive ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
+                .foregroundStyle(isActive ? AppColor.accentPrimary : AppColor.textSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.pill)
+                        .stroke(
+                            isActive ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
+                            lineWidth: 1
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
+                .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
+                .transaction { $0.animation = nil }
+        }
+        .buttonStyle(StaticButtonStyle())
+        .fixedSize()
+        .pointingHandCursor()
+    }
+}
+
+private struct AgeBucketChip: View {
+    let title: String
+    let range: String
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             HStack(spacing: 4) {
-                Text(bucket.displayName.localized())
+                Text(title)
                     .font(.system(size: 12, weight: .medium))
-                Text(bucket.rangeDescription)
+                Text(range)
                     .font(AppFont.monoSmall)
                     .foregroundStyle(isActive ? AppColor.accentPrimary.opacity(0.7) : AppColor.textTertiary)
             }
@@ -432,118 +541,5 @@ struct VoicesLibraryView: View {
         .buttonStyle(StaticButtonStyle())
         .fixedSize()
         .pointingHandCursor()
-    }
-
-    private func categoryChip(_ cat: VoiceCategory?, title: String) -> some View {
-        let isActive = selectedCategory == cat
-        return Button {
-            selectedCategory = cat
-        } label: {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(
-                    isActive ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary
-                )
-                .foregroundStyle(isActive ? AppColor.accentPrimary : AppColor.textSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.pill)
-                        .stroke(
-                            isActive ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
-                            lineWidth: 1
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .transaction { $0.animation = nil }
-        }
-        .buttonStyle(StaticButtonStyle())
-        .fixedSize()
-        .pointingHandCursor()
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Text("没有匹配的音色".localized())
-                .font(AppFont.bodyMedium)
-                .foregroundStyle(AppColor.textTertiary)
-            Button {
-                clearFilters()
-            } label: {
-                Text("重置筛选".localized())
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(AppColor.accentPrimary.opacity(0.15))
-                    .foregroundStyle(AppColor.accentPrimary)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
-    }
-
-    private func clearFilters() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedScene = nil
-            selectedAgeBucket = .any
-            useAgeRange = false
-            ageLower = 0
-            ageUpper = 99
-            searchText = ""
-            favoritesOnly = false
-        }
-    }
-
-    // MARK: - 分类区块
-
-    @ViewBuilder
-    private func categorySection(_ category: VoiceCategory, voices: [Voice]? = nil) -> some View {
-        let list = voices ?? filteredVoices.filter { $0.category == category }
-        let title = category.displayName.localized()
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                Spacer()
-                Text("\(list.count) 个".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 190, maximum: 210), spacing: 12)],
-                spacing: 12
-            ) {
-                ForEach(list) { voice in
-                    VoiceCard(voice: voice,
-                              isSelected: appState.selectedVoice?.key == voice.key,
-                              isPlaying: player.isPlaying(key: voice.key)) {
-                        // 仅切换收藏状态，不改变当前选中音色
-                        _ = VoiceService.shared.toggleFavorite(key: voice.key)
-                        appState.refreshVoices()
-                    } onPreview: {
-                        // 试听 / 再次点击则停止
-                        if player.isPlaying(key: voice.key) {
-                            AudioPreviewPlayer.shared.stop()
-                        } else {
-                            AudioPreviewPlayer.shared.play(key: voice.key)
-                        }
-                    } onUse: {
-                        // sheet 上下文：仅选中并关闭；页面上下文：跳转工作台
-                        appState.selectedVoice = voice
-                        if let handler = useHandler {
-                            handler.handler(voice)
-                        } else {
-                            appState.selectedSection = .voiceStudio
-                        }
-                    }
-                    .id("voice-\(voice.key)")
-                }
-            }
-        }
     }
 }

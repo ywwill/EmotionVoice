@@ -47,7 +47,7 @@ private struct WindowAccessor: NSViewRepresentable {
                 window.backgroundColor = NSColor(hex: 0x0E0F12)
                 window.isMovableByWindowBackground = true
                 // 设置窗口尺寸约束，允许缩放
-                window.minSize = NSSize(width: 1200, height: 900)
+                window.minSize = NSSize(width: 1500, height: 900)
                 window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             }
         }
