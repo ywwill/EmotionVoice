@@ -31,7 +31,7 @@ final class VoiceStudioViewModel: ObservableObject {
     @Published var sampleRate: Int = Constants.defaultSampleRate
 
     // 自然语言指令
-    @Published var nlInstruction: String = "年轻活泼的女性声音，语速适中，带有上扬语调".localized()
+    @Published var nlInstruction: String = ""
 
     // 预设芯片
     let nlPresets: [String] = [
@@ -46,6 +46,11 @@ final class VoiceStudioViewModel: ObservableObject {
     // 生成状态
     @Published var isGenerating: Bool = false
     @Published var lastError: String? = nil
+    @Published var generatedAudioURL: URL? = nil
+    @Published var generationProgress: Double = 0.0
+
+    // TTS 服务
+    private let ttsService = BailianTTSService.shared
 
     // MARK: - 计算属性
 
@@ -90,6 +95,8 @@ final class VoiceStudioViewModel: ObservableObject {
         text = ""
         emotionUsageCounts.removeAll()
         lastError = nil
+        generatedAudioURL = nil
+        generationProgress = 0.0
     }
 
     /// 应用预设
@@ -105,7 +112,7 @@ final class VoiceStudioViewModel: ObservableObject {
         }
     }
 
-    /// 生成（演示：仅做消耗积分 + 持久化）
+    /// 生成音频（集成阿里云 TTS 服务，无字符数限制）
     func generate(completion: @escaping (Bool) -> Void) {
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
             lastError = "请输入文本"
@@ -118,46 +125,135 @@ final class VoiceStudioViewModel: ObservableObject {
             return
         }
 
+        // 检查积分
+        let points = estimatedPoints
+        guard CreditsService.shared.canConsume(points) else {
+            lastError = "积分不足，请先充值"
+            completion(false)
+            return
+        }
+
         isGenerating = true
+        lastError = nil
+        generationProgress = 0.0
+        generatedAudioURL = nil
 
-        // 模拟生成耗时
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            do {
+                // 更新进度
+                generationProgress = 0.1
 
-            await MainActor.run {
-                self.isGenerating = false
+                // 提取情感标签（从文本中提取 [emotion] 格式的标签）
+                let emotionTag = extractEmotionTag(from: text)
 
-                // 创建默认项目（如未选择）
-                let projectName = "未命名项目".localized() + " " + Date().shortDateString
-                guard let project = ProjectService.shared.createProject(
-                    name: projectName, folder: nil) else {
-                    self.lastError = "项目创建失败"
-                    completion(false)
-                    return
-                }
+                Log(message: "开始 TTS 合成，文本长度: \(self.text.count) 字符")
 
-                // 创建音频条目
-                let title = String(text.prefix(20))
-                let points = estimatedPoints
-                guard ProjectService.shared.createAudio(
-                    projectId: project.id,
-                    title: title,
+                // 调用 TTS 服务（无字符数限制，连接复用）
+                let audioData = try await ttsService.synthesize(
                     text: text,
                     voice: voice.key,
-                    format: Constants.defaultFormat,
+                    emotion: emotionTag,
+                    rate: rate,
+                    volume: volume,
                     sampleRate: sampleRate,
-                    pointsCost: points,
-                    status: .completed
-                ) != nil else {
-                    self.lastError = "音频条目保存失败"
-                    completion(false)
-                    return
+                    language: language.code,
+                    nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction
+                )
+
+                generationProgress = 0.7
+
+                // 保存音频文件
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let audioDir = documentsPath.appendingPathComponent("GeneratedAudio", isDirectory: true)
+
+                // 确保目录存在
+                try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
+
+                let timestamp = Int(Date().timeIntervalSince1970)
+                let fileName = "audio_\(timestamp).wav"
+                let audioURL = audioDir.appendingPathComponent(fileName)
+
+                try audioData.write(to: audioURL)
+                Log(message: "音频已保存到: \(audioURL.path)")
+
+                generationProgress = 0.9
+
+                await MainActor.run {
+                    self.generatedAudioURL = audioURL
+                    self.generationProgress = 1.0
+                    self.isGenerating = false
+
+                    // 创建默认项目（如未选择）
+                    let projectName = "未命名项目".localized() + " " + Date().timestampString
+                    guard let project = ProjectService.shared.createProject(
+                        name: projectName, folder: nil) else {
+                        self.lastError = "项目创建失败"
+                        completion(false)
+                        return
+                    }
+
+                    // 创建音频条目
+                    let title = String(self.text.prefix(20))
+                    guard ProjectService.shared.createAudio(
+                        projectId: project.id,
+                        title: title,
+                        text: self.text,
+                        voice: voice.key,
+                        format: Constants.defaultFormat,
+                        sampleRate: self.sampleRate,
+                        pointsCost: points,
+                        status: .completed,
+                        audioURL: audioURL
+                    ) != nil else {
+                        self.lastError = "音频条目保存失败"
+                        completion(false)
+                        return
+                    }
+
+                    // 扣减积分
+                    CreditsService.shared.consume(points)
+                    completion(true)
                 }
 
-                // 扣减积分
-                CreditsService.shared.consume(points)
-                completion(true)
+            } catch {
+                await MainActor.run {
+                    self.isGenerating = false
+                    self.generationProgress = 0.0
+                    self.lastError = error.localizedDescription
+                    Log(message: "TTS 生成失败: \(error.localizedDescription)")
+                    completion(false)
+                }
             }
         }
+    }
+
+    /// 从文本中提取情感标签
+    private func extractEmotionTag(from text: String) -> String? {
+        // 提取最后一个情感标签作为主要情感
+        let pattern = "\\[([a-zA-Z]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+
+        let range = NSRange(text.startIndex..., in: text)
+        let matches = regex.matches(in: text, range: range)
+
+        // 返回最后一个匹配的情感标签
+        if let lastMatch = matches.last,
+           let range = Range(lastMatch.range(at: 1), in: text) {
+            return String(text[range])
+        }
+
+        return nil
+    }
+
+    /// 取消生成
+    func cancelGeneration() {
+        isGenerating = false
+        generationProgress = 0.0
+        BailianTTSService.shared.closeConnection()
+    }
+
+    /// 保持 TTS 连接（用于连接复用场景）
+    func keepConnectionAlive() {
+        ttsService.ping()
     }
 }

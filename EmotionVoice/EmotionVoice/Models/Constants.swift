@@ -20,7 +20,7 @@ enum Constants {
 
     // MARK: - 默认采样率
     static let defaultSampleRate = 48000
-    static let defaultFormat = "mp3"
+    static let defaultFormat = "wav"
 
     // MARK: - 积分换算
     /// 每 1000 字符 = 1 积分，最低 1 积分

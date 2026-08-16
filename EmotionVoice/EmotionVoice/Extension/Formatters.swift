@@ -39,6 +39,13 @@ extension Date {
         return f.string(from: self)
     }
 
+    /// 紧凑时间戳 "yyyyMMddHHmmss"（用于生成项目命名）
+    var timestampString: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMddHHmmss"
+        return f.string(from: self)
+    }
+
     /// 相对时间（如 "2 天前"）
     var relativeString: String {
         let f = RelativeDateTimeFormatter()

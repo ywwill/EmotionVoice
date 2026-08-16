@@ -25,7 +25,7 @@ struct EmotionVoiceApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("新建项目".localized()) {
                     _ = ProjectService.shared.createProject(
-                        name: "未命名项目".localized() + " " + Date().shortDateString,
+                        name: "未命名项目".localized() + " " + Date().timestampString,
                         folder: nil
                     )
                 }

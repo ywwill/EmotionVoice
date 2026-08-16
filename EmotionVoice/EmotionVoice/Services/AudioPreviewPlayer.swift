@@ -85,6 +85,26 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             return false
         }
 
+        return play(url: url, identifier: key)
+    }
+
+    /// 从文件 URL 播放（用于"所有项目"中点击生成的音频）
+    /// - Parameters:
+    ///   - url: 音频文件 URL（本地 wav/mp3 等）
+    ///   - identifier: 当前播放的标识，用于同源续播判断
+    @discardableResult
+    func play(url: URL, identifier: String? = nil) -> Bool {
+        let key = identifier ?? url.path
+
+        // 已经在播放同一文件 → 重置进度从头播放
+        if playingKey == key, isPlaying {
+            player?.currentTime = 0
+            player?.play()
+            return true
+        }
+
+        stop()
+
         do {
             let p = try AVAudioPlayer(contentsOf: url)
             p.delegate = self
@@ -98,7 +118,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             self.isPlaying = true
             return true
         } catch {
-            Log(message: "AudioPreviewPlayer: init player failed: \(error)")
+            Log(message: "AudioPreviewPlayer: init player failed for url: \(error)")
             return false
         }
     }
@@ -116,6 +136,11 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     /// 是否正在播放指定 key
     func isPlaying(key: String) -> Bool {
         return playingKey == key && isPlaying
+    }
+
+    /// 是否正在播放指定 URL 对应的音频
+    func isPlaying(url: URL) -> Bool {
+        return playingKey == url.path && isPlaying
     }
 
     // MARK: - 资源解析

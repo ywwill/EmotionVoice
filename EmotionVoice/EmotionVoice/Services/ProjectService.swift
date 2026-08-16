@@ -95,7 +95,8 @@ final class ProjectService {
         format: String,
         sampleRate: Int,
         pointsCost: Int,
-        status: AudioStatus = .completed
+        status: AudioStatus = .completed,
+        audioURL: URL? = nil
     ) -> AudioItem? {
         let now = Date()
         do {
@@ -107,7 +108,7 @@ final class ProjectService {
                 db.audioFormat <- format,
                 db.audioSampleRate <- sampleRate,
                 db.audioDuration <- 0.0,
-                db.audioFilePath <- nil,
+                db.audioFilePath <- audioURL?.path,
                 db.audioPointsCost <- pointsCost,
                 db.audioStatus <- status.rawValue,
                 db.audioCreatedAt <- now
@@ -120,13 +121,58 @@ final class ProjectService {
                 id: id, projectId: projectId,
                 title: title, text: text, voice: voice,
                 format: format, sampleRate: sampleRate,
-                duration: 0.0, filePath: nil,
+                duration: 0.0, filePath: audioURL?.path,
                 pointsCost: pointsCost, status: status,
                 createdAt: now
             )
         } catch {
             Log(message: "ProjectService.createAudio error: \(error)")
             return nil
+        }
+    }
+
+    /// 更新音频文件路径
+    func updateAudioFilePath(audioId: Int64, filePath: String) {
+        do {
+            try db.db.run(db.audioItems.filter(db.audioId == audioId)
+                .update(db.audioFilePath <- filePath))
+        } catch {
+            Log(message: "ProjectService.updateAudioFilePath error: \(error)")
+        }
+    }
+
+    /// 删除项目（含其下所有音频条目及其磁盘文件）
+    func deleteProject(id: Int64) {
+        // 先收集该项目的所有音频文件路径，删除数据库条目后再清理磁盘
+        let audios = fetchAudios(projectId: id)
+        let paths = audios.compactMap { $0.filePath }
+
+        do {
+            try db.db.run(db.projects.filter(db.projectId == id).delete())
+        } catch {
+            Log(message: "ProjectService.deleteProject error: \(error)")
+        }
+
+        for p in paths {
+            try? FileManager.default.removeItem(atPath: p)
+        }
+    }
+
+    /// 删除单个音频条目及其磁盘文件
+    func deleteAudio(id: Int64) {
+        var pathToRemove: String? = nil
+        if let row = try? db.db.pluck(db.audioItems.filter(db.audioId == id)) {
+            pathToRemove = row[db.audioFilePath]
+        }
+
+        do {
+            try db.db.run(db.audioItems.filter(db.audioId == id).delete())
+        } catch {
+            Log(message: "ProjectService.deleteAudio error: \(error)")
+        }
+
+        if let p = pathToRemove {
+            try? FileManager.default.removeItem(atPath: p)
         }
     }
 

@@ -83,7 +83,7 @@ struct ProjectsView: View {
             Spacer()
             ToolbarButton(title: "导入".localized(), icon: "📥") {}
             ToolbarButton(title: "新建项目".localized(), icon: "+", isPrimary: true) {
-                let name = "未命名项目".localized() + " " + Date().shortDateString
+                let name = "未命名项目".localized() + " " + Date().timestampString
                 _ = ProjectService.shared.createProject(name: name, folder: nil)
                 reload()
             }
@@ -173,57 +173,22 @@ struct ProjectsView: View {
     // MARK: - 项目列表
 
     private var projectList: some View {
-        VStack(spacing: 16) {
-            // 按 folder 分组
-            ForEach(ProjectFolder.allCases) { folder in
-                let list = filteredProjects.filter { $0.folder == folder }
-                if !list.isEmpty {
-                    projectGroup(folder: folder, projects: list)
-                }
-            }
-            // 未分组的项目
-            let ungrouped = filteredProjects.filter { $0.folder == nil }
-            if !ungrouped.isEmpty {
-                projectGroup(folder: nil, projects: ungrouped)
-            }
-        }
-    }
-
-    private func projectGroup(folder: ProjectFolder?, projects: [Project]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(folder?.icon ?? "📁")
-                Text(folder?.rawValue ?? "未分类".localized())
-                    .font(.system(size: 14, weight: .semibold))
-                Text("\(projects.count) 个项目".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-                Spacer()
-                Text("展开".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.accentPrimary)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10))
-                    .foregroundStyle(AppColor.accentPrimary)
-            }
-            .padding(.horizontal, 4)
-
-            VStack(spacing: 0) {
-                ForEach(projects) { project in
-                    ProjectRow(project: project)
-                    if project.id != projects.last?.id {
-                        Divider()
-                            .background(AppColor.borderSubtle)
-                            .padding(.horizontal, 16)
+        let columns = [
+            GridItem(.adaptive(minimum: 320, maximum: 480), spacing: 16)
+        ]
+        return LazyVGrid(columns: columns, spacing: 16) {
+            ForEach(filteredProjects) { project in
+                ProjectListCard(
+                    project: project,
+                    onPlay: {
+                        // 播放逻辑由卡片内部处理；此处保留钩子以便后续扩展
+                    },
+                    onDelete: {
+                        ProjectService.shared.deleteProject(id: project.id)
+                        reload()
                     }
-                }
+                )
             }
-            .background(AppColor.bgSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
         }
     }
 
@@ -239,7 +204,7 @@ struct ProjectsView: View {
                 .font(AppFont.bodyMedium)
                 .foregroundStyle(AppColor.textTertiary)
             PrimaryButton(title: "新建项目".localized(), icon: "plus") {
-                let name = "未命名项目".localized() + " " + Date().shortDateString
+                let name = "未命名项目".localized() + " " + Date().timestampString
                 _ = ProjectService.shared.createProject(name: name, folder: nil)
                 reload()
             }

@@ -47,6 +47,11 @@ final class CreditsService {
         monthlyUsed += points
     }
 
+    /// 检查是否可以消耗积分
+    func canConsume(_ points: Int) -> Bool {
+        return balance >= points
+    }
+
     /// 充值
     func purchase(_ points: Int) {
         balance += points

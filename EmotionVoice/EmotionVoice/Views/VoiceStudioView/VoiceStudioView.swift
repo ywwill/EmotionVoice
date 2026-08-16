@@ -49,7 +49,8 @@ struct VoiceStudioView: View {
     // MARK: - 工具栏
 
     private var toolbar: some View {
-        HStack {
+        HStack(spacing: 16) {
+            // 左侧标题
             VStack(alignment: .leading, spacing: 2) {
                 Text("文字转语音".localized())
                     .font(.system(size: 16, weight: .semibold))
@@ -57,16 +58,11 @@ struct VoiceStudioView: View {
                     .font(AppFont.bodySmall)
                     .foregroundStyle(AppColor.textTertiary)
             }
-            Spacer()
-            ToolbarButton(title: "清空".localized(), icon: "🗑") {
-                vm.clearText()
-            }
-            ToolbarButton(title: "格式化".localized(), icon: "✎") {
-                // 演示：不做实际格式化
-            }
-            ToolbarButton(title: "高级设置".localized(), icon: "⚙") {
-                // 演示
-            }
+
+            Spacer(minLength: 16)
+
+            // 右侧：消耗积分 + 操作按钮（generateBar 内联）
+            generateBar
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)
@@ -260,7 +256,6 @@ struct VoiceStudioView: View {
                 voiceCard
                 languageCard
                 nlCard
-                generateBar
             }
         }
         .frame(width: 320)
@@ -508,13 +503,13 @@ struct VoiceStudioView: View {
             }
 
             // 输入框
-            VStack(alignment: .leading, spacing: 4) {
+            ZStack(alignment: .topLeading) {
                 if vm.nlInstruction.isEmpty {
                     Text("或自定义描述你想听到的声音...".localized())
                         .font(AppFont.bodyMedium)
                         .foregroundStyle(AppColor.textTertiary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 7)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $vm.nlInstruction)
@@ -522,7 +517,7 @@ struct VoiceStudioView: View {
                     .foregroundStyle(AppColor.textPrimary)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 4)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
             }
             .background(AppColor.bgTertiary)
             .overlay(
@@ -551,27 +546,23 @@ struct VoiceStudioView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 
+    /// 顶部工具栏内的操作区：预览 / 生成按钮 + 下方积分消耗与进度
+    /// 原为右侧面板底部卡片，迁移至顶部 toolbar 后改为按钮在上、积分与进度在下的紧凑布局。
     private var generateBar: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("💎 本次消耗".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-                Spacer()
-                Text("约 \(vm.estimatedPoints) 积分".localized())
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.accentPrimary)
-            }
-
+        VStack(alignment: .trailing, spacing: 6) {
+            // 按钮行
             HStack(spacing: 8) {
-                SecondaryButton(title: player.isPlaying(key: vm.selectedVoiceKey) ? "停止".localized() : "预览".localized(),
-                               icon: player.isPlaying(key: vm.selectedVoiceKey) ? "stop.fill" : "play.fill") {
+                SecondaryButton(
+                    title: player.isPlaying(key: vm.selectedVoiceKey) ? "停止".localized() : "预览".localized(),
+                    icon: player.isPlaying(key: vm.selectedVoiceKey) ? "stop.fill" : "play.fill"
+                ) {
                     if player.isPlaying(key: vm.selectedVoiceKey) {
                         AudioPreviewPlayer.shared.stop()
                     } else {
                         AudioPreviewPlayer.shared.play(key: vm.selectedVoiceKey)
                     }
                 }
+
                 PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
                     vm.generate { success in
                         if success {
@@ -581,29 +572,37 @@ struct VoiceStudioView: View {
                 }
             }
 
-            if vm.isGenerating {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .tint(AppColor.accentPrimary)
-                    Text("正在生成...".localized())
-                        .font(AppFont.caption)
-                        .foregroundStyle(AppColor.textTertiary)
+            // 下方信息行：消耗积分 + 错误提示（生成中进度条独占一行）
+            HStack(spacing: 8) {
+                Text("本次消耗".localized() + " ")
+                    .font(AppFont.label)
+                    .foregroundStyle(AppColor.textTertiary)
+                + Text("约 \(vm.estimatedPoints) 积分".localized())
+                    .font(AppFont.label)
+                    .foregroundStyle(AppColor.accentPrimary)
+
+                Spacer(minLength: 4)
+
+                if let err = vm.lastError {
+                    Text(err)
+                        .font(AppFont.label)
+                        .foregroundStyle(AppColor.statusError)
+                        .lineLimit(1)
                 }
             }
 
-            if let err = vm.lastError {
-                Text(err)
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.statusError)
+            // 进度条（仅生成中显示）
+            if vm.isGenerating {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .tint(AppColor.accentPrimary)
+                    Text("正在生成...".localized())
+                        .font(AppFont.label)
+                        .foregroundStyle(AppColor.textTertiary)
+                    Spacer()
+                }
             }
         }
-        .padding(16)
-        .background(AppColor.bgSecondary)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.large)
-                .stroke(AppColor.borderSubtle, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 }
