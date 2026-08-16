@@ -14,7 +14,7 @@ import Combine
 final class AppState: ObservableObject {
 
     /// 当前选中的侧边栏项
-    @Published var selectedSection: SidebarSection = .home
+    @Published var selectedSection: SidebarSection = .voiceStudio
 
     /// 积分余额（联动 CreditsService）
     @Published var creditsBalance: Int
@@ -73,7 +73,7 @@ enum SidebarSection: Hashable, Identifiable {
         case .home:        return "首页".localized()
         case .voiceStudio: return "语音合成".localized()
         case .voices:      return "音色库".localized()
-        case .projects:    return "所有项目".localized()
+        case .projects:    return "历史记录".localized()
         case .credits:     return "积分中心".localized()
         case .stats:       return "使用统计".localized()
         case .settings:    return "设置".localized()

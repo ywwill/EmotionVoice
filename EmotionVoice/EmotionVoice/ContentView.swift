@@ -26,7 +26,10 @@ struct ContentView: View {
     private var mainContent: some View {
         Group {
             switch appState.selectedSection {
-            case .home:        HomeView()
+            case .home:
+                // 已移除侧边栏入口；保留以保证 switch 穷尽。
+                // 程序不会进入此分支（默认 section = .voiceStudio，且无 UI 可触发）。
+                VoiceStudioView()
             case .voiceStudio: VoiceStudioView()
             case .voices:      VoicesLibraryView()
             case .projects:    ProjectsView()

@@ -19,9 +19,7 @@ final class DatabaseManager {
 
     // MARK: - 数据表
 
-    /// 项目
-    let projects = Table("projects")
-    /// 音频条目
+    /// 音频条目（每个音频就是一个独立的"项目"）
     let audioItems = Table("audio_items")
     /// 音色（收藏）
     let voices = Table("voices")
@@ -30,23 +28,16 @@ final class DatabaseManager {
     /// 统计
     let monthlyStats = Table("monthly_stats")
 
-    // MARK: - 项目字段
-    let projectId = SQLite.Expression<Int64>("id")
-    let projectName = SQLite.Expression<String>("name")
-    let projectFolder = SQLite.Expression<String?>("folder")
-    let projectCreatedAt = SQLite.Expression<Date>("created_at")
-    let projectUpdatedAt = SQLite.Expression<Date>("updated_at")
-
     // MARK: - 音频条目字段
     let audioId = SQLite.Expression<Int64>("id")
-    let audioProjectId = SQLite.Expression<Int64>("project_id")
-    let audioTitle = SQLite.Expression<String>("title")
+    /// 文件名（含扩展名，例如 "2026-08-16_11-35-42.wav"）
+    let audioFileName = SQLite.Expression<String>("file_name")
     let audioText = SQLite.Expression<String>("text")
     let audioVoice = SQLite.Expression<String>("voice")
     let audioFormat = SQLite.Expression<String>("format")
     let audioSampleRate = SQLite.Expression<Int>("sample_rate")
     let audioDuration = SQLite.Expression<Double>("duration")
-    let audioFilePath = SQLite.Expression<String?>("file_path")
+    let audioDisplayName = SQLite.Expression<String?>("display_name")
     let audioPointsCost = SQLite.Expression<Int>("points_cost")
     let audioStatus = SQLite.Expression<String>("status")
     let audioCreatedAt = SQLite.Expression<Date>("created_at")
@@ -86,7 +77,7 @@ final class DatabaseManager {
     private let fingerprintVersionKey = "EmotionVoice.basicVoicesFingerprintVersion"
     private let currentFingerprintVersion = 4   // 增加此值可强制全量重新同步
 
-    private init() {
+    private     init() {
         // 直接放在用户的 Documents 目录下，方便开发者调试
         let docs = FileManager.default.urls(for: .documentDirectory,
                                             in: .userDomainMask).first!
@@ -95,7 +86,7 @@ final class DatabaseManager {
 
         do {
             db = try Connection(dbPath)
-            try setupFreshSchema()
+            try createTables()
             try seedIfNeeded()
         } catch {
             fatalError("数据库初始化失败: \(error)")
@@ -105,28 +96,18 @@ final class DatabaseManager {
     // MARK: - 表创建
 
     private func createTables() throws {
-        try db.run(projects.create(ifNotExists: true) { t in
-            t.column(projectId, primaryKey: .autoincrement)
-            t.column(projectName)
-            t.column(projectFolder)
-            t.column(projectCreatedAt)
-            t.column(projectUpdatedAt)
-        })
-
         try db.run(audioItems.create(ifNotExists: true) { t in
             t.column(audioId, primaryKey: .autoincrement)
-            t.column(audioProjectId)
-            t.column(audioTitle)
+            t.column(audioFileName)
             t.column(audioText)
             t.column(audioVoice)
             t.column(audioFormat)
             t.column(audioSampleRate)
             t.column(audioDuration, defaultValue: 0.0)
-            t.column(audioFilePath)
+            t.column(audioDisplayName)
             t.column(audioPointsCost, defaultValue: 0)
             t.column(audioStatus)
             t.column(audioCreatedAt)
-            t.foreignKey(audioProjectId, references: projects, projectId, delete: .cascade)
         })
 
         try db.run(voices.create(ifNotExists: true) { t in
@@ -157,16 +138,6 @@ final class DatabaseManager {
             t.column(statAudioCount, defaultValue: 0)
             t.column(statVoiceCount, defaultValue: 0)
         })
-    }
-
-    /// 创建表（幂等：表存在则跳过，避免每次启动丢失数据）
-    private func setupFreshSchema() throws {
-        let hasVoices = try db.scalar(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='voices'"
-        ) as? Int64 ?? 0
-        if hasVoices == 0 {
-            try createTables()
-        }
     }
 
     /// 种子数据

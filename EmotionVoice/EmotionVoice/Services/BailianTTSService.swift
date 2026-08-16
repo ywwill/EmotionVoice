@@ -106,12 +106,69 @@ final class BailianTTSService {
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
     ) async throws -> Data {
-        connectionLock.lock()
-        defer { connectionLock.unlock() }
+        // 关键不变量：同一时刻只允许一个 TTS 任务占用 WebSocket。
+        // 原实现使用 NSLock，但 NSLock 跨 await 持有会触发 Swift 6 诊断。
+        // 这里改为基于 actor 的异步互斥，跨 await 安全且不会死锁。
+        try await ttsPipeline.run {
+            try await self.performSynthesize(
+                text: text,
+                voice: voice,
+                emotion: emotion,
+                rate: rate,
+                volume: volume,
+                sampleRate: sampleRate,
+                language: language,
+                nlInstruction: nlInstruction,
+                onAudio: onAudio
+            )
+        }
+    }
 
-        // 生成任务 ID
+    /// 异步 FIFO 互斥器：保证闭包按到达顺序串行执行。
+    /// 基于 actor 的"忙/闲"标志 + 等待队列。
+    /// 任意时刻只有一个调用方能进入临界区，其余按 FIFO 等待。
+    actor AsyncMutex {
+        private var isBusy: Bool = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+
+        /// 进入临界区执行 work；同一时刻只允许一个执行。
+        func run<T>(_ work: () async throws -> T) async rethrows -> T {
+            if isBusy {
+                await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                    waiters.append(cont)
+                }
+            }
+            isBusy = true
+            defer {
+                isBusy = false
+                if !waiters.isEmpty {
+                    let next = waiters.removeFirst()
+                    next.resume()
+                }
+            }
+            return try await work()
+        }
+    }
+
+    private let ttsPipeline = AsyncMutex()
+
+    /// 实际 TTS 任务体（在持有 ttsPipeline 串行权限的前提下执行）
+    private func performSynthesize(
+        text: String,
+        voice: String,
+        emotion: String?,
+        rate: Double,
+        volume: Double,
+        sampleRate: Int,
+        language: String,
+        nlInstruction: String?,
+        onAudio: ((Data) -> Void)?
+    ) async throws -> Data {
+        // 生成任务 ID（仅同步修改本地状态，无需长持锁）
         let taskId = UUID().uuidString
+        connectionLock.lock()
         currentTaskId = taskId
+        connectionLock.unlock()
 
         var completeAudioData = Data()
 

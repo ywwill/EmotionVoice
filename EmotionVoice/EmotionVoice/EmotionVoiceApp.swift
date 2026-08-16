@@ -23,11 +23,15 @@ struct EmotionVoiceApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("新建项目".localized()) {
-                    _ = ProjectService.shared.createProject(
-                        name: "未命名项目".localized() + " " + Date().timestampString,
-                        folder: nil
+                Button("新建音频".localized()) {
+                    // 没有项目概念：直接跳到语音合成工作台
+                    NSApp.sendAction(
+                        #selector(NSWindow.makeKeyAndOrderFront(_:)),
+                        to: nil, from: nil
                     )
+                    if let win = NSApp.windows.first(where: { $0.isVisible }) {
+                        win.makeKeyAndOrderFront(nil)
+                    }
                 }
                 .keyboardShortcut("n")
             }

@@ -4,17 +4,21 @@
 //
 //  Created by young on 2026/8/8.
 //
+//  历史记录页面：扁平展示所有音频条目。
+//  文件名保留为 ProjectsView 以避免破坏 Xcode 工程的文件引用；
+//  类型重命名为 HistoryView，对外语义是"历史记录"。
+//
 
 import SwiftUI
 
-/// 项目管理
-struct ProjectsView: View {
+/// 历史记录：所有音频条目的扁平列表
+struct HistoryView: View {
 
-    @State private var projects: [Project] = []
-    @State private var filter: ProjectFilter = .all
+    @State private var audios: [AudioItem] = []
+    @State private var filter: HistoryFilter = .all
     @State private var searchText: String = ""
 
-    enum ProjectFilter: String, CaseIterable, Identifiable {
+    enum HistoryFilter: String, CaseIterable, Identifiable {
         case all = "全部"
         case last7 = "最近 7 天"
         case last30 = "最近 30 天"
@@ -25,21 +29,21 @@ struct ProjectsView: View {
         var displayName: String { rawValue.localized() }
     }
 
-    var filteredProjects: [Project] {
+    var filteredAudios: [AudioItem] {
         let now = Date()
-        var list = projects
+        var list = audios
         switch filter {
         case .all: break
         case .last7:
-            list = list.filter { $0.updatedAt.timeIntervalSince(now) > -7 * 86400 }
+            list = list.filter { $0.createdAt.timeIntervalSince(now) > -7 * 86400 }
         case .last30:
-            list = list.filter { $0.updatedAt.timeIntervalSince(now) > -30 * 86400 }
+            list = list.filter { $0.createdAt.timeIntervalSince(now) > -30 * 86400 }
         case .completed:
-            // 演示：所有项目视为已完成
-            break
+            // 演示：仅展示已完成
+            list = list.filter { $0.status == .completed }
         }
         if !searchText.isEmpty {
-            list = list.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            list = list.filter { $0.shownName.localizedCaseInsensitiveContains(searchText) }
         }
         return list
     }
@@ -53,10 +57,10 @@ struct ProjectsView: View {
 
                     filterBar
 
-                    if filteredProjects.isEmpty {
+                    if filteredAudios.isEmpty {
                         emptyHint
                     } else {
-                        projectList
+                        audioList
                     }
                 }
                 .padding(24)
@@ -66,7 +70,7 @@ struct ProjectsView: View {
     }
 
     private func reload() {
-        projects = ProjectService.shared.fetchAllProjects()
+        audios = ProjectService.shared.fetchAllAudios()
     }
 
     // MARK: - 工具栏
@@ -74,19 +78,13 @@ struct ProjectsView: View {
     private var toolbar: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("所有项目".localized())
+                Text("历史记录".localized())
                     .font(.system(size: 16, weight: .semibold))
-                Text("管理和追踪你所有的音频创作".localized())
+                Text("查看你生成过的所有音频".localized())
                     .font(AppFont.bodySmall)
                     .foregroundStyle(AppColor.textTertiary)
             }
             Spacer()
-            ToolbarButton(title: "导入".localized(), icon: "📥") {}
-            ToolbarButton(title: "新建项目".localized(), icon: "+", isPrimary: true) {
-                let name = "未命名项目".localized() + " " + Date().timestampString
-                _ = ProjectService.shared.createProject(name: name, folder: nil)
-                reload()
-            }
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)
@@ -102,24 +100,22 @@ struct ProjectsView: View {
     // MARK: - 概览卡
 
     private var summaryCards: some View {
-        HStack(spacing: 12) {
-            SummaryCard(label: "项目总数".localized(),
-                        value: "\(projects.count)",
-                        trend: "本月 +3".localized(),
+        let totalDuration = audios.reduce(0.0) { $0 + $1.duration }
+        let totalPoints = audios.reduce(0) { $0 + $1.pointsCost }
+        return HStack(spacing: 12) {
+            SummaryCard(label: "音频总数".localized(),
+                        value: "\(audios.count)",
+                        trend: "本机".localized(),
                         trendUp: true)
-            SummaryCard(label: "总音频时长".localized(),
-                        value: "2.8h".localized(),
-                        trend: "28 个音频".localized(),
+            SummaryCard(label: "总时长".localized(),
+                        value: totalDuration.durationString,
+                        trend: "已生成".localized(),
                         trendUp: true)
             SummaryCard(label: "已消耗积分".localized(),
-                        value: "4,560".localized(),
-                        trend: "本月".localized(),
+                        value: "\(totalPoints)",
+                        trend: "累计".localized(),
                         trendUp: false,
                         accent: true)
-            SummaryCard(label: "进行中项目".localized(),
-                        value: "2".localized(),
-                        trend: "需要关注".localized(),
-                        trendUp: false)
         }
     }
 
@@ -128,7 +124,7 @@ struct ProjectsView: View {
     private var filterBar: some View {
         HStack {
             HStack(spacing: 6) {
-                ForEach(ProjectFilter.allCases) { f in
+                ForEach(HistoryFilter.allCases) { f in
                     Button {
                         filter = f
                     } label: {
@@ -154,7 +150,7 @@ struct ProjectsView: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(AppColor.textTertiary)
-                TextField("搜索项目...".localized(), text: $searchText)
+                TextField("搜索音频...".localized(), text: $searchText)
                     .textFieldStyle(.plain)
                     .foregroundStyle(AppColor.textPrimary)
                     .frame(width: 180)
@@ -170,21 +166,25 @@ struct ProjectsView: View {
         }
     }
 
-    // MARK: - 项目列表
+    // MARK: - 列表
 
-    private var projectList: some View {
+    private var audioList: some View {
         let columns = [
             GridItem(.adaptive(minimum: 320, maximum: 480), spacing: 16)
         ]
         return LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(filteredProjects) { project in
-                ProjectListCard(
-                    project: project,
+            ForEach(filteredAudios) { audio in
+                AudioListCard(
+                    audio: audio,
                     onPlay: {
                         // 播放逻辑由卡片内部处理；此处保留钩子以便后续扩展
                     },
                     onDelete: {
-                        ProjectService.shared.deleteProject(id: project.id)
+                        ProjectService.shared.deleteAudio(id: audio.id)
+                        reload()
+                    },
+                    onRename: { newName in
+                        ProjectService.shared.renameAudio(id: audio.id, displayName: newName)
                         reload()
                     }
                 )
@@ -196,18 +196,13 @@ struct ProjectsView: View {
 
     private var emptyHint: some View {
         VStack(spacing: 12) {
-            Text("📁")
+            Text("🎧")
                 .font(.system(size: 36))
-            Text("暂无项目".localized())
+            Text("暂无音频".localized())
                 .font(.system(size: 16, weight: .semibold))
-            Text("点击「新建项目」开始你的第一次创作".localized())
+            Text("前往「语音合成」生成你的第一条音频".localized())
                 .font(AppFont.bodyMedium)
                 .foregroundStyle(AppColor.textTertiary)
-            PrimaryButton(title: "新建项目".localized(), icon: "plus") {
-                let name = "未命名项目".localized() + " " + Date().timestampString
-                _ = ProjectService.shared.createProject(name: name, folder: nil)
-                reload()
-            }
         }
         .padding(60)
         .frame(maxWidth: .infinity)
@@ -219,3 +214,6 @@ struct ProjectsView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 }
+
+/// 类型别名：保留 ProjectsView 名称，便于 Xcode 工程引用与未来扩展。
+typealias ProjectsView = HistoryView

@@ -16,7 +16,7 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             // 主导航
             VStack(alignment: .leading, spacing: 2) {
-                ForEach([SidebarSection.home, .voiceStudio]) { section in
+                ForEach([SidebarSection.voiceStudio]) { section in
                     SidebarItem(section: section)
                 }
             }
@@ -29,9 +29,9 @@ struct Sidebar: View {
 
             // 项目管理
             VStack(alignment: .leading, spacing: 2) {
-                sectionHeader("项目管理".localized())
+                sectionHeader("资源管理".localized())
                 SidebarItem(section: .projects,
-                            badge: "\(ProjectService.shared.fetchAllProjects().count)")
+                            badge: "\(ProjectService.shared.fetchAllAudios().count)")
                 SidebarItem(section: .credits)
                 SidebarItem(section: .stats)
             }

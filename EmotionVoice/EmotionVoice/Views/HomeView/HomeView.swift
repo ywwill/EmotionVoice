@@ -4,6 +4,8 @@
 //
 //  Created: young on 2026/8/8.
 //
+//  首页：最近音频替代历史"最近项目"。
+//
 
 import SwiftUI
 
@@ -11,7 +13,7 @@ import SwiftUI
 struct HomeView: View {
 
     @EnvironmentObject var appState: AppState
-    @State private var recentProjects: [Project] = []
+    @State private var recentAudios: [AudioItem] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -25,14 +27,14 @@ struct HomeView: View {
             // 本月统计
             monthlyStatsSection
 
-            // 最近项目
-            recentProjectsSection
+            // 最近音频
+            recentAudiosSection
 
             Spacer(minLength: 0)
         }
         .padding(32)
         .onAppear {
-            recentProjects = ProjectService.shared.fetchAllProjects()
+            recentAudios = ProjectService.shared.fetchAllAudios()
         }
     }
 
@@ -68,10 +70,10 @@ struct HomeView: View {
                 }
 
                 QuickActionCard(
-                    icon: "📂",
-                    title: "打开最近项目".localized(),
-                    desc: "继续未完成的创作".localized(),
-                    cta: "查看项目".localized(),
+                    icon: "🕘",
+                    title: "查看历史记录".localized(),
+                    desc: "管理和回听生成过的音频".localized(),
+                    cta: "查看历史".localized(),
                     gradient: [Color(hex: 0x8AA5A0), Color(hex: 0x6F8A85)]
                 ) {
                     withAnimation(.easeInOut(duration: 0.22)) {
@@ -95,11 +97,11 @@ struct HomeView: View {
             HStack(spacing: 0) {
                 StatItem(value: "\(appState.monthlyUsed)", label: "积分消耗".localized())
                 Divider().background(AppColor.borderSubtle)
-                StatItem(value: "28", label: "音频生成".localized())
+                StatItem(value: "\(recentAudios.count)", label: "音频生成".localized())
                 Divider().background(AppColor.borderSubtle)
-                StatItem(value: "12.4", unit: "h", label: "总音频时长".localized())
+                StatItem(value: totalDurationHours, label: "总音频时长".localized())
                 Divider().background(AppColor.borderSubtle)
-                StatItem(value: "18", label: "音色使用".localized())
+                StatItem(value: "\(uniqueVoicesUsed)", label: "音色使用".localized())
             }
             .padding(20)
             .background(AppColor.bgSecondary)
@@ -111,12 +113,23 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - 最近项目
+    private var totalDurationHours: String {
+        let total = recentAudios.reduce(0.0) { $0 + $1.duration }
+        let hours = total / 3600.0
+        return String(format: "%.1fh", hours)
+    }
 
-    private var recentProjectsSection: some View {
+    private var uniqueVoicesUsed: Int {
+        let keys = Set(recentAudios.map { $0.voice }.filter { !$0.isEmpty })
+        return keys.count
+    }
+
+    // MARK: - 最近音频
+
+    private var recentAudiosSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionTitle(
-                title: "最近项目".localized(),
+                title: "最近音频".localized(),
                 action: "查看全部".localized(),
                 actionIcon: "arrow.right"
             )
@@ -126,18 +139,18 @@ struct HomeView: View {
                           GridItem(.flexible(), spacing: 12)],
                 spacing: 12
             ) {
-                if recentProjects.isEmpty {
-                    emptyProjectsHint
+                if recentAudios.isEmpty {
+                    emptyAudiosHint
                 } else {
-                    ForEach(recentProjects.prefix(4)) { project in
-                        ProjectCard(project: project)
+                    ForEach(recentAudios.prefix(4)) { audio in
+                        AudioCard(audio: audio)
                     }
                 }
             }
         }
     }
 
-    private var emptyProjectsHint: some View {
+    private var emptyAudiosHint: some View {
         HStack {
             Spacer()
             VStack(spacing: 8) {
@@ -149,7 +162,7 @@ struct HomeView: View {
                         appState.selectedSection = .voiceStudio
                     }
                 } label: {
-                    Text("新建项目".localized())
+                    Text("开始生成".localized())
                         .font(.system(size: 12, weight: .medium))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)

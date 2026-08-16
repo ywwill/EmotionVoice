@@ -45,7 +45,7 @@ final class VoiceStudioViewModel: ObservableObject {
 
     // 生成状态
     @Published var isGenerating: Bool = false
-    @Published var lastError: String? = nil
+    @Published var alertItem: AlertItem? = nil
     @Published var generatedAudioURL: URL? = nil
     @Published var generationProgress: Double = 0.0
 
@@ -94,7 +94,7 @@ final class VoiceStudioViewModel: ObservableObject {
     func clearText() {
         text = ""
         emotionUsageCounts.removeAll()
-        lastError = nil
+        alertItem = nil
         generatedAudioURL = nil
         generationProgress = 0.0
     }
@@ -115,12 +115,14 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 生成音频（集成阿里云 TTS 服务，无字符数限制）
     func generate(completion: @escaping (Bool) -> Void) {
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-            lastError = "请输入文本"
+            alertItem = AlertItem(title: "无法生成".localized(),
+                                   message: "请先输入要合成的文本".localized())
             completion(false)
             return
         }
         guard let voice else {
-            lastError = "请选择音色"
+            alertItem = AlertItem(title: "无法生成".localized(),
+                                   message: "请先选择一个音色".localized())
             completion(false)
             return
         }
@@ -128,90 +130,106 @@ final class VoiceStudioViewModel: ObservableObject {
         // 检查积分
         let points = estimatedPoints
         guard CreditsService.shared.canConsume(points) else {
-            lastError = "积分不足，请先充值"
+            alertItem = AlertItem(title: "积分不足".localized(),
+                                   message: "本次合成需要约 %d 积分，请先充值".localized(points))
             completion(false)
             return
         }
 
         isGenerating = true
-        lastError = nil
+        alertItem = nil
         generationProgress = 0.0
         generatedAudioURL = nil
 
+        // 提前确定文件名（按时间戳），便于落盘 + 入库
+        let now = Date()
+        let fileName = "\(now.filenameTimestamp).\(Constants.defaultFormat)"
+
+        // 落盘目录：Documents/GeneratedAudio/
+        ensureGeneratedAudioDirectoryExists()
+        let audioURL = generatedAudioDirectoryURL().appendingPathComponent(fileName)
+
         Task {
             do {
-                // 更新进度
-                generationProgress = 0.1
-
-                // 提取情感标签（从文本中提取 [emotion] 格式的标签）
-                let emotionTag = extractEmotionTag(from: text)
-
                 Log(message: "开始 TTS 合成，文本长度: \(self.text.count) 字符")
 
-                // 调用 TTS 服务（无字符数限制，连接复用）
-                let audioData = try await ttsService.synthesize(
-                    text: text,
-                    voice: voice.key,
-                    emotion: emotionTag,
-                    rate: rate,
-                    volume: volume,
-                    sampleRate: sampleRate,
-                    language: language.code,
-                    nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction
-                )
+                // 准备流式回调：每收到一块音频就把进度往上推
+                // 由于事先不知道最终大小，按"已用时间 / 经验上限"模拟一条平滑曲线
+                let startedAt = Date()
+                let approxDuration: TimeInterval = max(2.5, Double(self.text.count) / 12.0)
+                let onAudio: (Data) -> Void = { [weak self] _ in
+                    guard let self else { return }
+                    let elapsed = Date().timeIntervalSince(startedAt)
+                    // 0.05 (已建连) -> 0.95 (接近完成)；剩余 5% 留给落盘 + 入库
+                    let p = min(0.95, 0.05 + 0.90 * (elapsed / approxDuration))
+                    Task { @MainActor in
+                        self.generationProgress = max(self.generationProgress, p)
+                    }
+                }
 
-                generationProgress = 0.7
+                // 调用 TTS 流式接口（替代一次性 await）
+                let audioData: Data = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
+                    ttsService.synthesizeStream(
+                        text: text,
+                        voice: voice.key,
+                        emotion: extractEmotionTag(from: text),
+                        rate: rate,
+                        volume: volume,
+                        sampleRate: sampleRate,
+                        language: language.code,
+                        nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
+                        onAudio: onAudio,
+                        completion: { result in
+                            cont.resume(with: result)
+                        }
+                    )
+                }
 
-                // 保存音频文件
-                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let audioDir = documentsPath.appendingPathComponent("GeneratedAudio", isDirectory: true)
+                generationProgress = 0.95
 
-                // 确保目录存在
-                try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
-
-                let timestamp = Int(Date().timeIntervalSince1970)
-                let fileName = "audio_\(timestamp).wav"
-                let audioURL = audioDir.appendingPathComponent(fileName)
-
+                // 写入磁盘
                 try audioData.write(to: audioURL)
                 Log(message: "音频已保存到: \(audioURL.path)")
 
-                generationProgress = 0.9
+                generationProgress = 0.98
+
+                // 计算真实时长：优先使用 AVAudioFile 读取 PCM 帧数；
+                // 失败时（如非 WAV/无法解析）回退到按 data 大小粗略估算。
+                let duration = AudioDuration.read(
+                    url: audioURL,
+                    sampleRate: self.sampleRate,
+                    bytes: audioData.count,
+                    format: Constants.defaultFormat
+                )
+                Log(message: "音频时长: \(duration)s")
 
                 await MainActor.run {
-                    self.generatedAudioURL = audioURL
-                    self.generationProgress = 1.0
-                    self.isGenerating = false
-
-                    // 创建默认项目（如未选择）
-                    let projectName = "未命名项目".localized() + " " + Date().timestampString
-                    guard let project = ProjectService.shared.createProject(
-                        name: projectName, folder: nil) else {
-                        self.lastError = "项目创建失败"
-                        completion(false)
-                        return
-                    }
-
-                    // 创建音频条目
-                    let title = String(self.text.prefix(20))
+                    // 直接创建音频条目（不再需要先建项目；不再保存完整路径）
                     guard ProjectService.shared.createAudio(
-                        projectId: project.id,
-                        title: title,
+                        fileName: fileName,
                         text: self.text,
                         voice: voice.key,
                         format: Constants.defaultFormat,
                         sampleRate: self.sampleRate,
                         pointsCost: points,
                         status: .completed,
-                        audioURL: audioURL
+                        duration: duration
                     ) != nil else {
-                        self.lastError = "音频条目保存失败"
+                        self.alertItem = AlertItem(title: "保存失败".localized(),
+                                                    message: "无法写入音频条目，请稍后重试".localized())
+                        self.isGenerating = false
+                        self.generationProgress = 0.0
                         completion(false)
                         return
                     }
 
                     // 扣减积分
                     CreditsService.shared.consume(points)
+
+                    self.generatedAudioURL = audioURL
+                    self.generationProgress = 1.0
+                    self.isGenerating = false
+                    // 注意：不要清空 text — 需求 1 要求保留输入
                     completion(true)
                 }
 
@@ -219,7 +237,10 @@ final class VoiceStudioViewModel: ObservableObject {
                 await MainActor.run {
                     self.isGenerating = false
                     self.generationProgress = 0.0
-                    self.lastError = error.localizedDescription
+                    self.alertItem = AlertItem(
+                        title: "生成失败".localized(),
+                        message: error.localizedDescription
+                    )
                     Log(message: "TTS 生成失败: \(error.localizedDescription)")
                     completion(false)
                 }
@@ -256,4 +277,11 @@ final class VoiceStudioViewModel: ObservableObject {
     func keepConnectionAlive() {
         ttsService.ping()
     }
+}
+
+/// Alert 内容（用于 .alert(item:) 绑定）
+struct AlertItem: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
 }

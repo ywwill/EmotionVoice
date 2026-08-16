@@ -33,6 +33,13 @@ struct VoiceStudioView: View {
                 .frame(width: 1100, height: 760)
                 .fixedSize()
         }
+        .alert(item: $vm.alertItem) { item in
+            Alert(
+                title: Text(item.title),
+                message: Text(item.message),
+                dismissButton: .default(Text("好".localized()))
+            )
+        }
         .onAppear {
             if let v = appState.selectedVoice {
                 vm.selectedVoiceKey = v.key
@@ -572,36 +579,30 @@ struct VoiceStudioView: View {
                 }
             }
 
-            // 下方信息行：消耗积分 + 错误提示（生成中进度条独占一行）
+            // 下方信息行：消耗积分（生成中显示具体进度）
             HStack(spacing: 8) {
+                Spacer()
+
+                // 生成中：显示具体进度（0~100%）
+                if vm.isGenerating {
+                    HStack(spacing: 8) {
+                        ProgressView(value: vm.generationProgress, total: 1.0)
+                            .progressViewStyle(.linear)
+                            .tint(AppColor.accentPrimary)
+                            .frame(width: 140)
+                        Text("\(Int(vm.generationProgress * 100))%")
+                            .font(AppFont.monoSmall)
+                            .foregroundStyle(AppColor.accentPrimary)
+                            .monospacedDigit()
+                    }
+                }
+
                 Text("本次消耗".localized() + " ")
                     .font(AppFont.label)
                     .foregroundStyle(AppColor.textTertiary)
-                + Text("约 \(vm.estimatedPoints) 积分".localized())
+                + Text("约 %d 积分".localized(vm.estimatedPoints))
                     .font(AppFont.label)
                     .foregroundStyle(AppColor.accentPrimary)
-
-                Spacer(minLength: 4)
-
-                if let err = vm.lastError {
-                    Text(err)
-                        .font(AppFont.label)
-                        .foregroundStyle(AppColor.statusError)
-                        .lineLimit(1)
-                }
-            }
-
-            // 进度条（仅生成中显示）
-            if vm.isGenerating {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .tint(AppColor.accentPrimary)
-                    Text("正在生成...".localized())
-                        .font(AppFont.label)
-                        .foregroundStyle(AppColor.textTertiary)
-                    Spacer()
-                }
             }
         }
     }

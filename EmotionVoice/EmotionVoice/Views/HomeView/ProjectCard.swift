@@ -4,36 +4,38 @@
 //
 //  Created: young on 2026/8/8.
 //
+//  首页最近音频卡片（历史上名为 ProjectCard，类型已重命名为 AudioCard）。
+//
 
 import SwiftUI
 
-// MARK: - 项目卡
+// MARK: - 音频卡
 
-struct ProjectCard: View {
+struct AudioCard: View {
 
-    let project: Project
+    let audio: AudioItem
 
     var body: some View {
         Button {
-            // 进入项目详情
+            // 后续可跳转到音频详情页
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
-                    Text("📁")
+                    Text("🎧")
                         .font(.system(size: 20))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(project.name)
+                        Text(audio.shownName)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppColor.textPrimary)
                             .lineLimit(1)
+                            .truncationMode(.middle)
                         Text(metaLine)
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
+                            .lineLimit(1)
                     }
                     Spacer()
                 }
-
-                ProgressBar(progress: progress)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -48,24 +50,11 @@ struct ProjectCard: View {
         .pointingHandCursor()
     }
 
-    private var progress: Double {
-        // 演示数据：基于 updatedAt 时间距离
-        let days = Date().timeIntervalSince(project.updatedAt) / 86400
-        if days < 1 { return 1.0 }
-        if days < 3 { return 0.6 }
-        if days < 7 { return 0.4 }
-        return 0.2
-    }
-
     private var metaLine: String {
-        let audios = ProjectService.shared.fetchAudios(projectId: project.id)
-        let totalDuration = audios.reduce(0.0) { $0 + $1.duration }
-        let minutes = Int(totalDuration / 60)
-        if audios.isEmpty {
-            return "\(project.updatedAt.shortDateString)"
-        }
+        let dur = audio.duration.durationString
+        let fmt = (audio.format.isEmpty ? audio.fileExtension : audio.format).uppercased()
         let voiceName = VoiceService.shared.fetchAll()
-            .first(where: { $0.key == audios.first?.voice })?.name ?? "—"
-        return "\(audios.count) 个音频 · \(minutes) 分钟 · \(voiceName)"
+            .first(where: { $0.key == audio.voice })?.name ?? "—"
+        return "\(fmt) · \(dur) · \(voiceName)"
     }
 }

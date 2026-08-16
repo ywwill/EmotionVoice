@@ -31,6 +31,18 @@ extension Double {
     }
 }
 
+extension String {
+    /// 去掉文件扩展名（用于重命名输入框，避免重复输入 ".wav/.mp3"）。
+    /// 不识别扩展名则返回原串。
+    var strippingExtension: String {
+        guard !isEmpty else { return self }
+        let url = URL(fileURLWithPath: self)
+        let ext = url.pathExtension
+        guard !ext.isEmpty else { return self }
+        return url.deletingPathExtension().lastPathComponent
+    }
+}
+
 extension Date {
     /// 显示为 "YYYY-MM-DD"
     var shortDateString: String {
@@ -43,6 +55,22 @@ extension Date {
     var timestampString: String {
         let f = DateFormatter()
         f.dateFormat = "yyyyMMddHHmmss"
+        return f.string(from: self)
+    }
+
+    /// 简短日期+时间 "yyyy-MM-dd HH:mm"
+    /// 例：2026-08-16 11:35
+    var shortDateTimeString: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.string(from: self)
+    }
+
+    /// 文件名风格时间戳 "yyyy-MM-dd_HH-mm-ss"
+    /// 例：2026-08-16_11-35-42
+    var filenameTimestamp: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return f.string(from: self)
     }
 
