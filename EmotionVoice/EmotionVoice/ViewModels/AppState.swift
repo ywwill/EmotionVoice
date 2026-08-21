@@ -31,10 +31,31 @@ final class AppState: ObservableObject {
     /// 触发动画效果（生成完成/开始时）
     @Published var isGenerating: Bool = false
 
+    /// 默认音频格式（用于导出和生成）
+    @Published var defaultFormat: String {
+        didSet {
+            UserDefaults.standard.set(defaultFormat, forKey: "defaultFormat")
+        }
+    }
+
+    /// 默认采样率（Hz）
+    @Published var defaultSampleRate: Int {
+        didSet {
+            UserDefaults.standard.set(defaultSampleRate, forKey: "defaultSampleRate")
+        }
+    }
+
     init() {
         self.creditsBalance = CreditsService.shared.balance
         self.monthlyUsed = CreditsService.shared.monthlyUsed
         self.voices = VoiceService.shared.fetchAll()
+
+        // 加载保存的设置，没有则使用默认值
+        let savedFormat = UserDefaults.standard.string(forKey: "defaultFormat") ?? Constants.defaultFormat.uppercased()
+        let savedSampleRate = UserDefaults.standard.integer(forKey: "defaultSampleRate")
+        self.defaultFormat = savedFormat.isEmpty ? Constants.defaultFormat.uppercased() : savedFormat.uppercased()
+        self.defaultSampleRate = savedSampleRate > 0 ? savedSampleRate : Constants.defaultSampleRate
+
         if self.selectedVoice == nil {
             self.selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
         }

@@ -26,9 +26,10 @@ final class VoiceStudioViewModel: ObservableObject {
     // 情感标签使用次数统计 [tag: count]
     @Published var emotionUsageCounts: [String: Int] = [:]
 
-    // 语言/采样率
+    // 语言/采样率/格式
     @Published var language: LanguageItem = Constants.languages[0]
     @Published var sampleRate: Int = Constants.defaultSampleRate
+    @Published var selectedFormat: String = Constants.defaultFormat
 
     // 自然语言指令
     @Published var nlInstruction: String = ""
@@ -143,7 +144,7 @@ final class VoiceStudioViewModel: ObservableObject {
 
         // 提前确定文件名（按时间戳），便于落盘 + 入库
         let now = Date()
-        let fileName = "\(now.filenameTimestamp).\(Constants.defaultFormat)"
+        let fileName = "\(now.filenameTimestamp).\(self.selectedFormat.lowercased())"
 
         // 落盘目录：Documents/GeneratedAudio/
         ensureGeneratedAudioDirectoryExists()
@@ -199,7 +200,7 @@ final class VoiceStudioViewModel: ObservableObject {
                     url: audioURL,
                     sampleRate: self.sampleRate,
                     bytes: audioData.count,
-                    format: Constants.defaultFormat
+                    format: self.selectedFormat.lowercased()
                 )
                 Log(message: "音频时长: \(duration)s")
 
@@ -209,7 +210,7 @@ final class VoiceStudioViewModel: ObservableObject {
                         fileName: fileName,
                         text: self.text,
                         voice: voice.key,
-                        format: Constants.defaultFormat,
+                        format: self.selectedFormat.lowercased(),
                         sampleRate: self.sampleRate,
                         pointsCost: points,
                         status: .completed,

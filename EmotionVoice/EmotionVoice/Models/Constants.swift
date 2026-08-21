@@ -78,7 +78,15 @@ enum Constants {
     ]
 
     // MARK: - 采样率
-    static let sampleRates: [Int] = [48000, 44100, 24000]
+    static let sampleRates: [SampleRateItem] = [
+        SampleRateItem(rate: 8000,  displayName: "8 kHz",    useCase: "语音通话"),
+        SampleRateItem(rate: 16000, displayName: "16 kHz",   useCase: "AI 语音"),
+        SampleRateItem(rate: 22050, displayName: "22.05 kHz", useCase: "网络语音"),
+        SampleRateItem(rate: 24000, displayName: "24 kHz",   useCase: "语音合成"),
+        SampleRateItem(rate: 32000, displayName: "32 kHz",   useCase: "音乐剪辑"),
+        SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频"),
+        SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频"),
+    ]
 
     // MARK: - 积分套餐
     static let creditsPackages: [CreditsPackage] = [
@@ -153,6 +161,14 @@ struct LanguageItem: Identifiable, Hashable {
     let name: String
     let code: String
     var id: String { code }
+}
+
+/// 采样率条目
+struct SampleRateItem: Identifiable, Hashable {
+    let rate: Int           // 采样率（Hz）
+    let displayName: String // 显示名称（如 "48 kHz"）
+    let useCase: String     // 典型用途
+    var id: Int { rate }
 }
 
 /// 积分消耗参考条目

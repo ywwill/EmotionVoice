@@ -199,11 +199,11 @@ struct SettingsView: View {
                     label: "默认格式".localized(),
                     desc: "导出音频文件格式".localized(),
                     control: {
-                        Picker("", selection: .constant("MP3")) {
+                        Picker("", selection: $appState.defaultFormat) {
                             Text("MP3 (推荐)").tag("MP3")
                             Text("WAV").tag("WAV")
-                            Text("OGG").tag("OGG")
-                            Text("FLAC").tag("FLAC")
+                            Text("PCM").tag("PCM")
+                            Text("Opus").tag("Opus")
                         }
                         .labelsHidden()
                         .frame(width: 220)
@@ -216,13 +216,16 @@ struct SettingsView: View {
                     label: "采样率".localized(),
                     desc: "音频质量".localized(),
                     control: {
-                        Picker("", selection: .constant(48)) {
-                            Text("48 kHz (推荐)").tag(48)
-                            Text("44.1 kHz").tag(44)
-                            Text("24 kHz").tag(24)
+                        Picker("", selection: Binding(
+                            get: { appState.defaultSampleRate },
+                            set: { appState.defaultSampleRate = $0 }
+                        )) {
+                            ForEach(Constants.sampleRates) { item in
+                                Text("\(item.displayName) - \(item.useCase)").tag(item.rate)
+                            }
                         }
                         .labelsHidden()
-                        .frame(width: 220)
+                        .frame(width: 280)
                     },
                     trailing: {
                         Text("24-bit")

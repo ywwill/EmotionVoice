@@ -44,6 +44,9 @@ struct VoiceStudioView: View {
             if let v = appState.selectedVoice {
                 vm.selectedVoiceKey = v.key
             }
+            // 从设置中读取默认采样率和格式
+            vm.sampleRate = appState.defaultSampleRate
+            vm.selectedFormat = appState.defaultFormat
         }
         .onChange(of: appState.selectedVoice?.key) { _, newKey in
             // 从音色库跳转过来时同步选中音色
@@ -438,17 +441,18 @@ struct VoiceStudioView: View {
             }
 
             HStack {
-                Text("采样率".localized())
+                Text("格式".localized())
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textTertiary)
-                Spacer()
+                
                 HStack(spacing: 4) {
-                    ForEach(Constants.sampleRates, id: \.self) { rate in
-                        let selected = vm.sampleRate == rate
+                    ForEach(["mp3", "wav"], id: \.self) { format in
+                        let selected = vm.selectedFormat.lowercased() == format.lowercased()
                         Button {
-                            vm.sampleRate = rate
+                            vm.selectedFormat = format.uppercased()
+                            appState.defaultFormat = format.uppercased()
                         } label: {
-                            Text("\(rate / 1000) kHz")
+                            Text(format.uppercased())
                                 .font(AppFont.monoSmall)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -463,6 +467,61 @@ struct VoiceStudioView: View {
                         .buttonStyle(.plain)
                         .pointingHandCursor()
                     }
+                }
+            }
+            
+            HStack {
+                Text("采样率".localized())
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textTertiary)
+                Spacer()
+            }
+
+            // 采样率选项网格（2列）
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 2),
+                spacing: 6
+            ) {
+                ForEach(Constants.sampleRates) { item in
+                    let selected = vm.sampleRate == item.rate
+                    Button {
+                        vm.sampleRate = item.rate
+                        appState.defaultSampleRate = item.rate
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.displayName)
+                                    .font(AppFont.monoSmall)
+                                Text(item.useCase)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(AppColor.textTertiary)
+                            }
+                            Spacer()
+                            if selected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(AppColor.accentPrimary)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            selected ? AppColor.accentPrimary.opacity(0.15) : AppColor.bgTertiary
+                        )
+                        .foregroundStyle(
+                            selected ? AppColor.accentPrimary : AppColor.textSecondary
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(
+                                    selected ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
+                                    lineWidth: 1
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
                 }
             }
         }
