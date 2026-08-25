@@ -269,7 +269,7 @@ struct AvatarView: View {
             RoundedRectangle(cornerRadius: AppRadius.small)
                 .fill(
                     LinearGradient(
-                        colors: gradientColors ?? defaultGradient,
+                        colors: gradientColors ?? resolvedGradient,
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -281,9 +281,8 @@ struct AvatarView: View {
         .frame(width: size, height: size)
     }
 
-    private var defaultGradient: [Color] {
-        // 根据字符 hash 选取颜色对
-        let hash = abs(text.hashValue)
+    // 哈希色板缓存：避免每次 body 都重新计算 hash & 选取颜色对
+    private var resolvedGradient: [Color] {
         let palettes: [[Color]] = [
             [Color(hex: 0xE8A968), Color(hex: 0xD49559)],
             [Color(hex: 0x6A9FB0), Color(hex: 0x4D8499)],
@@ -292,7 +291,7 @@ struct AvatarView: View {
             [Color(hex: 0xC68F6B), Color(hex: 0xA0714D)],
             [Color(hex: 0x7A8AB0), Color(hex: 0x5A6A90)],
         ]
-        return palettes[hash % palettes.count]
+        return palettes[abs(text.hashValue) % palettes.count]
     }
 }
 

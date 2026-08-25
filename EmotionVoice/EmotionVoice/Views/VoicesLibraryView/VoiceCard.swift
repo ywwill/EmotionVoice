@@ -8,7 +8,7 @@
 //  - 用 Identifiable VO 传递数据，body 内不再读取外部 observable
 //  - hover/选中的动画仅作用于背景/边框层；不触发 scaleEffect/shadow 全树重绘
 //  - pointingHandCursor 仅在卡片根层一次性绑定，不再每行按钮重复 push/pop
-//  - 波形条用共享的静态 gradient 引用，避免每张卡片每帧新建
+//  - desc 中已包含年龄时，metaTags 不再重复显示年龄
 //
 
 import SwiftUI
@@ -42,11 +42,7 @@ struct VoiceCardItem: Identifiable, Equatable {
 // MARK: - 共享静态资源
 
 private enum CardStyle {
-    static let waveformGradient = LinearGradient(
-        colors: [AppColor.accentPrimary.opacity(0.5), AppColor.accentGlow.opacity(0.7)],
-        startPoint: .bottom, endPoint: .top
-    )
-    static let waveformHeights: [CGFloat] = [8, 12, 16, 20, 24].map { $0 - 8 + 8 }  // 8 + (i%5)*4
+    // 为未来可能的功能保留（如需要可重新启用）
 }
 
 // MARK: - 音色卡片
@@ -62,8 +58,47 @@ struct VoiceCard: View {
 
     @State private var isHovered: Bool = false
 
+    // Equatable 让 SwiftUI 在 item / 选中 / 播放状态未变化时跳过 body 重算
+    static func == (lhs: VoiceCard, rhs: VoiceCard) -> Bool {
+        lhs.item == rhs.item
+            && lhs.isSelected == rhs.isSelected
+            && lhs.isPlaying == rhs.isPlaying
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        cardContent
+            .padding(12)
+            .background(cardBackground)
+            .overlay(cardBorder)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(AppColor.accentPrimary)
+                        .font(.system(size: 14))
+                        .background(
+                            Circle()
+                                .fill(AppColor.bgSecondary)
+                                .frame(width: 16, height: 16)
+                        )
+                        .offset(x: 6, y: -6)
+                        .allowsHitTesting(false)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .onHover { hovering in
+                // 仅在状态真正变化时触发，避免鼠标移动过程中反复触发 body
+                if hovering != isHovered {
+                    isHovered = hovering
+                }
+            }
+            .pointingHandCursor()
+    }
+
+    // MARK: - 内容（独立可复用 body）
+
+    private var cardContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
             header
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
@@ -80,45 +115,34 @@ struct VoiceCard: View {
                 metaTags
             }
 
-            waveform
             actionRow
         }
-        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            isSelected ? AppColor.bgSecondary : (isHovered ? AppColor.bgTertiary : AppColor.bgSecondary)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(
-                    isSelected ? AppColor.accentPrimary.opacity(0.5)
-                              : (isHovered ? AppColor.borderMedium : AppColor.borderSubtle),
-                    lineWidth: 1
-                )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-        .overlay(alignment: .topTrailing) {
-            if isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(AppColor.accentPrimary)
-                    .font(.system(size: 14))
-                    .background(
-                        Circle()
-                            .fill(AppColor.bgSecondary)
-                            .frame(width: 16, height: 16)
-                    )
-                    .offset(x: 6, y: -6)
-                    .allowsHitTesting(false)
-                    .transition(.scale.combined(with: .opacity))
+    }
+
+    // 背景层：仅在该层做动画，不传播到卡片内容（避免滚动时 hover 抖动重绘文字）
+    private var cardBackground: some View {
+        Group {
+            if isSelected || isHovered {
+                AppColor.bgTertiary
+            } else {
+                AppColor.bgSecondary
             }
         }
-        // 只在背景/边框层加 hover 动画，去掉全卡 scaleEffect + shadow
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .animation(.easeInOut(duration: 0.15), value: isSelected)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-        .pointingHandCursor()
+    }
+
+    // 边框层：同上，动画只作用于描边
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: AppRadius.medium)
+            .stroke(
+                isSelected ? AppColor.accentPrimary.opacity(0.5)
+                          : (isHovered ? AppColor.borderMedium : AppColor.borderSubtle),
+                lineWidth: 1
+            )
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 
     // MARK: - 子视图（轻量化）
@@ -144,8 +168,9 @@ struct VoiceCard: View {
             if !item.scene.isEmpty {
                 sceneTag(item.scene)
             }
-            if let age = item.age {
-                Text("\(age) 岁")
+            // desc 中已包含年龄的（如旗舰音色），不再重复显示
+            if item.age != nil && !item.desc.contains("岁") {
+                Text("\(item.age!) 岁")
                     .font(AppFont.monoSmall)
                     .foregroundStyle(AppColor.textTertiary)
                     .padding(.horizontal, 6)
@@ -159,19 +184,7 @@ struct VoiceCard: View {
                     .foregroundStyle(AppColor.textTertiary)
             }
         }
-    }
-
-    private var waveform: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<12, id: \.self) { i in
-                Capsule()
-                    .fill(CardStyle.waveformGradient)
-                    .frame(width: 3, height: CardStyle.waveformHeights[i % 5])
-            }
-        }
-        .frame(height: 28)
-        // 波形是纯装饰，独立 layer 化，避免后续 hover 触发布局失效
-        .drawingGroup()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var actionRow: some View {
@@ -179,7 +192,7 @@ struct VoiceCard: View {
             Button(action: onPreview) {
                 Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                     .font(.system(size: 12))
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(isPlaying ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
                     .foregroundStyle(isPlaying ? AppColor.accentPrimary : AppColor.textSecondary)
@@ -190,7 +203,7 @@ struct VoiceCard: View {
             Button(action: onFavorite) {
                 Image(systemName: item.isFavorite ? "heart.fill" : "heart")
                     .font(.system(size: 12))
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(
                         item.isFavorite ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary
@@ -207,7 +220,7 @@ struct VoiceCard: View {
             Button(action: onUse) {
                 Label("使用".localized(), systemImage: "arrow.right.circle.fill")
                     .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(AppColor.accentPrimary)
                     .foregroundStyle(.white)
@@ -215,8 +228,8 @@ struct VoiceCard: View {
                     .contentShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(StaticButtonStyle())
-            .fixedSize()
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func sceneTag(_ scene: String) -> some View {
@@ -226,11 +239,13 @@ struct VoiceCard: View {
             Text(scene)
                 .font(.system(size: 10, weight: .medium))
                 .lineLimit(1)
+                .truncationMode(.tail)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(AppColor.bgTertiary)
         .foregroundStyle(AppColor.textSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 4))
+        .frame(maxWidth: 110)
     }
 }

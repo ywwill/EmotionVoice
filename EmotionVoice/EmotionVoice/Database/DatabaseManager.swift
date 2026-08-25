@@ -75,7 +75,7 @@ final class DatabaseManager {
     // MARK: - JSON 同步指纹
     private let fingerprintKey = "EmotionVoice.basicVoicesFingerprint"
     private let fingerprintVersionKey = "EmotionVoice.basicVoicesFingerprintVersion"
-    private let currentFingerprintVersion = 4   // 增加此值可强制全量重新同步
+    private let currentFingerprintVersion = 1   // 增加此值可强制全量重新同步
 
     private     init() {
         // 直接放在用户的 Documents 目录下，方便开发者调试
@@ -296,10 +296,64 @@ final class DatabaseManager {
             for t in templates {
                 let cat: String
                 switch t.category {
-                case .premium: cat = "premium"
-                case .basic:   cat = "basic"
-                case .child:   cat = "child"
-                case .role:    cat = "role"
+                case .premium:
+                    cat = "premium"
+                case .chinese:
+                    cat = "chinese"
+                case .english:
+                    cat = "english"
+                case .sceneDaily:
+                    cat = "scene_daily"
+                case .sceneCompanion:
+                    cat = "scene_companion"
+                case .sceneCustomer:
+                    cat = "scene_customer"
+                case .sceneReading:
+                    cat = "scene_reading"
+                case .sceneSocial:
+                    cat = "scene_social"
+                case .sceneAnime:
+                    cat = "scene_anime"
+                case .sceneNews:
+                    cat = "scene_news"
+                case .sceneLive:
+                    cat = "scene_live"
+                case .sceneClassic:
+                    cat = "scene_classic"
+                case .sceneSports:
+                    cat = "scene_sports"
+                case .sceneAudiobook:
+                    cat = "scene_audiobook"
+                case .sceneRadio:
+                    cat = "scene_radio"
+                case .sceneKnowledge:
+                    cat = "scene_knowledge"
+                case .sceneComedy:
+                    cat = "scene_comedy"
+                case .sceneBusiness:
+                    cat = "scene_business"
+                case .sceneAssistant:
+                    cat = "scene_assistant"
+                case .sceneSpeech:
+                    cat = "scene_speech"
+                case .roleAnime:
+                    cat = "role_anime"
+                case .roleLive:
+                    cat = "role_live"
+                case .roleClassic:
+                    cat = "role_classic"
+                case .roleRadio:
+                    cat = "role_radio"
+                case .ageChild:
+                    cat = "age_child"
+                case .ageTeen:
+                    cat = "age_teen"
+                case .ageYoung:
+                    cat = "age_young"
+                case .ageMiddle:
+                    cat = "age_middle"
+                case .ageSenior:
+                    cat = "age_senior"
                 }
                 try db.run(voices.insert(or: .ignore,
                     voiceKey <- t.key,
@@ -354,10 +408,64 @@ final class DatabaseManager {
             for t in templates {
                 let cat: String
                 switch t.category {
-                case .premium: cat = "premium"
-                case .basic:   cat = "basic"
-                case .child:   cat = "child"
-                case .role:    cat = "role"
+                case .premium:
+                    cat = "premium"
+                case .chinese:
+                    cat = "chinese"
+                case .english:
+                    cat = "english"
+                case .sceneDaily:
+                    cat = "scene_daily"
+                case .sceneCompanion:
+                    cat = "scene_companion"
+                case .sceneCustomer:
+                    cat = "scene_customer"
+                case .sceneReading:
+                    cat = "scene_reading"
+                case .sceneSocial:
+                    cat = "scene_social"
+                case .sceneAnime:
+                    cat = "scene_anime"
+                case .sceneNews:
+                    cat = "scene_news"
+                case .sceneLive:
+                    cat = "scene_live"
+                case .sceneClassic:
+                    cat = "scene_classic"
+                case .sceneSports:
+                    cat = "scene_sports"
+                case .sceneAudiobook:
+                    cat = "scene_audiobook"
+                case .sceneRadio:
+                    cat = "scene_radio"
+                case .sceneKnowledge:
+                    cat = "scene_knowledge"
+                case .sceneComedy:
+                    cat = "scene_comedy"
+                case .sceneBusiness:
+                    cat = "scene_business"
+                case .sceneAssistant:
+                    cat = "scene_assistant"
+                case .sceneSpeech:
+                    cat = "scene_speech"
+                case .roleAnime:
+                    cat = "role_anime"
+                case .roleLive:
+                    cat = "role_live"
+                case .roleClassic:
+                    cat = "role_classic"
+                case .roleRadio:
+                    cat = "role_radio"
+                case .ageChild:
+                    cat = "age_child"
+                case .ageTeen:
+                    cat = "age_teen"
+                case .ageYoung:
+                    cat = "age_young"
+                case .ageMiddle:
+                    cat = "age_middle"
+                case .ageSenior:
+                    cat = "age_senior"
                 }
                 let ageInt = Int(t.age)
                 let existing = try db.pluck(voices.filter(voiceKey == t.key))

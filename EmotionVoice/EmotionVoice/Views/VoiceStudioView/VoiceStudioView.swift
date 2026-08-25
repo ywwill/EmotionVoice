@@ -30,8 +30,7 @@ struct VoiceStudioView: View {
         }
         .sheet(isPresented: $showVoiceLibrarySheet) {
             VoiceLibrarySheet()
-                .frame(width: 1100, height: 760)
-                .fixedSize()
+                .frame(width: 1400, height: 880)
         }
         .alert(item: $vm.alertItem) { item in
             Alert(
@@ -393,17 +392,15 @@ struct VoiceStudioView: View {
         let premium = all.filter { $0.category == premiumCat }
             .prefix(2)
 
-        // 通过 BasicVoiceLoader 查 lang，避免改动 Voice 模型
         // 候选：非旗舰的基础音色
         let nonPremium = all.filter { $0.category != premiumCat }
 
         var zh: [Voice] = []
         var en: [Voice] = []
         for v in nonPremium {
-            let lang = BasicVoiceLoader.shared.template(forKey: v.key)?.lang ?? ""
-            if lang.contains("中文") && zh.count < 2 {
+            if v.lang.contains("中文") && zh.count < 2 {
                 zh.append(v)
-            } else if lang.contains("英文") && en.count < 2 {
+            } else if v.lang.contains("英文") && en.count < 2 {
                 en.append(v)
             }
             if zh.count >= 2 && en.count >= 2 { break }

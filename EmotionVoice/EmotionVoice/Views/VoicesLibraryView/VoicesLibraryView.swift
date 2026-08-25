@@ -6,10 +6,9 @@
 //
 //  优化点：
 //  - 派生数据缓存到 VoicesLibraryViewModel（debounce 120ms）
-//  - 外层容器 VStack → LazyVStack，让分类区块按需渲染
-//  - VoiceCard 改为接受不可变 VO，闭包以弱引用触发 AppState 更新，避免 voice 数组整体替换引起所有卡片失效
-//  - ScrollViewReader 只在首次 onAppear 滚动一次；后续不重复触发
-//  - 收窄 AudioPreviewPlayer 观察范围：本视图不再订阅 playingKey，仅在卡片层观察
+//  - 顶部 Chip 按"维度分组"展示所有分类；点击切换内容区
+//  - VoiceCard 接受不可变 VO，闭包以弱引用触发 AppState 更新
+//  - ScrollViewReader 仅首次 onAppear 滚动一次
 //
 
 import SwiftUI
@@ -22,8 +21,7 @@ struct VoicesLibraryView: View {
     @Environment(\.voiceLibraryDismiss) private var sheetDismiss
 
     @StateObject private var vm = VoicesLibraryViewModel()
-
-    @State private var showFilters: Bool = false
+    @ObservedObject private var previewPlayer = AudioPreviewPlayer.shared
 
     // 滚动定位
     @State private var didInitialScroll: Bool = false
@@ -38,8 +36,6 @@ struct VoicesLibraryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             toolbar
-            if showFilters { filterPanel }
-
             content
         }
         .onAppear {
@@ -59,45 +55,38 @@ struct VoicesLibraryView: View {
     private var content: some View {
         if vm.isEmpty {
             ScrollView {
-                emptyState
-                    .padding(24)
+                emptyState.padding(24)
             }
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {
-                        if let cat = vm.selectedCategory {
+                        // 切换分类时滚动到此处
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .id("library-top")
+
+                        ForEach(vm.groupedByCategory) { bucket in
                             CategorySectionView(
-                                category: cat,
-                                voices: vm.voicesForSelectedCategory,
+                                category: bucket.category,
+                                voices: bucket.voices,
                                 selectedKey: appState.selectedVoice?.key,
-                                playingKey: AudioPreviewPlayer.shared.playingKey,
+                                playingKey: previewPlayer.playingKey,
                                 onFavorite: toggleFavorite(key:),
                                 onPreview: preview(key:),
                                 onUse: use(voice:)
                             )
-                        } else {
-                            ForEach(VoiceCategory.allCases) { cat in
-                                let voices = vm.filteredVoicesByCategory[cat] ?? []
-                                if !voices.isEmpty {
-                                    CategorySectionView(
-                                        category: cat,
-                                        voices: voices,
-                                        selectedKey: appState.selectedVoice?.key,
-                                        playingKey: AudioPreviewPlayer.shared.playingKey,
-                                        onFavorite: toggleFavorite(key:),
-                                        onPreview: preview(key:),
-                                        onUse: use(voice:)
-                                    )
-                                }
-                            }
                         }
                     }
                     .padding(24)
                     .padding(.bottom, 24)
                 }
+                .onChange(of: vm.selectedCategory) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo("library-top", anchor: .top)
+                    }
+                }
                 .onAppear {
-                    // 仅在首次出现时滚动到选中音色（不带动画）
                     guard !didInitialScroll else { return }
                     didInitialScroll = true
                     if let key = appState.selectedVoice?.key {
@@ -110,12 +99,11 @@ struct VoicesLibraryView: View {
         }
     }
 
-    // MARK: - 行为（通过 viewModel 间接修改状态）
+    // MARK: - 行为
 
     private func toggleFavorite(key: String) {
         _ = VoiceService.shared.toggleFavorite(key: key)
-        // 局部刷新而非全局重建：通过 viewModel 重新注入最新数据
-        vm.setVoices(VoiceService.shared.fetchAll())
+        vm.toggleFavorite(key: key)
     }
 
     private func preview(key: String) {
@@ -139,7 +127,7 @@ struct VoicesLibraryView: View {
 
     private var toolbar: some View {
         VStack(spacing: 12) {
-            HStack {
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("音色库".localized())
                         .font(.system(size: 16, weight: .semibold))
@@ -150,10 +138,6 @@ struct VoicesLibraryView: View {
                 Spacer()
 
                 searchField
-
-                filterToggleButton
-
-                favoritesButton
 
                 if let dismissWrapper = sheetDismiss {
                     Button {
@@ -204,174 +188,43 @@ struct VoicesLibraryView: View {
         .pointingHandCursor()
     }
 
-    private var filterToggleButton: some View {
-        let active = filterIsActive
-        return Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                showFilters.toggle()
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "line.3.horizontal.decrease.circle\(active ? ".fill" : "")")
-                Text("筛选".localized())
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(active ? AppColor.accentPrimary.opacity(0.18) : AppColor.bgTertiary)
-            .foregroundStyle(active ? AppColor.accentPrimary : AppColor.textSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-    }
-
-    private var favoritesButton: some View {
-        Button {
-            vm.favoritesOnly.toggle()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: vm.favoritesOnly ? "heart.fill" : "heart")
-                    .font(.system(size: 12, weight: .medium))
-                Text("收藏".localized())
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(vm.favoritesOnly ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-            .foregroundStyle(vm.favoritesOnly ? AppColor.accentPrimary : AppColor.textSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-    }
-
+    /// 全部分类 Chip：单行横向滚动，按维度顺序展示所有分类
     private var categoryChips: some View {
-        HStack(spacing: 6) {
-            CategoryChip(
-                title: "全部".localized(),
-                isActive: vm.selectedCategory == nil
-            ) {
-                vm.selectedCategory = nil
-            }
-            ForEach(VoiceCategory.allCases) { cat in
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
                 CategoryChip(
-                    title: cat.displayName.localized(),
-                    isActive: vm.selectedCategory == cat
+                    title: "全部".localized(),
+                    isActive: vm.selectedCategory == nil
                 ) {
-                    vm.selectedCategory = cat
+                    vm.selectedCategory = nil
                 }
-            }
-        }
-    }
 
-    private var filterIsActive: Bool {
-        vm.selectedScene != nil || vm.selectedAgeBucket != .any || vm.useAgeRange || vm.favoritesOnly
-    }
+                Divider()
+                    .frame(height: 18)
+                    .background(AppColor.borderSubtle)
 
-    /// 年龄桶：.unknown 数量为 0 时自动隐藏
-    var visibleAgeBuckets: [AgeBucket] {
-        let unknownCount = appState.voices.count { $0.age == nil }
-        return AgeBucket.allCases.filter { bucket in
-            if bucket == .unknown { return unknownCount > 0 }
-            return true
-        }
-    }
-
-    // MARK: - 筛选面板
-
-    private var filterPanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // 适用场景
-            VStack(alignment: .leading, spacing: 8) {
-                sectionLabel("适用场景".localized())
-                FlowLayout(spacing: 6) {
-                    SceneChip(
-                        title: "全部".localized(),
-                        isActive: vm.selectedScene == nil
-                    ) {
-                        vm.selectedScene = nil
-                    }
-                    ForEach(vm.availableScenes, id: \.self) { scene in
-                        SceneChip(
-                            title: scene,
-                            isActive: vm.selectedScene == scene
-                        ) {
-                            vm.selectedScene = scene
+                ForEach(VoiceCategory.displayOrder, id: \.self) { dim in
+                    let cats = VoiceCategory.allCases.filter { $0.dimension == dim }
+                    if !cats.isEmpty {
+                        if dim != VoiceCategory.displayOrder.first {
+                            // 维度分隔线（旗舰 / 语言 / 场景 / 角色 / 年龄 之间）
+                            Divider()
+                                .frame(height: 18)
+                                .background(AppColor.borderMedium)
                         }
-                    }
-                }
-            }
-
-            // 年龄范围
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) {
-                    sectionLabel("年龄范围".localized())
-                    Toggle(isOn: $vm.useAgeRange) {
-                        Text("自定义滑块".localized())
-                            .font(AppFont.caption)
-                            .foregroundStyle(AppColor.textSecondary)
-                    }
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .tint(AppColor.accentPrimary)
-                    .pointingHandCursor()
-
-                    Spacer()
-
-                    if vm.useAgeRange {
-                        Text("\(Int(min(vm.ageLower, vm.ageUpper))) – \(Int(max(vm.ageLower, vm.ageUpper))) 岁")
-                            .font(AppFont.monoSmall)
-                            .foregroundStyle(AppColor.textSecondary)
-                    }
-                }
-
-                if vm.useAgeRange {
-                    let lo = Double(vm.availableAgeRange.lowerBound)
-                    let hi = Double(vm.availableAgeRange.upperBound)
-                    HStack(spacing: 8) {
-                        Text("\(Int(lo))")
-                            .font(AppFont.monoSmall)
-                            .foregroundStyle(AppColor.textTertiary)
-                            .frame(width: 28, alignment: .trailing)
-                        RangeSlider(lowerValue: $vm.ageLower,
-                                     upperValue: $vm.ageUpper,
-                                     range: lo...hi,
-                                     step: 1)
-                        Text("\(Int(hi))")
-                            .font(AppFont.monoSmall)
-                            .foregroundStyle(AppColor.textTertiary)
-                            .frame(width: 28, alignment: .leading)
-                    }
-                } else {
-                    HStack(spacing: 6) {
-                        ForEach(visibleAgeBuckets) { bucket in
-                            AgeBucketChip(
-                                title: bucket.displayName.localized(),
-                                range: bucket.rangeDescription,
-                                isActive: vm.selectedAgeBucket == bucket
+                        ForEach(cats) { cat in
+                            CategoryChip(
+                                title: cat.displayName.localized(),
+                                isActive: vm.selectedCategory == cat
                             ) {
-                                vm.selectedAgeBucket = bucket
+                                vm.selectedCategory = (vm.selectedCategory == cat) ? nil : cat
                             }
                         }
                     }
                 }
             }
+            .padding(.vertical, 2)
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 14)
-        .background(Color(hex: 0x0E0F12).opacity(0.25))
-        .overlay(alignment: .bottom) {
-            Divider().background(AppColor.borderSubtle)
-        }
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(AppFont.label)
-            .foregroundStyle(AppColor.textTertiary)
-            .textCase(.uppercase)
-            .tracking(0.06)
     }
 
     // MARK: - 空态
@@ -382,9 +235,10 @@ struct VoicesLibraryView: View {
                 .font(AppFont.bodyMedium)
                 .foregroundStyle(AppColor.textTertiary)
             Button {
-                vm.clearFilters()
+                vm.searchText = ""
+                vm.selectedCategory = nil
             } label: {
-                Text("重置筛选".localized())
+                Text("重置".localized())
                     .font(.system(size: 12, weight: .medium))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
@@ -424,7 +278,7 @@ private struct CategorySectionView: View {
             }
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 190, maximum: 210), spacing: 12)],
+                columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 12)],
                 spacing: 12
             ) {
                 ForEach(voices) { voice in
@@ -471,72 +325,6 @@ private struct CategoryChip: View {
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
                 .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
                 .transaction { $0.animation = nil }
-        }
-        .buttonStyle(StaticButtonStyle())
-        .fixedSize()
-        .pointingHandCursor()
-    }
-}
-
-private struct SceneChip: View {
-    let title: String
-    let isActive: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(isActive ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-                .foregroundStyle(isActive ? AppColor.accentPrimary : AppColor.textSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.pill)
-                        .stroke(
-                            isActive ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
-                            lineWidth: 1
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .transaction { $0.animation = nil }
-        }
-        .buttonStyle(StaticButtonStyle())
-        .fixedSize()
-        .pointingHandCursor()
-    }
-}
-
-private struct AgeBucketChip: View {
-    let title: String
-    let range: String
-    let isActive: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                Text(range)
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(isActive ? AppColor.accentPrimary.opacity(0.7) : AppColor.textTertiary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(isActive ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-            .foregroundStyle(isActive ? AppColor.accentPrimary : AppColor.textSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.pill)
-                    .stroke(
-                        isActive ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
-                        lineWidth: 1
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-            .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-            .transaction { $0.animation = nil }
         }
         .buttonStyle(StaticButtonStyle())
         .fixedSize()

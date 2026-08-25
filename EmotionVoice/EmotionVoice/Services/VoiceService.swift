@@ -20,17 +20,20 @@ final class VoiceService {
         do {
             return try db.db.prepare(db.voices.order(db.voiceCategory.asc, db.voiceName.asc))
                 .map { row in
-                    Voice(
-                        key: row[db.voiceKey],
+                    let key = row[db.voiceKey]
+                    let lang = BasicVoiceLoader.shared.template(forKey: key)?.lang ?? ""
+                    return Voice(
+                        key: key,
                         name: row[db.voiceName],
                         desc: row[db.voiceDesc],
                         avatar: row[db.voiceAvatar],
-                        category: VoiceCategory(rawValue: row[db.voiceCategory]) ?? .basic,
+                        category: VoiceCategory(rawValue: row[db.voiceCategory]) ?? .chinese,
                         isFavorite: row[db.voiceIsFavorite],
                         scene: row[db.voiceScene] ?? "",
                         age: row[db.voiceAge],
                         gender: row[db.voiceGender] ?? "",
-                        audio: row[db.voiceAudio] ?? ""
+                        audio: row[db.voiceAudio] ?? "",
+                        lang: lang
                     )
                 }
         } catch {

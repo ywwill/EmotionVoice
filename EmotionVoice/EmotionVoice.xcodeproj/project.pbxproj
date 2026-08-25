@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		6FEE97EB302705C600C39C26 /* EmotionVoice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmotionVoice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +45,7 @@
 		6FEE97EC302705C600C39C26 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6FEE97EB302705C600C39C26 /* EmotionVoice.app */,
+				6FEE97EB302705C600C39C26 /* Emora.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		6FEE97EA302705C600C39C26 /* EmotionVoice */ = {
+		6FEE97EA302705C600C39C26 /* Emora */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 6FEE97F6302705C700C39C26 /* Build configuration list for PBXNativeTarget "EmotionVoice" */;
+			buildConfigurationList = 6FEE97F6302705C700C39C26 /* Build configuration list for PBXNativeTarget "Emora" */;
 			buildPhases = (
 				6FEE97E7302705C600C39C26 /* Sources */,
 				6FEE97E8302705C600C39C26 /* Frameworks */,
@@ -68,12 +68,12 @@
 			fileSystemSynchronizedGroups = (
 				6FEE97ED302705C600C39C26 /* EmotionVoice */,
 			);
-			name = EmotionVoice;
+			name = Emora;
 			packageProductDependencies = (
 				6FEE97FA3027062400C39C26 /* SQLite */,
 			);
 			productName = EmotionVoice;
-			productReference = 6FEE97EB302705C600C39C26 /* EmotionVoice.app */;
+			productReference = 6FEE97EB302705C600C39C26 /* Emora.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -109,7 +109,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				6FEE97EA302705C600C39C26 /* EmotionVoice */,
+				6FEE97EA302705C600C39C26 /* Emora */,
 			);
 		};
 /* End PBXProject section */
@@ -281,6 +281,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -325,6 +326,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -357,7 +359,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		6FEE97F6302705C700C39C26 /* Build configuration list for PBXNativeTarget "EmotionVoice" */ = {
+		6FEE97F6302705C700C39C26 /* Build configuration list for PBXNativeTarget "Emora" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				6FEE97F7302705C700C39C26 /* Debug */,
