@@ -17,7 +17,6 @@ struct SettingsView: View {
     enum SettingsCategory: String, CaseIterable, Identifiable {
         case voice = "语音合成"
         case shortcut = "快捷键"
-        case appearance = "外观"
         case file = "文件"
         case notification = "通知"
         case language = "语言"
@@ -30,7 +29,6 @@ struct SettingsView: View {
             switch self {
             case .voice: return "waveform"
             case .shortcut: return "keyboard"
-            case .appearance: return "paintbrush.fill"
             case .file: return "folder"
             case .notification: return "bell.fill"
             case .language: return "globe"
@@ -144,7 +142,6 @@ struct SettingsView: View {
         switch selectedCategory {
         case .voice: return "配置音色和音频输出选项".localized()
         case .shortcut: return "自定义快捷键以提升效率".localized()
-        case .appearance: return "个性化应用外观".localized()
         case .file: return "管理文件存储与缓存".localized()
         case .notification: return "配置应用通知".localized()
         case .language: return "选择界面语言".localized()
@@ -159,7 +156,6 @@ struct SettingsView: View {
         switch cat {
         case .voice:      voiceContent
         case .shortcut:   shortcutContent
-        case .appearance: appearanceContent
         case .file:       fileContent
         case .notification: notificationContent
         case .language:   languageContent
@@ -296,58 +292,6 @@ struct SettingsView: View {
                 .pointingHandCursor()
             }
         )
-    }
-
-    // MARK: 外观
-
-    private var appearanceContent: some View {
-        VStack(spacing: 20) {
-            sectionCard(icon: "🎨", title: "外观".localized()) {
-                settingRow(
-                    label: "主题".localized(),
-                    desc: "应用外观模式".localized(),
-                    control: {
-                        HStack(spacing: 16) {
-                            radioOption("跟随系统".localized(), isSelected: false)
-                            radioOption("浅色".localized(), isSelected: false)
-                            radioOption("深色".localized(), isSelected: true)
-                        }
-                    }
-                )
-
-                divider()
-
-                settingRow(
-                    label: "情感标签样式".localized(),
-                    desc: "在文本编辑器中的标签展示方式".localized(),
-                    control: {
-                        HStack(spacing: 16) {
-                            radioOption("Emoji".localized(), isSelected: false)
-                            radioOption("图标".localized(), isSelected: true)
-                            radioOption("文字".localized(), isSelected: false)
-                        }
-                    }
-                )
-            }
-        }
-    }
-
-    private func radioOption(_ label: String, isSelected: Bool) -> some View {
-        HStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .stroke(AppColor.borderStrong, lineWidth: 1)
-                    .frame(width: 14, height: 14)
-                if isSelected {
-                    Circle()
-                        .fill(AppColor.accentPrimary)
-                        .frame(width: 8, height: 8)
-                }
-            }
-            Text(label)
-                .font(AppFont.caption)
-                .foregroundStyle(AppColor.textPrimary)
-        }
     }
 
     // MARK: 文件
