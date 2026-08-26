@@ -57,6 +57,8 @@ final class DatabaseManager {
     let voiceGender = SQLite.Expression<String?>("gender")
     /// 预览音频文件名（如 longanlingxin.m4a），可空
     let voiceAudio = SQLite.Expression<String?>("audio")
+    /// 语种（中文 / 英文）
+    let voiceLang = SQLite.Expression<String?>("lang")
 
     // MARK: - 交易记录字段
     let txId = SQLite.Expression<Int64>("id")
@@ -75,9 +77,9 @@ final class DatabaseManager {
     // MARK: - JSON 同步指纹
     private let fingerprintKey = "EmotionVoice.basicVoicesFingerprint"
     private let fingerprintVersionKey = "EmotionVoice.basicVoicesFingerprintVersion"
-    private let currentFingerprintVersion = 1   // 增加此值可强制全量重新同步
+    private let currentFingerprintVersion = 1   // 增加此值可强制音色模板全量重新同步
 
-    private     init() {
+    private init() {
         // 直接放在用户的 Documents 目录下，方便开发者调试
         let docs = FileManager.default.urls(for: .documentDirectory,
                                             in: .userDomainMask).first!
@@ -121,6 +123,7 @@ final class DatabaseManager {
             t.column(voiceAge)
             t.column(voiceGender)
             t.column(voiceAudio)
+            t.column(voiceLang)
         })
 
         try db.run(transactions.create(ifNotExists: true) { t in
@@ -152,20 +155,23 @@ final class DatabaseManager {
         let scene: String
         let age: Int
         let gender: String
+        let lang: String
     }
 
     private let premiumVoices: [PremiumVoice] = [
         PremiumVoice(
             key: "longanlingxin", name: "龙安灵心",
-            desc: "知心温暖·25岁女", avatar: "灵",
+            desc: "知心温暖", avatar: "灵",
             audio: "longanlingxin.m4a",
-            scene: "情感陪伴", age: 25, gender: "女"
+            scene: "情感陪伴", age: 25, gender: "女",
+            lang: "中文"
         ),
         PremiumVoice(
             key: "longanlufeng", name: "龙安鲁风",
-            desc: "明亮开朗·25岁男", avatar: "鲁",
+            desc: "明亮开朗", avatar: "鲁",
             audio: "longanlufeng.m4a",
-            scene: "知识分享", age: 25, gender: "男"
+            scene: "知识分享", age: 25, gender: "男",
+            lang: "中文"
         ),
     ]
 
@@ -201,9 +207,11 @@ final class DatabaseManager {
     private var storedFingerprint: String {
         UserDefaults.standard.string(forKey: fingerprintKey) ?? ""
     }
+    
     private var storedFingerprintVersion: Int {
         UserDefaults.standard.integer(forKey: fingerprintVersionKey)
     }
+    
     private func setStoredFingerprint(_ value: String) {
         UserDefaults.standard.set(value, forKey: fingerprintKey)
         UserDefaults.standard.set(currentFingerprintVersion, forKey: fingerprintVersionKey)
@@ -268,7 +276,8 @@ final class DatabaseManager {
                 voiceScene <- v.scene,
                 voiceAge <- v.age,
                 voiceGender <- v.gender,
-                voiceAudio <- v.audio
+                voiceAudio <- v.audio,
+                voiceLang <- v.lang
             ))
             // 更新元数据，确保与代码一致；不覆盖收藏
             try db.run(voices.filter(voiceKey == v.key).update(
@@ -279,7 +288,8 @@ final class DatabaseManager {
                 voiceScene <- v.scene,
                 voiceAge <- v.age,
                 voiceGender <- v.gender,
-                voiceAudio <- v.audio
+                voiceAudio <- v.audio,
+                voiceLang <- v.lang
             ))
         }
     }
@@ -365,7 +375,8 @@ final class DatabaseManager {
                     voiceScene <- t.scene,
                     voiceAge <- Int(t.age),
                     voiceGender <- t.gender,
-                    voiceAudio <- t.audio
+                    voiceAudio <- t.audio,
+                    voiceLang <- t.lang
                 ))
             }
         }
@@ -479,6 +490,7 @@ final class DatabaseManager {
                         voiceAge <- ageInt,
                         voiceGender <- t.gender,
                         voiceAudio <- t.audio,
+                        voiceLang <- t.lang,
                         voiceIsFavorite <- (savedFavorites[t.key] ?? false)
                     ))
                 } else {
@@ -492,7 +504,8 @@ final class DatabaseManager {
                         voiceScene <- t.scene,
                         voiceAge <- ageInt,
                         voiceGender <- t.gender,
-                        voiceAudio <- t.audio
+                        voiceAudio <- t.audio,
+                        voiceLang <- t.lang
                     ))
                 }
             }

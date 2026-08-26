@@ -4,8 +4,7 @@
 //
 //  Created by young on 2026/8/9.
 //
-//  音色试听播放器。
-//  根据 Voice.key 查找 BasicVoiceLoader 中的 audio 文件名，
+//  音色试听播放器
 //  从 Bundle 的 voices/basic/ 或 voices/premium/ 子目录加载 wav 并播放。
 //
 
@@ -33,12 +32,9 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     /// 是否正在播放
     @Published private(set) var isPlaying: Bool = false
 
-    /// Bundle 内音频子目录（与 Resources/voices/basic 对应）
-    private let basicSubdir = "voices/basic"
-    /// Bundle 内旗舰音频子目录
-    private let premiumSubdir = "voices/premium"
-    /// Bundle 内兜底子目录（兼容平铺目录）
-    private let fallbackSubdir = "voices"
+        /// Bundle 内音频子目录（已废弃，文件平铺在 Resources 根目录）
+    private let basicSubdir: String? = nil
+    private let premiumSubdir: String? = nil
 
     private var player: AVAudioPlayer?
     private var cachedURLs: [String: URL] = [:]
@@ -81,10 +77,11 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         stop()
 
         guard let url = resolveURL(forKey: key) else {
-            Log(message: "AudioPreviewPlayer: m4a not found in bundle for key=\(key)")
+            Log(message: "AudioPreviewPlayer: audio not found for key=\(key)")
             return false
         }
 
+        Log(message: "AudioPreviewPlayer: resolved URL for \(key): \(url.path)")
         return play(url: url, identifier: key)
     }
 
@@ -109,6 +106,13 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             let p = try AVAudioPlayer(contentsOf: url)
             p.delegate = self
             p.prepareToPlay()
+
+            // 检查音频是否可播放
+            if p.duration <= 0 {
+                Log(message: "AudioPreviewPlayer: audio duration is 0 for \(url.lastPathComponent)")
+                return false
+            }
+
             guard p.play() else {
                 Log(message: "AudioPreviewPlayer: play() returned false for \(url.lastPathComponent)")
                 return false
@@ -116,18 +120,20 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             self.player = p
             self.playingKey = key
             self.isPlaying = true
+            Log(message: "AudioPreviewPlayer: started playing \(url.lastPathComponent), duration=\(p.duration)")
             return true
         } catch {
-            Log(message: "AudioPreviewPlayer: init player failed for url: \(error)")
+            Log(message: "AudioPreviewPlayer: init player failed for \(url.lastPathComponent): \(error)")
             return false
         }
     }
 
     /// 停止播放
     func stop() {
+        let wasPlaying = isPlaying
         player?.stop()
         player = nil
-        if isPlaying {
+        if wasPlaying {
             isPlaying = false
         }
         playingKey = nil
@@ -145,63 +151,20 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
     // MARK: - 资源解析
 
-    /// 解析 key 对应的 bundle 内 m4a URL
-    /// 1) 优先查 BasicVoiceLoader 提供的 audio 文件名（基础音色）
-    /// 2) 其次从 DB 拿 voice.audio（用于旗舰/其他）
-    /// 3) 兜底：直接用 "{key}.m4a"
+    /// 根据 key 解析 bundle 内音频 URL（按 {key}.m4a 命名约定）
     private func resolveURL(forKey key: String) -> URL? {
         if let cached = cachedURLs[key] { return cached }
 
-        // 1) BasicVoiceLoader 模板（基础音色 JSON）
-        BasicVoiceLoader.shared.loadFromBundle()
-        let templateAudio = BasicVoiceLoader.shared.template(forKey: key)?.audio
+        let filename = "\(key).m4a"
 
-        // 2) 数据库里登记的 audio 字段（旗舰音色已写入）
-        let dbAudio: String? = {
-            for v in VoiceService.shared.fetchAll() where v.key == key {
-                return v.audio.isEmpty ? nil : v.audio
-            }
-            return nil
-        }()
-
-        let candidates: [String] = {
-            var list: [String] = []
-            if let n = templateAudio, !n.isEmpty { list.append(n) }
-            if let n = dbAudio, !n.isEmpty { list.append(n) }
-            list.append("\(key).m4a")  // 兜底
-            return list
-        }()
-
-        // 旗舰音色优先 premium/，基础音色优先 basic/，兜底搜索 voices/ 和根目录
-        let prioritySubdirs: [String]
-        if key.hasPrefix("longan") {
-            prioritySubdirs = [premiumSubdir, basicSubdir, fallbackSubdir, ""]
-        } else {
-            prioritySubdirs = [basicSubdir, premiumSubdir, fallbackSubdir, ""]
+        // 文件直接平铺在 Resources/ 根目录
+        if let url = Bundle.main.url(forResource: key, withExtension: "m4a") {
+            cachedURLs[key] = url
+            return url
         }
 
-        for name in candidates {
-            for subdir in prioritySubdirs {
-                if let url = locate(name: name, in: subdir) {
-                    cachedURLs[key] = url
-                    return url
-                }
-            }
-        }
+        Log(message: "AudioPreviewPlayer: m4a not found for key=\(key), filename=\(filename)")
         return nil
-    }
-
-    /// 在 bundle 指定子目录中查找文件
-    private func locate(name: String, in subdir: String) -> URL? {
-        if subdir.isEmpty {
-            return Bundle.main.url(forResource: (name as NSString).deletingPathExtension,
-                                   withExtension: (name as NSString).pathExtension)
-        }
-        guard let dirURL = Bundle.main.url(forResource: subdir, withExtension: nil) else {
-            return nil
-        }
-        let candidate = dirURL.appendingPathComponent(name)
-        return FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
     }
 }
 
