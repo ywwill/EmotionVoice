@@ -55,12 +55,12 @@ struct VoicesLibraryView: View {
     private var content: some View {
         if vm.isEmpty {
             ScrollView {
-                emptyState.padding(24)
+                emptyState.padding(20)
             }
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 20) {
                         // 切换分类时滚动到此处
                         Color.clear
                             .frame(width: 1, height: 1)
@@ -78,8 +78,8 @@ struct VoicesLibraryView: View {
                             )
                         }
                     }
-                    .padding(24)
-                    .padding(.bottom, 24)
+                    .padding(20)
+                    .padding(.bottom, 20)
                 }
                 .onChange(of: vm.selectedCategory) { _, _ in
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -156,6 +156,7 @@ struct VoicesLibraryView: View {
             }
 
             categoryChips
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)
@@ -188,42 +189,29 @@ struct VoicesLibraryView: View {
         .pointingHandCursor()
     }
 
-    /// 全部分类 Chip：单行横向滚动，按维度顺序展示所有分类
+    /// 全部分类 Chip：多行展示，按维度顺序展示所有分类
     private var categoryChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                CategoryChip(
-                    title: "全部".localized(),
-                    isActive: vm.selectedCategory == nil
-                ) {
-                    vm.selectedCategory = nil
-                }
+        FlowLayout(spacing: 8) {
+            CategoryChip(
+                title: "全部".localized(),
+                isActive: vm.selectedCategory == nil
+            ) {
+                vm.selectedCategory = nil
+            }
 
-                Divider()
-                    .frame(height: 18)
-                    .background(AppColor.borderSubtle)
-
-                ForEach(VoiceCategory.displayOrder, id: \.self) { dim in
-                    let cats = VoiceCategory.allCases.filter { $0.dimension == dim }
-                    if !cats.isEmpty {
-                        if dim != VoiceCategory.displayOrder.first {
-                            // 维度分隔线（旗舰 / 语言 / 场景 / 角色 / 年龄 之间）
-                            Divider()
-                                .frame(height: 18)
-                                .background(AppColor.borderMedium)
-                        }
-                        ForEach(cats) { cat in
-                            CategoryChip(
-                                title: cat.displayName.localized(),
-                                isActive: vm.selectedCategory == cat
-                            ) {
-                                vm.selectedCategory = (vm.selectedCategory == cat) ? nil : cat
-                            }
+            ForEach(VoiceCategory.displayOrder, id: \.self) { dim in
+                let cats = VoiceCategory.allCases.filter { $0.dimension == dim }
+                if !cats.isEmpty {
+                    ForEach(cats) { cat in
+                        CategoryChip(
+                            title: cat.displayName.localized(),
+                            isActive: vm.selectedCategory == cat
+                        ) {
+                            vm.selectedCategory = (vm.selectedCategory == cat) ? nil : cat
                         }
                     }
                 }
             }
-            .padding(.vertical, 2)
         }
     }
 
@@ -268,15 +256,6 @@ private struct CategorySectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(category.displayName.localized())
-                    .font(.system(size: 16, weight: .semibold))
-                Spacer()
-                Text("\(voices.count) 个".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 12)],
                 spacing: 12
@@ -327,7 +306,6 @@ private struct CategoryChip: View {
                 .transaction { $0.animation = nil }
         }
         .buttonStyle(StaticButtonStyle())
-        .fixedSize()
         .pointingHandCursor()
     }
 }

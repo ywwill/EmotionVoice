@@ -1,0 +1,2835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音色库 - EmotionVoice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #F8F9FB;
+            --card-bg: #FFFFFF;
+            --border: #E8EAF0;
+            --text-primary: #18181B;
+            --text-secondary: #71717A;
+            --text-muted: #A1A1AA;
+            --primary: #18181B;
+            --accent: #6366F1;
+            --accent-light: #EEF2FF;
+            --success: #10B981;
+            --radius-sm: 8px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --sidebar-width: 240px;
+            --detail-width: 340px;
+            --header-height: 72px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .sidebar-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 0 8px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .nav-item:hover {
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item-icon {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+        }
+
+        .nav-item.active .nav-item-icon {
+            opacity: 1;
+        }
+
+        .nav-item-badge {
+            font-size: 12px;
+            background: var(--bg);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: var(--text-muted);
+        }
+
+        .nav-item.active .nav-item-badge {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+        }
+
+        /* Filter Groups */
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 0 8px;
+            margin-bottom: 8px;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .filter-option:hover {
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+
+        .filter-option.active {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .filter-radio {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 150ms ease;
+        }
+
+        .filter-option.active .filter-radio {
+            border-color: var(--accent);
+        }
+
+        .filter-option.active .filter-radio::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .filter-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 150ms ease;
+        }
+
+        .filter-option.active .filter-checkbox {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .filter-option.active .filter-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* Tags */
+        .tags-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 0 8px;
+        }
+
+        .tag-filter {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            background: var(--bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms ease;
+            border: 1px solid transparent;
+        }
+
+        .tag-filter:hover {
+            border-color: var(--border);
+        }
+
+        .tag-filter.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .show-more {
+            font-size: 12px;
+            color: var(--accent);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .show-more:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            margin-right: var(--detail-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: var(--header-height);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .voice-count {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Search */
+        .search-container {
+            position: relative;
+            width: 400px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 44px;
+            padding: 0 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            background: var(--bg);
+            transition: all 200ms ease;
+            outline: none;
+        }
+
+        .search-input:focus {
+            background: var(--card-bg);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 150ms ease;
+        }
+
+        .search-input:not(:placeholder-shown) + .clear-search {
+            opacity: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            height: 40px;
+            padding: 0 16px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn:hover {
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2d2d30;
+            color: white;
+        }
+
+        .btn-ghost {
+            border: 1px solid var(--border);
+        }
+
+        /* Quick Filters */
+        .quick-filters {
+            display: flex;
+            gap: 8px;
+            padding: 16px 32px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .quick-filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .quick-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 150ms ease;
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .quick-chip:hover {
+            border-color: var(--text-muted);
+            color: var(--text-primary);
+        }
+
+        .quick-chip.active {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            padding: 24px 32px;
+        }
+
+        .content-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .content-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .content-title span {
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .sort-dropdown {
+            position: relative;
+        }
+
+        .sort-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms ease;
+            border: 1px solid transparent;
+        }
+
+        .sort-btn:hover {
+            background: var(--bg);
+        }
+
+        .sort-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 160px;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 150ms ease;
+        }
+
+        .sort-dropdown.open .sort-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .sort-item {
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+
+        .sort-item:first-child {
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+        }
+
+        .sort-item:last-child {
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+        }
+
+        .sort-item:hover {
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+
+        .sort-item.active {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        /* Voice Grid */
+        .voice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        /* Voice Card */
+        .voice-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            cursor: pointer;
+            transition: all 200ms ease;
+            position: relative;
+        }
+
+        .voice-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--text-muted);
+        }
+
+        .voice-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+
+        .voice-card.playing {
+            border-color: var(--accent);
+        }
+
+        .voice-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .voice-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .voice-info {
+            flex: 1;
+            margin-left: 12px;
+        }
+
+        .voice-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .voice-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .favorite-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 150ms ease;
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .favorite-btn:hover {
+            background: var(--bg);
+            color: var(--text-secondary);
+        }
+
+        .favorite-btn.active {
+            color: #EF4444;
+        }
+
+        .selected-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 200ms ease;
+        }
+
+        .voice-card.selected .selected-badge {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .voice-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .voice-tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            background: var(--bg);
+            color: var(--text-secondary);
+        }
+
+        .voice-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .voice-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .voice-description {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .voice-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .play-btn {
+            flex: 1;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .play-btn:hover {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+
+        .play-btn.playing {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .play-progress {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .play-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 100ms linear;
+        }
+
+        /* Detail Panel */
+        .detail-panel {
+            width: var(--detail-width);
+            background: var(--card-bg);
+            border-left: 1px solid var(--border);
+            position: fixed;
+            right: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 300ms ease;
+        }
+
+        .detail-panel.open {
+            transform: translateX(0);
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 150ms ease;
+            color: var(--text-muted);
+        }
+
+        .detail-close:hover {
+            background: var(--bg);
+            color: var(--text-primary);
+        }
+
+        .detail-content {
+            padding: 32px 24px;
+        }
+
+        .detail-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 28px;
+            margin: 0 auto 20px;
+        }
+
+        .detail-name {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .detail-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .detail-play-btn {
+            width: 100%;
+            height: 48px;
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .detail-play-btn:hover {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+
+        .detail-play-btn.playing {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .detail-progress {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .detail-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 100ms linear;
+        }
+
+        .detail-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .detail-meta-item {
+            background: var(--bg);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .detail-meta-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .detail-meta-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .detail-tag {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .detail-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .detail-scenarios {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .detail-scenario {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--text-secondary);
+        }
+
+        .detail-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .detail-favorite-btn {
+            width: 100%;
+            height: 48px;
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .detail-favorite-btn:hover {
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .detail-favorite-btn.active {
+            background: #FEF2F2;
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .use-voice-btn {
+            width: 100%;
+            height: 52px;
+            border-radius: var(--radius-md);
+            background: var(--text-primary);
+            border: none;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+
+        .use-voice-btn:hover {
+            background: #2d2d30;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 40px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            color: var(--text-muted);
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-description {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        /* Skeleton Loading */
+        .skeleton-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg) 25%, #e8e8ec 50%, var(--bg) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+        }
+
+        .skeleton-name {
+            height: 20px;
+            width: 120px;
+        }
+
+        .skeleton-text {
+            height: 14px;
+            width: 100%;
+        }
+
+        .skeleton-tags {
+            display: flex;
+            gap: 8px;
+        }
+
+        .skeleton-tag {
+            height: 22px;
+            width: 50px;
+            border-radius: 6px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: white;
+            padding: 14px 24px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 300ms ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Recommend Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 200ms ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 200ms ease;
+        }
+
+        .modal-overlay.open .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 24px 24px 0;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .modal-content {
+            padding: 24px;
+        }
+
+        .modal-section {
+            margin-bottom: 24px;
+        }
+
+        .modal-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .modal-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .modal-option {
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms ease;
+            border: 1px solid transparent;
+        }
+
+        .modal-option:hover {
+            border-color: var(--border);
+        }
+
+        .modal-option.selected {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .modal-action {
+            padding: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-action .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Helper Guide */
+        .helper-section {
+            background: linear-gradient(135deg, var(--accent-light) 0%, #F0F9FF 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: all 200ms ease;
+        }
+
+        .helper-section:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .helper-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .helper-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Active Filters */
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .active-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--accent-light);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        .active-filter-remove {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .active-filter-remove:hover {
+            opacity: 1;
+        }
+
+        .clear-all-btn {
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px 12px;
+        }
+
+        .clear-all-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 32px 0;
+        }
+
+        .page-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+        }
+
+        .page-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text-primary);
+        }
+
+        .page-btn.active {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Wave Animation */
+        .wave-container {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 16px;
+        }
+
+        .wave-bar {
+            width: 3px;
+            height: 4px;
+            background: currentColor;
+            border-radius: 2px;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 100% { height: 4px; }
+            50% { height: 16px; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            :root {
+                --detail-width: 300px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 300ms ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .detail-panel {
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 0px;
+                --detail-width: 100%;
+            }
+
+            .header {
+                padding: 0 16px;
+            }
+
+            .search-container {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .quick-filters {
+                padding: 12px 16px;
+            }
+
+            .content {
+                padding: 16px;
+            }
+
+            .voice-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 12px;
+            }
+
+            .voice-card {
+                padding: 16px;
+            }
+
+            .detail-content {
+                padding: 24px 16px;
+            }
+        }
+
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 1024px) {
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+
+        /* Overlay for mobile sidebar */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 200ms ease;
+        }
+
+        .sidebar-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">音色库</div>
+                <div class="sidebar-subtitle"><span id="totalVoices">600</span> 个音色</div>
+            </div>
+            <div class="sidebar-content">
+                <!-- Quick Access -->
+                <div class="nav-section">
+                    <div class="nav-item active" data-filter="recommended">
+                        <div class="nav-item-left">
+                            <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>为你推荐</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-filter="favorites">
+                        <div class="nav-item-left">
+                            <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                            <span>我的收藏</span>
+                        </div>
+                        <span class="nav-item-badge" id="favoritesCount">0</span>
+                    </div>
+                    <div class="nav-item" data-filter="recent">
+                        <div class="nav-item-left">
+                            <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>最近使用</span>
+                        </div>
+                        <span class="nav-item-badge" id="recentCount">0</span>
+                    </div>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="filter-group">
+                    <div class="filter-group-title">性别</div>
+                    <div class="filter-options" id="genderFilters">
+                        <div class="filter-option active" data-gender="all">
+                            <div class="filter-radio"></div>
+                            <span>全部</span>
+                        </div>
+                        <div class="filter-option" data-gender="女">
+                            <div class="filter-radio"></div>
+                            <span>女声</span>
+                        </div>
+                        <div class="filter-option" data-gender="男">
+                            <div class="filter-radio"></div>
+                            <span>男声</span>
+                        </div>
+                        <div class="filter-option" data-gender="中性">
+                            <div class="filter-radio"></div>
+                            <span>中性</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Age Filter -->
+                <div class="filter-group">
+                    <div class="filter-group-title">年龄</div>
+                    <div class="filter-options" id="ageFilters">
+                        <div class="filter-option active" data-age="all">
+                            <div class="filter-radio"></div>
+                            <span>全部</span>
+                        </div>
+                        <div class="filter-option" data-age="儿童">
+                            <div class="filter-radio"></div>
+                            <span>儿童</span>
+                        </div>
+                        <div class="filter-option" data-age="青年">
+                            <div class="filter-radio"></div>
+                            <span>青年</span>
+                        </div>
+                        <div class="filter-option" data-age="成年">
+                            <div class="filter-radio"></div>
+                            <span>成年</span>
+                        </div>
+                        <div class="filter-option" data-age="中年">
+                            <div class="filter-radio"></div>
+                            <span>中年</span>
+                        </div>
+                        <div class="filter-option" data-age="老年">
+                            <div class="filter-radio"></div>
+                            <span>老年</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tags Filter -->
+                <div class="filter-group">
+                    <div class="filter-group-title">标签</div>
+                    <div class="tags-grid" id="tagFilters">
+                        <div class="tag-filter" data-tag="温柔">温柔</div>
+                        <div class="tag-filter" data-tag="沉稳">沉稳</div>
+                        <div class="tag-filter" data-tag="活泼">活泼</div>
+                        <div class="tag-filter" data-tag="自然">自然</div>
+                        <div class="tag-filter" data-tag="专业">专业</div>
+                        <div class="tag-filter" data-tag="磁性">磁性</div>
+                        <div class="tag-filter" data-tag="清晰">清晰</div>
+                        <div class="tag-filter" data-tag="治愈">治愈</div>
+                        <div class="tag-filter" data-tag="新闻">新闻</div>
+                        <div class="tag-filter" data-tag="广告">广告</div>
+                        <div class="tag-filter" data-tag="播客">播客</div>
+                        <div class="tag-filter" data-tag="故事">故事</div>
+                    </div>
+                    <div class="show-more" id="showMoreTags">
+                        <span>查看更多</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-top">
+                    <div class="header-left">
+                        <button class="mobile-menu-btn" id="mobileMenuBtn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="3" y1="12" x2="21" y2="12"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <line x1="3" y1="18" x2="21" y2="18"/>
+                            </svg>
+                        </button>
+                        <h1 class="page-title">音色库</h1>
+                        <span class="voice-count"><span id="voiceCount">600</span> 个音色</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="search-container">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" class="search-input" id="searchInput" placeholder="搜索音色名称、描述或标签">
+                            <svg class="clear-search" id="clearSearch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </div>
+                        <button class="btn btn-ghost" id="filterBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="4" y1="21" x2="4" y2="14"/>
+                                <line x1="4" y1="10" x2="4" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="12"/>
+                                <line x1="12" y1="8" x2="12" y2="3"/>
+                                <line x1="20" y1="21" x2="20" y2="16"/>
+                                <line x1="20" y1="12" x2="20" y2="3"/>
+                                <line x1="1" y1="14" x2="7" y2="14"/>
+                                <line x1="9" y1="8" x2="15" y2="8"/>
+                                <line x1="17" y1="16" x2="23" y2="16"/>
+                            </svg>
+                            <span>筛选</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Quick Filters -->
+            <div class="quick-filters" id="quickFilters">
+                <div class="quick-chip active" data-filter="all">全部</div>
+                <div class="quick-chip" data-filter="女">女声</div>
+                <div class="quick-chip" data-filter="男">男声</div>
+                <div class="quick-chip" data-filter="儿童">儿童</div>
+                <div class="quick-chip" data-filter="青年">青年</div>
+                <div class="quick-chip" data-filter="成熟">成熟</div>
+                <div class="quick-chip" data-filter="温柔">温柔</div>
+                <div class="quick-chip" data-filter="沉稳">沉稳</div>
+                <div class="quick-chip" data-filter="活泼">活泼</div>
+                <div class="quick-chip" data-filter="专业">专业</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Helper Section -->
+                <div class="helper-section" id="helperSection">
+                    <div class="helper-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        不知道选哪个？试试智能推荐
+                    </div>
+                    <div class="helper-desc">告诉我们你想要什么样的声音和场景</div>
+                </div>
+
+                <!-- Active Filters -->
+                <div class="active-filters" id="activeFilters" style="display: none;">
+                    <span class="clear-all-btn" id="clearAllFilters">清除筛选</span>
+                </div>
+
+                <!-- Content Header -->
+                <div class="content-header">
+                    <div class="content-title" id="contentTitle">
+                        为你推荐 <span>24 个音色</span>
+                    </div>
+                    <div class="sort-dropdown" id="sortDropdown">
+                        <div class="sort-btn" id="sortBtn">
+                            <span>推荐</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                        <div class="sort-menu">
+                            <div class="sort-item active" data-sort="recommended">推荐</div>
+                            <div class="sort-item" data-sort="recent">最近添加</div>
+                            <div class="sort-item" data-sort="az">名称 A-Z</div>
+                            <div class="sort-item" data-sort="za">名称 Z-A</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voice Grid -->
+                <div class="voice-grid" id="voiceGrid"></div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="pagination"></div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                    </div>
+                    <div class="empty-title">没有找到音色</div>
+                    <div class="empty-description">换一个关键词试试看</div>
+                    <button class="btn btn-primary" id="clearFiltersEmpty">清除筛选</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Detail Panel -->
+        <aside class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <span></span>
+                <div class="detail-close" id="detailClose">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="detail-content" id="detailContent">
+                <!-- Dynamic content -->
+            </div>
+        </aside>
+    </div>
+
+    <!-- Recommend Modal -->
+    <div class="modal-overlay" id="recommendModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">智能推荐音色</div>
+                <div class="modal-subtitle">告诉我们你想要什么样的声音</div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-section">
+                    <div class="modal-section-title">你想要什么样的声音？</div>
+                    <div class="modal-options" id="modalVoiceTypes">
+                        <div class="modal-option" data-type="温柔">温柔</div>
+                        <div class="modal-option" data-type="专业">专业</div>
+                        <div class="modal-option" data-type="活泼">活泼</div>
+                        <div class="modal-option" data-type="沉稳">沉稳</div>
+                        <div class="modal-option" data-type="磁性">磁性</div>
+                        <div class="modal-option" data-type="治愈">治愈</div>
+                        <div class="modal-option" data-type="自然">自然</div>
+                        <div class="modal-option" data-type="清晰">清晰</div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">适合什么场景？</div>
+                    <div class="modal-options" id="modalScenarios">
+                        <div class="modal-option" data-scenario="有声书">有声书</div>
+                        <div class="modal-option" data-scenario="广告">广告</div>
+                        <div class="modal-option" data-scenario="播客">播客</div>
+                        <div class="modal-option" data-scenario="视频">视频</div>
+                        <div class="modal-option" data-scenario="新闻">新闻</div>
+                        <div class="modal-option" data-scenario="故事">故事</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-ghost" id="cancelRecommend">取消</button>
+                <button class="btn btn-primary" id="confirmRecommend">为我推荐</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================
+        // Data Generation
+        // ============================================
+        
+        const FIRST_NAMES_EN = [
+            'Emily', 'Sofia', 'Emma', 'Olivia', 'Ava', 'Mia', 'Charlotte', 'Amelia', 'Harper', 'Evelyn',
+            'James', 'Michael', 'Daniel', 'William', 'David', 'Alex', 'Benjamin', 'Lucas', 'Henry', 'Sebastian',
+            'Chloe', 'Grace', 'Lily', 'Zoe', 'Stella', 'Aurora', 'Violet', 'Nova', 'Scarlett', 'Penelope',
+            'Jack', 'Aiden', 'Owen', 'Samuel', 'Ryan', 'Nathan', 'Caleb', 'Christian', 'Dylan', 'Isaac',
+            'Luna', 'Hazel', 'Willow', 'Everly', 'Hailey', 'Nevaeh', 'Hannah', 'Addison', 'Lily', 'Natalie',
+            'Ethan', 'Mason', 'Logan', 'Jackson', 'Sebastian', 'Carter', 'Jayden', 'John', 'Luke', 'Gabriel',
+            'Alice', 'Belle', 'Clara', 'Diana', 'Ella', 'Fiona', 'Gina', 'Hedy', 'Ivy', 'Jade',
+            'Leo', 'Max', 'Nico', 'Oscar', 'Paul', 'Quinn', 'Ray', 'Sam', 'Tony', 'Uma',
+            'Aria', 'Bella', 'Cora', 'Dora', 'Elena', 'Flora', 'Gwen', 'Iris', 'Jade', 'Kira',
+            'Marco', 'Neil', 'Oliver', 'Peter', 'Rex', 'Seth', 'Troy', 'Victor', 'Wade', 'Xavier',
+            'Yuki', 'Zara', 'Amy', 'Beth', 'Kate', 'Lena', 'Maya', 'Nina', 'Rose', 'Sasha',
+            'Andy', 'Ben', 'Carl', 'Dean', 'Evan', 'Fred', 'Gary', 'Hans', 'Ivan', 'James'
+        ];
+
+        const LAST_NAMES = [
+            'Chen', 'Wang', 'Li', 'Zhang', 'Liu', 'Yang', 'Huang', 'Zhao', 'Wu', 'Zhou',
+            'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Garcia', 'Martinez',
+            'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor',
+            'Nguyen', 'Kim', 'Park', 'Lee', 'Shin', 'Choi', 'Jung', 'Kang', 'Yoon', 'Jang'
+        ];
+
+        const ALL_TAGS = [
+            '温柔', '沉稳', '活泼', '自然', '专业', '磁性', '清晰', '治愈',
+            '新闻', '广告', '播客', '故事', '小说', '旁白', '解说', '朗读',
+            '情感', '温暖', '明亮', '低沉', '浑厚', '甜美', '知性', '亲切',
+            '激情', '冷静', '幽默', '严肃', '文艺', '商务', '休闲', '运动'
+        ];
+
+        const AGES = ['儿童', '青年', '成年', '中年', '老年'];
+        const GENDERS = ['男', '女', '中性'];
+        const SCENARIOS = ['有声书', '广告', '播客', '视频', '新闻', '故事', '小说', '旁白', '解说', '朗读'];
+
+        const DESCRIPTIONS = {
+            女: [
+                '温柔甜美的女声，音色温暖自然，适合讲述温馨故事和有声读物',
+                '清澈透亮的年轻女声，咬字清晰，极具感染力，适合各类内容',
+                '成熟知性的女性声音，富有磁性，专业感强，适合商务和教学',
+                '亲切温暖的女声，带有治愈感，适合情感类和生活类内容',
+                '甜美活泼的年轻女声，充满活力，适合儿童内容和轻松话题',
+                '沉稳大气的女声，声音富有层次感，适合纪录片和深度内容',
+                '清新自然的女生，声音纯净，适合冥想引导和放松内容',
+                '专业播音级女声，吐字标准，适合新闻和正式场合'
+            ],
+            男: [
+                '磁性浑厚的男声，低沉有力，极具穿透力，适合广告和纪录片',
+                '阳光温暖的男声，亲切自然，适合生活类和情感类内容',
+                '成熟稳重的男声，富有魅力，适合商务和讲解类内容',
+                '清新明朗的男生，声音年轻有活力，适合各类娱乐内容',
+                '沉稳大气的男声，专业感强，适合新闻和正式场合',
+                '温暖治愈的男声，声音有亲和力，适合陪伴类内容',
+                '激情澎湃的男声，富有感染力，适合运动和激励类内容',
+                '冷静理性的男声，逻辑清晰，适合知识讲解和科技内容'
+            ],
+            中性: [
+                '自然平和的中性声音，男女皆宜，适用场景广泛',
+                '清新专业的中性音色，适合各类正式和非正式场合',
+                '温暖亲切的中性声音，给人舒适放松的感觉',
+                '清晰标准的中性发音，百搭实用，适合多种内容类型'
+            ]
+        };
+
+        function generateVoices(count) {
+            const voices = [];
+            const usedNames = new Set();
+
+            for (let i = 0; i < count; i++) {
+                let name;
+                do {
+                    const useChinese = Math.random() > 0.7;
+                    if (useChinese) {
+                        const first = ['晓', '安', '雨', '清', '子', '晨', '星', '云', '月', '风', '静', '雅', '涵', '欣', '悦'][Math.floor(Math.random() * 15)];
+                        const second = ['柔', '然', '霖', '禾', '墨', '阳', '宇', '彤', '宁', '琪'][Math.floor(Math.random() * 10)];
+                        name = first + second;
+                    } else {
+                        const firstName = FIRST_NAMES_EN[Math.floor(Math.random() * FIRST_NAMES_EN.length)];
+                        const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+                        name = `${firstName} ${lastName}`;
+                    }
+                } while (usedNames.has(name));
+                usedNames.add(name);
+
+                const gender = GENDERS[Math.floor(Math.random() * GENDERS.length)];
+                const age = AGES[Math.floor(Math.random() * AGES.length)];
+                const genderDescs = DESCRIPTIONS[gender];
+                const description = genderDescs[Math.floor(Math.random() * genderDescs.length)];
+                
+                const tagCount = 2 + Math.floor(Math.random() * 2);
+                const shuffledTags = [...ALL_TAGS].sort(() => Math.random() - 0.5);
+                const tags = shuffledTags.slice(0, tagCount);
+
+                const scenarioCount = 1 + Math.floor(Math.random() * 3);
+                const shuffledScenarios = [...SCENARIOS].sort(() => Math.random() - 0.5);
+                const scenarios = shuffledScenarios.slice(0, scenarioCount);
+
+                voices.push({
+                    id: i + 1,
+                    name,
+                    description,
+                    tags,
+                    age,
+                    gender,
+                    scenarios,
+                    favorite: false,
+                    recentlyUsed: Math.random() > 0.9,
+                    recommended: Math.random() > 0.7
+                });
+            }
+
+            return voices;
+        }
+
+        // ============================================
+        // State Management
+        // ============================================
+        
+        const state = {
+            voices: [],
+            filteredVoices: [],
+            selectedVoice: null,
+            playingVoice: null,
+            playProgress: 0,
+            currentFilter: 'recommended',
+            genderFilter: 'all',
+            ageFilter: 'all',
+            tagFilters: [],
+            searchQuery: '',
+            sortBy: 'recommended',
+            currentPage: 1,
+            itemsPerPage: 24,
+            favorites: [],
+            recentVoices: [],
+            isLoading: true,
+            allTags: ALL_TAGS
+        };
+
+        // ============================================
+        // DOM Elements
+        // ============================================
+        
+        const elements = {
+            voiceGrid: document.getElementById('voiceGrid'),
+            detailPanel: document.getElementById('detailPanel'),
+            detailContent: document.getElementById('detailContent'),
+            detailClose: document.getElementById('detailClose'),
+            searchInput: document.getElementById('searchInput'),
+            clearSearch: document.getElementById('clearSearch'),
+            sortDropdown: document.getElementById('sortDropdown'),
+            sortBtn: document.getElementById('sortBtn'),
+            contentTitle: document.getElementById('contentTitle'),
+            voiceCount: document.getElementById('voiceCount'),
+            totalVoices: document.getElementById('totalVoices'),
+            favoritesCount: document.getElementById('favoritesCount'),
+            recentCount: document.getElementById('recentCount'),
+            emptyState: document.getElementById('emptyState'),
+            pagination: document.getElementById('pagination'),
+            toast: document.getElementById('toast'),
+            recommendModal: document.getElementById('recommendModal'),
+            helperSection: document.getElementById('helperSection'),
+            activeFilters: document.getElementById('activeFilters'),
+            clearAllFilters: document.getElementById('clearAllFilters'),
+            sidebar: document.getElementById('sidebar'),
+            sidebarOverlay: document.getElementById('sidebarOverlay'),
+            mobileMenuBtn: document.getElementById('mobileMenuBtn')
+        };
+
+        // ============================================
+        // Initialization
+        // ============================================
+        
+        function init() {
+            // Load data
+            state.voices = generateVoices(600);
+            
+            // Load from localStorage
+            loadFromStorage();
+            
+            // Initial render
+            renderSkeleton();
+            setTimeout(() => {
+                state.isLoading = false;
+                applyFilters();
+            }, 800);
+
+            // Event listeners
+            setupEventListeners();
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem('emotionVoice');
+            if (saved) {
+                const data = JSON.parse(saved);
+                state.favorites = data.favorites || [];
+                state.recentVoices = data.recentVoices || [];
+                state.voices.forEach(voice => {
+                    if (state.favorites.includes(voice.id)) {
+                        voice.favorite = true;
+                    }
+                });
+            }
+            updateCounts();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('emotionVoice', JSON.stringify({
+                favorites: state.favorites,
+                recentVoices: state.recentVoices
+            }));
+        }
+
+        function updateCounts() {
+            elements.favoritesCount.textContent = state.favorites.length;
+            elements.recentCount.textContent = state.recentVoices.length;
+        }
+
+        // ============================================
+        // Event Listeners
+        // ============================================
+        
+        function setupEventListeners() {
+            // Search
+            elements.searchInput.addEventListener('input', debounce(handleSearch, 300));
+            elements.clearSearch.addEventListener('click', () => {
+                elements.searchInput.value = '';
+                handleSearch();
+            });
+
+            // Sidebar navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => handleNavClick(item));
+            });
+
+            // Gender filters
+            document.querySelectorAll('#genderFilters .filter-option').forEach(option => {
+                option.addEventListener('click', () => handleGenderFilter(option));
+            });
+
+            // Age filters
+            document.querySelectorAll('#ageFilters .filter-option').forEach(option => {
+                option.addEventListener('click', () => handleAgeFilter(option));
+            });
+
+            // Tag filters
+            document.querySelectorAll('.tag-filter').forEach(tag => {
+                tag.addEventListener('click', () => handleTagFilter(tag));
+            });
+
+            // Show more tags
+            document.getElementById('showMoreTags').addEventListener('click', toggleMoreTags);
+
+            // Quick filters
+            document.querySelectorAll('.quick-chip').forEach(chip => {
+                chip.addEventListener('click', () => handleQuickFilter(chip));
+            });
+
+            // Sort dropdown
+            elements.sortBtn.addEventListener('click', toggleSortDropdown);
+            document.querySelectorAll('.sort-item').forEach(item => {
+                item.addEventListener('click', () => handleSort(item));
+            });
+
+            // Detail panel close
+            elements.detailClose.addEventListener('click', closeDetailPanel);
+
+            // Clear filters
+            elements.clearAllFilters.addEventListener('click', clearAllFilters);
+            document.getElementById('clearFiltersEmpty').addEventListener('click', clearAllFilters);
+
+            // Recommend modal
+            elements.helperSection.addEventListener('click', openRecommendModal);
+            document.getElementById('cancelRecommend').addEventListener('click', closeRecommendModal);
+            document.getElementById('confirmRecommend').addEventListener('click', confirmRecommend);
+            
+            document.querySelectorAll('#modalVoiceTypes .modal-option').forEach(opt => {
+                opt.addEventListener('click', () => toggleModalOption(opt, 'voiceType'));
+            });
+            document.querySelectorAll('#modalScenarios .modal-option').forEach(opt => {
+                opt.addEventListener('click', () => toggleModalOption(opt, 'scenario'));
+            });
+
+            // Mobile menu
+            elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            elements.sidebarOverlay.addEventListener('click', closeMobileMenu);
+
+            // Close dropdowns on outside click
+            document.addEventListener('click', (e) => {
+                if (!elements.sortDropdown.contains(e.target)) {
+                    elements.sortDropdown.classList.remove('open');
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeRecommendModal();
+                    closeDetailPanel();
+                }
+            });
+        }
+
+        // ============================================
+        // Filter Handlers
+        // ============================================
+        
+        function handleSearch() {
+            state.searchQuery = elements.searchInput.value.trim().toLowerCase();
+            state.currentPage = 1;
+            applyFilters();
+        }
+
+        function handleNavClick(item) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            state.currentFilter = item.dataset.filter;
+            state.currentPage = 1;
+            applyFilters();
+            
+            if (window.innerWidth <= 1024) {
+                closeMobileMenu();
+            }
+        }
+
+        function handleGenderFilter(option) {
+            document.querySelectorAll('#genderFilters .filter-option').forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+            state.genderFilter = option.dataset.gender;
+            state.currentPage = 1;
+            applyFilters();
+        }
+
+        function handleAgeFilter(option) {
+            document.querySelectorAll('#ageFilters .filter-option').forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+            state.ageFilter = option.dataset.age;
+            state.currentPage = 1;
+            applyFilters();
+        }
+
+        function handleTagFilter(tag) {
+            tag.classList.toggle('active');
+            const tagName = tag.dataset.tag;
+            if (state.tagFilters.includes(tagName)) {
+                state.tagFilters = state.tagFilters.filter(t => t !== tagName);
+            } else {
+                state.tagFilters.push(tagName);
+            }
+            state.currentPage = 1;
+            applyFilters();
+        }
+
+        function handleQuickFilter(chip) {
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            
+            const filter = chip.dataset.filter;
+            if (filter === 'all') {
+                state.genderFilter = 'all';
+                state.ageFilter = 'all';
+                state.tagFilters = [];
+            } else if (['女', '男'].includes(filter)) {
+                state.genderFilter = filter;
+            } else if (['儿童', '青年', '成熟'].includes(filter)) {
+                state.ageFilter = filter === '成熟' ? '中年' : filter;
+            } else {
+                state.tagFilters = [filter];
+            }
+            
+            state.currentPage = 1;
+            applyFilters();
+        }
+
+        function toggleMoreTags() {
+            const container = document.getElementById('tagFilters');
+            const showMore = document.getElementById('showMoreTags');
+            
+            if (container.style.maxHeight) {
+                container.style.maxHeight = null;
+                showMore.querySelector('span').textContent = '查看更多';
+            } else {
+                container.style.maxHeight = container.scrollHeight + 'px';
+                showMore.querySelector('span').textContent = '收起';
+            }
+        }
+
+        function clearAllFilters() {
+            state.genderFilter = 'all';
+            state.ageFilter = 'all';
+            state.tagFilters = [];
+            state.searchQuery = '';
+            state.currentFilter = 'recommended';
+            state.currentPage = 1;
+
+            elements.searchInput.value = '';
+            document.querySelectorAll('#genderFilters .filter-option, #ageFilters .filter-option').forEach(o => {
+                o.classList.toggle('active', o.dataset.gender === 'all' || o.dataset.age === 'all');
+            });
+            document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.toggle('active', n.dataset.filter === 'recommended');
+            });
+
+            applyFilters();
+        }
+
+        // ============================================
+        // Sort
+        // ============================================
+        
+        function toggleSortDropdown(e) {
+            e.stopPropagation();
+            elements.sortDropdown.classList.toggle('open');
+        }
+
+        function handleSort(item) {
+            document.querySelectorAll('.sort-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            state.sortBy = item.dataset.sort;
+            elements.sortBtn.querySelector('span').textContent = item.textContent;
+            elements.sortDropdown.classList.remove('open');
+            applyFilters();
+        }
+
+        // ============================================
+        // Filtering & Sorting Logic
+        // ============================================
+        
+        function applyFilters() {
+            let filtered = [...state.voices];
+
+            // Filter by current view
+            if (state.currentFilter === 'favorites') {
+                filtered = filtered.filter(v => v.favorite);
+            } else if (state.currentFilter === 'recent') {
+                filtered = filtered.filter(v => state.recentVoices.includes(v.id));
+            } else if (state.currentFilter === 'recommended') {
+                filtered = filtered.filter(v => v.recommended);
+            }
+
+            // Gender filter
+            if (state.genderFilter !== 'all') {
+                filtered = filtered.filter(v => v.gender === state.genderFilter);
+            }
+
+            // Age filter
+            if (state.ageFilter !== 'all') {
+                filtered = filtered.filter(v => v.age === state.ageFilter);
+            }
+
+            // Tag filters
+            if (state.tagFilters.length > 0) {
+                filtered = filtered.filter(v => 
+                    state.tagFilters.every(tag => v.tags.includes(tag))
+                );
+            }
+
+            // Search
+            if (state.searchQuery) {
+                filtered = filtered.filter(v => 
+                    v.name.toLowerCase().includes(state.searchQuery) ||
+                    v.description.toLowerCase().includes(state.searchQuery) ||
+                    v.tags.some(tag => tag.toLowerCase().includes(state.searchQuery))
+                );
+            }
+
+            // Sort
+            switch (state.sortBy) {
+                case 'az':
+                    filtered.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'za':
+                    filtered.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                case 'recent':
+                    filtered.sort((a, b) => b.id - a.id);
+                    break;
+                default:
+                    filtered.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+            }
+
+            state.filteredVoices = filtered;
+            updateActiveFilters();
+            render();
+        }
+
+        function updateActiveFilters() {
+            const activeFiltersContainer = elements.activeFilters;
+            const clearAll = activeFiltersContainer.querySelector('.clear-all-btn');
+            
+            const hasFilters = state.genderFilter !== 'all' || 
+                               state.ageFilter !== 'all' || 
+                               state.tagFilters.length > 0 ||
+                               state.searchQuery;
+
+            if (hasFilters) {
+                activeFiltersContainer.style.display = 'flex';
+                
+                let html = '';
+                
+                if (state.genderFilter !== 'all') {
+                    html += `<div class="active-filter">
+                        ${state.genderFilter}声
+                        <svg class="active-filter-remove" data-type="gender" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>`;
+                }
+                
+                if (state.ageFilter !== 'all') {
+                    html += `<div class="active-filter">
+                        ${state.ageFilter}
+                        <svg class="active-filter-remove" data-type="age" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>`;
+                }
+                
+                state.tagFilters.forEach(tag => {
+                    html += `<div class="active-filter">
+                        ${tag}
+                        <svg class="active-filter-remove" data-type="tag" data-tag="${tag}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>`;
+                });
+                
+                if (state.searchQuery) {
+                    html += `<div class="active-filter">
+                        搜索: ${state.searchQuery}
+                        <svg class="active-filter-remove" data-type="search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>`;
+                }
+                
+                activeFiltersContainer.innerHTML = html + clearAll.outerHTML;
+                
+                // Re-attach event listeners
+                activeFiltersContainer.querySelectorAll('.active-filter-remove').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const type = btn.dataset.type;
+                        if (type === 'gender') {
+                            document.querySelector(`#genderFilters [data-gender="${state.genderFilter}"]`).click();
+                        } else if (type === 'age') {
+                            document.querySelector(`#ageFilters [data-age="${state.ageFilter}"]`).click();
+                        } else if (type === 'tag') {
+                            document.querySelector(`.tag-filter[data-tag="${btn.dataset.tag}"]`).click();
+                        } else if (type === 'search') {
+                            elements.searchInput.value = '';
+                            handleSearch();
+                        }
+                    });
+                });
+            } else {
+                activeFiltersContainer.style.display = 'none';
+            }
+        }
+
+        // ============================================
+        // Rendering
+        // ============================================
+        
+        function render() {
+            // Update counts
+            elements.voiceCount.textContent = state.filteredVoices.length;
+            elements.totalVoices.textContent = state.voices.length;
+
+            // Update title
+            let title = '为你推荐';
+            if (state.currentFilter === 'favorites') title = '我的收藏';
+            else if (state.currentFilter === 'recent') title = '最近使用';
+            else if (state.searchQuery) title = '搜索结果';
+            else if (state.genderFilter !== 'all') title = `${state.genderFilter}声`;
+            else if (state.ageFilter !== 'all') title = state.ageFilter;
+            
+            elements.contentTitle.innerHTML = `${title} <span>${state.filteredVoices.length} 个音色</span>`;
+
+            // Show/hide empty state
+            if (state.filteredVoices.length === 0) {
+                elements.voiceGrid.style.display = 'none';
+                elements.pagination.style.display = 'none';
+                elements.emptyState.style.display = 'flex';
+            } else {
+                elements.voiceGrid.style.display = 'grid';
+                elements.pagination.style.display = 'flex';
+                elements.emptyState.style.display = 'none';
+                renderVoiceCards();
+                renderPagination();
+            }
+        }
+
+        function renderSkeleton() {
+            let html = '';
+            for (let i = 0; i < 12; i++) {
+                html += `
+                    <div class="skeleton-card">
+                        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                            <div class="skeleton skeleton-avatar"></div>
+                            <div style="flex: 1; margin-left: 12px;">
+                                <div class="skeleton skeleton-name"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-tags" style="margin-bottom: 12px;">
+                            <div class="skeleton skeleton-tag"></div>
+                            <div class="skeleton skeleton-tag"></div>
+                            <div class="skeleton skeleton-tag"></div>
+                        </div>
+                        <div class="skeleton skeleton-text" style="margin-bottom: 8px;"></div>
+                        <div class="skeleton skeleton-text" style="width: 60%;"></div>
+                    </div>
+                `;
+            }
+            elements.voiceGrid.innerHTML = html;
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(state.filteredVoices.length / state.itemsPerPage);
+            
+            if (totalPages <= 1) {
+                elements.pagination.innerHTML = '';
+                return;
+            }
+
+            let html = `
+                <button class="page-btn" ${state.currentPage === 1 ? 'disabled' : ''} data-page="prev">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
+            `;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= state.currentPage - 1 && i <= state.currentPage + 1)) {
+                    html += `<button class="page-btn ${i === state.currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+                } else if (i === state.currentPage - 2 || i === state.currentPage + 2) {
+                    html += `<span style="color: var(--text-muted);">...</span>`;
+                }
+            }
+
+            html += `
+                <button class="page-btn" ${state.currentPage === totalPages ? 'disabled' : ''} data-page="next">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            `;
+
+            elements.pagination.innerHTML = html;
+
+            elements.pagination.querySelectorAll('.page-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const page = btn.dataset.page;
+                    if (page === 'prev') {
+                        state.currentPage = Math.max(1, state.currentPage - 1);
+                    } else if (page === 'next') {
+                        state.currentPage = Math.min(totalPages, state.currentPage + 1);
+                    } else {
+                        state.currentPage = parseInt(page);
+                    }
+                    render();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        }
+
+        // ============================================
+        // Voice Actions
+        // ============================================
+        
+        function selectVoice(id) {
+            const voice = state.voices.find(v => v.id === id);
+            if (!voice) return;
+
+            state.selectedVoice = voice;
+            renderDetailPanel();
+            elements.detailPanel.classList.add('open');
+            render();
+        }
+
+        function renderDetailPanel() {
+            if (!state.selectedVoice) return;
+
+            const v = state.selectedVoice;
+            const isPlaying = state.playingVoice?.id === v.id;
+
+            elements.detailContent.innerHTML = `
+                <div class="detail-avatar" style="background: linear-gradient(135deg, ${getAvatarColor(v.name)});">
+                    ${getInitials(v.name)}
+                </div>
+                <div class="detail-name">${v.name}</div>
+                <div class="detail-subtitle">${v.tags.slice(0, 2).join(' · ')}</div>
+                
+                <button class="detail-play-btn ${isPlaying ? 'playing' : ''}" id="detailPlayBtn">
+                    ${isPlaying ? `
+                        <span class="wave-container">
+                            <span class="wave-bar"></span>
+                            <span class="wave-bar"></span>
+                            <span class="wave-bar"></span>
+                            <span class="wave-bar"></span>
+                            <span class="wave-bar"></span>
+                        </span>
+                        播放中
+                    ` : `
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        试听
+                    `}
+                </button>
+                <div class="detail-progress">
+                    <div class="detail-progress-bar" style="width: ${state.playProgress}%"></div>
+                </div>
+
+                <div class="detail-meta">
+                    <div class="detail-meta-item">
+                        <div class="detail-meta-label">性别</div>
+                        <div class="detail-meta-value">${v.gender}</div>
+                    </div>
+                    <div class="detail-meta-item">
+                        <div class="detail-meta-label">年龄</div>
+                        <div class="detail-meta-value">${v.age}</div>
+                    </div>
+                </div>
+
+                <div class="detail-tags">
+                    ${v.tags.map(tag => `<span class="detail-tag">${tag}</span>`).join('')}
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">关于这个声音</div>
+                    <div class="detail-description">${v.description}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">适合场景</div>
+                    <div class="detail-scenarios">
+                        ${v.scenarios.map(s => `<span class="detail-scenario">${s}</span>`).join('')}
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <button class="detail-favorite-btn ${v.favorite ? 'active' : ''}" id="detailFavoriteBtn">
+                        ${v.favorite ? '♥ 已收藏' : '♡ 收藏'}
+                    </button>
+                    <button class="use-voice-btn" id="useVoiceBtn">使用此音色</button>
+                </div>
+            `;
+
+            document.getElementById('detailPlayBtn').addEventListener('click', () => togglePlay(v.id));
+            document.getElementById('detailFavoriteBtn').addEventListener('click', () => toggleFavorite(v.id));
+            document.getElementById('useVoiceBtn').addEventListener('click', () => useVoice(v));
+        }
+
+        function closeDetailPanel() {
+            elements.detailPanel.classList.remove('open');
+            state.selectedVoice = null;
+            render();
+        }
+
+        function toggleFavorite(id) {
+            const voice = state.voices.find(v => v.id === id);
+            if (!voice) return;
+
+            voice.favorite = !voice.favorite;
+            
+            if (voice.favorite) {
+                if (!state.favorites.includes(id)) {
+                    state.favorites.push(id);
+                }
+                showToast(`已收藏 ${voice.name}`);
+            } else {
+                state.favorites = state.favorites.filter(fid => fid !== id);
+                showToast(`已取消收藏`);
+            }
+
+            saveToStorage();
+            updateCounts();
+            render();
+            
+            if (state.selectedVoice?.id === id) {
+                renderDetailPanel();
+            }
+        }
+
+        function togglePlay(id) {
+            if (state.playingVoice?.id === id) {
+                stopPlay();
+            } else {
+                startPlay(id);
+            }
+        }
+
+        function startPlay(id) {
+            const voice = state.voices.find(v => v.id === id);
+            if (!voice) return;
+
+            state.playingVoice = voice;
+            state.playProgress = 0;
+
+            // Simulate playback progress
+            const duration = 5000;
+            const interval = 100;
+            const increment = (interval / duration) * 100;
+            
+            const progressInterval = setInterval(() => {
+                state.playProgress += increment;
+                if (state.playProgress >= 100) {
+                    stopPlay();
+                }
+                updatePlayUI();
+            }, interval);
+
+            state.playInterval = progressInterval;
+
+            render();
+            if (state.selectedVoice?.id === id) {
+                renderDetailPanel();
+            }
+        }
+
+        function stopPlay() {
+            if (state.playInterval) {
+                clearInterval(state.playInterval);
+                state.playInterval = null;
+            }
+            state.playingVoice = null;
+            state.playProgress = 0;
+            render();
+            if (state.selectedVoice) {
+                renderDetailPanel();
+            }
+        }
+
+        function updatePlayUI() {
+            document.querySelectorAll('.play-btn.playing .play-progress-bar').forEach(bar => {
+                bar.style.width = `${state.playProgress}%`;
+            });
+            const detailProgressBar = document.querySelector('.detail-progress-bar');
+            if (detailProgressBar) {
+                detailProgressBar.style.width = `${state.playProgress}%`;
+            }
+        }
+
+        function useVoice(voice) {
+            // Add to recent
+            state.recentVoices = state.recentVoices.filter(id => id !== voice.id);
+            state.recentVoices.unshift(voice.id);
+            if (state.recentVoices.length > 8) {
+                state.recentVoices = state.recentVoices.slice(0, 8);
+            }
+            saveToStorage();
+            updateCounts();
+
+            showToast(`已选择 ${voice.name}`);
+            closeDetailPanel();
+        }
+
+        // ============================================
+        // Recommend Modal
+        // ============================================
+        
+        let selectedVoiceType = null;
+        let selectedScenario = null;
+
+        function openRecommendModal() {
+            elements.recommendModal.classList.add('open');
+        }
+
+        function closeRecommendModal() {
+            elements.recommendModal.classList.remove('open');
+            selectedVoiceType = null;
+            selectedScenario = null;
+            document.querySelectorAll('.modal-option').forEach(o => o.classList.remove('selected'));
+        }
+
+        function toggleModalOption(option, type) {
+            option.classList.toggle('selected');
+            if (type === 'voiceType') {
+                selectedVoiceType = option.classList.contains('selected') ? option.dataset.type : null;
+            } else {
+                selectedScenario = option.classList.contains('selected') ? option.dataset.scenario : null;
+            }
+        }
+
+        function confirmRecommend() {
+            // Apply filters based on selection
+            if (selectedVoiceType) {
+                state.tagFilters = [selectedVoiceType];
+            }
+            if (selectedScenario) {
+                state.tagFilters.push(selectedScenario);
+            }
+
+            // Update UI
+            document.querySelectorAll('.tag-filter').forEach(t => {
+                t.classList.toggle('active', state.tagFilters.includes(t.dataset.tag));
+            });
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+            
+            state.currentFilter = 'recommended';
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.toggle('active', n.dataset.filter === 'recommended');
+            });
+
+            state.currentPage = 1;
+            applyFilters();
+            closeRecommendModal();
+        }
+
+        // ============================================
+        // Mobile
+        // ============================================
+        
+        function toggleMobileMenu() {
+            elements.sidebar.classList.toggle('open');
+            elements.sidebarOverlay.classList.toggle('open');
+        }
+
+        function closeMobileMenu() {
+            elements.sidebar.classList.remove('open');
+            elements.sidebarOverlay.classList.remove('open');
+        }
+
+        // ============================================
+        // Utilities
+        // ============================================
+        
+        function getInitials(name) {
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+                return parts[0][0] + parts[1][0];
+            }
+            return name.slice(0, 2);
+        }
+
+        function getAvatarColor(name) {
+            const colors = [
+                '#667eea, #764ba2',
+                '#f093fb, #f5576c',
+                '#4facfe, #00f2fe',
+                '#43e97b, #38f9d7',
+                '#fa709a, #fee140',
+                '#a18cd1, #fbc2eb',
+                '#ff9a9e, #fecfef',
+                '#ffecd2, #fcb69f',
+                '#89f7fe, #66a6ff',
+                '#c471f5, #fa71cd'
+            ];
+            const index = name.charCodeAt(0) % colors.length;
+            return colors[index];
+        }
+
+        function showToast(message) {
+            elements.toast.textContent = message;
+            elements.toast.classList.add('show');
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 2500);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function renderVoiceCards() {
+            const start = (state.currentPage - 1) * state.itemsPerPage;
+            const end = start + state.itemsPerPage;
+            const pageVoices = state.filteredVoices.slice(start, end);
+
+            let html = '';
+            pageVoices.forEach(voice => {
+                const isSelected = state.selectedVoice?.id === voice.id;
+                const isPlaying = state.playingVoice?.id === voice.id;
+                const displayTags = voice.tags.slice(0, 3);
+                const moreTags = voice.tags.length > 3 ? `+${voice.tags.length - 3}` : '';
+
+                html += `
+                    <div class="voice-card ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''}" data-id="${voice.id}">
+                        <div class="selected-badge">✓</div>
+                        <div class="voice-card-header">
+                            <div class="voice-avatar" style="background: linear-gradient(135deg, ${getAvatarColor(voice.name)});">
+                                ${getInitials(voice.name)}
+                            </div>
+                            <div class="voice-info">
+                                <div class="voice-name">${voice.name}</div>
+                                <div class="voice-subtitle">${displayTags.slice(0, 2).join(' · ')}</div>
+                            </div>
+                            <div class="favorite-btn ${voice.favorite ? 'active' : ''}" data-id="${voice.id}">
+                                ${voice.favorite ? '♥' : '♡'}
+                            </div>
+                        </div>
+                        <div class="voice-tags">
+                            ${displayTags.map(tag => `<span class="voice-tag">${tag}</span>`).join('')}
+                            ${moreTags ? `<span class="voice-tag">${moreTags}</span>` : ''}
+                        </div>
+                        <div class="voice-meta">
+                            <div class="voice-meta-item">
+                                ${voice.gender === '女' ? '♀' : voice.gender === '男' ? '♂' : '⚥'} ${voice.gender}
+                            </div>
+                            <div class="voice-meta-item">·</div>
+                            <div class="voice-meta-item">${voice.age}</div>
+                        </div>
+                        <div class="voice-description">${voice.description}</div>
+                        <div class="voice-actions">
+                            <button class="play-btn ${isPlaying ? 'playing' : ''}" data-id="${voice.id}">
+                                ${isPlaying ? `
+                                    <span class="wave-container">
+                                        <span class="wave-bar"></span>
+                                        <span class="wave-bar"></span>
+                                        <span class="wave-bar"></span>
+                                        <span class="wave-bar"></span>
+                                        <span class="wave-bar"></span>
+                                    </span>
+                                    <span class="play-progress"><span class="play-progress-bar" style="width: ${state.playProgress}%"></span></span>
+                                ` : `
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="5 3 19 12 5 21 5 3"/>
+                                    </svg>
+                                    试听
+                                `}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            elements.voiceGrid.innerHTML = html;
+
+            // Attach event listeners
+            elements.voiceGrid.querySelectorAll('.voice-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.favorite-btn') && !e.target.closest('.play-btn')) {
+                        selectVoice(parseInt(card.dataset.id));
+                    }
+                });
+            });
+
+            elements.voiceGrid.querySelectorAll('.favorite-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(parseInt(btn.dataset.id));
+                });
+            });
+
+            elements.voiceGrid.querySelectorAll('.play-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    togglePlay(parseInt(btn.dataset.id));
+                });
+            });
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
