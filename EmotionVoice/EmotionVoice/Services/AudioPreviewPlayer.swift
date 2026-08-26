@@ -154,16 +154,11 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     /// 根据 key 解析 bundle 内音频 URL（按 {key}.m4a 命名约定）
     private func resolveURL(forKey key: String) -> URL? {
         if let cached = cachedURLs[key] { return cached }
-
-        let filename = "\(key).m4a"
-
         // 文件直接平铺在 Resources/ 根目录
         if let url = Bundle.main.url(forResource: key, withExtension: "m4a") {
             cachedURLs[key] = url
             return url
         }
-
-        Log(message: "AudioPreviewPlayer: m4a not found for key=\(key), filename=\(filename)")
         return nil
     }
 }
