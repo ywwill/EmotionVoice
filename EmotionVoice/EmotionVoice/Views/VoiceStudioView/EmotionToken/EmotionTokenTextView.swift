@@ -80,7 +80,7 @@ final class EmotionTokenTextView: NSTextView {
         textContainer?.lineFragmentPadding = 0
         textContainerInset = NSSize(width: 0, height: 8)
         font = NSFont.systemFont(ofSize: 14)
-        textColor = NSColor(white: 0.96, alpha: 1.0)
+        textColor = NSColor.white
         backgroundColor = .clear
         drawsBackground = false
         usesFindBar = true
@@ -101,7 +101,7 @@ final class EmotionTokenTextView: NSTextView {
             bodyAttrs[.font] = NSFont.systemFont(ofSize: 14)
         }
         if bodyAttrs[.foregroundColor] == nil {
-            bodyAttrs[.foregroundColor] = NSColor(white: 0.96, alpha: 1.0)
+            bodyAttrs[.foregroundColor] = NSColor.white
         }
         // 注意：attachment 自身的字体颜色会被 cell 覆盖，这里只是做 typo。
 
@@ -209,7 +209,7 @@ final class EmotionTokenTextView: NSTextView {
 
         let bodyAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 14),
-            .foregroundColor: NSColor(white: 0.96, alpha: 1.0)
+            .foregroundColor: NSColor.white
         ]
         let result = NSMutableAttributedString()
 
@@ -437,8 +437,24 @@ final class EmotionTokenTextView: NSTextView {
     // MARK: - 粘贴修复
 
     override func paste(_ sender: Any?) {
-        // 让 NSTextView 自己处理；之后 didChangeText 会触发 fixUpPastedTokenAttachments
-        super.paste(sender)
+        // 从剪贴板读取纯文本，避免粘贴进带颜色等格式的富文本
+        guard let plainText = NSPasteboard.general.string(forType: .string) else {
+            super.paste(sender)
+            return
+        }
+        let range = selectedRange()
+        // 使用当前 typingAttributes（白色字体）作为粘贴文本的属性
+        let attrs = typingAttributes.isEmpty ? [
+            .font: NSFont.systemFont(ofSize: 14),
+            .foregroundColor: NSColor.white
+        ] : typingAttributes
+        let attributedString = NSAttributedString(string: plainText, attributes: attrs)
+
+        guard shouldChangeText(in: range, replacementString: plainText) else { return }
+        textStorage?.replaceCharacters(in: range, with: attributedString)
+        let newLocation = range.location + plainText.count
+        setSelectedRange(NSRange(location: newLocation, length: 0))
+        didChangeText()
         fixUpPastedTokenAttachments()
     }
 
