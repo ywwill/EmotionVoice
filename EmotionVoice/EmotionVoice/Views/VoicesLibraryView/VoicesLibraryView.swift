@@ -4,11 +4,13 @@
 //
 //  Created by young on 2026/8/8.
 //
-//  优化点：
-//  - 派生数据缓存到 VoicesLibraryViewModel（debounce 120ms）
-//  - 顶部 Chip 按"维度分组"展示所有分类；点击切换内容区
-//  - VoiceCard 接受不可变 VO，闭包以弱引用触发 AppState 更新
-//  - ScrollViewReader 仅首次 onAppear 滚动一次
+//  优化点（参考 voices.html）：
+//  - 顶部工具栏采用「面包屑标题 + 搜索 + 筛选」的精简样式
+//  - 分类 chip 增加命中数量徽标
+//  - 分类区块头部带「图标 + 标题 + 数量」与「查看全部」动作
+//  - 旗舰音色采用渐变高亮（featured）样式，区别于基础音色
+//  - 卡片支持 4 列网格，hover/选中时变化边框与背景
+//  - 播放中展示波形动画
 //
 
 import SwiftUI
@@ -25,11 +27,6 @@ struct VoicesLibraryView: View {
 
     // 滚动定位
     @State private var didInitialScroll: Bool = false
-
-    enum ViewMode {
-        case grid
-        case list
-    }
 
     // MARK: - 视图入口
 
@@ -60,7 +57,7 @@ struct VoicesLibraryView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 20) {
+                    LazyVStack(alignment: .leading, spacing: 28) {
                         // 切换分类时滚动到此处
                         Color.clear
                             .frame(width: 1, height: 1)
@@ -78,7 +75,8 @@ struct VoicesLibraryView: View {
                             )
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 24)
                     .padding(.bottom, 20)
                 }
                 .onChange(of: vm.selectedCategory) { _, _ in
@@ -128,6 +126,7 @@ struct VoicesLibraryView: View {
     private var toolbar: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
+                // 左侧：标题 + 副标题
                 VStack(alignment: .leading, spacing: 2) {
                     Text("音色库".localized())
                         .font(.system(size: 16, weight: .semibold))
@@ -135,6 +134,7 @@ struct VoicesLibraryView: View {
                         .font(AppFont.bodySmall)
                         .foregroundStyle(AppColor.textTertiary)
                 }
+
                 Spacer()
 
                 searchField
@@ -176,7 +176,7 @@ struct VoicesLibraryView: View {
             TextField("搜索".localized(), text: $vm.searchText)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppColor.textPrimary)
-                .frame(width: 200)
+                .frame(width: 220)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -189,29 +189,35 @@ struct VoicesLibraryView: View {
         .pointingHandCursor()
     }
 
-    /// 全部分类 Chip：多行展示，按维度顺序展示所有分类
+    /// 分类 Chip：单行横向展示（不再换行），按维度分组全部展示
     private var categoryChips: some View {
-        FlowLayout(spacing: 8) {
-            CategoryChip(
-                title: "全部".localized(),
-                isActive: vm.selectedCategory == nil
-            ) {
-                vm.selectedCategory = nil
-            }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                CountChip(
+                    title: "全部".localized(),
+                    count: vm.totalMatched,
+                    isActive: vm.selectedCategory == nil
+                ) {
+                    vm.selectedCategory = nil
+                }
 
-            ForEach(VoiceCategory.displayOrder, id: \.self) { dim in
-                let cats = VoiceCategory.allCases.filter { $0.dimension == dim }
-                if !cats.isEmpty {
-                    ForEach(cats) { cat in
-                        CategoryChip(
-                            title: cat.displayName.localized(),
-                            isActive: vm.selectedCategory == cat
-                        ) {
-                            vm.selectedCategory = (vm.selectedCategory == cat) ? nil : cat
+                ForEach(VoiceCategory.displayOrder, id: \.self) { dim in
+                    let cats = VoiceCategory.allCases.filter { $0.dimension == dim }
+                    if !cats.isEmpty {
+                        ForEach(cats) { cat in
+                            CountChip(
+                                title: cat.displayName.localized(),
+                                count: vm.countForCategory(cat),
+                                isActive: vm.selectedCategory == cat,
+                                accent: cat.dimension == .premium
+                            ) {
+                                vm.selectedCategory = (vm.selectedCategory == cat) ? nil : cat
+                            }
                         }
                     }
                 }
             }
+            .padding(.vertical, 2)
         }
     }
 
@@ -242,9 +248,8 @@ struct VoicesLibraryView: View {
     }
 }
 
-// MARK: - 拆出的局部子视图（让卡片网格与 chip 各自持有稳定 identity）
+// MARK: - 分类区块视图
 
-/// 分类区块：独立子视图，避免父视图状态变化导致整片网格重渲染
 private struct CategorySectionView: View {
     let category: VoiceCategory
     let voices: [Voice]
@@ -255,16 +260,42 @@ private struct CategorySectionView: View {
     let onUse: (Voice) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
+            // 区块头：图标 + 标题 + 数量
+            HStack(alignment: .center, spacing: 10) {
+                Text(category.icon)
+                    .font(.system(size: 16))
+                Text(category.displayName.localized())
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppColor.textPrimary)
+                if category == .premium {
+                    Text("PLUS")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(AppColor.accentGlow)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(AppColor.accentPrimary.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+                Text("\(voices.count) 个".localized())
+                    .font(AppFont.monoSmall)
+                    .foregroundStyle(AppColor.textTertiary)
+                Spacer()
+            }
+
+            // 卡片网格（4 列）
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 12)],
+                columns: [
+                    GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 12)
+                ],
                 spacing: 12
             ) {
                 ForEach(voices) { voice in
                     VoiceCard(
                         item: VoiceCardItem(voice: voice),
                         isSelected: selectedKey == voice.key,
-                        isPlaying: playingKey == voice.key
+                        isPlaying: playingKey == voice.key,
+                        isFeatured: voice.isPremium
                     ) {
                         onFavorite(voice.key)
                     } onPreview: {
@@ -279,31 +310,55 @@ private struct CategorySectionView: View {
     }
 }
 
-// MARK: - Chip 视图（无依赖，稳定 identity）
+// MARK: - 带数量徽标的 Chip
 
-private struct CategoryChip: View {
+private struct CountChip: View {
     let title: String
+    let count: Int
     let isActive: Bool
+    var accent: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(isActive ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-                .foregroundStyle(isActive ? AppColor.accentPrimary : AppColor.textSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.pill)
-                        .stroke(
-                            isActive ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle,
-                            lineWidth: 1
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .contentShape(RoundedRectangle(cornerRadius: AppRadius.pill))
-                .transaction { $0.animation = nil }
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(isActive
+                                     ? AppColor.accentGlow
+                                     : AppColor.textTertiary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        isActive
+                        ? AppColor.accentPrimary.opacity(0.35)
+                        : AppColor.bgElevated.opacity(0.6)
+                    )
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(
+                isActive
+                ? (accent ? AppColor.accentPrimary.opacity(0.25)
+                           : AppColor.accentPrimary.opacity(0.20))
+                : AppColor.bgTertiary
+            )
+            .foregroundStyle(isActive ? AppColor.accentGlow : AppColor.textSecondary)
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isActive
+                        ? AppColor.accentPrimary.opacity(0.5)
+                        : AppColor.borderSubtle,
+                        lineWidth: 1
+                    )
+            )
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+            .transaction { $0.animation = nil }
         }
         .buttonStyle(StaticButtonStyle())
         .pointingHandCursor()

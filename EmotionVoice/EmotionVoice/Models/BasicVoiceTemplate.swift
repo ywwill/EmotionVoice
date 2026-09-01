@@ -7,7 +7,6 @@
 
 import Foundation
 
-/// 基础音色模板（来源：qwen-audio-3.0-tts-plus 基础音色.xlsx）
 struct BasicVoiceTemplate: Codable, Hashable {
     /// 序号
     let idx: String

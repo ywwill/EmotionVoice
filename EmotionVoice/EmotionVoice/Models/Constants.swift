@@ -10,10 +10,29 @@ import Foundation
 /// 应用常量
 enum Constants {
 
-    // MARK: - 模型
-    static let modelPlus = "qwen-audio-3.0-tts-plus"
-    static let modelFlash = "qwen-audio-3.0-tts-flash"
-    static let defaultModel = modelPlus
+    // MARK: - 标签本地化（中文 label ↔ 英文 tag）
+
+    /// 根据中文 label 查找对应的英文 tag（如 "开心" -> "happy"）。
+    /// 同时支持英文 tag 原值（"happy" -> "happy"）以保证已经用英文标签的旧文本也能继续工作。
+    static func tagForLabel(_ label: String) -> String? {
+        let trimmed = label.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let combined = emotions + richLanguageTags
+        if let hit = combined.first(where: { $0.label == trimmed }) {
+            return hit.tag
+        }
+        // 兼容：用户已经写好的英文标签
+        if combined.contains(where: { $0.tag == trimmed }) {
+            return trimmed
+        }
+        return nil
+    }
+
+    /// 根据英文 tag 查找对应的中文 label（如 "happy" -> "开心"）。找不到时返回 nil。
+    static func labelForTag(_ tag: String) -> String? {
+        let combined = emotions + richLanguageTags
+        return combined.first(where: { $0.tag == tag })?.label
+    }
 
     // MARK: - 默认音色
     static let defaultVoice = "longanlingxin"
@@ -33,40 +52,77 @@ enum Constants {
     static let defaultMonthlyUsed = 4560
 
     // MARK: - 情感标签
-    /// 可视化选择的 20 个情感标签
-    /// 与 [xxx] 文本标签一一对应
+    /// 控制类情感标签
+    /// 与 [xxx] 文本标签一一对应；description 为官方说明，供悬浮提示使用。
+    /// 这类标签会改变周围文本的情感基调（如 [excited] 让后续所有文本都带兴奋语气）。
     static let emotions: [EmotionItem] = [
-        EmotionItem(label: "开心",   emoji: "😊", tag: "happy"),
-        EmotionItem(label: "悲伤",   emoji: "😢", tag: "sad"),
-        EmotionItem(label: "愤怒",   emoji: "😠", tag: "angry"),
-        EmotionItem(label: "惊讶",   emoji: "😮", tag: "amazed"),
-        EmotionItem(label: "疲惫",   emoji: "😴", tag: "tired"),
-        EmotionItem(label: "调皮",   emoji: "🎭", tag: "mischievously"),
-        EmotionItem(label: "耳语",   emoji: "🤫", tag: "whispers"),
-        EmotionItem(label: "严肃",   emoji: "🎙️", tag: "serious"),
-        EmotionItem(label: "兴奋",   emoji: "⚡", tag: "excited"),
-        EmotionItem(label: "恳求",   emoji: "🥺", tag: "pleading"),
-        EmotionItem(label: "厌恶",   emoji: "🤢", tag: "disgusted"),
-        EmotionItem(label: "痴迷",   emoji: "🤩", tag: "obsessed"),
-        EmotionItem(label: "放松",   emoji: "😌", tag: "relaxed"),
-        EmotionItem(label: "思考",   emoji: "🤔", tag: "thinking"),
-        EmotionItem(label: "尴尬",   emoji: "😅", tag: "embarrassed"),
-        EmotionItem(label: "傲慢",   emoji: "😏", tag: "smug"),
-        EmotionItem(label: "困倦",   emoji: "😴", tag: "sleepy"),
-        EmotionItem(label: "感恩",   emoji: "🙏", tag: "grateful"),
-        EmotionItem(label: "好奇",   emoji: "🧐", tag: "curious"),
-        EmotionItem(label: "讽刺",   emoji: "🙃", tag: "sarcastic"),
+        EmotionItem(label: "悲伤", emoji: "😢", tag: "sad",
+                   description: "悲伤低落的语气，带有忧愁、沮丧的情感基调。"),
+        EmotionItem(label: "惊叹", emoji: "😮", tag: "amazed",
+                   description: "惊讶的语气，带有意外、震惊的情感色彩。"),
+        EmotionItem(label: "呐喊", emoji: "📣", tag: "deep and loud shouting",
+                   description: "深沉大声呐喊"),
+        EmotionItem(label: "颤抖", emoji: "😨", tag: "trembling",
+                   description: "声音颤抖的语气，带有害怕、紧张或激动的情绪。"),
+        EmotionItem(label: "愤怒", emoji: "😠", tag: "angry",
+                   description: "愤怒激动的语气，带有强烈不满的情绪色彩。"),
+        EmotionItem(label: "兴奋", emoji: "⚡", tag: "excited",
+                   description: "兴奋激动的语气，带有强烈的热情和期待感。"),
+        EmotionItem(label: "讽刺", emoji: "🙃", tag: "sarcastic",
+                   description: "讽刺的语气，带有反讽、挖苦的意味。"),
+        EmotionItem(label: "好奇", emoji: "🤔", tag: "curious",
+                   description: "好奇的语气"),
+        EmotionItem(label: "低沉", emoji: "🧛", tag: "like dracula",
+                   description: "德古拉风格（低沉、阴森）"),
+        EmotionItem(label: "无聊", emoji: "💤", tag: "bored",
+                   description: "无聊的语气"),
+        EmotionItem(label: "疲惫", emoji: "😴", tag: "tired",
+                   description: "疲惫的语气，语速偏慢、语调低沉，传达疲惫感。"),
+        EmotionItem(label: "轻蔑", emoji: "😒", tag: "scornful",
+                   description: "轻蔑的语气"),
+        EmotionItem(label: "大喊", emoji: "🗣️", tag: "shouting",
+                   description: "大喊"),
+        EmotionItem(label: "ASMR", emoji: "🎧", tag: "asmr",
+                   description: "ASMR 风格的柔和低声，适合助眠、放松类内容。"),
+        EmotionItem(label: "惊恐", emoji: "😱", tag: "panicked",
+                   description: "惊恐慌张的语气，带有惊慌失措的紧迫感。"),
+        EmotionItem(label: "调皮", emoji: "😈", tag: "mischievously",
+                   description: "调皮的语气，带有戏谑、捉弄的趣味感。"),
+        EmotionItem(label: "共情", emoji: "💚", tag: "empathetic",
+                   description: "共情的语气"),
+        EmotionItem(label: "耳语", emoji: "🤫", tag: "whispers",
+                   description: "轻声低语的风格，适合私密、神秘或亲密的场景。"),
+        EmotionItem(label: "不情愿", emoji: "🙄", tag: "reluctantly",
+                   description: "不情愿的语气"),
+        EmotionItem(label: "哭泣", emoji: "😭", tag: "crying",
+                   description: "哭泣中的语气，带有哽咽、抽泣的强烈情感。"),
+        EmotionItem(label: "严肃", emoji: "😐", tag: "serious",
+                   description: "严肃认真的语气，适合播报、朗读等正式场景。"),
+        EmotionItem(label: "极慢", emoji: "🐢", tag: "very slowly",
+                   description: "极慢的语速，适合强调、沉思或戏剧性的停顿场景。"),
+        EmotionItem(label: "极快", emoji: "🔥", tag: "very fast",
+                   description: "极快的语速，适合紧张、激动或急促的对话场景。"),
     ]
 
     // MARK: - 富语言标签
+    /// 仅在该位置插入一段声音效果（大笑、叹息、咳嗽等），
+    /// 不改变周围文本的情感基调。
+    /// 控制类与富语言类分开维护：富语言永远只有这 7 个官方拟声。
     static let richLanguageTags: [EmotionItem] = [
-        EmotionItem(label: "大笑",   emoji: "😆", tag: "laughing"),
-        EmotionItem(label: "咯咯笑", emoji: "🤭", tag: "giggles"),
-        EmotionItem(label: "叹息",   emoji: "😮‍💨", tag: "sighing"),
-        EmotionItem(label: "倒吸气", emoji: "😲", tag: "gasp"),
-        EmotionItem(label: "清嗓",   emoji: "🗣️", tag: "clears throat"),
-        EmotionItem(label: "咳嗽",   emoji: "😷", tag: "cough"),
-        EmotionItem(label: "哼声",   emoji: "😤", tag: "snorts"),
+        EmotionItem(label: "大笑", emoji: "😆", tag: "laughing",
+                   description: "大笑"),
+        EmotionItem(label: "咯咯笑", emoji: "🤭", tag: "giggles",
+                   description: "咯咯轻"),
+        EmotionItem(label: "叹息", emoji: "😮‍💨", tag: "sighing",
+                   description: "叹息声"),
+        EmotionItem(label: "倒吸气", emoji: "😲", tag: "gasp",
+                   description: "倒吸一口气"),
+        EmotionItem(label: "清嗓", emoji: "🗣️", tag: "clears throat",
+                   description: "清嗓"),
+        EmotionItem(label: "咳嗽", emoji: "😷", tag: "cough",
+                   description: "咳嗽"),
+        EmotionItem(label: "哼声", emoji: "😤", tag: "snorts",
+                   description: "哼声、嗤笑"),
     ]
 
     // MARK: - 语言/方言
@@ -153,6 +209,7 @@ struct EmotionItem: Identifiable, Hashable {
     let label: String
     let emoji: String
     let tag: String      // 对应 [xxx] 标签
+    let description: String // 描述
     var id: String { tag }
 }
 

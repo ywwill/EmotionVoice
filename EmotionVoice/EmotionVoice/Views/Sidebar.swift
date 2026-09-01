@@ -16,8 +16,9 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             // 主导航
             VStack(alignment: .leading, spacing: 2) {
-                ForEach([SidebarSection.voiceStudio]) { section in
-                    SidebarItem(section: section)
+                ForEach([SidebarSection.voiceStudio, SidebarSection.voices]) { section in
+                    SidebarItem(section: section,
+                                badge: section == .voices ? "\(appState.voices.count)" : nil)
                 }
             }
             .padding(.horizontal, 12)

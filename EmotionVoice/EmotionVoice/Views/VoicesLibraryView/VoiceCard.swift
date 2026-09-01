@@ -9,6 +9,8 @@
 //  - hover/选中的动画仅作用于背景/边框层；不触发 scaleEffect/shadow 全树重绘
 //  - pointingHandCursor 仅在卡片根层一次性绑定，不再每行按钮重复 push/pop
 //  - desc 中已包含年龄时，metaTags 不再重复显示年龄
+//  - 旗舰（featured）音色采用渐变高亮背景以示区别
+//  - 播放中展示波形动画（替代静态图标）
 //
 
 import SwiftUI
@@ -39,12 +41,6 @@ struct VoiceCardItem: Identifiable, Equatable {
     }
 }
 
-// MARK: - 共享静态资源
-
-private enum CardStyle {
-    // 为未来可能的功能保留（如需要可重新启用）
-}
-
 // MARK: - 音色卡片
 
 struct VoiceCard: View {
@@ -52,6 +48,7 @@ struct VoiceCard: View {
     let item: VoiceCardItem
     let isSelected: Bool
     let isPlaying: Bool
+    var isFeatured: Bool = false
     let onFavorite: () -> Void
     let onPreview: () -> Void
     let onUse: () -> Void
@@ -63,11 +60,12 @@ struct VoiceCard: View {
         lhs.item == rhs.item
             && lhs.isSelected == rhs.isSelected
             && lhs.isPlaying == rhs.isPlaying
+            && lhs.isFeatured == rhs.isFeatured
     }
 
     var body: some View {
         cardContent
-            .padding(12)
+            .padding(14)
             .background(cardBackground)
             .overlay(cardBorder)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
@@ -100,6 +98,8 @@ struct VoiceCard: View {
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             header
+
+            // 名称 + 描述
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.system(size: 14, weight: .semibold))
@@ -115,6 +115,12 @@ struct VoiceCard: View {
                 metaTags
             }
 
+            // 播放波形（仅播放时展示，替代静态预览按钮位置）
+            if isPlaying {
+                playingWaveform
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             actionRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,7 +129,17 @@ struct VoiceCard: View {
     // 背景层：仅在该层做动画，不传播到卡片内容（避免滚动时 hover 抖动重绘文字）
     private var cardBackground: some View {
         Group {
-            if isSelected || isHovered {
+            if isFeatured {
+                // 旗舰音色采用琥珀色微渐变，呼应 voices.html 的 .voice-card.featured
+                LinearGradient(
+                    colors: [
+                        AppColor.bgSecondary,
+                        AppColor.accentPrimary.opacity(isSelected || isHovered ? 0.08 : 0.04)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else if isSelected || isHovered {
                 AppColor.bgTertiary
             } else {
                 AppColor.bgSecondary
@@ -138,7 +154,9 @@ struct VoiceCard: View {
         RoundedRectangle(cornerRadius: AppRadius.medium)
             .stroke(
                 isSelected ? AppColor.accentPrimary.opacity(0.5)
-                          : (isHovered ? AppColor.borderMedium : AppColor.borderSubtle),
+                          : (isHovered ? AppColor.borderMedium
+                                       : (isFeatured ? AppColor.accentPrimary.opacity(0.25)
+                                                     : AppColor.borderSubtle)),
                 lineWidth: 1
             )
             .animation(.easeInOut(duration: 0.15), value: isHovered)
@@ -190,15 +208,26 @@ struct VoiceCard: View {
     private var actionRow: some View {
         HStack(spacing: 6) {
             Button(action: onPreview) {
-                Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(isPlaying ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary)
-                    .foregroundStyle(isPlaying ? AppColor.accentPrimary : AppColor.textSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                HStack(spacing: 4) {
+                    Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                        .font(.system(size: 11))
+                    Text(isPlaying ? "试听中".localized() : "试听".localized())
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    isPlaying
+                    ? AppColor.accentPrimary.opacity(0.20)
+                    : AppColor.bgTertiary
+                )
+                .foregroundStyle(
+                    isPlaying ? AppColor.accentGlow : AppColor.textSecondary
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
+            .pointingHandCursor()
 
             Button(action: onFavorite) {
                 Image(systemName: item.isFavorite ? "heart.fill" : "heart")
@@ -214,6 +243,7 @@ struct VoiceCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
+            .pointingHandCursor()
 
             Spacer()
 
@@ -223,13 +253,22 @@ struct VoiceCard: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(AppColor.accentPrimary)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppColor.bgPrimary)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .contentShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(StaticButtonStyle())
+            .pointingHandCursor()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - 播放波形
+
+    /// 10 条柱状波形，播放时高低随机抖动；非播放时不渲染（避免抢空间）
+    private var playingWaveform: some View {
+        PlayingWaveform()
+            .frame(height: 18)
     }
 
     private func sceneTag(_ scene: String) -> some View {
@@ -247,5 +286,46 @@ struct VoiceCard: View {
         .foregroundStyle(AppColor.textSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .frame(maxWidth: 110)
+    }
+}
+
+// MARK: - 播放波形
+
+private struct PlayingWaveform: View {
+    private let barCount: Int = 12
+    private let heights: [CGFloat] = [0.4, 0.65, 0.85, 0.5, 0.95, 0.7, 0.4, 0.8, 0.55, 0.9, 0.6, 0.45]
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 2) {
+            ForEach(0..<barCount, id: \.self) { i in
+                PlayingWaveBar(
+                    baseHeight: heights[i % heights.count],
+                    delay: Double(i) * 0.07
+                )
+            }
+        }
+    }
+}
+
+private struct PlayingWaveBar: View {
+    let baseHeight: CGFloat
+    let delay: Double
+
+    @State private var animating: Bool = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(AppColor.accentPrimary)
+            .frame(width: 2, height: max(4, 18 * baseHeight))
+            .scaleEffect(y: animating ? 1.0 : baseHeight, anchor: .center)
+            .onAppear {
+                withAnimation(
+                    .easeInOut(duration: 0.55)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay)
+                ) {
+                    animating.toggle()
+                }
+            }
     }
 }

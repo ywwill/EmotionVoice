@@ -20,7 +20,6 @@ struct SettingsView: View {
         case file = "文件"
         case notification = "通知"
         case language = "语言"
-        case about = "关于"
 
         var id: String { rawValue }
         var displayName: String { rawValue.localized() }
@@ -32,7 +31,6 @@ struct SettingsView: View {
             case .file: return "folder"
             case .notification: return "bell.fill"
             case .language: return "globe"
-            case .about: return "info.circle.fill"
             }
         }
     }
@@ -145,7 +143,6 @@ struct SettingsView: View {
         case .file: return "管理文件存储与缓存".localized()
         case .notification: return "配置应用通知".localized()
         case .language: return "选择界面语言".localized()
-        case .about: return "应用信息与协议".localized()
         }
     }
 
@@ -159,7 +156,6 @@ struct SettingsView: View {
         case .file:       fileContent
         case .notification: notificationContent
         case .language:   languageContent
-        case .about:      aboutContent
         }
     }
 
@@ -392,48 +388,6 @@ struct SettingsView: View {
                     }
                 )
             }
-        }
-    }
-
-    // MARK: 关于
-
-    private var aboutContent: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 16) {
-                Text("EmotionVoice")
-                    .font(.system(size: 28, weight: .bold))
-                Text("v1.0.0")
-                    .font(.system(size: 14, design: .monospaced))
-                    .foregroundStyle(AppColor.textTertiary)
-                Text("基于阿里云 Qwen-Audio-TTS".localized())
-                    .font(AppFont.bodyMedium)
-                    .foregroundStyle(AppColor.textSecondary)
-                Text("© 2026 EmotionVoice Team")
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            .padding(40)
-            .frame(maxWidth: .infinity)
-            .background(AppColor.bgSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
-
-            VStack(spacing: 12) {
-                aboutButton("检查更新".localized())
-                Divider().background(AppColor.borderSubtle)
-                aboutButton("用户协议".localized())
-                Divider().background(AppColor.borderSubtle)
-                aboutButton("隐私政策".localized())
-            }
-            .background(AppColor.bgSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
         }
     }
 

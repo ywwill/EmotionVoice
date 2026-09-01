@@ -7,6 +7,7 @@
 //  音色库视图模型：
 //  - 仅持有选中的分类与搜索文本
 //  - 缓存按当前分类过滤后的音色列表（debounce 120ms）
+//  - 提供每个分类的命中数量，用于 chip 上显示计数
 //
 
 import Foundation
@@ -31,6 +32,10 @@ final class VoicesLibraryViewModel: ObservableObject {
     @Published private(set) var groupedByCategory: [CategoryBucket] = []
     /// 当前分类下是否为空
     @Published private(set) var isEmpty: Bool = true
+    /// 搜索命中（在当前 selectedCategory 下）的所有音色总数
+    @Published private(set) var totalMatched: Int = 0
+    /// 全部音色总数（忽略筛选）
+    @Published private(set) var totalAll: Int = 0
 
     /// 分类分组视图项
     struct CategoryBucket: Identifiable {
@@ -84,6 +89,28 @@ final class VoicesLibraryViewModel: ObservableObject {
 
     // MARK: - 计算
 
+    /// 全部命中某个分类的音色数（不考虑 selectedCategory，只考虑搜索）
+    func countForCategory(_ cat: VoiceCategory) -> Int {
+        let needle = searchText.trimmingCharacters(in: .whitespaces)
+        let pool: [Voice]
+        if needle.isEmpty {
+            pool = allVoices
+        } else {
+            pool = allVoices.filter { v in
+                v.name.localizedCaseInsensitiveContains(needle)
+                || v.desc.localizedCaseInsensitiveContains(needle)
+                || v.scene.localizedCaseInsensitiveContains(needle)
+                || v.lang.localizedCaseInsensitiveContains(needle)
+            }
+        }
+        return pool.filter { cat.matches($0) }.count
+    }
+
+    /// 收藏数量（用于"我的收藏"chip 计数）
+    var favoriteCount: Int {
+        allVoices.filter { $0.isFavorite }.count
+    }
+
     private func recompute() {
         let voices = allVoices
         let needle = searchText.trimmingCharacters(in: .whitespaces)
@@ -121,6 +148,8 @@ final class VoicesLibraryViewModel: ObservableObject {
             displayedVoices = searched
         }
 
+        totalAll = voices.count
+        totalMatched = searched.count
         isEmpty = displayedVoices.isEmpty
     }
 }

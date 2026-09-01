@@ -8,13 +8,39 @@
 import Foundation
 import SwiftUI
 import Combine
+import AppKit
 
 /// 语音合成工作台视图模型
+///
+/// 使用 shared 单例保证 VoiceStudioView 在多次进出（切换侧边栏）
+/// 时仍保留文本输入、情感选择、语速音量等编辑状态。
 @MainActor
 final class VoiceStudioViewModel: ObservableObject {
 
-    // 文本
+    // MARK: - 单例
+
+    /// 全局共享实例：保证页面切换时数据不丢失
+    static let shared = VoiceStudioViewModel()
+
+    // MARK: - 状态
+
+    // 文本（两套表示形式同步维护）
+    //   - text: 纯字符串，用于 API 调用和字数统计
+    //   - ttsItems: 结构化 items，用于 EmotionTokenEditor 渲染 token
     @Published var text: String = ""
+    @Published var selectedRange: NSRange = NSRange(location: 0, length: 0)
+
+    /// EmotionTokenEditor 的结构化数据：文本 + inline token
+    @Published var ttsItems: [TTSContentItem] = []
+
+    /// 触发 EmotionTokenEditor 在光标位置插入 token（insertTrigger 递增时触发）
+    @Published var insertTokenTrigger: Int = 0
+    @Published var insertTokenLabel: String = ""
+    @Published var insertTokenEmoji: String = ""
+    @Published var insertTokenEnglishTag: String = ""
+
+    /// 触发 EmotionTokenEditor 清空所有 token
+    @Published var clearTokensTrigger: Int = 0
 
     // 音色
     @Published var selectedVoiceKey: String = Constants.defaultVoice
@@ -22,9 +48,6 @@ final class VoiceStudioViewModel: ObservableObject {
     // 情感/语速/音量
     @Published var rate: Double = 1.0    // 0.5 - 2.0
     @Published var volume: Double = 100  // 0 - 100
-    
-    // 情感标签使用次数统计 [tag: count]
-    @Published var emotionUsageCounts: [String: Int] = [:]
 
     // 语言/采样率/格式
     @Published var language: LanguageItem = Constants.languages[0]
@@ -57,7 +80,11 @@ final class VoiceStudioViewModel: ObservableObject {
 
     /// 文本字符数（不含空白）
     var charCount: Int {
-        text.replacingOccurrences(of: " ", with: "")
+        ttsItems
+            .filter { $0.isText }
+            .map { $0.content }
+            .joined()
+            .replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "\n", with: "")
             .count
     }
@@ -74,30 +101,71 @@ final class VoiceStudioViewModel: ObservableObject {
 
     // MARK: - 操作
 
-    /// 在文本末尾插入情感标签，并统计使用次数
-    func appendEmotion(tag: String) {
-        // 累积使用次数
-        emotionUsageCounts[tag, default: 0] += 1
-        
-        if text.isEmpty || text.hasSuffix(" ") || text.hasSuffix("\n") {
-            text += "[\(tag)]"
-        } else {
-            text += " [\(tag)]"
-        }
-    }
-    
-    /// 获取指定情感标签的使用次数
-    func usageCount(for tag: String) -> Int {
-        return emotionUsageCounts[tag] ?? 0
+    /// 在 EmotionTokenEditor 的光标位置插入情感标签。
+    /// 触发 EmotionTokenEditor.updateNSView → insertToken(token)
+    func insertEmotion(tag: String) {
+        let combined = Constants.emotions + Constants.richLanguageTags
+        guard let item = combined.first(where: { $0.tag == tag }) else { return }
+        insertTokenLabel = item.label
+        insertTokenEmoji = item.emoji
+        insertTokenEnglishTag = item.tag
+        insertTokenTrigger &+= 1
     }
 
     /// 清空文本
     func clearText() {
         text = ""
-        emotionUsageCounts.removeAll()
+        ttsItems = []
+        selectedRange = NSRange(location: 0, length: 0)
+        clearTokensTrigger &+= 1
         alertItem = nil
         generatedAudioURL = nil
         generationProgress = 0.0
+    }
+
+    /// 从纯文本中解析 `[标签]` 并转换为 [TTSContentItem]。
+    /// 用于：1) 初始化编辑器内容；2) 外部设置 text 时同步到 ttsItems。
+    func textToItems(_ s: String) -> [TTSContentItem] {
+        let pattern = "\\[([^\\]]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return s.isEmpty ? [] : [.text(s)]
+        }
+        let nsString = s as NSString
+        let matches = regex.matches(in: s, range: NSRange(location: 0, length: nsString.length))
+
+        var items: [TTSContentItem] = []
+        var cursor = 0
+
+        for match in matches {
+            let openBracket = match.range.location
+            let closeBracket = match.range.upperBound
+            let labelRange = match.range(at: 1)
+            guard let swiftRange = Range(labelRange, in: s) else { continue }
+            let label = String(s[swiftRange])
+
+            if openBracket > cursor {
+                let textPart = nsString.substring(with: NSRange(location: cursor, length: openBracket - cursor))
+                if !textPart.isEmpty { items.append(.text(textPart)) }
+            }
+
+            if let emotionItem = (Constants.emotions + Constants.richLanguageTags)
+                .first(where: { $0.label == label || $0.tag == label }) {
+                let token = EmotionToken(label: emotionItem.label,
+                                        emoji: emotionItem.emoji,
+                                        englishTag: emotionItem.tag)
+                items.append(.emotion(token))
+            } else {
+                // 未识别的标签，保留为普通文本
+                items.append(.text("[\(label)]"))
+            }
+            cursor = closeBracket
+        }
+
+        if cursor < nsString.length {
+            let tail = nsString.substring(from: cursor)
+            if !tail.isEmpty { items.append(.text(tail)) }
+        }
+        return items
     }
 
     /// 应用预设
@@ -137,6 +205,11 @@ final class VoiceStudioViewModel: ObservableObject {
             return
         }
 
+        // 直接使用结构化的 ttsItems 生成 TTS API 字符串。
+        // 文本中已经包含所有 [english_tag] 标签，由 API 自己解析处理。
+        // 不再提取单个 emotion 参数，避免覆盖文本中的多标签。
+        let ttsText = ttsItems.toTTSAPIString()
+
         isGenerating = true
         alertItem = nil
         generationProgress = 0.0
@@ -152,12 +225,12 @@ final class VoiceStudioViewModel: ObservableObject {
 
         Task {
             do {
-                Log(message: "开始 TTS 合成，文本长度: \(self.text.count) 字符")
+                Log(message: "开始 TTS 合成，文本长度: \(ttsText.count) 字符")
 
                 // 准备流式回调：每收到一块音频就把进度往上推
                 // 由于事先不知道最终大小，按"已用时间 / 经验上限"模拟一条平滑曲线
                 let startedAt = Date()
-                let approxDuration: TimeInterval = max(2.5, Double(self.text.count) / 12.0)
+                let approxDuration: TimeInterval = max(2.5, Double(ttsText.count) / 12.0)
                 let onAudio: (Data) -> Void = { [weak self] _ in
                     guard let self else { return }
                     let elapsed = Date().timeIntervalSince(startedAt)
@@ -169,11 +242,13 @@ final class VoiceStudioViewModel: ObservableObject {
                 }
 
                 // 调用 TTS 流式接口（替代一次性 await）
+                // emotion 传 nil：完全由文本中的 [tag] 标签驱动情感/拟声，
+                // 避免覆盖用户输入的多标签。
                 let audioData: Data = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
                     ttsService.synthesizeStream(
-                        text: text,
+                        text: ttsText,
                         voice: voice.key,
-                        emotion: extractEmotionTag(from: text),
+                        emotion: nil,
                         rate: rate,
                         volume: volume,
                         sampleRate: sampleRate,
@@ -249,22 +324,27 @@ final class VoiceStudioViewModel: ObservableObject {
         }
     }
 
-    /// 从文本中提取情感标签
-    private func extractEmotionTag(from text: String) -> String? {
-        // 提取最后一个情感标签作为主要情感
-        let pattern = "\\[([a-zA-Z]+)\\]"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+    // MARK: - 私有
 
-        let range = NSRange(text.startIndex..., in: text)
-        let matches = regex.matches(in: text, range: range)
+    /// 将文本中所有 `[中文标签]` 转换为 `[english_tag]`（按 Constants.emotions + richLanguageTags 表查找）
+    private func convertLocalizedTagsToEnglish(_ text: String) -> String {
+        let pattern = "\\[([^\\]]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
 
-        // 返回最后一个匹配的情感标签
-        if let lastMatch = matches.last,
-           let range = Range(lastMatch.range(at: 1), in: text) {
-            return String(text[range])
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+
+        var result = text
+        // 反向处理以保证前面替换不会影响后续 range
+        for match in matches.reversed() {
+            guard match.numberOfRanges >= 2,
+                  let swiftRange = Range(match.range(at: 1), in: text) else { continue }
+            let content = String(text[swiftRange])
+            if let english = Constants.tagForLabel(content), english != content {
+                result = (result as NSString).replacingCharacters(in: match.range, with: "[\(english)]")
+            }
         }
-
-        return nil
+        return result
     }
 
     /// 取消生成

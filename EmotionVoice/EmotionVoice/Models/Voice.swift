@@ -107,6 +107,41 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// 分类图标（Emoji），用于卡片区域标题与 chip 标识
+    var icon: String {
+        switch self {
+        case .premium:    return "⭐"
+        case .chinese:    return "🌐"
+        case .english:    return "🌍"
+        case .sceneDaily:      return "💬"
+        case .sceneCompanion:  return "💝"
+        case .sceneCustomer:   return "🎧"
+        case .sceneReading:    return "📖"
+        case .sceneSocial:     return "🎈"
+        case .sceneAnime:      return "🎌"
+        case .sceneNews:       return "📰"
+        case .sceneLive:       return "🛒"
+        case .sceneClassic:    return "🏯"
+        case .sceneSports:     return "🏆"
+        case .sceneAudiobook:  return "📚"
+        case .sceneRadio:      return "🌙"
+        case .sceneKnowledge:  return "💡"
+        case .sceneComedy:     return "😄"
+        case .sceneBusiness:   return "💼"
+        case .sceneAssistant:  return "🤖"
+        case .sceneSpeech:     return "🎤"
+        case .roleAnime:    return "🦸"
+        case .roleLive:     return "📡"
+        case .roleClassic:  return "👘"
+        case .roleRadio:    return "🎙️"
+        case .ageChild:  return "👶"
+        case .ageTeen:   return "🧒"
+        case .ageYoung:  return "🧑"
+        case .ageMiddle: return "👨"
+        case .ageSenior: return "👴"
+        }
+    }
+
     /// 该分类对应的场景字符串（用于匹配 Voice.scene）
     var sceneKey: String? {
         switch self {

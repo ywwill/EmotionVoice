@@ -196,11 +196,30 @@ final class BailianTTSService {
         // 准备待合成的文本（添加情感标签）
         let processedText = processTextWithEmotion(text: text, emotion: emotion)
 
+        // DEBUG: 输出完整文本（>200 字符时截断显示）便于排查「多标签只生效一个」问题
+        let preview: String
+        if processedText.count > 200 {
+            preview = String(processedText.prefix(200)) + "...（共 \(processedText.count) 字符）"
+        } else {
+            preview = processedText
+        }
         Log(message: "发送 continue-task 事件，文本长度: \(processedText.count) 字符")
+        Log(message: "  完整文本: \(preview)")
 
-        // 发送 continue-task 事件
-        let continueTaskEvent = buildContinueTaskEvent(taskId: taskId, text: processedText)
-        try await sendMessage(continueTaskEvent)
+        // 关键修复：百炼 TTS 在单次请求中可能只识别第一个控制类标签和第一个富语言类标签，
+        // 后续标签会被静默忽略。把文本按控制类标签拆成多个 segment，
+        // 每个 segment 独立发送一次 continue-task，由 API 独立解析。
+        let segments = splitTextByControlTags(processedText)
+        Log(message: "  拆分为 \(segments.count) 个 segment:")
+        for (idx, seg) in segments.enumerated() {
+            Log(message: "    [\(idx+1)/\(segments.count)] \(seg)")
+        }
+
+        // 逐个发送 continue-task 事件
+        for segment in segments {
+            let continueTaskEvent = buildContinueTaskEvent(taskId: taskId, text: segment)
+            try await sendMessage(continueTaskEvent)
+        }
 
         // 发送 finish-task 事件
         Log(message: "发送 finish-task 事件")
@@ -235,14 +254,22 @@ final class BailianTTSService {
                                let type = outputData["type"] as? String {
                                 switch type {
                                 case "sentence-begin":
-                                    if let sentence = outputData["sentence"] as? [String: Any],
-                                       let originalText = sentence["original_text"] as? String {
-                                        Log(message: "句子开始: \(originalText.prefix(20))...")
+                                    // 记录每个句子如何被 API 切分，帮助排查标签未生效问题
+                                    if let sentence = outputData["sentence"] as? [String: Any] {
+                                        let originalText = sentence["original_text"] as? String ?? ""
+                                        let textLen = originalText.count
+                                        Log(message: "[API切分] sentence-begin: 长度=\(textLen), 前100字=\(String(originalText.prefix(100)))")
+                                    } else {
+                                        // 找不到 sentence/original_text 时，打印完整结构
+                                        Log(message: "[API切分] sentence-begin: outputData keys=\(outputData.keys.sorted())")
                                     }
                                 case "sentence-end":
-                                    if let sentence = outputData["sentence"] as? [String: Any],
-                                       let originalText = sentence["original_text"] as? String {
-                                        Log(message: "句子结束: \(originalText.prefix(20))...")
+                                    if let sentence = outputData["sentence"] as? [String: Any] {
+                                        let originalText = sentence["original_text"] as? String ?? ""
+                                        let textLen = originalText.count
+                                        Log(message: "[API切分] sentence-end: 长度=\(textLen), 前100字=\(String(originalText.prefix(100)))")
+                                    } else {
+                                        Log(message: "[API切分] sentence-end: outputData keys=\(outputData.keys.sorted())")
                                     }
                                 case "sentence-synthesis":
                                     // 音频通过 binary 通道接收
@@ -310,6 +337,91 @@ final class BailianTTSService {
         }
 
         return text
+    }
+
+    /// 例子：
+    ///   输入: `[panicked]虽然…精简，[angry]其他…体验 [cough] [crying]几行…跑起来 [laughing]`
+    ///   输出:
+    ///     - "[panicked]虽然…精简，"
+    ///     - "[angry]其他…体验 [cough]"
+    ///     - "[crying]几行…跑起来 [laughing]"
+    private func splitTextByControlTags(_ text: String) -> [String] {
+        // 富语言类标签集合（用于区分控制 vs 富语言）
+        let richLanguageSet: Set<String> = Set(Constants.richLanguageTags.map { $0.tag })
+
+        struct Item {
+            enum Kind { case control, rich, text }
+            let kind: Kind
+            let value: String
+        }
+
+        let pattern = "\\[([^\\]]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return [text]
+        }
+        let nsText = text as NSString
+        let fullRange = NSRange(location: 0, length: nsText.length)
+
+        // 1) 用正则把 text 切成 [tag] / 普通文本 两类 item
+        var items: [Item] = []
+        var cursor = 0
+
+        for match in regex.matches(in: text, range: fullRange) {
+            let openLoc = match.range.location
+            let closeEnd = match.range.upperBound
+            let labelRange = match.range(at: 1)
+            guard let swiftRange = Range(labelRange, in: text) else { continue }
+            let label = String(text[swiftRange])
+            let tagStr = "[\(label)]"
+
+            if openLoc > cursor {
+                let textPart = nsText.substring(with: NSRange(location: cursor, length: openLoc - cursor))
+                if !textPart.isEmpty {
+                    items.append(Item(kind: .text, value: textPart))
+                }
+            }
+
+            let kind: Item.Kind = richLanguageSet.contains(label) ? .rich : .control
+            items.append(Item(kind: kind, value: tagStr))
+
+            cursor = closeEnd
+        }
+        if cursor < nsText.length {
+            let tail = nsText.substring(from: cursor)
+            if !tail.isEmpty {
+                items.append(Item(kind: .text, value: tail))
+            }
+        }
+
+        // 2) 按控制类标签分组
+        //    - 遇到 control: 提交当前 segment，开始新 segment
+        //    - 遇到 rich/text: 累加到当前 segment 末尾
+        var segments: [String] = []
+        var currentControl: String? = nil
+        var currentBody: String = ""
+
+        func flush() {
+            let combined = (currentControl ?? "") + currentBody
+            let trimmed = combined.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                segments.append(combined)
+            }
+            currentControl = nil
+            currentBody = ""
+        }
+
+        for item in items {
+            switch item.kind {
+            case .control:
+                flush()
+                currentControl = item.value
+            case .rich, .text:
+                currentBody.append(item.value)
+            }
+        }
+        flush()
+
+        return segments.isEmpty ? [text] : segments
     }
 
     // MARK: - 事件构建

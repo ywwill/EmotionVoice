@@ -11,7 +11,8 @@ import SwiftUI
 struct VoiceStudioView: View {
 
     @EnvironmentObject var appState: AppState
-    @StateObject private var vm = VoiceStudioViewModel()
+    // 使用 shared 单例，保证页面切换时数据不丢失（文本/情感/语速音量等）
+    @StateObject private var vm = VoiceStudioViewModel.shared
     @ObservedObject private var player = AudioPreviewPlayer.shared
     @State private var showVoiceLibrarySheet: Bool = false
 
@@ -119,43 +120,21 @@ struct VoiceStudioView: View {
             }
 
             // 编辑区
-            ZStack(alignment: .topLeading) {
-                if vm.text.isEmpty {
-                    Text("插入文本或粘贴内容".localized())
-                        .font(AppFont.bodyLarge)
-                        .foregroundStyle(AppColor.textTertiary)
-                        .allowsHitTesting(false)
-                }
-
-                EmotionHighlightedTextEditor(
-                    text: $vm.text,
-                    emotions: Constants.emotions + Constants.richLanguageTags
-                )
-                .font(AppFont.bodyLarge)
-                .foregroundStyle(AppColor.textPrimary)
-            }
+            // EmotionTokenEditor 在 NSTextView 内部管理光标位置，
+            // 通过 insertTokenTrigger 触发插入（emotion 按钮调用 vm.insertEmotion）。
+            EmotionTokenEditor(
+                items: $vm.ttsItems,
+                insertTrigger: vm.insertTokenTrigger,
+                insertLabel: vm.insertTokenLabel,
+                insertEmoji: vm.insertTokenEmoji,
+                insertTokenEnglishTag: vm.insertTokenEnglishTag,
+                clearTrigger: vm.clearTokensTrigger,
+                textBinding: $vm.text
+            )
+            .font(AppFont.bodyLarge)
+            .foregroundStyle(AppColor.textPrimary)
             .frame(minHeight: 220)
             .scrollContentBackground(.hidden)
-
-            HStack(spacing: 16) {
-                Text("输入 [[]] 可快速插入情感标签".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-                Spacer()
-                Button {
-                    vm.appendEmotion(tag: "excited")
-                } label: {
-                    Label("[excited]", systemImage: "plus.circle.fill")
-                        .font(AppFont.monoSmall)
-                        .foregroundStyle(AppColor.accentPrimary)
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-            }
-            .padding(.top, 12)
-            .overlay(alignment: .top) {
-                Divider().background(AppColor.borderSubtle)
-            }
         }
         .padding(20)
         .background(AppColor.bgSecondary)
@@ -171,43 +150,43 @@ struct VoiceStudioView: View {
     private var emotionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("情感控制面板".localized())
-                    .font(.system(size: 13, weight: .semibold))
+                Text("语气控制".localized())
+                    .font(.system(size: 14, weight: .semibold))
                 Spacer()
             }
 
-            // 情感网格
+            // 控制类情感网格（23 个）
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 10),
                 spacing: 6
             ) {
                 ForEach(Constants.emotions) { emotion in
-                    EmotionButton(
-                        emotion: emotion,
-                        usageCount: vm.usageCount(for: emotion.tag)
-                    ) {
-                        vm.appendEmotion(tag: emotion.tag)
+                    EmotionButton(emotion: emotion) {
+                        vm.insertEmotion(tag: emotion.tag)
                     }
                 }
             }
 
             Divider().background(AppColor.borderSubtle).padding(.vertical, 6)
 
-            // 富语言
+            // 富语言效果（7 个拟声标签）
             VStack(alignment: .leading, spacing: 8) {
-                Text("富语言效果".localized())
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
+                HStack(spacing: 6) {
+                    Text("拟声效果".localized())
+                        .font(.system(size: 14, weight: .semibold))
+                }
 
                 HStack(spacing: 6) {
                     ForEach(Constants.richLanguageTags) { tag in
                         Button {
-                            vm.appendEmotion(tag: tag.tag)
+                            vm.insertEmotion(tag: tag.tag)
                         } label: {
                             HStack(spacing: 4) {
                                 Text(tag.emoji)
-                                Text("[\(tag.tag)]")
-                                    .font(AppFont.monoSmall)
+                                    .font(.system(size: 18))
+                                Text("\(tag.label)")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(AppColor.textSecondary)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -223,29 +202,6 @@ struct VoiceStudioView: View {
                         .pointingHandCursor()
                     }
                 }
-            }
-
-            Divider().background(AppColor.borderSubtle).padding(.vertical, 6)
-
-            // 语速/音量
-            HStack(alignment: .top, spacing: 16) {
-                LabeledSlider(
-                    label: "语速".localized(),
-                    value: $vm.rate,
-                    range: 0.5...2.0,
-                    step: 0.1,
-                    unit: "x",
-                    displayValue: String(format: "%.1fx", vm.rate)
-                )
-
-                LabeledSlider(
-                    label: "音量".localized(),
-                    value: $vm.volume,
-                    range: 0...100,
-                    step: 5,
-                    unit: "%",
-                    displayValue: "\(Int(vm.volume))%"
-                )
             }
         }
         .padding(18)
@@ -263,6 +219,7 @@ struct VoiceStudioView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 voiceCard
+                audioControlCard
                 languageCard
                 nlCard
             }
@@ -407,6 +364,48 @@ struct VoiceStudioView: View {
         }
 
         return Array(premium) + zh + en
+    }
+
+    // MARK: - 音频控制卡片（语速/音量）
+
+    /// 语速/音量卡片。移出 emotionCard，统一在右侧面板集中展示音频输出参数。
+    /// 横向空间受限，slider 在该卡片内采用上下纵向排列。
+    private var audioControlCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("🎚️ 音频控制".localized())
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                LabeledSlider(
+                    label: "语速".localized(),
+                    value: $vm.rate,
+                    range: 0.5...2.0,
+                    step: 0.1,
+                    unit: "x",
+                    displayValue: String(format: "%.1fx", vm.rate)
+                )
+
+                LabeledSlider(
+                    label: "音量".localized(),
+                    value: $vm.volume,
+                    range: 0...100,
+                    step: 5,
+                    unit: "%",
+                    displayValue: "\(Int(vm.volume))%"
+                )
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.bgSecondary)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 
     private var languageCard: some View {

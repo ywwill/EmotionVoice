@@ -663,6 +663,12 @@
 		6F209F77303EC88F00A770BB /* longdiechuanling.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AF1303EC88F00A770BB /* longdiechuanling.m4a */; };
 		6F209F78303EC88F00A770BB /* longcheyanxuan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AE9303EC88F00A770BB /* longcheyanxuan.m4a */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
+		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
+		E001000331010101AABBCCDD /* EmotionTokenAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */; };
+		E001000531010101AABBCCDD /* EmotionTokenStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000631010101AABBCCDD /* EmotionTokenStyle.swift */; };
+		E001000731010101AABBCCDD /* EmotionTokenAttachmentCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000831010101AABBCCDD /* EmotionTokenAttachmentCell.swift */; };
+		E001000931010101AABBCCDD /* EmotionTokenTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000A31010101AABBCCDD /* EmotionTokenTextView.swift */; };
+		E001000B31010101AABBCCDD /* EmotionTokenEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000C31010101AABBCCDD /* EmotionTokenEditor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1323,6 +1329,12 @@
 		6F209D1E303EC88F00A770BB /* loongolivialin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongolivialin.m4a; sourceTree = "<group>"; };
 		6F209D1F303EC88F00A770BB /* loongryanma.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongryanma.m4a; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E001000231010101AABBCCDD /* TTSContentItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSContentItem.swift; sourceTree = "<group>"; };
+		E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenAttachment.swift; sourceTree = "<group>"; };
+		E001000631010101AABBCCDD /* EmotionTokenStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenStyle.swift; sourceTree = "<group>"; };
+		E001000831010101AABBCCDD /* EmotionTokenAttachmentCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenAttachmentCell.swift; sourceTree = "<group>"; };
+		E001000A31010101AABBCCDD /* EmotionTokenTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenTextView.swift; sourceTree = "<group>"; };
+		E001000C31010101AABBCCDD /* EmotionTokenEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenEditor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1478,6 +1490,7 @@
 				6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */,
 				6F209379303EC80500A770BB /* VoiceRow.swift */,
 				6F20937A303EC80500A770BB /* VoiceStudioView.swift */,
+				E001001131010101AABBCCDD /* EmotionToken */,
 			);
 			path = VoiceStudioView;
 			sourceTree = "<group>";
@@ -2141,6 +2154,19 @@
 				6FEE97EB302705C600C39C26 /* Emora.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E001001131010101AABBCCDD /* EmotionToken */ = {
+			isa = PBXGroup;
+			children = (
+				E001000231010101AABBCCDD /* TTSContentItem.swift */,
+				E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */,
+				E001000631010101AABBCCDD /* EmotionTokenStyle.swift */,
+				E001000831010101AABBCCDD /* EmotionTokenAttachmentCell.swift */,
+				E001000A31010101AABBCCDD /* EmotionTokenTextView.swift */,
+				E001000C31010101AABBCCDD /* EmotionTokenEditor.swift */,
+			);
+			path = EmotionToken;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2865,6 +2891,12 @@
 				6F2093B1303EC80500A770BB /* VoiceLibraryEnvironment.swift in Sources */,
 				6F2093B2303EC80500A770BB /* VoicesLibraryView.swift in Sources */,
 				6F2093B3303EC80500A770BB /* EmotionButton.swift in Sources */,
+				E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */,
+				E001000331010101AABBCCDD /* EmotionTokenAttachment.swift in Sources */,
+				E001000531010101AABBCCDD /* EmotionTokenStyle.swift in Sources */,
+				E001000731010101AABBCCDD /* EmotionTokenAttachmentCell.swift in Sources */,
+				E001000931010101AABBCCDD /* EmotionTokenTextView.swift in Sources */,
+				E001000B31010101AABBCCDD /* EmotionTokenEditor.swift in Sources */,
 				6F2093B4303EC80500A770BB /* VoiceLibrarySheet.swift in Sources */,
 				6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */,
 				6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */,
