@@ -212,6 +212,18 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
             (dim, allCases.filter { $0.dimension == dim })
         }
     }
+
+    /// 第一行已固定的分类（收藏 / 全部由视图层独立渲染）
+    static let primaryRow: Set<VoiceCategory> = [.premium, .chinese, .english]
+
+    /// 第二行展示的分类：除 primaryRow 之外的全部 case，按维度顺序排列
+    static var secondaryDisplayOrder: [VoiceCategory] {
+        var result: [VoiceCategory] = []
+        for dim in displayOrder {
+            result.append(contentsOf: allCases.filter { $0.dimension == dim && !primaryRow.contains($0) })
+        }
+        return result
+    }
 }
 
 /// 音色分类维度

@@ -5,13 +5,6 @@
 //  Created by young on 2026/8/8.
 //
 //  音色卡片（已优化）：
-//  - 用 Identifiable VO 传递数据，body 内不再读取外部 observable
-//  - hover/选中的动画仅作用于背景/边框层；不触发 scaleEffect/shadow 全树重绘
-//  - pointingHandCursor 仅在卡片根层一次性绑定，不再每行按钮重复 push/pop
-//  - desc 中已包含年龄时，metaTags 不再重复显示年龄
-//  - 旗舰（featured）音色采用渐变高亮背景以示区别
-//  - 播放中展示波形动画（替代静态图标）
-//
 
 import SwiftUI
 
@@ -105,20 +98,6 @@ struct VoiceCard: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppColor.textPrimary)
                     .lineLimit(1)
-                Text(item.desc)
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textSecondary)
-                    .lineLimit(2)
-            }
-
-            if !item.scene.isEmpty || item.age != nil || !item.gender.isEmpty {
-                metaTags
-            }
-
-            // 播放波形（仅播放时展示，替代静态预览按钮位置）
-            if isPlaying {
-                playingWaveform
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             actionRow
@@ -166,27 +145,37 @@ struct VoiceCard: View {
     // MARK: - 子视图（轻量化）
 
     private var header: some View {
-        HStack {
+        HStack(alignment: .top) {
             AvatarView(text: item.avatar, size: 40)
             Spacer()
-            if item.isPremium {
-                Text("⭐ 旗舰".localized())
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.accentGlow)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(AppColor.accentPrimary.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .trailing) {
+                if item.isPremium {
+                    Text("⭐ 旗舰".localized())
+                        .font(AppFont.monoSmall)
+                        .foregroundStyle(AppColor.accentGlow)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppColor.accentPrimary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                
+                if !item.scene.isEmpty || item.age != nil || !item.gender.isEmpty {
+                    metaTags
+                }
+                
+                Text(item.desc)
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textSecondary)
+                    .lineLimit(2)
             }
         }
     }
 
     private var metaTags: some View {
         HStack(spacing: 6) {
-            if !item.scene.isEmpty {
-                sceneTag(item.scene)
-            }
-            // desc 中已包含年龄的（如旗舰音色），不再重复显示
+            
+            Spacer()
+            
             if item.age != nil && !item.desc.contains("岁") {
                 Text("\(item.age!) 岁")
                     .font(AppFont.monoSmall)
@@ -208,24 +197,33 @@ struct VoiceCard: View {
     private var actionRow: some View {
         HStack(spacing: 6) {
             Button(action: onPreview) {
-                HStack(spacing: 4) {
+                HStack() {
                     Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                         .font(.system(size: 11))
-                    Text(isPlaying ? "试听中".localized() : "试听".localized())
-                        .font(.system(size: 11, weight: .medium))
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .background(
                     isPlaying
-                    ? AppColor.accentPrimary.opacity(0.20)
-                    : AppColor.bgTertiary
+                    ? AppColor.emotionHappy.opacity(0.22)
+                    : Color.clear
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(
+                            isPlaying
+                            ? AppColor.emotionHappy.opacity(0.6)
+                            : AppColor.borderMedium,
+                            lineWidth: 1
+                        )
                 )
                 .foregroundStyle(
-                    isPlaying ? AppColor.accentGlow : AppColor.textSecondary
+                    isPlaying ? AppColor.emotionHappy : AppColor.textSecondary
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+            .animation(.easeInOut(duration: 0.2), value: isPlaying)
             .buttonStyle(.plain)
             .pointingHandCursor()
 
@@ -235,7 +233,16 @@ struct VoiceCard: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(
-                        item.isFavorite ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary
+                        item.isFavorite ? AppColor.accentPrimary.opacity(0.2) : Color.clear
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(
+                                item.isFavorite
+                                ? AppColor.accentPrimary.opacity(0.6)
+                                : AppColor.borderMedium,
+                                lineWidth: 1
+                            )
                     )
                     .foregroundStyle(
                         item.isFavorite ? AppColor.accentPrimary : AppColor.textSecondary
@@ -245,6 +252,14 @@ struct VoiceCard: View {
             .buttonStyle(.plain)
             .pointingHandCursor()
 
+            Spacer()
+            
+            // 播放波形（仅播放时展示，替代静态预览按钮位置）
+            if isPlaying {
+                playingWaveform
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
             Spacer()
 
             Button(action: onUse) {

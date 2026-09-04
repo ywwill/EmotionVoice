@@ -17,7 +17,7 @@ struct BasicVoiceTemplate: Codable, Hashable {
     /// 性别（男 / 女）
     let gender: String
     /// 年龄
-    let age: String
+    let age: Int
     /// 特质（如 平实质朴音）
     let feature: String
     /// 适用场景（如 日常对话）
@@ -26,6 +26,27 @@ struct BasicVoiceTemplate: Codable, Hashable {
     let lang: String
     /// 预览音频文件名
     let audio: String
+
+    // MARK: - Codable
+
+    enum CodingKeys: String, CodingKey {
+        case idx, name, key, gender, age, feature, scene, lang, audio
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        idx = try c.decode(String.self, forKey: .idx)
+        name = try c.decode(String.self, forKey: .name)
+        key = try c.decode(String.self, forKey: .key)
+        gender = try c.decode(String.self, forKey: .gender)
+        // JSON 中 age 为字符串，内部转 Int
+        let ageStr = try c.decode(String.self, forKey: .age)
+        age = Int(ageStr) ?? 0
+        feature = try c.decode(String.self, forKey: .feature)
+        scene = try c.decode(String.self, forKey: .scene)
+        lang = try c.decode(String.self, forKey: .lang)
+        audio = try c.decode(String.self, forKey: .audio)
+    }
 
     /// 自动归类：默认按语言分类（旗舰音色由调用方注入 .premium 覆盖）
     var category: VoiceCategory {

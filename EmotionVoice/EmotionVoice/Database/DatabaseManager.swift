@@ -50,15 +50,15 @@ final class DatabaseManager {
     let voiceCategory = SQLite.Expression<String>("category")
     let voiceIsFavorite = SQLite.Expression<Bool>("is_favorite")
     /// 适用场景
-    let voiceScene = SQLite.Expression<String?>("scene")
+    let voiceScene = SQLite.Expression<String>("scene")
     /// 年龄
-    let voiceAge = SQLite.Expression<Int?>("age")
+    let voiceAge = SQLite.Expression<Int>("age")
     /// 性别
-    let voiceGender = SQLite.Expression<String?>("gender")
-    /// 预览音频文件名（如 longanlingxin.m4a），可空
-    let voiceAudio = SQLite.Expression<String?>("audio")
+    let voiceGender = SQLite.Expression<String>("gender")
+    /// 预览音频文件名（如 longanlingxin.m4a）
+    let voiceAudio = SQLite.Expression<String>("audio")
     /// 语种（中文 / 英文）
-    let voiceLang = SQLite.Expression<String?>("lang")
+    let voiceLang = SQLite.Expression<String>("lang")
 
     // MARK: - 交易记录字段
     let txId = SQLite.Expression<Int64>("id")
@@ -77,7 +77,7 @@ final class DatabaseManager {
     // MARK: - JSON 同步指纹
     private let fingerprintKey = "EmotionVoice.basicVoicesFingerprint"
     private let fingerprintVersionKey = "EmotionVoice.basicVoicesFingerprintVersion"
-    private let currentFingerprintVersion = 1   // 增加此值可强制音色模板全量重新同步
+    private let currentFingerprintVersion = 2   // 增加此值可强制音色模板全量重新同步
 
     private init() {
         // 直接放在用户的 Documents 目录下，方便开发者调试
@@ -119,11 +119,11 @@ final class DatabaseManager {
             t.column(voiceAvatar)
             t.column(voiceCategory)
             t.column(voiceIsFavorite, defaultValue: false)
-            t.column(voiceScene)
-            t.column(voiceAge)
-            t.column(voiceGender)
-            t.column(voiceAudio)
-            t.column(voiceLang)
+            t.column(voiceScene, defaultValue: "")
+            t.column(voiceAge, defaultValue: 0)
+            t.column(voiceGender, defaultValue: "")
+            t.column(voiceAudio, defaultValue: "")
+            t.column(voiceLang, defaultValue: "")
         })
 
         try db.run(transactions.create(ifNotExists: true) { t in
@@ -373,7 +373,7 @@ final class DatabaseManager {
                     voiceCategory <- cat,
                     voiceIsFavorite <- false,
                     voiceScene <- t.scene,
-                    voiceAge <- Int(t.age),
+                    voiceAge <- t.age,
                     voiceGender <- t.gender,
                     voiceAudio <- t.audio,
                     voiceLang <- t.lang
@@ -478,7 +478,6 @@ final class DatabaseManager {
                 case .ageSenior:
                     cat = "age_senior"
                 }
-                let ageInt = Int(t.age)
                 let existing = try db.pluck(voices.filter(voiceKey == t.key))
                 if existing != nil {
                     try db.run(voices.filter(voiceKey == t.key).update(
@@ -487,7 +486,7 @@ final class DatabaseManager {
                         voiceAvatar <- t.avatar,
                         voiceCategory <- cat,
                         voiceScene <- t.scene,
-                        voiceAge <- ageInt,
+                        voiceAge <- t.age,
                         voiceGender <- t.gender,
                         voiceAudio <- t.audio,
                         voiceLang <- t.lang,
@@ -502,7 +501,7 @@ final class DatabaseManager {
                         voiceCategory <- cat,
                         voiceIsFavorite <- false,
                         voiceScene <- t.scene,
-                        voiceAge <- ageInt,
+                        voiceAge <- t.age,
                         voiceGender <- t.gender,
                         voiceAudio <- t.audio,
                         voiceLang <- t.lang
