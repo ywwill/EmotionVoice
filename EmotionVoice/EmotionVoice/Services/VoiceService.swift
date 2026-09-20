@@ -282,6 +282,28 @@ final class VoiceService {
         )
     }
 
+    // MARK: - 初始化默认收藏
+
+    /// 确保默认收藏两个旗舰音色（仅在首次安装时调用）
+    func ensureDefaultFavorites() {
+        // 两个旗舰音色的 key
+        let flagshipKeys = ["longanlingxin", "longanlufeng"]
+
+        for key in flagshipKeys {
+            do {
+                let row = try db.db.pluck(db.voices.filter(db.voiceKey == key))
+                guard let existing = row else { continue }
+                // 如果未收藏，则设为收藏
+                if !existing[db.voiceIsFavorite] {
+                    try db.db.run(db.voices.filter(db.voiceKey == key).update(db.voiceIsFavorite <- true))
+                    Log(message: "VoiceService: 默认收藏音色 \(key)")
+                }
+            } catch {
+                Log(message: "VoiceService.ensureDefaultFavorites error for \(key): \(error)")
+            }
+        }
+    }
+
     // MARK: - 切换收藏
 
     /// 切换收藏

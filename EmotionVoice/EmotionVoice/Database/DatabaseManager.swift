@@ -77,7 +77,7 @@ final class DatabaseManager {
     // MARK: - JSON 同步指纹
     private let fingerprintKey = "EmotionVoice.basicVoicesFingerprint"
     private let fingerprintVersionKey = "EmotionVoice.basicVoicesFingerprintVersion"
-    private let currentFingerprintVersion = 2   // 增加此值可强制音色模板全量重新同步
+    private let currentFingerprintVersion = 3   // 增加此值可强制音色模板全量重新同步
 
     private init() {
         // 直接放在用户的 Documents 目录下，方便开发者调试

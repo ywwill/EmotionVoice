@@ -235,6 +235,14 @@ final class BailianTTSService {
                 let message = try await receive()
 
                 if let jsonText = message.text {
+                    // 打印收到的 WebSocket 文本消息
+                    if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
+                       let event = (json["header"] as? [String: Any])?["event"] as? String {
+                        Log(message: "[WS RECV] event=\(event)")
+                    } else {
+                        Log(message: "[WS RECV] \(jsonText.prefix(200))")
+                    }
+
                     // JSON 文本消息
                     if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
                        let event = (json["header"] as? [String: Any])?["event"] as? String {
@@ -291,6 +299,8 @@ final class BailianTTSService {
                         }
                     }
                 } else if let binaryData = message.binaryData {
+                    // 打印收到的二进制数据大小
+                    Log(message: "[WS RECV] binary data: \(binaryData.count) bytes")
                     // 二进制音频数据
                     if !binaryData.isEmpty {
                         completeAudioData.append(binaryData)
@@ -312,6 +322,11 @@ final class BailianTTSService {
         }
 
         Log(message: "收到音频数据: \(completeAudioData.count) bytes")
+
+        // 音频生成完成后主动断开连接，下次使用时再重新建立
+        closeConnectionInternal()
+        Log(message: "音频生成完成，已主动断开 WebSocket 连接")
+
         return completeAudioData
     }
 
@@ -519,7 +534,7 @@ final class BailianTTSService {
         closeConnectionInternal()
 
         let wsUrl = RegionManager.shared.wsUrl
-        Log(message: "建立 WebSocket 连接: \(wsUrl)")
+        Log(message: "[WS CONNECT] 建立 WebSocket 连接: \(wsUrl)")
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 60
@@ -538,6 +553,7 @@ final class BailianTTSService {
         webSocketTask?.resume()
 
         isConnected = true
+        Log(message: "[WS CONNECT] 连接已建立")
     }
 
     private func sendMessage(_ message: String) async throws {
@@ -545,11 +561,59 @@ final class BailianTTSService {
             throw TTSError.connectionError
         }
 
+        // 打印发送的 WebSocket 消息
+        if let json = try? JSONSerialization.jsonObject(with: message.data(using: .utf8)!) as? [String: Any],
+           let action = (json["header"] as? [String: Any])?["action"] as? String {
+            if action == "continue-task", let payload = json["payload"] as? [String: Any],
+               let input = payload["input"] as? [String: Any],
+               let text = input["text"] as? String {
+                let preview = text.count > 100 ? String(text.prefix(100)) + "..." : text
+                Log(message: "[WS SEND] action=\(action), text=\(preview)")
+            } else {
+                Log(message: "[WS SEND] action=\(action)")
+            }
+        } else {
+            Log(message: "[WS SEND] \(message.prefix(200))")
+        }
+
         let wsMessage = URLSessionWebSocketTask.Message.string(message)
         try await webSocketTask.send(wsMessage)
     }
 
     private func receive() async throws -> ReceivedMessage {
+        guard let webSocketTask = webSocketTask else {
+            throw TTSError.connectionError
+        }
+
+        do {
+            let message = try await webSocketTask.receive()
+
+            switch message {
+            case .string(let text):
+                return ReceivedMessage(text: text, binaryData: nil)
+
+            case .data(let data):
+                return ReceivedMessage(text: nil, binaryData: data)
+
+            @unknown default:
+                return ReceivedMessage(text: nil, binaryData: nil)
+            }
+        } catch {
+            // WebSocket 连接可能已断开但 isConnected 标志未更新，自动重连重试一次
+            Log(message: "[WS ERROR] WebSocket 接收消息失败: \(error.localizedDescription)，尝试重新连接...")
+            return try await reconnectAndReceive()
+        }
+    }
+
+    /// 重新建立连接并接收消息（用于连接断开后的重试）
+    private func reconnectAndReceive() async throws -> ReceivedMessage {
+        // 关闭旧连接
+        closeConnectionInternal()
+
+        // 重建连接
+        try await ensureConnection()
+
+        // 重新接收消息
         guard let webSocketTask = webSocketTask else {
             throw TTSError.connectionError
         }

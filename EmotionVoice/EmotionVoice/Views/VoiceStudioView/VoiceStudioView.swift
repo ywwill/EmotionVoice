@@ -298,7 +298,7 @@ struct VoiceStudioView: View {
 
             Divider().background(AppColor.borderSubtle)
 
-            // 备选音色（精选 4 条）
+            // 收藏的音色（最多显示 6 个）
             VStack(spacing: 4) {
                 ForEach(alternateVoices) { v in
                     VoiceRow(
@@ -350,30 +350,36 @@ struct VoiceStudioView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 
-    /// 6 个备选音色：固定 2 旗舰 + 2 中文 + 2 英文（按数据顺序；选中态由 UI 标识）
+    /// 备选音色：只显示用户收藏的音色，最多显示 6 个（按 dimension 排序，旗舰优先）
     private var alternateVoices: [Voice] {
         let all = appState.voices
-        let premiumCat = VoiceCategory.premium
 
-        // 旗舰：最多 2 个（不剔除当前选中，保留选中态标识）
-        let premium = all.filter { $0.category == premiumCat }
-            .prefix(2)
+        // 只取收藏的音色，按 dimension 排序（旗舰 > 语言 > 场景 > 角色 > 年龄）
+        let favorites = all.filter { $0.isFavorite }
 
-        // 候选：非旗舰的基础音色
-        let nonPremium = all.filter { $0.category != premiumCat }
-
-        var zh: [Voice] = []
-        var en: [Voice] = []
-        for v in nonPremium {
-            if v.lang.contains("中文") && zh.count < 2 {
-                zh.append(v)
-            } else if v.lang.contains("英文") && en.count < 2 {
-                en.append(v)
+        return favorites
+            .sorted { a, b in
+                let da = dimensionRank(a.category.dimension)
+                let db_ = dimensionRank(b.category.dimension)
+                if da != db_ { return da < db_ }
+                let aIsPremium = a.category == .premium
+                let bIsPremium = b.category == .premium
+                if aIsPremium != bIsPremium { return aIsPremium }
+                return a.name < b.name
             }
-            if zh.count >= 2 && en.count >= 2 { break }
-        }
+            .prefix(6)
+            .map { $0 }
+    }
 
-        return Array(premium) + zh + en
+    /// 分类维度排序权重
+    private func dimensionRank(_ dim: VoiceCategoryDimension) -> Int {
+        switch dim {
+        case .premium:  return 0
+        case .language: return 1
+        case .scene:    return 2
+        case .role:     return 3
+        case .age:      return 4
+        }
     }
 
     // MARK: - 音频控制卡片（语速/音量）

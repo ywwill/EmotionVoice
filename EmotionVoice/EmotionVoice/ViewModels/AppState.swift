@@ -78,6 +78,11 @@ final class AppState: ObservableObject {
         self.monthlyUsed = CreditsService.shared.monthlyUsed
         self.voices = VoiceService.shared.fetchAll()
 
+        // 初始化默认收藏（首次安装时自动收藏两个旗舰音色）
+        VoiceService.shared.ensureDefaultFavorites()
+        // 重新加载以反映收藏状态变化
+        self.voices = VoiceService.shared.fetchAll()
+
         // 加载保存的设置，没有则使用默认值
         let savedFormat = UserDefaults.standard.string(forKey: "defaultFormat") ?? Constants.defaultFormat.uppercased()
         let savedSampleRate = UserDefaults.standard.integer(forKey: "defaultSampleRate")

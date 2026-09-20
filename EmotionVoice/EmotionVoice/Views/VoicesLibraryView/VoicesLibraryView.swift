@@ -518,7 +518,13 @@ struct VoicesLibraryView: View {
     // MARK: - 行为
 
     private func toggleFavorite(key: String) {
-        vm.toggleFavorite(key: key)
+        // 先更新 appState.voices 中的收藏状态
+        let newFavoriteState = VoiceService.shared.toggleFavorite(key: key)
+        if let index = appState.voices.firstIndex(where: { $0.key == key }) {
+            appState.voices[index].isFavorite = newFavoriteState
+        }
+        // 刷新当前页音色列表（使 VoiceCard 的 item.isFavorite 更新）
+        vm.reloadCurrentPage()
     }
 
     private func preview(key: String) {

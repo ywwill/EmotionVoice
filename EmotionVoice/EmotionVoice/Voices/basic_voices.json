@@ -2,7 +2,7 @@
   {
     "idx": "1",
     "name": "璨竹月",
-    "key": "longcanzhuyue",
+    "key": "qwen-audio-3.0-tts-plus-longcanzhuyue",
     "gender": "女",
     "age": "26",
     "feature": "平实质朴音",
@@ -13,7 +13,7 @@
   {
     "idx": "2",
     "name": "蓉芷荷",
-    "key": "longrongzhihe",
+    "key": "qwen-audio-3.0-tts-plus-longrongzhihe",
     "gender": "女",
     "age": "24",
     "feature": "电台质感音",
@@ -24,7 +24,7 @@
   {
     "idx": "3",
     "name": "朗虹沫",
-    "key": "longlanghongmo",
+    "key": "qwen-audio-3.0-tts-plus-longlanghongmo",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -35,7 +35,7 @@
   {
     "idx": "4",
     "name": "风月瑶",
-    "key": "longfengyueyao",
+    "key": "qwen-audio-3.0-tts-plus-longfengyueyao",
     "gender": "女",
     "age": "28",
     "feature": "直爽利落音",
@@ -46,7 +46,7 @@
   {
     "idx": "5",
     "name": "潇煜月",
-    "key": "longxiaoyuyue",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoyuyue",
     "gender": "女",
     "age": "25",
     "feature": "惊奇讶异音",
@@ -57,7 +57,7 @@
   {
     "idx": "6",
     "name": "彤旭弦",
-    "key": "longtongxuxian",
+    "key": "qwen-audio-3.0-tts-plus-longtongxuxian",
     "gender": "女",
     "age": "24",
     "feature": "活泼灵动音",
@@ -68,7 +68,7 @@
   {
     "idx": "7",
     "name": "芷晴曦",
-    "key": "longzhiqingxi",
+    "key": "qwen-audio-3.0-tts-plus-longzhiqingxi",
     "gender": "女",
     "age": "25",
     "feature": "紧张不安音",
@@ -79,7 +79,7 @@
   {
     "idx": "8",
     "name": "嵐柏弦",
-    "key": "longlanbaixian",
+    "key": "qwen-audio-3.0-tts-plus-longlanbaixian",
     "gender": "女",
     "age": "17",
     "feature": "惊悚恐怖音",
@@ -90,7 +90,7 @@
   {
     "idx": "9",
     "name": "莹松柳",
-    "key": "longyingsongliu",
+    "key": "qwen-audio-3.0-tts-plus-longyingsongliu",
     "gender": "男",
     "age": "32",
     "feature": "爽朗利落音",
@@ -101,7 +101,7 @@
   {
     "idx": "10",
     "name": "筝瑶鹤",
-    "key": "longzhengyaohe",
+    "key": "qwen-audio-3.0-tts-plus-longzhengyaohe",
     "gender": "男",
     "age": "38",
     "feature": "亢奋激昂音",
@@ -112,7 +112,7 @@
   {
     "idx": "11",
     "name": "岚煜芙",
-    "key": "longlanyufu",
+    "key": "qwen-audio-3.0-tts-plus-longlanyufu",
     "gender": "男",
     "age": "22",
     "feature": "温柔亲和音",
@@ -123,7 +123,7 @@
   {
     "idx": "12",
     "name": "霓岫涟",
-    "key": "longnixiulian",
+    "key": "qwen-audio-3.0-tts-plus-longnixiulian",
     "gender": "男",
     "age": "25",
     "feature": "内敛含蓄音",
@@ -134,7 +134,7 @@
   {
     "idx": "13",
     "name": "溪凌璇",
-    "key": "longxilingxuan",
+    "key": "qwen-audio-3.0-tts-plus-longxilingxuan",
     "gender": "男",
     "age": "28",
     "feature": "不满犀利音",
@@ -145,7 +145,7 @@
   {
     "idx": "14",
     "name": "澄桃晦",
-    "key": "longchengtaohui",
+    "key": "qwen-audio-3.0-tts-plus-longchengtaohui",
     "gender": "男",
     "age": "23",
     "feature": "不满犀利音",
@@ -156,7 +156,7 @@
   {
     "idx": "15",
     "name": "昕蕊璇",
-    "key": "longxinruixuan",
+    "key": "qwen-audio-3.0-tts-plus-longxinruixuan",
     "gender": "男",
     "age": "24",
     "feature": "自然亲和音",
@@ -167,7 +167,7 @@
   {
     "idx": "16",
     "name": "琴鹤莹",
-    "key": "longqinheying",
+    "key": "qwen-audio-3.0-tts-plus-longqinheying",
     "gender": "男",
     "age": "24",
     "feature": "温柔亲和音",
@@ -178,7 +178,7 @@
   {
     "idx": "17",
     "name": "弦朔晖",
-    "key": "longxianshuohui",
+    "key": "qwen-audio-3.0-tts-plus-longxianshuohui",
     "gender": "男",
     "age": "68",
     "feature": "激昂朗诵音",
@@ -189,7 +189,7 @@
   {
     "idx": "18",
     "name": "涟霓蓉",
-    "key": "longliannirong",
+    "key": "qwen-audio-3.0-tts-plus-longliannirong",
     "gender": "男",
     "age": "42",
     "feature": "平稳陈述音",
@@ -200,7 +200,7 @@
   {
     "idx": "19",
     "name": "鹤薇璨",
-    "key": "longheweican",
+    "key": "qwen-audio-3.0-tts-plus-longheweican",
     "gender": "男",
     "age": "42",
     "feature": "平稳陈述音",
@@ -211,7 +211,7 @@
   {
     "idx": "20",
     "name": "芷朔珂",
-    "key": "longzhishuoke",
+    "key": "qwen-audio-3.0-tts-plus-longzhishuoke",
     "gender": "男",
     "age": "45",
     "feature": "平稳陈述音",
@@ -222,7 +222,7 @@
   {
     "idx": "21",
     "name": "蕊风瑜",
-    "key": "longruifengyu",
+    "key": "qwen-audio-3.0-tts-plus-longruifengyu",
     "gender": "男",
     "age": "42",
     "feature": "平稳陈述音",
@@ -233,7 +233,7 @@
   {
     "idx": "22",
     "name": "露柳澈",
-    "key": "longluliuche",
+    "key": "qwen-audio-3.0-tts-plus-longluliuche",
     "gender": "男",
     "age": "34",
     "feature": "标准播音音",
@@ -244,7 +244,7 @@
   {
     "idx": "23",
     "name": "柳旭澜",
-    "key": "longliuxulan",
+    "key": "qwen-audio-3.0-tts-plus-longliuxulan",
     "gender": "女",
     "age": "25",
     "feature": "标准播音音",
@@ -255,7 +255,7 @@
   {
     "idx": "24",
     "name": "菊芙荷",
-    "key": "longjufuhe",
+    "key": "qwen-audio-3.0-tts-plus-longjufuhe",
     "gender": "女",
     "age": "7",
     "feature": "呆萌软糯音",
@@ -266,7 +266,7 @@
   {
     "idx": "25",
     "name": "霞暮燕",
-    "key": "longxiamuyan",
+    "key": "qwen-audio-3.0-tts-plus-longxiamuyan",
     "gender": "男",
     "age": "26",
     "feature": "专业解说音",
@@ -277,7 +277,7 @@
   {
     "idx": "26",
     "name": "羽芷荷",
-    "key": "longyuzhihe",
+    "key": "qwen-audio-3.0-tts-plus-longyuzhihe",
     "gender": "男",
     "age": "42",
     "feature": "客观冷静音",
@@ -288,7 +288,7 @@
   {
     "idx": "27",
     "name": "瑶岚霜",
-    "key": "longyaolanshuang",
+    "key": "qwen-audio-3.0-tts-plus-longyaolanshuang",
     "gender": "男",
     "age": "27",
     "feature": "鼓舞激励音",
@@ -299,7 +299,7 @@
   {
     "idx": "28",
     "name": "松熠柏",
-    "key": "longsongyibai",
+    "key": "qwen-audio-3.0-tts-plus-longsongyibai",
     "gender": "男",
     "age": "27",
     "feature": "鼓舞激励音",
@@ -310,7 +310,7 @@
   {
     "idx": "29",
     "name": "燕辉露",
-    "key": "longyanhuilu",
+    "key": "qwen-audio-3.0-tts-plus-longyanhuilu",
     "gender": "男",
     "age": "27",
     "feature": "客观冷静音",
@@ -321,7 +321,7 @@
   {
     "idx": "30",
     "name": "辉峰漪",
-    "key": "longhuifengyi",
+    "key": "qwen-audio-3.0-tts-plus-longhuifengyi",
     "gender": "男",
     "age": "26",
     "feature": "客观冷静音",
@@ -332,7 +332,7 @@
   {
     "idx": "31",
     "name": "朔霁竹",
-    "key": "longshuojizhu",
+    "key": "qwen-audio-3.0-tts-plus-longshuojizhu",
     "gender": "男",
     "age": "26",
     "feature": "标准播音音",
@@ -343,7 +343,7 @@
   {
     "idx": "32",
     "name": "晖妍竹",
-    "key": "longhuiyanzhu",
+    "key": "qwen-audio-3.0-tts-plus-longhuiyanzhu",
     "gender": "男",
     "age": "26",
     "feature": "标准播音音",
@@ -354,7 +354,7 @@
   {
     "idx": "33",
     "name": "柏岫云",
-    "key": "longbaixiuyun",
+    "key": "qwen-audio-3.0-tts-plus-longbaixiuyun",
     "gender": "男",
     "age": "25",
     "feature": "标准播音音",
@@ -365,7 +365,7 @@
   {
     "idx": "34",
     "name": "潇嵐杉",
-    "key": "longxiaolanshan",
+    "key": "qwen-audio-3.0-tts-plus-longxiaolanshan",
     "gender": "男",
     "age": "28",
     "feature": "标准播音音",
@@ -376,7 +376,7 @@
   {
     "idx": "35",
     "name": "熠琳璨",
-    "key": "longyilincan",
+    "key": "qwen-audio-3.0-tts-plus-longyilincan",
     "gender": "男",
     "age": "24",
     "feature": "标准播音音",
@@ -387,7 +387,7 @@
   {
     "idx": "36",
     "name": "松翼嵐",
-    "key": "longsongyilan",
+    "key": "qwen-audio-3.0-tts-plus-longsongyilan",
     "gender": "男",
     "age": "26",
     "feature": "激动振奋音",
@@ -398,7 +398,7 @@
   {
     "idx": "37",
     "name": "辉珂渊",
-    "key": "longhuikeyuan",
+    "key": "qwen-audio-3.0-tts-plus-longhuikeyuan",
     "gender": "女",
     "age": "28",
     "feature": "标准播音音",
@@ -409,7 +409,7 @@
   {
     "idx": "38",
     "name": "羽珺萱",
-    "key": "longyujunxuan",
+    "key": "qwen-audio-3.0-tts-plus-longyujunxuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔坚韧音",
@@ -420,7 +420,7 @@
   {
     "idx": "39",
     "name": "澈溪霓",
-    "key": "longchexini",
+    "key": "qwen-audio-3.0-tts-plus-longchexini",
     "gender": "女",
     "age": "23",
     "feature": "科普讲解音",
@@ -431,7 +431,7 @@
   {
     "idx": "40",
     "name": "嵐涟兰",
-    "key": "longlanlianlan",
+    "key": "qwen-audio-3.0-tts-plus-longlanlianlan",
     "gender": "女",
     "age": "23",
     "feature": "直播带货音",
@@ -442,7 +442,7 @@
   {
     "idx": "41",
     "name": "凌桐芙",
-    "key": "longlingtongfu",
+    "key": "qwen-audio-3.0-tts-plus-longlingtongfu",
     "gender": "女",
     "age": "28",
     "feature": "直播带货音",
@@ -453,7 +453,7 @@
   {
     "idx": "42",
     "name": "柳沫岚",
-    "key": "longliumolan",
+    "key": "qwen-audio-3.0-tts-plus-longliumolan",
     "gender": "女",
     "age": "24",
     "feature": "直播带货音",
@@ -464,7 +464,7 @@
   {
     "idx": "43",
     "name": "彤珺凤",
-    "key": "longtongjunfeng",
+    "key": "qwen-audio-3.0-tts-plus-longtongjunfeng",
     "gender": "女",
     "age": "25",
     "feature": "轻松闲聊音",
@@ -475,7 +475,7 @@
   {
     "idx": "44",
     "name": "鹊汀晴",
-    "key": "longquetingqing",
+    "key": "qwen-audio-3.0-tts-plus-longquetingqing",
     "gender": "女",
     "age": "24",
     "feature": "直播带货音",
@@ -486,7 +486,7 @@
   {
     "idx": "45",
     "name": "芷露妍",
-    "key": "longzhiluyan",
+    "key": "qwen-audio-3.0-tts-plus-longzhiluyan",
     "gender": "女",
     "age": "7",
     "feature": "直播带货音",
@@ -497,7 +497,7 @@
   {
     "idx": "46",
     "name": "曦芷云",
-    "key": "longxizhiyun",
+    "key": "qwen-audio-3.0-tts-plus-longxizhiyun",
     "gender": "女",
     "age": "25",
     "feature": "直播带货音",
@@ -508,7 +508,7 @@
   {
     "idx": "47",
     "name": "蕊露风",
-    "key": "longruiloufeng",
+    "key": "qwen-audio-3.0-tts-plus-longruiloufeng",
     "gender": "女",
     "age": "23",
     "feature": "轻松闲聊音",
@@ -519,7 +519,7 @@
   {
     "idx": "48",
     "name": "泉湘萱",
-    "key": "longquanxiangxuan",
+    "key": "qwen-audio-3.0-tts-plus-longquanxiangxuan",
     "gender": "女",
     "age": "25",
     "feature": "直播带货音",
@@ -530,7 +530,7 @@
   {
     "idx": "49",
     "name": "蓉岭麟",
-    "key": "longronglinglin",
+    "key": "qwen-audio-3.0-tts-plus-longronglinglin",
     "gender": "男",
     "age": "24",
     "feature": "活泼灵动音",
@@ -541,7 +541,7 @@
   {
     "idx": "50",
     "name": "琴昕雀",
-    "key": "longqinxinque",
+    "key": "qwen-audio-3.0-tts-plus-longqinxinque",
     "gender": "男",
     "age": "26",
     "feature": "客观冷静音",
@@ -552,7 +552,7 @@
   {
     "idx": "51",
     "name": "麟峰霓",
-    "key": "longlinfengni",
+    "key": "qwen-audio-3.0-tts-plus-longlinfengni",
     "gender": "男",
     "age": "38",
     "feature": "客观冷静音",
@@ -563,7 +563,7 @@
   {
     "idx": "52",
     "name": "雨凤霓",
-    "key": "longyufengni",
+    "key": "qwen-audio-3.0-tts-plus-longyufengni",
     "gender": "男",
     "age": "25",
     "feature": "愤懑不平音",
@@ -574,7 +574,7 @@
   {
     "idx": "53",
     "name": "蓉桃涟",
-    "key": "longrongtaolian",
+    "key": "qwen-audio-3.0-tts-plus-longrongtaolian",
     "gender": "男",
     "age": "34",
     "feature": "冷静沉稳音",
@@ -585,7 +585,7 @@
   {
     "idx": "54",
     "name": "燕枫莹",
-    "key": "longyanfengying",
+    "key": "qwen-audio-3.0-tts-plus-longyanfengying",
     "gender": "男",
     "age": "24",
     "feature": "冷静沉稳音",
@@ -596,7 +596,7 @@
   {
     "idx": "55",
     "name": "泉鹊凌",
-    "key": "longquanqueling",
+    "key": "qwen-audio-3.0-tts-plus-longquanqueling",
     "gender": "女",
     "age": "23",
     "feature": "娇嗲甜腻音",
@@ -607,7 +607,7 @@
   {
     "idx": "56",
     "name": "旭沫晓",
-    "key": "longxumoxiao",
+    "key": "qwen-audio-3.0-tts-plus-longxumoxiao",
     "gender": "女",
     "age": "26",
     "feature": "温柔细腻音",
@@ -618,7 +618,7 @@
   {
     "idx": "57",
     "name": "桐麟渊",
-    "key": "longtonglinyuan",
+    "key": "qwen-audio-3.0-tts-plus-longtonglinyuan",
     "gender": "女",
     "age": "26",
     "feature": "温柔细腻音",
@@ -629,7 +629,7 @@
   {
     "idx": "58",
     "name": "凤雨桐",
-    "key": "longfengyutong",
+    "key": "qwen-audio-3.0-tts-plus-longfengyutong",
     "gender": "女",
     "age": "27",
     "feature": "标准播音音",
@@ -640,7 +640,7 @@
   {
     "idx": "59",
     "name": "鸿芙岫",
-    "key": "longhongfuxiu",
+    "key": "qwen-audio-3.0-tts-plus-longhongfuxiu",
     "gender": "女",
     "age": "42",
     "feature": "标准播音音",
@@ -651,7 +651,7 @@
   {
     "idx": "60",
     "name": "弦霓霄",
-    "key": "longxiannixiao",
+    "key": "qwen-audio-3.0-tts-plus-longxiannixiao",
     "gender": "女",
     "age": "26",
     "feature": "温柔细腻音",
@@ -662,7 +662,7 @@
   {
     "idx": "61",
     "name": "松桃璇",
-    "key": "longsongtaoxuan",
+    "key": "qwen-audio-3.0-tts-plus-longsongtaoxuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -673,7 +673,7 @@
   {
     "idx": "62",
     "name": "暮虹沫",
-    "key": "longmuhongmo",
+    "key": "qwen-audio-3.0-tts-plus-longmuhongmo",
     "gender": "女",
     "age": "24",
     "feature": "温柔细腻音",
@@ -684,7 +684,7 @@
   {
     "idx": "63",
     "name": "雨霜暮",
-    "key": "longyushuangmu",
+    "key": "qwen-audio-3.0-tts-plus-longyushuangmu",
     "gender": "女",
     "age": "28",
     "feature": "直播讲解音",
@@ -695,7 +695,7 @@
   {
     "idx": "64",
     "name": "雨湘溪",
-    "key": "longyuxiangxi",
+    "key": "qwen-audio-3.0-tts-plus-longyuxiangxi",
     "gender": "女",
     "age": "28",
     "feature": "直播讲解音",
@@ -706,7 +706,7 @@
   {
     "idx": "65",
     "name": "露辉朗",
-    "key": "longluhuilang",
+    "key": "qwen-audio-3.0-tts-plus-longluhuilang",
     "gender": "女",
     "age": "25",
     "feature": "直播讲解音",
@@ -717,7 +717,7 @@
   {
     "idx": "66",
     "name": "凤梅澈",
-    "key": "longfengmeiche",
+    "key": "qwen-audio-3.0-tts-plus-longfengmeiche",
     "gender": "女",
     "age": "25",
     "feature": "直播讲解音",
@@ -728,7 +728,7 @@
   {
     "idx": "67",
     "name": "烁溪蝶",
-    "key": "longshuoxidie",
+    "key": "qwen-audio-3.0-tts-plus-longshuoxidie",
     "gender": "女",
     "age": "26",
     "feature": "直播讲解音",
@@ -739,7 +739,7 @@
   {
     "idx": "68",
     "name": "芙樱暄",
-    "key": "longfuyingxuan",
+    "key": "qwen-audio-3.0-tts-plus-longfuyingxuan",
     "gender": "女",
     "age": "26",
     "feature": "温柔细腻音",
@@ -750,7 +750,7 @@
   {
     "idx": "69",
     "name": "萱芙鸾",
-    "key": "longxuanfuluan",
+    "key": "qwen-audio-3.0-tts-plus-longxuanfuluan",
     "gender": "男",
     "age": "28",
     "feature": "温柔细腻音",
@@ -761,7 +761,7 @@
   {
     "idx": "70",
     "name": "岫瑜岚",
-    "key": "longxiuyulan",
+    "key": "qwen-audio-3.0-tts-plus-longxiuyulan",
     "gender": "男",
     "age": "26",
     "feature": "温婉成熟音",
@@ -772,7 +772,7 @@
   {
     "idx": "71",
     "name": "岫烁澈",
-    "key": "longxiushuoche",
+    "key": "qwen-audio-3.0-tts-plus-longxiushuoche",
     "gender": "女",
     "age": "26",
     "feature": "温柔坚韧音",
@@ -783,7 +783,7 @@
   {
     "idx": "72",
     "name": "涟柳潇",
-    "key": "longlianliuxiao",
+    "key": "qwen-audio-3.0-tts-plus-longlianliuxiao",
     "gender": "女",
     "age": "24",
     "feature": "温柔坚韧音",
@@ -794,7 +794,7 @@
   {
     "idx": "73",
     "name": "岚露蓉",
-    "key": "longlanlurong",
+    "key": "qwen-audio-3.0-tts-plus-longlanlurong",
     "gender": "女",
     "age": "25",
     "feature": "客观冷静音",
@@ -805,7 +805,7 @@
   {
     "idx": "74",
     "name": "柏鹊沫",
-    "key": "longbaiquemo",
+    "key": "qwen-audio-3.0-tts-plus-longbaiquemo",
     "gender": "女",
     "age": "23",
     "feature": "委屈哀怨音",
@@ -816,7 +816,7 @@
   {
     "idx": "75",
     "name": "焱旭漪",
-    "key": "longyanxuyi",
+    "key": "qwen-audio-3.0-tts-plus-longyanxuyi",
     "gender": "女",
     "age": "24",
     "feature": "急躁焦灼音",
@@ -827,7 +827,7 @@
   {
     "idx": "76",
     "name": "昕筝荷",
-    "key": "longxinzhenghe",
+    "key": "qwen-audio-3.0-tts-plus-longxinzhenghe",
     "gender": "女",
     "age": "42",
     "feature": "温柔坚韧音",
@@ -838,7 +838,7 @@
   {
     "idx": "77",
     "name": "筝霞凌",
-    "key": "longzhengxialing",
+    "key": "qwen-audio-3.0-tts-plus-longzhengxialing",
     "gender": "女",
     "age": "25",
     "feature": "客观冷静音",
@@ -849,7 +849,7 @@
   {
     "idx": "78",
     "name": "樱朔璨",
-    "key": "longyingshuocan",
+    "key": "qwen-audio-3.0-tts-plus-longyingshuocan",
     "gender": "男",
     "age": "25",
     "feature": "温稳沉着音",
@@ -860,7 +860,7 @@
   {
     "idx": "79",
     "name": "凌晦燕",
-    "key": "longlinghuiyan",
+    "key": "qwen-audio-3.0-tts-plus-longlinghuiyan",
     "gender": "男",
     "age": "36",
     "feature": "客观冷静音",
@@ -871,7 +871,7 @@
   {
     "idx": "80",
     "name": "竹泉望",
-    "key": "longzhuquanwang",
+    "key": "qwen-audio-3.0-tts-plus-longzhuquanwang",
     "gender": "女",
     "age": "14",
     "feature": "撒娇甜蜜音",
@@ -882,7 +882,7 @@
   {
     "idx": "81",
     "name": "翼暮凌",
-    "key": "longyimuling",
+    "key": "qwen-audio-3.0-tts-plus-longyimuling",
     "gender": "男",
     "age": "38",
     "feature": "沉稳有力音",
@@ -893,7 +893,7 @@
   {
     "idx": "82",
     "name": "兰雪珺",
-    "key": "longlanxuejun",
+    "key": "qwen-audio-3.0-tts-plus-longlanxuejun",
     "gender": "女",
     "age": "10",
     "feature": "温柔活泼音",
@@ -904,7 +904,7 @@
   {
     "idx": "83",
     "name": "翎樱朔",
-    "key": "longlingyingshuo",
+    "key": "qwen-audio-3.0-tts-plus-longlingyingshuo",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -915,7 +915,7 @@
   {
     "idx": "84",
     "name": "翎霄麟",
-    "key": "longlingxiaolin",
+    "key": "qwen-audio-3.0-tts-plus-longlingxiaolin",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -926,7 +926,7 @@
   {
     "idx": "85",
     "name": "杉虹玥",
-    "key": "longshanhongyue",
+    "key": "qwen-audio-3.0-tts-plus-longshanhongyue",
     "gender": "女",
     "age": "28",
     "feature": "惊奇讶异音",
@@ -937,7 +937,7 @@
   {
     "idx": "86",
     "name": "弦筝鹤",
-    "key": "longxianzhenghe",
+    "key": "qwen-audio-3.0-tts-plus-longxianzhenghe",
     "gender": "女",
     "age": "25",
     "feature": "激情澎湃音",
@@ -948,7 +948,7 @@
   {
     "idx": "87",
     "name": "岭芷杏",
-    "key": "longlingzhixing",
+    "key": "qwen-audio-3.0-tts-plus-longlingzhixing",
     "gender": "男",
     "age": "68",
     "feature": "浑厚沉稳音",
@@ -959,7 +959,7 @@
   {
     "idx": "88",
     "name": "岚珺蕊",
-    "key": "longlanjunrui",
+    "key": "qwen-audio-3.0-tts-plus-longlanjunrui",
     "gender": "男",
     "age": "43",
     "feature": "浑厚沉稳音",
@@ -970,7 +970,7 @@
   {
     "idx": "89",
     "name": "昕桃凤",
-    "key": "longxintaofeng",
+    "key": "qwen-audio-3.0-tts-plus-longxintaofeng",
     "gender": "男",
     "age": "58",
     "feature": "浑厚沉稳音",
@@ -981,7 +981,7 @@
   {
     "idx": "90",
     "name": "露莹岚",
-    "key": "longluyinglan",
+    "key": "qwen-audio-3.0-tts-plus-longluyinglan",
     "gender": "男",
     "age": "45",
     "feature": "惊恐不安音",
@@ -992,7 +992,7 @@
   {
     "idx": "91",
     "name": "朗涟玥",
-    "key": "longlanglianyue",
+    "key": "qwen-audio-3.0-tts-plus-longlanglianyue",
     "gender": "男",
     "age": "55",
     "feature": "浑厚沉稳音",
@@ -1003,7 +1003,7 @@
   {
     "idx": "92",
     "name": "芙杉暮",
-    "key": "longfushanmu",
+    "key": "qwen-audio-3.0-tts-plus-longfushanmu",
     "gender": "男",
     "age": "56",
     "feature": "浑厚沉稳音",
@@ -1014,7 +1014,7 @@
   {
     "idx": "93",
     "name": "雀煜湘",
-    "key": "longqueyuxiang",
+    "key": "qwen-audio-3.0-tts-plus-longqueyuxiang",
     "gender": "男",
     "age": "24",
     "feature": "撒娇甜蜜音",
@@ -1025,7 +1025,7 @@
   {
     "idx": "94",
     "name": "澄桃莲",
-    "key": "longchengtaolian",
+    "key": "qwen-audio-3.0-tts-plus-longchengtaolian",
     "gender": "男",
     "age": "70",
     "feature": "灵动戏腔音",
@@ -1036,7 +1036,7 @@
   {
     "idx": "95",
     "name": "云汀涟",
-    "key": "longyuntinglian",
+    "key": "qwen-audio-3.0-tts-plus-longyuntinglian",
     "gender": "女",
     "age": "24",
     "feature": "撒娇甜蜜音",
@@ -1047,7 +1047,7 @@
   {
     "idx": "96",
     "name": "羽雀露",
-    "key": "longyuquelu",
+    "key": "qwen-audio-3.0-tts-plus-longyuquelu",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -1058,7 +1058,7 @@
   {
     "idx": "97",
     "name": "霁琳潇",
-    "key": "longjilinxiao",
+    "key": "qwen-audio-3.0-tts-plus-longjilinxiao",
     "gender": "女",
     "age": "23",
     "feature": "温柔亲和音",
@@ -1069,7 +1069,7 @@
   {
     "idx": "98",
     "name": "焱澈琳",
-    "key": "longyanchelin",
+    "key": "qwen-audio-3.0-tts-plus-longyanchelin",
     "gender": "男",
     "age": "7",
     "feature": "激动振奋音",
@@ -1080,7 +1080,7 @@
   {
     "idx": "99",
     "name": "琳瑾樱",
-    "key": "longlinjinying",
+    "key": "qwen-audio-3.0-tts-plus-longlinjinying",
     "gender": "女",
     "age": "38",
     "feature": "耐心温和音",
@@ -1091,7 +1091,7 @@
   {
     "idx": "100",
     "name": "瑶岚萱",
-    "key": "longyaolanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longyaolanxuan",
     "gender": "男",
     "age": "25",
     "feature": "傲娇俏皮音",
@@ -1102,7 +1102,7 @@
   {
     "idx": "101",
     "name": "芷杏菊",
-    "key": "longzhixingju",
+    "key": "qwen-audio-3.0-tts-plus-longzhixingju",
     "gender": "女",
     "age": "27",
     "feature": "智能助手音",
@@ -1113,7 +1113,7 @@
   {
     "idx": "102",
     "name": "蓉岭焱",
-    "key": "longronglingyan",
+    "key": "qwen-audio-3.0-tts-plus-longronglingyan",
     "gender": "女",
     "age": "26",
     "feature": "智能助手音",
@@ -1124,7 +1124,7 @@
   {
     "idx": "103",
     "name": "岫蝶熠",
-    "key": "longxiudieyi",
+    "key": "qwen-audio-3.0-tts-plus-longxiudieyi",
     "gender": "女",
     "age": "25",
     "feature": "智能助手音",
@@ -1135,7 +1135,7 @@
   {
     "idx": "104",
     "name": "彤弦鸿",
-    "key": "longtongxianhong",
+    "key": "qwen-audio-3.0-tts-plus-longtongxianhong",
     "gender": "男",
     "age": "26",
     "feature": "二次元活力音",
@@ -1146,7 +1146,7 @@
   {
     "idx": "105",
     "name": "蓉菊旭",
-    "key": "longrongjuxu",
+    "key": "qwen-audio-3.0-tts-plus-longrongjuxu",
     "gender": "男",
     "age": "25",
     "feature": "二次元活力音",
@@ -1157,7 +1157,7 @@
   {
     "idx": "106",
     "name": "岚筝燕",
-    "key": "longlanzhengyan",
+    "key": "qwen-audio-3.0-tts-plus-longlanzhengyan",
     "gender": "男",
     "age": "24",
     "feature": "二次元活力音",
@@ -1168,7 +1168,7 @@
   {
     "idx": "107",
     "name": "弦汀峰",
-    "key": "longxiantingfeng",
+    "key": "qwen-audio-3.0-tts-plus-longxiantingfeng",
     "gender": "男",
     "age": "25",
     "feature": "激动振奋音",
@@ -1179,7 +1179,7 @@
   {
     "idx": "108",
     "name": "梅岫荷",
-    "key": "longmeixiuhe",
+    "key": "qwen-audio-3.0-tts-plus-longmeixiuhe",
     "gender": "男",
     "age": "21",
     "feature": "二次元活力音",
@@ -1190,7 +1190,7 @@
   {
     "idx": "109",
     "name": "暄漪霄",
-    "key": "longxuanyixiao",
+    "key": "qwen-audio-3.0-tts-plus-longxuanyixiao",
     "gender": "男",
     "age": "7",
     "feature": "二次元活力音",
@@ -1201,7 +1201,7 @@
   {
     "idx": "110",
     "name": "岚鹊焱",
-    "key": "longlanqueyan",
+    "key": "qwen-audio-3.0-tts-plus-longlanqueyan",
     "gender": "女",
     "age": "15",
     "feature": "动漫风格音",
@@ -1212,7 +1212,7 @@
   {
     "idx": "111",
     "name": "汀渊熠",
-    "key": "longtingyuanyi",
+    "key": "qwen-audio-3.0-tts-plus-longtingyuanyi",
     "gender": "女",
     "age": "23",
     "feature": "委屈哀怨音",
@@ -1223,7 +1223,7 @@
   {
     "idx": "112",
     "name": "荷松蕊",
-    "key": "longhesongrui",
+    "key": "qwen-audio-3.0-tts-plus-longhesongrui",
     "gender": "男",
     "age": "44",
     "feature": "叙事沉浸音",
@@ -1234,7 +1234,7 @@
   {
     "idx": "113",
     "name": "松晦柳",
-    "key": "longsonghuiliu",
+    "key": "qwen-audio-3.0-tts-plus-longsonghuiliu",
     "gender": "男",
     "age": "25",
     "feature": "不满犀利音",
@@ -1245,7 +1245,7 @@
   {
     "idx": "114",
     "name": "麟玥沫",
-    "key": "longlinyuemo",
+    "key": "qwen-audio-3.0-tts-plus-longlinyuemo",
     "gender": "男",
     "age": "28",
     "feature": "客观冷静音",
@@ -1256,7 +1256,7 @@
   {
     "idx": "115",
     "name": "雨樱蝶",
-    "key": "longyuyingdie",
+    "key": "qwen-audio-3.0-tts-plus-longyuyingdie",
     "gender": "男",
     "age": "28",
     "feature": "智能助手音",
@@ -1267,7 +1267,7 @@
   {
     "idx": "116",
     "name": "弦星嵐",
-    "key": "longxianxinglan",
+    "key": "qwen-audio-3.0-tts-plus-longxianxinglan",
     "gender": "女",
     "age": "28",
     "feature": "自然聊天音",
@@ -1278,7 +1278,7 @@
   {
     "idx": "117",
     "name": "川云翎",
-    "key": "longchuanyunling",
+    "key": "qwen-audio-3.0-tts-plus-longchuanyunling",
     "gender": "女",
     "age": "8",
     "feature": "搞怪逗趣音",
@@ -1289,7 +1289,7 @@
   {
     "idx": "118",
     "name": "蝶涟霞",
-    "key": "longdielianxia",
+    "key": "qwen-audio-3.0-tts-plus-longdielianxia",
     "gender": "女",
     "age": "26",
     "feature": "智能助手音",
@@ -1300,7 +1300,7 @@
   {
     "idx": "119",
     "name": "渊芷薇",
-    "key": "longyuanzhiwei",
+    "key": "qwen-audio-3.0-tts-plus-longyuanzhiwei",
     "gender": "男",
     "age": "22",
     "feature": "智能助手音",
@@ -1311,7 +1311,7 @@
   {
     "idx": "120",
     "name": "月鸿妍",
-    "key": "longyuehongyan",
+    "key": "qwen-audio-3.0-tts-plus-longyuehongyan",
     "gender": "男",
     "age": "7",
     "feature": "客观冷静音",
@@ -1322,7 +1322,7 @@
   {
     "idx": "121",
     "name": "霁桐峰",
-    "key": "longjitongfeng",
+    "key": "qwen-audio-3.0-tts-plus-longjitongfeng",
     "gender": "男",
     "age": "10",
     "feature": "惊恐不安音",
@@ -1333,7 +1333,7 @@
   {
     "idx": "122",
     "name": "鸾曦澈",
-    "key": "longluanxiche",
+    "key": "qwen-audio-3.0-tts-plus-longluanxiche",
     "gender": "男",
     "age": "8",
     "feature": "不屑倨傲音",
@@ -1344,7 +1344,7 @@
   {
     "idx": "123",
     "name": "溪晖燕",
-    "key": "longxihuiyan",
+    "key": "qwen-audio-3.0-tts-plus-longxihuiyan",
     "gender": "男",
     "age": "10",
     "feature": "自信笃定音",
@@ -1355,7 +1355,7 @@
   {
     "idx": "124",
     "name": "枫霜芙",
-    "key": "longfengshuangfu",
+    "key": "qwen-audio-3.0-tts-plus-longfengshuangfu",
     "gender": "男",
     "age": "27",
     "feature": "客观冷静音",
@@ -1366,7 +1366,7 @@
   {
     "idx": "125",
     "name": "柳岫珂",
-    "key": "longliuxiuke",
+    "key": "qwen-audio-3.0-tts-plus-longliuxiuke",
     "gender": "男",
     "age": "8",
     "feature": "客观冷静音",
@@ -1377,7 +1377,7 @@
   {
     "idx": "126",
     "name": "莹岚蝶",
-    "key": "longyinglandie",
+    "key": "qwen-audio-3.0-tts-plus-longyinglandie",
     "gender": "男",
     "age": "7",
     "feature": "撒娇甜蜜音",
@@ -1388,7 +1388,7 @@
   {
     "idx": "127",
     "name": "岭星霞",
-    "key": "longlingxingxia",
+    "key": "qwen-audio-3.0-tts-plus-longlingxingxia",
     "gender": "女",
     "age": "23",
     "feature": "客观冷静音",
@@ -1399,7 +1399,7 @@
   {
     "idx": "128",
     "name": "岚芷旭",
-    "key": "longlanzhixu",
+    "key": "qwen-audio-3.0-tts-plus-longlanzhixu",
     "gender": "女",
     "age": "8",
     "feature": "自然亲和音",
@@ -1410,7 +1410,7 @@
   {
     "idx": "129",
     "name": "岚月蓉",
-    "key": "longlanyuerong",
+    "key": "qwen-audio-3.0-tts-plus-longlanyuerong",
     "gender": "女",
     "age": "9",
     "feature": "客观冷静音",
@@ -1421,7 +1421,7 @@
   {
     "idx": "130",
     "name": "烁松萱",
-    "key": "longshuosongxuan",
+    "key": "qwen-audio-3.0-tts-plus-longshuosongxuan",
     "gender": "女",
     "age": "7",
     "feature": "欢乐明朗音",
@@ -1432,7 +1432,7 @@
   {
     "idx": "131",
     "name": "暄竹澈",
-    "key": "longxuanzhuche",
+    "key": "qwen-audio-3.0-tts-plus-longxuanzhuche",
     "gender": "女",
     "age": "7",
     "feature": "欢乐明朗音",
@@ -1443,7 +1443,7 @@
   {
     "idx": "132",
     "name": "弦莲翼",
-    "key": "longxianlianyi",
+    "key": "qwen-audio-3.0-tts-plus-longxianlianyi",
     "gender": "女",
     "age": "7",
     "feature": "惊恐不安音",
@@ -1454,7 +1454,7 @@
   {
     "idx": "133",
     "name": "柏珺筝",
-    "key": "longbaijunzheng",
+    "key": "qwen-audio-3.0-tts-plus-longbaijunzheng",
     "gender": "女",
     "age": "7",
     "feature": "伤感低回音",
@@ -1465,7 +1465,7 @@
   {
     "idx": "134",
     "name": "彤杏泉",
-    "key": "longtongxingquan",
+    "key": "qwen-audio-3.0-tts-plus-longtongxingquan",
     "gender": "男",
     "age": "42",
     "feature": "叙事沉浸音",
@@ -1476,7 +1476,7 @@
   {
     "idx": "135",
     "name": "熠蓉筝",
-    "key": "longyirongzheng",
+    "key": "qwen-audio-3.0-tts-plus-longyirongzheng",
     "gender": "男",
     "age": "8",
     "feature": "动漫风格音",
@@ -1487,7 +1487,7 @@
   {
     "idx": "136",
     "name": "朔辉梅",
-    "key": "longshuohuimei",
+    "key": "qwen-audio-3.0-tts-plus-longshuohuimei",
     "gender": "男",
     "age": "70",
     "feature": "轻松闲聊音",
@@ -1498,7 +1498,7 @@
   {
     "idx": "137",
     "name": "露潇晖",
-    "key": "longluxiaohui",
+    "key": "qwen-audio-3.0-tts-plus-longluxiaohui",
     "gender": "男",
     "age": "35",
     "feature": "亲切客服音",
@@ -1509,7 +1509,7 @@
   {
     "idx": "138",
     "name": "杉霓汀",
-    "key": "longshanniting",
+    "key": "qwen-audio-3.0-tts-plus-longshanniting",
     "gender": "男",
     "age": "28",
     "feature": "亲切客服音",
@@ -1520,7 +1520,7 @@
   {
     "idx": "139",
     "name": "霓曦薇",
-    "key": "longnixiwei",
+    "key": "qwen-audio-3.0-tts-plus-longnixiwei",
     "gender": "男",
     "age": "38",
     "feature": "新闻联播音",
@@ -1531,7 +1531,7 @@
   {
     "idx": "140",
     "name": "澈焱暄",
-    "key": "longcheyanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longcheyanxuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -1542,7 +1542,7 @@
   {
     "idx": "141",
     "name": "月澜珂",
-    "key": "longyuelanke",
+    "key": "qwen-audio-3.0-tts-plus-longyuelanke",
     "gender": "女",
     "age": "24",
     "feature": "期待向往音",
@@ -1553,7 +1553,7 @@
   {
     "idx": "142",
     "name": "柳翎芙",
-    "key": "longliulingfu",
+    "key": "qwen-audio-3.0-tts-plus-longliulingfu",
     "gender": "女",
     "age": "27",
     "feature": "忧郁低回音",
@@ -1564,7 +1564,7 @@
   {
     "idx": "143",
     "name": "晖彤渊",
-    "key": "longhuitongyuan",
+    "key": "qwen-audio-3.0-tts-plus-longhuitongyuan",
     "gender": "女",
     "age": "8",
     "feature": "娇嗲甜腻音",
@@ -1575,7 +1575,7 @@
   {
     "idx": "144",
     "name": "瑶璇芷",
-    "key": "longyaoxuanzhi",
+    "key": "qwen-audio-3.0-tts-plus-longyaoxuanzhi",
     "gender": "女",
     "age": "24",
     "feature": "客观冷静音",
@@ -1586,7 +1586,7 @@
   {
     "idx": "145",
     "name": "珺昕暮",
-    "key": "longjunxinmu",
+    "key": "qwen-audio-3.0-tts-plus-longjunxinmu",
     "gender": "女",
     "age": "25",
     "feature": "灵动好奇音",
@@ -1597,7 +1597,7 @@
   {
     "idx": "146",
     "name": "凌漪岚",
-    "key": "longlingyilan",
+    "key": "qwen-audio-3.0-tts-plus-longlingyilan",
     "gender": "女",
     "age": "25",
     "feature": "温柔坚韧音",
@@ -1608,7 +1608,7 @@
   {
     "idx": "147",
     "name": "翎弦岫",
-    "key": "longlingxianxiu",
+    "key": "qwen-audio-3.0-tts-plus-longlingxianxiu",
     "gender": "女",
     "age": "24",
     "feature": "灵动好奇音",
@@ -1619,7 +1619,7 @@
   {
     "idx": "148",
     "name": "莲蕊梅",
-    "key": "longlianruimei",
+    "key": "qwen-audio-3.0-tts-plus-longlianruimei",
     "gender": "女",
     "age": "24",
     "feature": "循循善诱音",
@@ -1630,7 +1630,7 @@
   {
     "idx": "149",
     "name": "瑜梅霞",
-    "key": "longyumeixia",
+    "key": "qwen-audio-3.0-tts-plus-longyumeixia",
     "gender": "女",
     "age": "24",
     "feature": "叙事沉浸音",
@@ -1641,7 +1641,7 @@
   {
     "idx": "150",
     "name": "桃柳虹",
-    "key": "longtaoliuhong",
+    "key": "qwen-audio-3.0-tts-plus-longtaoliuhong",
     "gender": "女",
     "age": "24",
     "feature": "活泼灵动音",
@@ -1652,7 +1652,7 @@
   {
     "idx": "151",
     "name": "霁曦嵐",
-    "key": "longjixilan",
+    "key": "qwen-audio-3.0-tts-plus-longjixilan",
     "gender": "女",
     "age": "25",
     "feature": "铿锵有力音",
@@ -1663,7 +1663,7 @@
   {
     "idx": "152",
     "name": "琴桃璇",
-    "key": "longqintaoxuan",
+    "key": "qwen-audio-3.0-tts-plus-longqintaoxuan",
     "gender": "女",
     "age": "26",
     "feature": "激动振奋音",
@@ -1674,7 +1674,7 @@
   {
     "idx": "153",
     "name": "筝晓澄",
-    "key": "longzhengxiaocheng",
+    "key": "qwen-audio-3.0-tts-plus-longzhengxiaocheng",
     "gender": "女",
     "age": "27",
     "feature": "铿锵有力音",
@@ -1685,7 +1685,7 @@
   {
     "idx": "154",
     "name": "川鹊妍",
-    "key": "longchuanqueyan",
+    "key": "qwen-audio-3.0-tts-plus-longchuanqueyan",
     "gender": "女",
     "age": "27",
     "feature": "铿锵有力音",
@@ -1696,7 +1696,7 @@
   {
     "idx": "155",
     "name": "莲川竹",
-    "key": "longlianchuanzhu",
+    "key": "qwen-audio-3.0-tts-plus-longlianchuanzhu",
     "gender": "男",
     "age": "42",
     "feature": "忧郁深沉音",
@@ -1707,7 +1707,7 @@
   {
     "idx": "156",
     "name": "凤渊泉",
-    "key": "longfengyuanquan",
+    "key": "qwen-audio-3.0-tts-plus-longfengyuanquan",
     "gender": "女",
     "age": "24",
     "feature": "甜萌可爱音",
@@ -1718,7 +1718,7 @@
   {
     "idx": "157",
     "name": "松澈琳",
-    "key": "longsongchelin",
+    "key": "qwen-audio-3.0-tts-plus-longsongchelin",
     "gender": "男",
     "age": "40",
     "feature": "客观冷静音",
@@ -1729,7 +1729,7 @@
   {
     "idx": "158",
     "name": "梅霄嵐",
-    "key": "longmeixiaolan",
+    "key": "qwen-audio-3.0-tts-plus-longmeixiaolan",
     "gender": "男",
     "age": "38",
     "feature": "爽朗利落音",
@@ -1740,7 +1740,7 @@
   {
     "idx": "159",
     "name": "汀鹤晴",
-    "key": "longtingheqing",
+    "key": "qwen-audio-3.0-tts-plus-longtingheqing",
     "gender": "男",
     "age": "25",
     "feature": "不屑倨傲音",
@@ -1751,7 +1751,7 @@
   {
     "idx": "160",
     "name": "曦燕珺",
-    "key": "longxiyanjun",
+    "key": "qwen-audio-3.0-tts-plus-longxiyanjun",
     "gender": "男",
     "age": "27",
     "feature": "客观冷静音",
@@ -1762,7 +1762,7 @@
   {
     "idx": "161",
     "name": "焱虹琴",
-    "key": "longyanhongqin",
+    "key": "qwen-audio-3.0-tts-plus-longyanhongqin",
     "gender": "男",
     "age": "28",
     "feature": "犀利刻薄音",
@@ -1773,7 +1773,7 @@
   {
     "idx": "162",
     "name": "熠柳芙",
-    "key": "longyiliufu",
+    "key": "qwen-audio-3.0-tts-plus-longyiliufu",
     "gender": "男",
     "age": "28",
     "feature": "客观冷静音",
@@ -1784,7 +1784,7 @@
   {
     "idx": "163",
     "name": "柏萱杉",
-    "key": "longbaixuanshan",
+    "key": "qwen-audio-3.0-tts-plus-longbaixuanshan",
     "gender": "男",
     "age": "32",
     "feature": "鼓励认可音",
@@ -1795,7 +1795,7 @@
   {
     "idx": "164",
     "name": "柏云麟",
-    "key": "longbaiyunlin",
+    "key": "qwen-audio-3.0-tts-plus-longbaiyunlin",
     "gender": "女",
     "age": "23",
     "feature": "不满犀利音",
@@ -1806,7 +1806,7 @@
   {
     "idx": "165",
     "name": "璇风蕊",
-    "key": "longxuanfengrui",
+    "key": "qwen-audio-3.0-tts-plus-longxuanfengrui",
     "gender": "女",
     "age": "15",
     "feature": "惊恐不安音",
@@ -1817,7 +1817,7 @@
   {
     "idx": "166",
     "name": "薇菊泉",
-    "key": "longweijuquan",
+    "key": "qwen-audio-3.0-tts-plus-longweijuquan",
     "gender": "男",
     "age": "40",
     "feature": "叙事沉浸音",
@@ -1828,7 +1828,7 @@
   {
     "idx": "167",
     "name": "珺辉霞",
-    "key": "longjunhuixia",
+    "key": "qwen-audio-3.0-tts-plus-longjunhuixia",
     "gender": "女",
     "age": "24",
     "feature": "自然亲和音",
@@ -1839,7 +1839,7 @@
   {
     "idx": "168",
     "name": "鹊梅峰",
-    "key": "longquemeifeng",
+    "key": "qwen-audio-3.0-tts-plus-longquemeifeng",
     "gender": "男",
     "age": "38",
     "feature": "谆谆劝导音",
@@ -1850,7 +1850,7 @@
   {
     "idx": "169",
     "name": "弦凤薇",
-    "key": "longxianfengwei",
+    "key": "qwen-audio-3.0-tts-plus-longxianfengwei",
     "gender": "女",
     "age": "26",
     "feature": "亲切客服音",
@@ -1861,7 +1861,7 @@
   {
     "idx": "170",
     "name": "鹊溪辉",
-    "key": "longquexihui",
+    "key": "qwen-audio-3.0-tts-plus-longquexihui",
     "gender": "女",
     "age": "28",
     "feature": "智能助手音",
@@ -1872,7 +1872,7 @@
   {
     "idx": "171",
     "name": "瑶蕊朗",
-    "key": "longyaoruilang",
+    "key": "qwen-audio-3.0-tts-plus-longyaoruilang",
     "gender": "女",
     "age": "25",
     "feature": "惋惜叹惋音",
@@ -1883,7 +1883,7 @@
   {
     "idx": "172",
     "name": "嵐朗薇",
-    "key": "longlanlangwei",
+    "key": "qwen-audio-3.0-tts-plus-longlanlangwei",
     "gender": "女",
     "age": "24",
     "feature": "轻松愉悦音",
@@ -1894,7 +1894,7 @@
   {
     "idx": "173",
     "name": "莹枫暮",
-    "key": "longyingfengmu",
+    "key": "qwen-audio-3.0-tts-plus-longyingfengmu",
     "gender": "女",
     "age": "28",
     "feature": "客观冷静音",
@@ -1905,7 +1905,7 @@
   {
     "idx": "174",
     "name": "瑶岭岚",
-    "key": "longyaolinglan",
+    "key": "qwen-audio-3.0-tts-plus-longyaolinglan",
     "gender": "女",
     "age": "25",
     "feature": "耐心温和音",
@@ -1916,7 +1916,7 @@
   {
     "idx": "175",
     "name": "珂暄筝",
-    "key": "longkexuanzheng",
+    "key": "qwen-audio-3.0-tts-plus-longkexuanzheng",
     "gender": "女",
     "age": "24",
     "feature": "激动振奋音",
@@ -1927,7 +1927,7 @@
   {
     "idx": "176",
     "name": "玥麟望",
-    "key": "longyuelinwang",
+    "key": "qwen-audio-3.0-tts-plus-longyuelinwang",
     "gender": "女",
     "age": "25",
     "feature": "亲切客服音",
@@ -1938,7 +1938,7 @@
   {
     "idx": "177",
     "name": "桃汀羽",
-    "key": "longtaotingyu",
+    "key": "qwen-audio-3.0-tts-plus-longtaotingyu",
     "gender": "女",
     "age": "27",
     "feature": "亲切客服音",
@@ -1949,7 +1949,7 @@
   {
     "idx": "178",
     "name": "弦渊梅",
-    "key": "longxianyuanmei",
+    "key": "qwen-audio-3.0-tts-plus-longxianyuanmei",
     "gender": "女",
     "age": "34",
     "feature": "温柔亲和音",
@@ -1960,7 +1960,7 @@
   {
     "idx": "179",
     "name": "晦柏珺",
-    "key": "longhuibaijun",
+    "key": "qwen-audio-3.0-tts-plus-longhuibaijun",
     "gender": "女",
     "age": "26",
     "feature": "温柔细腻音",
@@ -1971,7 +1971,7 @@
   {
     "idx": "180",
     "name": "凌麟瑶",
-    "key": "longlinglinyao",
+    "key": "qwen-audio-3.0-tts-plus-longlinglinyao",
     "gender": "男",
     "age": "27",
     "feature": "温柔细腻音",
@@ -1982,7 +1982,7 @@
   {
     "idx": "181",
     "name": "峰梅晖",
-    "key": "longfengmeihui",
+    "key": "qwen-audio-3.0-tts-plus-longfengmeihui",
     "gender": "女",
     "age": "26",
     "feature": "利落麻利音",
@@ -1993,7 +1993,7 @@
   {
     "idx": "182",
     "name": "澜彤璇",
-    "key": "longlantongxuan",
+    "key": "qwen-audio-3.0-tts-plus-longlantongxuan",
     "gender": "女",
     "age": "24",
     "feature": "电台质感音",
@@ -2004,7 +2004,7 @@
   {
     "idx": "183",
     "name": "蝶川岭",
-    "key": "longdiechuanling",
+    "key": "qwen-audio-3.0-tts-plus-longdiechuanling",
     "gender": "女",
     "age": "25",
     "feature": "叙事沉浸音",
@@ -2015,7 +2015,7 @@
   {
     "idx": "184",
     "name": "凌菊鸿",
-    "key": "longlingjuhong",
+    "key": "qwen-audio-3.0-tts-plus-longlingjuhong",
     "gender": "女",
     "age": "9",
     "feature": "温柔坚韧音",
@@ -2026,7 +2026,7 @@
   {
     "idx": "185",
     "name": "云瑾霁",
-    "key": "longyunjinji",
+    "key": "qwen-audio-3.0-tts-plus-longyunjinji",
     "gender": "男",
     "age": "24",
     "feature": "撒娇甜蜜音",
@@ -2037,7 +2037,7 @@
   {
     "idx": "186",
     "name": "松晴涟",
-    "key": "longsongqinglian",
+    "key": "qwen-audio-3.0-tts-plus-longsongqinglian",
     "gender": "男",
     "age": "24",
     "feature": "忧伤低回音",
@@ -2048,7 +2048,7 @@
   {
     "idx": "187",
     "name": "玥凌嵐",
-    "key": "longyuelinglan",
+    "key": "qwen-audio-3.0-tts-plus-longyuelinglan",
     "gender": "男",
     "age": "19",
     "feature": "激动振奋音",
@@ -2059,7 +2059,7 @@
   {
     "idx": "188",
     "name": "岫珂桃",
-    "key": "longxiuketao",
+    "key": "qwen-audio-3.0-tts-plus-longxiuketao",
     "gender": "男",
     "age": "24",
     "feature": "傲娇俏皮音",
@@ -2070,7 +2070,7 @@
   {
     "idx": "189",
     "name": "澄鸿蕊",
-    "key": "longchenghongrui",
+    "key": "qwen-audio-3.0-tts-plus-longchenghongrui",
     "gender": "男",
     "age": "28",
     "feature": "沮丧低落音",
@@ -2081,7 +2081,7 @@
   {
     "idx": "190",
     "name": "雪瑜霞",
-    "key": "longxueyuxia",
+    "key": "qwen-audio-3.0-tts-plus-longxueyuxia",
     "gender": "女",
     "age": "24",
     "feature": "温雅端庄音",
@@ -2092,7 +2092,7 @@
   {
     "idx": "191",
     "name": "鸿昕旭",
-    "key": "longhongxinxu",
+    "key": "qwen-audio-3.0-tts-plus-longhongxinxu",
     "gender": "男",
     "age": "15",
     "feature": "自然亲和音",
@@ -2103,7 +2103,7 @@
   {
     "idx": "192",
     "name": "风兰潇",
-    "key": "longfenglanxiao",
+    "key": "qwen-audio-3.0-tts-plus-longfenglanxiao",
     "gender": "男",
     "age": "8",
     "feature": "元气活力音",
@@ -2114,7 +2114,7 @@
   {
     "idx": "193",
     "name": "琴鹊漪",
-    "key": "longqinqueyi",
+    "key": "qwen-audio-3.0-tts-plus-longqinqueyi",
     "gender": "男",
     "age": "16",
     "feature": "自然亲和音",
@@ -2125,7 +2125,7 @@
   {
     "idx": "194",
     "name": "泉岭芙",
-    "key": "longquanlingfu",
+    "key": "qwen-audio-3.0-tts-plus-longquanlingfu",
     "gender": "男",
     "age": "7",
     "feature": "惊恐不安音",
@@ -2136,7 +2136,7 @@
   {
     "idx": "195",
     "name": "旭溪玥",
-    "key": "longxuxiyue",
+    "key": "qwen-audio-3.0-tts-plus-longxuxiyue",
     "gender": "男",
     "age": "14",
     "feature": "惊恐不安音",
@@ -2147,7 +2147,7 @@
   {
     "idx": "196",
     "name": "沫风烁",
-    "key": "longmofengshuo",
+    "key": "qwen-audio-3.0-tts-plus-longmofengshuo",
     "gender": "男",
     "age": "13",
     "feature": "自信从容音",
@@ -2158,7 +2158,7 @@
   {
     "idx": "197",
     "name": "熠朔瑾",
-    "key": "longyishuojin",
+    "key": "qwen-audio-3.0-tts-plus-longyishuojin",
     "gender": "男",
     "age": "9",
     "feature": "不满犀利音",
@@ -2169,7 +2169,7 @@
   {
     "idx": "198",
     "name": "雀琴嵐",
-    "key": "longqueqinlan",
+    "key": "qwen-audio-3.0-tts-plus-longqueqinlan",
     "gender": "女",
     "age": "22",
     "feature": "呆萌软糯音",
@@ -2180,7 +2180,7 @@
   {
     "idx": "199",
     "name": "鹊桐望",
-    "key": "longquetongwang",
+    "key": "qwen-audio-3.0-tts-plus-longquetongwang",
     "gender": "女",
     "age": "8",
     "feature": "甜萌可爱音",
@@ -2191,7 +2191,7 @@
   {
     "idx": "200",
     "name": "雪珂雨",
-    "key": "longxuekeyu",
+    "key": "qwen-audio-3.0-tts-plus-longxuekeyu",
     "gender": "女",
     "age": "8",
     "feature": "智能助手音",
@@ -2202,7 +2202,7 @@
   {
     "idx": "201",
     "name": "翼雀菊",
-    "key": "longyiqueju",
+    "key": "qwen-audio-3.0-tts-plus-longyiqueju",
     "gender": "女",
     "age": "7",
     "feature": "搞怪逗趣音",
@@ -2213,7 +2213,7 @@
   {
     "idx": "202",
     "name": "澈朔枫",
-    "key": "longcheshuofeng",
+    "key": "qwen-audio-3.0-tts-plus-longcheshuofeng",
     "gender": "女",
     "age": "9",
     "feature": "惊恐不安音",
@@ -2224,7 +2224,7 @@
   {
     "idx": "203",
     "name": "澜暮菊",
-    "key": "longlanmuju",
+    "key": "qwen-audio-3.0-tts-plus-longlanmuju",
     "gender": "女",
     "age": "6",
     "feature": "伤感低回音",
@@ -2235,7 +2235,7 @@
   {
     "idx": "204",
     "name": "璨莲岫",
-    "key": "longcanlianxiu",
+    "key": "qwen-audio-3.0-tts-plus-longcanlianxiu",
     "gender": "女",
     "age": "8",
     "feature": "不耐烦躁音",
@@ -2246,7 +2246,7 @@
   {
     "idx": "205",
     "name": "璨燕望",
-    "key": "longcanyanwang",
+    "key": "qwen-audio-3.0-tts-plus-longcanyanwang",
     "gender": "男",
     "age": "42",
     "feature": "中气充沛音",
@@ -2257,7 +2257,7 @@
   {
     "idx": "206",
     "name": "琳杏鸿",
-    "key": "longlinxinghong",
+    "key": "qwen-audio-3.0-tts-plus-longlinxinghong",
     "gender": "女",
     "age": "25",
     "feature": "客观冷静音",
@@ -2268,7 +2268,7 @@
   {
     "idx": "207",
     "name": "澄璇弦",
-    "key": "longchengxuanxian",
+    "key": "qwen-audio-3.0-tts-plus-longchengxuanxian",
     "gender": "女",
     "age": "25",
     "feature": "客观冷静音",
@@ -2279,7 +2279,7 @@
   {
     "idx": "208",
     "name": "煜霞澜",
-    "key": "longyuxialan",
+    "key": "qwen-audio-3.0-tts-plus-longyuxialan",
     "gender": "女",
     "age": "24",
     "feature": "惊喜意外音",
@@ -2290,7 +2290,7 @@
   {
     "idx": "209",
     "name": "蕊煜翎",
-    "key": "longruiyuling",
+    "key": "qwen-audio-3.0-tts-plus-longruiyuling",
     "gender": "女",
     "age": "24",
     "feature": "客观冷静音",
@@ -2301,7 +2301,7 @@
   {
     "idx": "210",
     "name": "熠琴晖",
-    "key": "longyiqinhui",
+    "key": "qwen-audio-3.0-tts-plus-longyiqinhui",
     "gender": "男",
     "age": "26",
     "feature": "憨萌逗趣音",
@@ -2312,7 +2312,7 @@
   {
     "idx": "211",
     "name": "鹊风暮",
-    "key": "longquefengmu",
+    "key": "qwen-audio-3.0-tts-plus-longquefengmu",
     "gender": "男",
     "age": "8",
     "feature": "青春朝气音",
@@ -2323,7 +2323,7 @@
   {
     "idx": "212",
     "name": "瑶璇珂",
-    "key": "longyaoxuanke",
+    "key": "qwen-audio-3.0-tts-plus-longyaoxuanke",
     "gender": "女",
     "age": "7",
     "feature": "天真童趣音",
@@ -2334,7 +2334,7 @@
   {
     "idx": "213",
     "name": "杉杏兰",
-    "key": "longshanxinglan",
+    "key": "qwen-audio-3.0-tts-plus-longshanxinglan",
     "gender": "女",
     "age": "8",
     "feature": "天真童趣音",
@@ -2345,7 +2345,7 @@
   {
     "idx": "214",
     "name": "漪潇薇",
-    "key": "longyixiaowei",
+    "key": "qwen-audio-3.0-tts-plus-longyixiaowei",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -2356,7 +2356,7 @@
   {
     "idx": "215",
     "name": "莲川璇",
-    "key": "longlianchuanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longlianchuanxuan",
     "gender": "男",
     "age": "29",
     "feature": "温柔亲和音",
@@ -2367,7 +2367,7 @@
   {
     "idx": "216",
     "name": "竹峰泉",
-    "key": "longzhufengquan",
+    "key": "qwen-audio-3.0-tts-plus-longzhufengquan",
     "gender": "女",
     "age": "26",
     "feature": "温柔亲和音",
@@ -2378,7 +2378,7 @@
   {
     "idx": "217",
     "name": "朗霁鸾",
-    "key": "longlangjiluan",
+    "key": "qwen-audio-3.0-tts-plus-longlangjiluan",
     "gender": "男",
     "age": "27",
     "feature": "沉稳大气音",
@@ -2389,7 +2389,7 @@
   {
     "idx": "218",
     "name": "羽瑶鸾",
-    "key": "longyuyaoluan",
+    "key": "qwen-audio-3.0-tts-plus-longyuyaoluan",
     "gender": "女",
     "age": "25",
     "feature": "沉稳大气音",
@@ -2400,7 +2400,7 @@
   {
     "idx": "219",
     "name": "涟梅岫",
-    "key": "longlianmeixiu",
+    "key": "qwen-audio-3.0-tts-plus-longlianmeixiu",
     "gender": "女",
     "age": "24",
     "feature": "温稳沉着音",
@@ -2411,7 +2411,7 @@
   {
     "idx": "220",
     "name": "暮鹤璨",
-    "key": "longmuhecan",
+    "key": "qwen-audio-3.0-tts-plus-longmuhecan",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -2422,7 +2422,7 @@
   {
     "idx": "221",
     "name": "朗蕊岭",
-    "key": "longlangruiling",
+    "key": "qwen-audio-3.0-tts-plus-longlangruiling",
     "gender": "男",
     "age": "26",
     "feature": "青春朝气音",
@@ -2433,7 +2433,7 @@
   {
     "idx": "222",
     "name": "焱芷晖",
-    "key": "longyanzhihui",
+    "key": "qwen-audio-3.0-tts-plus-longyanzhihui",
     "gender": "男",
     "age": "25",
     "feature": "温润磁性音",
@@ -2444,7 +2444,7 @@
   {
     "idx": "223",
     "name": "弦琳旭",
-    "key": "longxianlinxu",
+    "key": "qwen-audio-3.0-tts-plus-longxianlinxu",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -2455,7 +2455,7 @@
   {
     "idx": "224",
     "name": "荷雪风",
-    "key": "longhexuefeng",
+    "key": "qwen-audio-3.0-tts-plus-longhexuefeng",
     "gender": "女",
     "age": "24",
     "feature": "角色模仿音",
@@ -2466,7 +2466,7 @@
   {
     "idx": "225",
     "name": "竹琴萱",
-    "key": "longzhuqinxuan",
+    "key": "qwen-audio-3.0-tts-plus-longzhuqinxuan",
     "gender": "男",
     "age": "43",
     "feature": "角色模仿音",
@@ -2477,7 +2477,7 @@
   {
     "idx": "226",
     "name": "鸿岫翼",
-    "key": "longhongxiuyi",
+    "key": "qwen-audio-3.0-tts-plus-longhongxiuyi",
     "gender": "女",
     "age": "7",
     "feature": "天真童趣音",
@@ -2488,7 +2488,7 @@
   {
     "idx": "227",
     "name": "曦霞霓",
-    "key": "longxixiani",
+    "key": "qwen-audio-3.0-tts-plus-longxixiani",
     "gender": "女",
     "age": "7",
     "feature": "天真童趣音",
@@ -2499,7 +2499,7 @@
   {
     "idx": "228",
     "name": "旭琴渊",
-    "key": "longxuqinyuan",
+    "key": "qwen-audio-3.0-tts-plus-longxuqinyuan",
     "gender": "男",
     "age": "26",
     "feature": "温柔亲和音",
@@ -2510,7 +2510,7 @@
   {
     "idx": "229",
     "name": "莹风望",
-    "key": "longyingfengwang",
+    "key": "qwen-audio-3.0-tts-plus-longyingfengwang",
     "gender": "女",
     "age": "26",
     "feature": "温柔邻家音",
@@ -2521,7 +2521,7 @@
   {
     "idx": "230",
     "name": "鹊萱羽",
-    "key": "longquexuanyu",
+    "key": "qwen-audio-3.0-tts-plus-longquexuanyu",
     "gender": "男",
     "age": "56",
     "feature": "灵动戏腔音",
@@ -2532,7 +2532,7 @@
   {
     "idx": "231",
     "name": "沫晖翎",
-    "key": "longmohuiling",
+    "key": "qwen-audio-3.0-tts-plus-longmohuiling",
     "gender": "女",
     "age": "26",
     "feature": "御姐成熟音",
@@ -2543,7 +2543,7 @@
   {
     "idx": "232",
     "name": "莹桃梅",
-    "key": "longyingtaomei",
+    "key": "qwen-audio-3.0-tts-plus-longyingtaomei",
     "gender": "男",
     "age": "28",
     "feature": "温润磁性音",
@@ -2554,7 +2554,7 @@
   {
     "idx": "233",
     "name": "瑶昕柳",
-    "key": "longyaoxinliu",
+    "key": "qwen-audio-3.0-tts-plus-longyaoxinliu",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -2565,7 +2565,7 @@
   {
     "idx": "234",
     "name": "霜玥蓉",
-    "key": "longshuangyuerong",
+    "key": "qwen-audio-3.0-tts-plus-longshuangyuerong",
     "gender": "男",
     "age": "26",
     "feature": "青春朝气音",
@@ -2576,7 +2576,7 @@
   {
     "idx": "235",
     "name": "露嵐凌",
-    "key": "longlulanling",
+    "key": "qwen-audio-3.0-tts-plus-longlulanling",
     "gender": "男",
     "age": "25",
     "feature": "青春朝气音",
@@ -2587,7 +2587,7 @@
   {
     "idx": "236",
     "name": "蕊玥菊",
-    "key": "longruiyueju",
+    "key": "qwen-audio-3.0-tts-plus-longruiyueju",
     "gender": "女",
     "age": "25",
     "feature": "温婉干练音",
@@ -2598,7 +2598,7 @@
   {
     "idx": "237",
     "name": "莹菊兰",
-    "key": "longyingjulan",
+    "key": "qwen-audio-3.0-tts-plus-longyingjulan",
     "gender": "女",
     "age": "25",
     "feature": "温稳沉着音",
@@ -2609,7 +2609,7 @@
   {
     "idx": "238",
     "name": "杉竹昕",
-    "key": "longshanzhuxin",
+    "key": "qwen-audio-3.0-tts-plus-longshanzhuxin",
     "gender": "女",
     "age": "25",
     "feature": "温柔老练音",
@@ -2620,7 +2620,7 @@
   {
     "idx": "239",
     "name": "兰晓翎",
-    "key": "longlanxiaoling",
+    "key": "qwen-audio-3.0-tts-plus-longlanxiaoling",
     "gender": "女",
     "age": "25",
     "feature": "邻家亲切音",
@@ -2631,7 +2631,7 @@
   {
     "idx": "240",
     "name": "曦珂星",
-    "key": "longxikexing",
+    "key": "qwen-audio-3.0-tts-plus-longxikexing",
     "gender": "女",
     "age": "7",
     "feature": "慵懒童趣音",
@@ -2642,7 +2642,7 @@
   {
     "idx": "241",
     "name": "霜兰虹",
-    "key": "longshuanglanhong",
+    "key": "qwen-audio-3.0-tts-plus-longshuanglanhong",
     "gender": "女",
     "age": "9",
     "feature": "慵懒童趣音",
@@ -2653,7 +2653,7 @@
   {
     "idx": "242",
     "name": "霞露岭",
-    "key": "longxialuling",
+    "key": "qwen-audio-3.0-tts-plus-longxialuling",
     "gender": "女",
     "age": "9",
     "feature": "调皮少年音",
@@ -2664,7 +2664,7 @@
   {
     "idx": "243",
     "name": "湘曦筝",
-    "key": "longxiangxizheng",
+    "key": "qwen-audio-3.0-tts-plus-longxiangxizheng",
     "gender": "女",
     "age": "22",
     "feature": "温柔活泼音",
@@ -2675,7 +2675,7 @@
   {
     "idx": "244",
     "name": "焱雪霓",
-    "key": "longyanxueni",
+    "key": "qwen-audio-3.0-tts-plus-longyanxueni",
     "gender": "女",
     "age": "8",
     "feature": "慵懒童趣音",
@@ -2686,7 +2686,7 @@
   {
     "idx": "245",
     "name": "岫晖月",
-    "key": "longxiuhuiyue",
+    "key": "qwen-audio-3.0-tts-plus-longxiuhuiyue",
     "gender": "女",
     "age": "8",
     "feature": "角色模仿音",
@@ -2697,7 +2697,7 @@
   {
     "idx": "246",
     "name": "凤燕朔",
-    "key": "longfengyanshuo",
+    "key": "qwen-audio-3.0-tts-plus-longfengyanshuo",
     "gender": "女",
     "age": "10",
     "feature": "机灵少年音",
@@ -2708,7 +2708,7 @@
   {
     "idx": "247",
     "name": "彤鹊泉",
-    "key": "longtongquequan",
+    "key": "qwen-audio-3.0-tts-plus-longtongquequan",
     "gender": "女",
     "age": "10",
     "feature": "活泼灵动音",
@@ -2719,7 +2719,7 @@
   {
     "idx": "248",
     "name": "煜菊露",
-    "key": "longyujulu",
+    "key": "qwen-audio-3.0-tts-plus-longyujulu",
     "gender": "男",
     "age": "24",
     "feature": "青春朝气音",
@@ -2730,7 +2730,7 @@
   {
     "idx": "249",
     "name": "烁璨暮",
-    "key": "longshuocanmu",
+    "key": "qwen-audio-3.0-tts-plus-longshuocanmu",
     "gender": "女",
     "age": "22",
     "feature": "青春朝气音",
@@ -2741,7 +2741,7 @@
   {
     "idx": "250",
     "name": "鹤辉漪",
-    "key": "longhehuiyi",
+    "key": "qwen-audio-3.0-tts-plus-longhehuiyi",
     "gender": "女",
     "age": "25",
     "feature": "活泼灵动音",
@@ -2752,7 +2752,7 @@
   {
     "idx": "251",
     "name": "潇煜雀",
-    "key": "longxiaoyuque",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoyuque",
     "gender": "女",
     "age": "23",
     "feature": "活泼灵动音",
@@ -2763,7 +2763,7 @@
   {
     "idx": "252",
     "name": "旭凌霁",
-    "key": "longxulingji",
+    "key": "qwen-audio-3.0-tts-plus-longxulingji",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -2774,7 +2774,7 @@
   {
     "idx": "253",
     "name": "雀晴蕊",
-    "key": "longqueqingrui",
+    "key": "qwen-audio-3.0-tts-plus-longqueqingrui",
     "gender": "男",
     "age": "25",
     "feature": "温柔亲和音",
@@ -2785,7 +2785,7 @@
   {
     "idx": "254",
     "name": "岫凤蝶",
-    "key": "longxiufengdie",
+    "key": "qwen-audio-3.0-tts-plus-longxiufengdie",
     "gender": "女",
     "age": "24",
     "feature": "温柔知性音",
@@ -2796,7 +2796,7 @@
   {
     "idx": "255",
     "name": "瑜燕暄",
-    "key": "longyuyanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longyuyanxuan",
     "gender": "女",
     "age": "24",
     "feature": "温稳沉着音",
@@ -2807,7 +2807,7 @@
   {
     "idx": "256",
     "name": "松朔岭",
-    "key": "longsongshuoling",
+    "key": "qwen-audio-3.0-tts-plus-longsongshuoling",
     "gender": "女",
     "age": "8",
     "feature": "活泼灵动音",
@@ -2818,7 +2818,7 @@
   {
     "idx": "257",
     "name": "溪瑶雀",
-    "key": "longxiyaoque",
+    "key": "qwen-audio-3.0-tts-plus-longxiyaoque",
     "gender": "男",
     "age": "25",
     "feature": "活泼灵动音",
@@ -2829,7 +2829,7 @@
   {
     "idx": "258",
     "name": "兰霄雨",
-    "key": "longlanxiaoyu",
+    "key": "qwen-audio-3.0-tts-plus-longlanxiaoyu",
     "gender": "女",
     "age": "21",
     "feature": "温柔亲和音",
@@ -2840,7 +2840,7 @@
   {
     "idx": "259",
     "name": "暄梅麟",
-    "key": "longxuanmeilin",
+    "key": "qwen-audio-3.0-tts-plus-longxuanmeilin",
     "gender": "女",
     "age": "26",
     "feature": "温稳沉着音",
@@ -2851,7 +2851,7 @@
   {
     "idx": "260",
     "name": "霁霜瑾",
-    "key": "longjishuangjin",
+    "key": "qwen-audio-3.0-tts-plus-longjishuangjin",
     "gender": "女",
     "age": "26",
     "feature": "角色模仿音",
@@ -2862,7 +2862,7 @@
   {
     "idx": "261",
     "name": "翎筝澄",
-    "key": "longlingzhengcheng",
+    "key": "qwen-audio-3.0-tts-plus-longlingzhengcheng",
     "gender": "女",
     "age": "23",
     "feature": "温柔亲和音",
@@ -2873,7 +2873,7 @@
   {
     "idx": "262",
     "name": "松昕川",
-    "key": "longsongxinchuan",
+    "key": "qwen-audio-3.0-tts-plus-longsongxinchuan",
     "gender": "女",
     "age": "23",
     "feature": "温柔邻家音",
@@ -2884,7 +2884,7 @@
   {
     "idx": "263",
     "name": "岚霄翼",
-    "key": "longlanxiaoyi",
+    "key": "qwen-audio-3.0-tts-plus-longlanxiaoyi",
     "gender": "女",
     "age": "23",
     "feature": "邻家亲切音",
@@ -2895,7 +2895,7 @@
   {
     "idx": "264",
     "name": "澄芷燕",
-    "key": "longchengzhiyan",
+    "key": "qwen-audio-3.0-tts-plus-longchengzhiyan",
     "gender": "女",
     "age": "25",
     "feature": "沉稳大气音",
@@ -2906,7 +2906,7 @@
   {
     "idx": "265",
     "name": "煜昕望",
-    "key": "longyuxinwang",
+    "key": "qwen-audio-3.0-tts-plus-longyuxinwang",
     "gender": "女",
     "age": "8",
     "feature": "角色模仿音",
@@ -2917,7 +2917,7 @@
   {
     "idx": "266",
     "name": "枫薇弦",
-    "key": "longfengweixian",
+    "key": "qwen-audio-3.0-tts-plus-longfengweixian",
     "gender": "女",
     "age": "24",
     "feature": "温柔知性音",
@@ -2928,7 +2928,7 @@
   {
     "idx": "267",
     "name": "妍岚云",
-    "key": "longyanlanyun",
+    "key": "qwen-audio-3.0-tts-plus-longyanlanyun",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -2939,7 +2939,7 @@
   {
     "idx": "268",
     "name": "澈昕凤",
-    "key": "longchexinfeng",
+    "key": "qwen-audio-3.0-tts-plus-longchexinfeng",
     "gender": "女",
     "age": "26",
     "feature": "温柔亲和音",
@@ -2950,7 +2950,7 @@
   {
     "idx": "269",
     "name": "虹璨月",
-    "key": "longhongcanyue",
+    "key": "qwen-audio-3.0-tts-plus-longhongcanyue",
     "gender": "女",
     "age": "25",
     "feature": "活泼灵动音",
@@ -2961,7 +2961,7 @@
   {
     "idx": "270",
     "name": "鹤蝶岫",
-    "key": "longhediexiu",
+    "key": "qwen-audio-3.0-tts-plus-longhediexiu",
     "gender": "女",
     "age": "25",
     "feature": "温柔坚韧音",
@@ -2972,7 +2972,7 @@
   {
     "idx": "271",
     "name": "翼珺霁",
-    "key": "longyijunji",
+    "key": "qwen-audio-3.0-tts-plus-longyijunji",
     "gender": "女",
     "age": "23",
     "feature": "心机绿茶音",
@@ -2983,7 +2983,7 @@
   {
     "idx": "272",
     "name": "霜松柏",
-    "key": "longshuangsongbai",
+    "key": "qwen-audio-3.0-tts-plus-longshuangsongbai",
     "gender": "女",
     "age": "24",
     "feature": "温柔俏皮音",
@@ -2994,7 +2994,7 @@
   {
     "idx": "273",
     "name": "朗溪薇",
-    "key": "longlangxiwei",
+    "key": "qwen-audio-3.0-tts-plus-longlangxiwei",
     "gender": "女",
     "age": "25",
     "feature": "温婉成熟音",
@@ -3005,7 +3005,7 @@
   {
     "idx": "274",
     "name": "渊煜鹊",
-    "key": "longyuanyuque",
+    "key": "qwen-audio-3.0-tts-plus-longyuanyuque",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3016,7 +3016,7 @@
   {
     "idx": "275",
     "name": "柳岚湘",
-    "key": "longliulanxiang",
+    "key": "qwen-audio-3.0-tts-plus-longliulanxiang",
     "gender": "女",
     "age": "25",
     "feature": "温柔青春音",
@@ -3027,7 +3027,7 @@
   {
     "idx": "276",
     "name": "雀竹瑾",
-    "key": "longquezhujin",
+    "key": "qwen-audio-3.0-tts-plus-longquezhujin",
     "gender": "女",
     "age": "16",
     "feature": "中气充沛音",
@@ -3038,7 +3038,7 @@
   {
     "idx": "277",
     "name": "漪暄珺",
-    "key": "longyixuanjun",
+    "key": "qwen-audio-3.0-tts-plus-longyixuanjun",
     "gender": "女",
     "age": "36",
     "feature": "成熟沉稳音",
@@ -3049,7 +3049,7 @@
   {
     "idx": "278",
     "name": "鸾辉雨",
-    "key": "longluanhuiyu",
+    "key": "qwen-audio-3.0-tts-plus-longluanhuiyu",
     "gender": "女",
     "age": "24",
     "feature": "成熟沉稳音",
@@ -3060,7 +3060,7 @@
   {
     "idx": "279",
     "name": "琳柳荷",
-    "key": "longlinliuhe",
+    "key": "qwen-audio-3.0-tts-plus-longlinliuhe",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3071,7 +3071,7 @@
   {
     "idx": "280",
     "name": "璇珂梅",
-    "key": "longxuankemei",
+    "key": "qwen-audio-3.0-tts-plus-longxuankemei",
     "gender": "女",
     "age": "24",
     "feature": "温婉成熟音",
@@ -3082,7 +3082,7 @@
   {
     "idx": "281",
     "name": "霞雀杉",
-    "key": "longxiaqueshan",
+    "key": "qwen-audio-3.0-tts-plus-longxiaqueshan",
     "gender": "男",
     "age": "25",
     "feature": "搞怪逗趣音",
@@ -3093,7 +3093,7 @@
   {
     "idx": "282",
     "name": "涟晦蕊",
-    "key": "longlianhuirui",
+    "key": "qwen-audio-3.0-tts-plus-longlianhuirui",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3104,7 +3104,7 @@
   {
     "idx": "283",
     "name": "泉鸾虹",
-    "key": "longquanluanhong",
+    "key": "qwen-audio-3.0-tts-plus-longquanluanhong",
     "gender": "男",
     "age": "24",
     "feature": "中气充沛音",
@@ -3115,7 +3115,7 @@
   {
     "idx": "284",
     "name": "星岫泉",
-    "key": "longxingxiuquan",
+    "key": "qwen-audio-3.0-tts-plus-longxingxiuquan",
     "gender": "女",
     "age": "24",
     "feature": "温婉成熟音",
@@ -3126,7 +3126,7 @@
   {
     "idx": "285",
     "name": "澄燕凤",
-    "key": "longchengyanfeng",
+    "key": "qwen-audio-3.0-tts-plus-longchengyanfeng",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3137,7 +3137,7 @@
   {
     "idx": "286",
     "name": "璇竹凤",
-    "key": "longxuanzhufeng",
+    "key": "qwen-audio-3.0-tts-plus-longxuanzhufeng",
     "gender": "女",
     "age": "24",
     "feature": "温婉成熟音",
@@ -3148,7 +3148,7 @@
   {
     "idx": "287",
     "name": "桐烁岫",
-    "key": "longtongshuoxiu",
+    "key": "qwen-audio-3.0-tts-plus-longtongshuoxiu",
     "gender": "女",
     "age": "25",
     "feature": "爽朗利落音",
@@ -3159,7 +3159,7 @@
   {
     "idx": "288",
     "name": "瑶雀筝",
-    "key": "longyaoquezheng",
+    "key": "qwen-audio-3.0-tts-plus-longyaoquezheng",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3170,7 +3170,7 @@
   {
     "idx": "289",
     "name": "曦凤漪",
-    "key": "longxifengyi",
+    "key": "qwen-audio-3.0-tts-plus-longxifengyi",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3181,7 +3181,7 @@
   {
     "idx": "290",
     "name": "珺霞妍",
-    "key": "longjunxiayan",
+    "key": "qwen-audio-3.0-tts-plus-longjunxiayan",
     "gender": "女",
     "age": "8",
     "feature": "中气充沛音",
@@ -3192,7 +3192,7 @@
   {
     "idx": "291",
     "name": "桐泉湘",
-    "key": "longtongquanxiang",
+    "key": "qwen-audio-3.0-tts-plus-longtongquanxiang",
     "gender": "女",
     "age": "25",
     "feature": "温婉成熟音",
@@ -3203,7 +3203,7 @@
   {
     "idx": "292",
     "name": "漪湘桃",
-    "key": "longyixiangtao",
+    "key": "qwen-audio-3.0-tts-plus-longyixiangtao",
     "gender": "女",
     "age": "27",
     "feature": "温婉成熟音",
@@ -3214,7 +3214,7 @@
   {
     "idx": "293",
     "name": "岚霓晖",
-    "key": "longlannihui",
+    "key": "qwen-audio-3.0-tts-plus-longlannihui",
     "gender": "女",
     "age": "25",
     "feature": "温柔青春音",
@@ -3225,7 +3225,7 @@
   {
     "idx": "294",
     "name": "萱筝菊",
-    "key": "longxuanzhengju",
+    "key": "qwen-audio-3.0-tts-plus-longxuanzhengju",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3236,7 +3236,7 @@
   {
     "idx": "295",
     "name": "杉煜松",
-    "key": "longshanyusong",
+    "key": "qwen-audio-3.0-tts-plus-longshanyusong",
     "gender": "女",
     "age": "25",
     "feature": "平稳陈述音",
@@ -3247,7 +3247,7 @@
   {
     "idx": "296",
     "name": "杉熠澜",
-    "key": "longshanyilan",
+    "key": "qwen-audio-3.0-tts-plus-longshanyilan",
     "gender": "女",
     "age": "14",
     "feature": "中气充沛音",
@@ -3258,7 +3258,7 @@
   {
     "idx": "297",
     "name": "朔澈晖",
-    "key": "longshuochehui",
+    "key": "qwen-audio-3.0-tts-plus-longshuochehui",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3269,7 +3269,7 @@
   {
     "idx": "298",
     "name": "熠瑜松",
-    "key": "longyiyusong",
+    "key": "qwen-audio-3.0-tts-plus-longyiyusong",
     "gender": "女",
     "age": "24",
     "feature": "活泼灵动音",
@@ -3280,7 +3280,7 @@
   {
     "idx": "299",
     "name": "岭鹊熠",
-    "key": "longlingqueyi",
+    "key": "qwen-audio-3.0-tts-plus-longlingqueyi",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3291,7 +3291,7 @@
   {
     "idx": "300",
     "name": "曦雨翎",
-    "key": "longxiyuling",
+    "key": "qwen-audio-3.0-tts-plus-longxiyuling",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3302,7 +3302,7 @@
   {
     "idx": "301",
     "name": "珺峰晴",
-    "key": "longjunfengqing",
+    "key": "qwen-audio-3.0-tts-plus-longjunfengqing",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3313,7 +3313,7 @@
   {
     "idx": "302",
     "name": "翼瑾泉",
-    "key": "longyijinquan",
+    "key": "qwen-audio-3.0-tts-plus-longyijinquan",
     "gender": "女",
     "age": "28",
     "feature": "温婉成熟音",
@@ -3324,7 +3324,7 @@
   {
     "idx": "303",
     "name": "焱辉潇",
-    "key": "longyanhuixiao",
+    "key": "qwen-audio-3.0-tts-plus-longyanhuixiao",
     "gender": "女",
     "age": "21",
     "feature": "中气充沛音",
@@ -3335,7 +3335,7 @@
   {
     "idx": "304",
     "name": "暮凌虹",
-    "key": "longmulinghong",
+    "key": "qwen-audio-3.0-tts-plus-longmulinghong",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3346,7 +3346,7 @@
   {
     "idx": "305",
     "name": "澄旭桃",
-    "key": "longchengxutao",
+    "key": "qwen-audio-3.0-tts-plus-longchengxutao",
     "gender": "女",
     "age": "24",
     "feature": "活泼灵动音",
@@ -3357,7 +3357,7 @@
   {
     "idx": "306",
     "name": "潇松雨",
-    "key": "longxiaosongyu",
+    "key": "qwen-audio-3.0-tts-plus-longxiaosongyu",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3368,7 +3368,7 @@
   {
     "idx": "307",
     "name": "妍彤溪",
-    "key": "longyantongxi",
+    "key": "qwen-audio-3.0-tts-plus-longyantongxi",
     "gender": "女",
     "age": "28",
     "feature": "中气充沛音",
@@ -3379,7 +3379,7 @@
   {
     "idx": "308",
     "name": "雪蓉晦",
-    "key": "longxueronghui",
+    "key": "qwen-audio-3.0-tts-plus-longxueronghui",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3390,7 +3390,7 @@
   {
     "idx": "309",
     "name": "漪汀焱",
-    "key": "longyitingyan",
+    "key": "qwen-audio-3.0-tts-plus-longyitingyan",
     "gender": "女",
     "age": "25",
     "feature": "爽朗利落音",
@@ -3401,7 +3401,7 @@
   {
     "idx": "310",
     "name": "翼瑾鸿",
-    "key": "longyijinhong",
+    "key": "qwen-audio-3.0-tts-plus-longyijinhong",
     "gender": "女",
     "age": "24",
     "feature": "爽朗利落音",
@@ -3412,7 +3412,7 @@
   {
     "idx": "311",
     "name": "朗辉霜",
-    "key": "longlanghuishuang",
+    "key": "qwen-audio-3.0-tts-plus-longlanghuishuang",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3423,7 +3423,7 @@
   {
     "idx": "312",
     "name": "露玥琴",
-    "key": "longluyueqin",
+    "key": "qwen-audio-3.0-tts-plus-longluyueqin",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3434,7 +3434,7 @@
   {
     "idx": "313",
     "name": "瑾莲霁",
-    "key": "longjinlianji",
+    "key": "qwen-audio-3.0-tts-plus-longjinlianji",
     "gender": "女",
     "age": "25",
     "feature": "低沉压抑音",
@@ -3445,7 +3445,7 @@
   {
     "idx": "314",
     "name": "玥溪暮",
-    "key": "longyueximu",
+    "key": "qwen-audio-3.0-tts-plus-longyueximu",
     "gender": "女",
     "age": "25",
     "feature": "欢快明朗音",
@@ -3456,7 +3456,7 @@
   {
     "idx": "315",
     "name": "岚珺旭",
-    "key": "longlanjunxu",
+    "key": "qwen-audio-3.0-tts-plus-longlanjunxu",
     "gender": "女",
     "age": "25",
     "feature": "温柔青春音",
@@ -3467,7 +3467,7 @@
   {
     "idx": "316",
     "name": "兰辉晦",
-    "key": "longlanhuihui",
+    "key": "qwen-audio-3.0-tts-plus-longlanhuihui",
     "gender": "女",
     "age": "27",
     "feature": "搞怪逗趣音",
@@ -3478,7 +3478,7 @@
   {
     "idx": "317",
     "name": "霄鹤晖",
-    "key": "longxiaohehui",
+    "key": "qwen-audio-3.0-tts-plus-longxiaohehui",
     "gender": "男",
     "age": "24",
     "feature": "低沉压抑音",
@@ -3489,7 +3489,7 @@
   {
     "idx": "318",
     "name": "兰暄弦",
-    "key": "longlanxuanxian",
+    "key": "qwen-audio-3.0-tts-plus-longlanxuanxian",
     "gender": "女",
     "age": "26",
     "feature": "爽朗利落音",
@@ -3500,7 +3500,7 @@
   {
     "idx": "319",
     "name": "晖暄燕",
-    "key": "longhuixuanyan",
+    "key": "qwen-audio-3.0-tts-plus-longhuixuanyan",
     "gender": "女",
     "age": "24",
     "feature": "中气充沛音",
@@ -3511,7 +3511,7 @@
   {
     "idx": "320",
     "name": "星羽珺",
-    "key": "longxingyujun",
+    "key": "qwen-audio-3.0-tts-plus-longxingyujun",
     "gender": "女",
     "age": "25",
     "feature": "中气充沛音",
@@ -3522,7 +3522,7 @@
   {
     "idx": "321",
     "name": "妍渊桃",
-    "key": "longyanyuantao",
+    "key": "qwen-audio-3.0-tts-plus-longyanyuantao",
     "gender": "男",
     "age": "37",
     "feature": "爽朗利落音",
@@ -3533,7 +3533,7 @@
   {
     "idx": "322",
     "name": "松泉璇",
-    "key": "longsongquanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longsongquanxuan",
     "gender": "女",
     "age": "26",
     "feature": "中气充沛音",
@@ -3544,7 +3544,7 @@
   {
     "idx": "323",
     "name": "潇沫虹",
-    "key": "longxiaomohong",
+    "key": "qwen-audio-3.0-tts-plus-longxiaomohong",
     "gender": "女",
     "age": "22",
     "feature": "活泼灵动音",
@@ -3555,7 +3555,7 @@
   {
     "idx": "324",
     "name": "昕妍烁",
-    "key": "longxinyanshuo",
+    "key": "qwen-audio-3.0-tts-plus-longxinyanshuo",
     "gender": "女",
     "age": "24",
     "feature": "活泼灵动音",
@@ -3566,7 +3566,7 @@
   {
     "idx": "325",
     "name": "松柏枫",
-    "key": "longsongbaifeng",
+    "key": "qwen-audio-3.0-tts-plus-longsongbaifeng",
     "gender": "男",
     "age": "22",
     "feature": "叙事沉浸音",
@@ -3577,7 +3577,7 @@
   {
     "idx": "326",
     "name": "霁鹊雪",
-    "key": "longjiquexue",
+    "key": "qwen-audio-3.0-tts-plus-longjiquexue",
     "gender": "男",
     "age": "24",
     "feature": "侠骨柔情音",
@@ -3588,7 +3588,7 @@
   {
     "idx": "327",
     "name": "朗霁萱",
-    "key": "longlangjixuan",
+    "key": "qwen-audio-3.0-tts-plus-longlangjixuan",
     "gender": "男",
     "age": "24",
     "feature": "电台质感音",
@@ -3599,7 +3599,7 @@
   {
     "idx": "328",
     "name": "岚霞晴",
-    "key": "longlanxiaqing",
+    "key": "qwen-audio-3.0-tts-plus-longlanxiaqing",
     "gender": "男",
     "age": "22",
     "feature": "温润暖男音",
@@ -3610,7 +3610,7 @@
   {
     "idx": "329",
     "name": "珺岭桃",
-    "key": "longjunlingtao",
+    "key": "qwen-audio-3.0-tts-plus-longjunlingtao",
     "gender": "男",
     "age": "24",
     "feature": "侠骨柔情音",
@@ -3621,7 +3621,7 @@
   {
     "idx": "330",
     "name": "峰瑾鹤",
-    "key": "longfengjinhe",
+    "key": "qwen-audio-3.0-tts-plus-longfengjinhe",
     "gender": "男",
     "age": "28",
     "feature": "沉稳大气音",
@@ -3632,7 +3632,7 @@
   {
     "idx": "331",
     "name": "柏杏煜",
-    "key": "longbaixingyu",
+    "key": "qwen-audio-3.0-tts-plus-longbaixingyu",
     "gender": "男",
     "age": "26",
     "feature": "侠骨柔情音",
@@ -3643,7 +3643,7 @@
   {
     "idx": "332",
     "name": "霜晖川",
-    "key": "longshuanghuichuan",
+    "key": "qwen-audio-3.0-tts-plus-longshuanghuichuan",
     "gender": "女",
     "age": "28",
     "feature": "叙事沉浸音",
@@ -3654,7 +3654,7 @@
   {
     "idx": "333",
     "name": "凌筝彤",
-    "key": "longlingzhengtong",
+    "key": "qwen-audio-3.0-tts-plus-longlingzhengtong",
     "gender": "女",
     "age": "29",
     "feature": "叙事沉浸音",
@@ -3665,7 +3665,7 @@
   {
     "idx": "334",
     "name": "瑾溪嵐",
-    "key": "longjinxilan",
+    "key": "qwen-audio-3.0-tts-plus-longjinxilan",
     "gender": "女",
     "age": "25",
     "feature": "电台质感音",
@@ -3676,7 +3676,7 @@
   {
     "idx": "335",
     "name": "晴湘菊",
-    "key": "longqingxiangju",
+    "key": "qwen-audio-3.0-tts-plus-longqingxiangju",
     "gender": "女",
     "age": "25",
     "feature": "电台质感音",
@@ -3687,7 +3687,7 @@
   {
     "idx": "336",
     "name": "瑶芷晴",
-    "key": "longyaozhiqing",
+    "key": "qwen-audio-3.0-tts-plus-longyaozhiqing",
     "gender": "女",
     "age": "26",
     "feature": "电台质感音",
@@ -3698,7 +3698,7 @@
   {
     "idx": "337",
     "name": "蝶霜鸾",
-    "key": "longdieshuangluan",
+    "key": "qwen-audio-3.0-tts-plus-longdieshuangluan",
     "gender": "女",
     "age": "40",
     "feature": "电台质感音",
@@ -3709,7 +3709,7 @@
   {
     "idx": "338",
     "name": "萱鸿溪",
-    "key": "longxuanhongxi",
+    "key": "qwen-audio-3.0-tts-plus-longxuanhongxi",
     "gender": "男",
     "age": "24",
     "feature": "活泼灵动音",
@@ -3720,7 +3720,7 @@
   {
     "idx": "339",
     "name": "月瑜琴",
-    "key": "longyueyuqin",
+    "key": "qwen-audio-3.0-tts-plus-longyueyuqin",
     "gender": "男",
     "age": "26",
     "feature": "中气充沛音",
@@ -3731,7 +3731,7 @@
   {
     "idx": "340",
     "name": "菊荷风",
-    "key": "longjuhefeng",
+    "key": "qwen-audio-3.0-tts-plus-longjuhefeng",
     "gender": "男",
     "age": "23",
     "feature": "中气充沛音",
@@ -3742,7 +3742,7 @@
   {
     "idx": "341",
     "name": "弦荷嵐",
-    "key": "longxianhelan",
+    "key": "qwen-audio-3.0-tts-plus-longxianhelan",
     "gender": "男",
     "age": "28",
     "feature": "叙事沉浸音",
@@ -3753,7 +3753,7 @@
   {
     "idx": "342",
     "name": "晴焱云",
-    "key": "longqingyanyun",
+    "key": "qwen-audio-3.0-tts-plus-longqingyanyun",
     "gender": "男",
     "age": "42",
     "feature": "侠气武侠音",
@@ -3764,7 +3764,7 @@
   {
     "idx": "343",
     "name": "莲柳松",
-    "key": "longlianliusong",
+    "key": "qwen-audio-3.0-tts-plus-longlianliusong",
     "gender": "男",
     "age": "28",
     "feature": "侠气武侠音",
@@ -3775,7 +3775,7 @@
   {
     "idx": "344",
     "name": "竹瑾萱",
-    "key": "longzhujinxuan",
+    "key": "qwen-audio-3.0-tts-plus-longzhujinxuan",
     "gender": "男",
     "age": "26",
     "feature": "威严领导音",
@@ -3786,7 +3786,7 @@
   {
     "idx": "345",
     "name": "霜萱蝶",
-    "key": "longshuangxuandie",
+    "key": "qwen-audio-3.0-tts-plus-longshuangxuandie",
     "gender": "女",
     "age": "22",
     "feature": "爽朗利落音",
@@ -3797,7 +3797,7 @@
   {
     "idx": "346",
     "name": "露竹澜",
-    "key": "longluzhulan",
+    "key": "qwen-audio-3.0-tts-plus-longluzhulan",
     "gender": "女",
     "age": "22",
     "feature": "爽朗利落音",
@@ -3808,7 +3808,7 @@
   {
     "idx": "347",
     "name": "熠湘澄",
-    "key": "longyixiangcheng",
+    "key": "qwen-audio-3.0-tts-plus-longyixiangcheng",
     "gender": "女",
     "age": "19",
     "feature": "活泼灵动音",
@@ -3819,7 +3819,7 @@
   {
     "idx": "348",
     "name": "璇燕云",
-    "key": "longxuanyanyun",
+    "key": "qwen-audio-3.0-tts-plus-longxuanyanyun",
     "gender": "女",
     "age": "23",
     "feature": "阴郁深沉音",
@@ -3830,7 +3830,7 @@
   {
     "idx": "349",
     "name": "萱澄蝶",
-    "key": "longxuanchengdie",
+    "key": "qwen-audio-3.0-tts-plus-longxuanchengdie",
     "gender": "女",
     "age": "23",
     "feature": "强势霸气音",
@@ -3841,7 +3841,7 @@
   {
     "idx": "350",
     "name": "漪羽露",
-    "key": "longyiyulu",
+    "key": "qwen-audio-3.0-tts-plus-longyiyulu",
     "gender": "女",
     "age": "25",
     "feature": "阴狠毒辣音",
@@ -3852,7 +3852,7 @@
   {
     "idx": "351",
     "name": "鸿岭雪",
-    "key": "longhonglingxue",
+    "key": "qwen-audio-3.0-tts-plus-longhonglingxue",
     "gender": "女",
     "age": "25",
     "feature": "阴狠毒辣音",
@@ -3863,7 +3863,7 @@
   {
     "idx": "352",
     "name": "翼莲霞",
-    "key": "longyilianxia",
+    "key": "qwen-audio-3.0-tts-plus-longyilianxia",
     "gender": "女",
     "age": "28",
     "feature": "雍容宫廷音",
@@ -3874,7 +3874,7 @@
   {
     "idx": "353",
     "name": "露岚萱",
-    "key": "longlulanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longlulanxuan",
     "gender": "女",
     "age": "27",
     "feature": "阴狠毒辣音",
@@ -3885,7 +3885,7 @@
   {
     "idx": "354",
     "name": "熠筝暮",
-    "key": "longyizhengmu",
+    "key": "qwen-audio-3.0-tts-plus-longyizhengmu",
     "gender": "女",
     "age": "24",
     "feature": "怯弱自卑音",
@@ -3896,7 +3896,7 @@
   {
     "idx": "355",
     "name": "荷雪翎",
-    "key": "longhexueling",
+    "key": "qwen-audio-3.0-tts-plus-longhexueling",
     "gender": "女",
     "age": "22",
     "feature": "呆萌软糯音",
@@ -3907,7 +3907,7 @@
   {
     "idx": "356",
     "name": "晖杉朔",
-    "key": "longhuishanshuo",
+    "key": "qwen-audio-3.0-tts-plus-longhuishanshuo",
     "gender": "女",
     "age": "16",
     "feature": "呆萌软糯音",
@@ -3918,7 +3918,7 @@
   {
     "idx": "357",
     "name": "熠枫荷",
-    "key": "longyifenghe",
+    "key": "qwen-audio-3.0-tts-plus-longyifenghe",
     "gender": "女",
     "age": "22",
     "feature": "内敛含蓄音",
@@ -3929,7 +3929,7 @@
   {
     "idx": "358",
     "name": "风璇杏",
-    "key": "longfengxuanxing",
+    "key": "qwen-audio-3.0-tts-plus-longfengxuanxing",
     "gender": "女",
     "age": "22",
     "feature": "沉郁心事音",
@@ -3940,7 +3940,7 @@
   {
     "idx": "359",
     "name": "雪瑜珺",
-    "key": "longxueyujun",
+    "key": "qwen-audio-3.0-tts-plus-longxueyujun",
     "gender": "女",
     "age": "21",
     "feature": "怯弱自卑音",
@@ -3951,7 +3951,7 @@
   {
     "idx": "360",
     "name": "沫岭莲",
-    "key": "longmolinglian",
+    "key": "qwen-audio-3.0-tts-plus-longmolinglian",
     "gender": "女",
     "age": "23",
     "feature": "平稳陈述音",
@@ -3962,7 +3962,7 @@
   {
     "idx": "361",
     "name": "瑾翎霜",
-    "key": "longjinlingshuang",
+    "key": "qwen-audio-3.0-tts-plus-longjinlingshuang",
     "gender": "女",
     "age": "22",
     "feature": "呆萌软糯音",
@@ -3973,7 +3973,7 @@
   {
     "idx": "362",
     "name": "薇梅翼",
-    "key": "longweimeiyi",
+    "key": "qwen-audio-3.0-tts-plus-longweimeiyi",
     "gender": "女",
     "age": "9",
     "feature": "呆萌软糯音",
@@ -3984,7 +3984,7 @@
   {
     "idx": "363",
     "name": "霞鹊鸿",
-    "key": "longxiaquehong",
+    "key": "qwen-audio-3.0-tts-plus-longxiaquehong",
     "gender": "女",
     "age": "22",
     "feature": "娇嗲甜腻音",
@@ -3995,7 +3995,7 @@
   {
     "idx": "364",
     "name": "澜望翼",
-    "key": "longlanwangyi",
+    "key": "qwen-audio-3.0-tts-plus-longlanwangyi",
     "gender": "女",
     "age": "21",
     "feature": "细腻深沉音",
@@ -4006,7 +4006,7 @@
   {
     "idx": "365",
     "name": "溪霓燕",
-    "key": "longxiniyan",
+    "key": "qwen-audio-3.0-tts-plus-longxiniyan",
     "gender": "女",
     "age": "24",
     "feature": "善解人意音",
@@ -4017,7 +4017,7 @@
   {
     "idx": "366",
     "name": "煜枫沫",
-    "key": "longyufengmo",
+    "key": "qwen-audio-3.0-tts-plus-longyufengmo",
     "gender": "女",
     "age": "22",
     "feature": "温柔坚韧音",
@@ -4028,7 +4028,7 @@
   {
     "idx": "367",
     "name": "筝溪珂",
-    "key": "longzhengxike",
+    "key": "qwen-audio-3.0-tts-plus-longzhengxike",
     "gender": "女",
     "age": "25",
     "feature": "温柔青春音",
@@ -4039,7 +4039,7 @@
   {
     "idx": "368",
     "name": "珺晴煜",
-    "key": "longjunqingyu",
+    "key": "qwen-audio-3.0-tts-plus-longjunqingyu",
     "gender": "女",
     "age": "24",
     "feature": "大方温和音",
@@ -4050,7 +4050,7 @@
   {
     "idx": "369",
     "name": "桐望鹊",
-    "key": "longtongwangque",
+    "key": "qwen-audio-3.0-tts-plus-longtongwangque",
     "gender": "女",
     "age": "24",
     "feature": "忧郁深沉音",
@@ -4061,7 +4061,7 @@
   {
     "idx": "370",
     "name": "雪霓翎",
-    "key": "longxueniling",
+    "key": "qwen-audio-3.0-tts-plus-longxueniling",
     "gender": "女",
     "age": "24",
     "feature": "电台质感音",
@@ -4072,7 +4072,7 @@
   {
     "idx": "371",
     "name": "羽湘霞",
-    "key": "longyuxiangxia",
+    "key": "qwen-audio-3.0-tts-plus-longyuxiangxia",
     "gender": "女",
     "age": "25",
     "feature": "成熟知心音",
@@ -4083,7 +4083,7 @@
   {
     "idx": "372",
     "name": "风兰露",
-    "key": "longfenglanlu",
+    "key": "qwen-audio-3.0-tts-plus-longfenglanlu",
     "gender": "男",
     "age": "25",
     "feature": "清朗少年音",
@@ -4094,7 +4094,7 @@
   {
     "idx": "373",
     "name": "羽鸿澈",
-    "key": "longyuhongche",
+    "key": "qwen-audio-3.0-tts-plus-longyuhongche",
     "gender": "女",
     "age": "72",
     "feature": "神秘术士音",
@@ -4105,7 +4105,7 @@
   {
     "idx": "374",
     "name": "朗晴翼",
-    "key": "longlangqingyi",
+    "key": "qwen-audio-3.0-tts-plus-longlangqingyi",
     "gender": "女",
     "age": "25",
     "feature": "呆萌憨直音",
@@ -4116,7 +4116,7 @@
   {
     "idx": "375",
     "name": "嵐泉澄",
-    "key": "longlanquancheng",
+    "key": "qwen-audio-3.0-tts-plus-longlanquancheng",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -4127,7 +4127,7 @@
   {
     "idx": "376",
     "name": "鸾瑜旭",
-    "key": "longluanyuxu",
+    "key": "qwen-audio-3.0-tts-plus-longluanyuxu",
     "gender": "男",
     "age": "25",
     "feature": "正气凛然音",
@@ -4138,7 +4138,7 @@
   {
     "idx": "377",
     "name": "汀鸿霄",
-    "key": "longtinghongxiao",
+    "key": "qwen-audio-3.0-tts-plus-longtinghongxiao",
     "gender": "女",
     "age": "26",
     "feature": "活力童趣音",
@@ -4149,7 +4149,7 @@
   {
     "idx": "378",
     "name": "芙晦晴",
-    "key": "longfuhuiqing",
+    "key": "qwen-audio-3.0-tts-plus-longfuhuiqing",
     "gender": "女",
     "age": "38",
     "feature": "温柔贴心音",
@@ -4160,7 +4160,7 @@
   {
     "idx": "379",
     "name": "望渊杏",
-    "key": "longwangyuanxing",
+    "key": "qwen-audio-3.0-tts-plus-longwangyuanxing",
     "gender": "女",
     "age": "43",
     "feature": "憨厚诙谐音",
@@ -4171,7 +4171,7 @@
   {
     "idx": "380",
     "name": "泉晴杉",
-    "key": "longquanqingshan",
+    "key": "qwen-audio-3.0-tts-plus-longquanqingshan",
     "gender": "女",
     "age": "8",
     "feature": "温柔贴心音",
@@ -4182,7 +4182,7 @@
   {
     "idx": "381",
     "name": "瑶朔瑜",
-    "key": "longyaoshuoyu",
+    "key": "qwen-audio-3.0-tts-plus-longyaoshuoyu",
     "gender": "女",
     "age": "26",
     "feature": "温柔贴心音",
@@ -4193,7 +4193,7 @@
   {
     "idx": "382",
     "name": "晦露凌",
-    "key": "longhuiluling",
+    "key": "qwen-audio-3.0-tts-plus-longhuiluling",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -4204,7 +4204,7 @@
   {
     "idx": "383",
     "name": "琳柏彤",
-    "key": "longlinbaitong",
+    "key": "qwen-audio-3.0-tts-plus-longlinbaitong",
     "gender": "女",
     "age": "8",
     "feature": "欢乐卡通音",
@@ -4215,7 +4215,7 @@
   {
     "idx": "384",
     "name": "羽湘芷",
-    "key": "longyuxiangzhi",
+    "key": "qwen-audio-3.0-tts-plus-longyuxiangzhi",
     "gender": "女",
     "age": "22",
     "feature": "柔弱楚楚音",
@@ -4226,7 +4226,7 @@
   {
     "idx": "385",
     "name": "荷萱澜",
-    "key": "longhexuanlan",
+    "key": "qwen-audio-3.0-tts-plus-longhexuanlan",
     "gender": "男",
     "age": "24",
     "feature": "温柔亲和音",
@@ -4237,7 +4237,7 @@
   {
     "idx": "386",
     "name": "凌澄翼",
-    "key": "longlingchengyi",
+    "key": "qwen-audio-3.0-tts-plus-longlingchengyi",
     "gender": "男",
     "age": "42",
     "feature": "清朗少年音",
@@ -4248,7 +4248,7 @@
   {
     "idx": "387",
     "name": "焱瑶露",
-    "key": "longyanyaolu",
+    "key": "qwen-audio-3.0-tts-plus-longyanyaolu",
     "gender": "男",
     "age": "42",
     "feature": "清俊少年音",
@@ -4259,7 +4259,7 @@
   {
     "idx": "388",
     "name": "彤霁川",
-    "key": "longtongjichuan",
+    "key": "qwen-audio-3.0-tts-plus-longtongjichuan",
     "gender": "女",
     "age": "25",
     "feature": "成熟知心音",
@@ -4270,7 +4270,7 @@
   {
     "idx": "389",
     "name": "麟澄泉",
-    "key": "longlinchengquan",
+    "key": "qwen-audio-3.0-tts-plus-longlinchengquan",
     "gender": "女",
     "age": "25",
     "feature": "柔怯温婉音",
@@ -4281,7 +4281,7 @@
   {
     "idx": "390",
     "name": "晖泉晴",
-    "key": "longhuiquanqing",
+    "key": "qwen-audio-3.0-tts-plus-longhuiquanqing",
     "gender": "女",
     "age": "7",
     "feature": "娇嗲甜腻音",
@@ -4292,7 +4292,7 @@
   {
     "idx": "391",
     "name": "兰凌璨",
-    "key": "longlanlingcan",
+    "key": "qwen-audio-3.0-tts-plus-longlanlingcan",
     "gender": "女",
     "age": "7",
     "feature": "纯真稚嫩音",
@@ -4303,7 +4303,7 @@
   {
     "idx": "392",
     "name": "兰雀潇",
-    "key": "longlanquexiao",
+    "key": "qwen-audio-3.0-tts-plus-longlanquexiao",
     "gender": "男",
     "age": "25",
     "feature": "温润暖男音",
@@ -4314,7 +4314,7 @@
   {
     "idx": "393",
     "name": "梅汀松",
-    "key": "longmeitingsong",
+    "key": "qwen-audio-3.0-tts-plus-longmeitingsong",
     "gender": "男",
     "age": "29",
     "feature": "温婉成熟音",
@@ -4325,7 +4325,7 @@
   {
     "idx": "394",
     "name": "柏珂晦",
-    "key": "longbaikehui",
+    "key": "qwen-audio-3.0-tts-plus-longbaikehui",
     "gender": "男",
     "age": "26",
     "feature": "成熟知心音",
@@ -4336,7 +4336,7 @@
   {
     "idx": "395",
     "name": "汀瑾溪",
-    "key": "longtingjinxi",
+    "key": "qwen-audio-3.0-tts-plus-longtingjinxi",
     "gender": "男",
     "age": "25",
     "feature": "憨厚诙谐音",
@@ -4347,7 +4347,7 @@
   {
     "idx": "396",
     "name": "璨凌莹",
-    "key": "longcanlingying",
+    "key": "qwen-audio-3.0-tts-plus-longcanlingying",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -4358,7 +4358,7 @@
   {
     "idx": "397",
     "name": "焱涟瑶",
-    "key": "longyanlianyao",
+    "key": "qwen-audio-3.0-tts-plus-longyanlianyao",
     "gender": "女",
     "age": "16",
     "feature": "灵动戏腔音",
@@ -4369,7 +4369,7 @@
   {
     "idx": "398",
     "name": "曦暮松",
-    "key": "longximusong",
+    "key": "qwen-audio-3.0-tts-plus-longximusong",
     "gender": "女",
     "age": "28",
     "feature": "鬼马调皮音",
@@ -4380,7 +4380,7 @@
   {
     "idx": "399",
     "name": "澈雪月",
-    "key": "longchexueyue",
+    "key": "qwen-audio-3.0-tts-plus-longchexueyue",
     "gender": "女",
     "age": "7",
     "feature": "憨厚诙谐音",
@@ -4391,7 +4391,7 @@
   {
     "idx": "400",
     "name": "晖澄芙",
-    "key": "longhuichengfu",
+    "key": "qwen-audio-3.0-tts-plus-longhuichengfu",
     "gender": "男",
     "age": "8",
     "feature": "慵懒童趣音",
@@ -4402,7 +4402,7 @@
   {
     "idx": "401",
     "name": "澄蝶烁",
-    "key": "longchengdieshuo",
+    "key": "qwen-audio-3.0-tts-plus-longchengdieshuo",
     "gender": "男",
     "age": "24",
     "feature": "少年指挥音",
@@ -4413,7 +4413,7 @@
   {
     "idx": "402",
     "name": "澜熠沫",
-    "key": "longlanyimo",
+    "key": "qwen-audio-3.0-tts-plus-longlanyimo",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -4424,7 +4424,7 @@
   {
     "idx": "403",
     "name": "川蓉朔",
-    "key": "longchuanrongshuo",
+    "key": "qwen-audio-3.0-tts-plus-longchuanrongshuo",
     "gender": "不能",
     "age": "25",
     "feature": "沉稳大气音",
@@ -4435,7 +4435,7 @@
   {
     "idx": "404",
     "name": "岫泉望",
-    "key": "longxiuquanwang",
+    "key": "qwen-audio-3.0-tts-plus-longxiuquanwang",
     "gender": "女",
     "age": "25",
     "feature": "温甜柔美音",
@@ -4446,7 +4446,7 @@
   {
     "idx": "405",
     "name": "鹊蝶川",
-    "key": "longquediechuan",
+    "key": "qwen-audio-3.0-tts-plus-longquediechuan",
     "gender": "女",
     "age": "27",
     "feature": "温柔贴心音",
@@ -4457,7 +4457,7 @@
   {
     "idx": "406",
     "name": "妍煜菊",
-    "key": "longyanyuju",
+    "key": "qwen-audio-3.0-tts-plus-longyanyuju",
     "gender": "女",
     "age": "25",
     "feature": "憨萌逗趣音",
@@ -4468,7 +4468,7 @@
   {
     "idx": "407",
     "name": "霓岚凤",
-    "key": "longnilanfeng",
+    "key": "qwen-audio-3.0-tts-plus-longnilanfeng",
     "gender": "女",
     "age": "26",
     "feature": "成熟知心音",
@@ -4479,7 +4479,7 @@
   {
     "idx": "408",
     "name": "湘霄筝",
-    "key": "longxiangxiaozheng",
+    "key": "qwen-audio-3.0-tts-plus-longxiangxiaozheng",
     "gender": "女",
     "age": "7",
     "feature": "活泼灵动音",
@@ -4490,7 +4490,7 @@
   {
     "idx": "409",
     "name": "峰梅薇",
-    "key": "longfengmeiwei",
+    "key": "qwen-audio-3.0-tts-plus-longfengmeiwei",
     "gender": "女",
     "age": "24",
     "feature": "温柔贴心音",
@@ -4501,7 +4501,7 @@
   {
     "idx": "410",
     "name": "菊琴霜",
-    "key": "longjuqinshuang",
+    "key": "qwen-audio-3.0-tts-plus-longjuqinshuang",
     "gender": "男",
     "age": "42",
     "feature": "温润暖男音",
@@ -4512,7 +4512,7 @@
   {
     "idx": "411",
     "name": "焱蝶蓉",
-    "key": "longyandierong",
+    "key": "qwen-audio-3.0-tts-plus-longyandierong",
     "gender": "男",
     "age": "24",
     "feature": "惊恐不安音",
@@ -4523,7 +4523,7 @@
   {
     "idx": "412",
     "name": "珂澄霁",
-    "key": "longkechengji",
+    "key": "qwen-audio-3.0-tts-plus-longkechengji",
     "gender": "男",
     "age": "24",
     "feature": "清朗少年音",
@@ -4534,7 +4534,7 @@
   {
     "idx": "413",
     "name": "嵐柏澜",
-    "key": "longlanbailan",
+    "key": "qwen-audio-3.0-tts-plus-longlanbailan",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -4545,7 +4545,7 @@
   {
     "idx": "414",
     "name": "澜珺星",
-    "key": "longlanjunxing",
+    "key": "qwen-audio-3.0-tts-plus-longlanjunxing",
     "gender": "女",
     "age": "25",
     "feature": "温婉成熟音",
@@ -4556,7 +4556,7 @@
   {
     "idx": "415",
     "name": "霜瑾澜",
-    "key": "longshuangjinlan",
+    "key": "qwen-audio-3.0-tts-plus-longshuangjinlan",
     "gender": "女",
     "age": "25",
     "feature": "御姐成熟音",
@@ -4567,7 +4567,7 @@
   {
     "idx": "416",
     "name": "瑾涟晓",
-    "key": "longjinlianxiao",
+    "key": "qwen-audio-3.0-tts-plus-longjinlianxiao",
     "gender": "女",
     "age": "26",
     "feature": "沉稳有力音",
@@ -4578,7 +4578,7 @@
   {
     "idx": "417",
     "name": "嵐凤羽",
-    "key": "longlanfengyu",
+    "key": "qwen-audio-3.0-tts-plus-longlanfengyu",
     "gender": "女",
     "age": "24",
     "feature": "成熟沉稳音",
@@ -4589,7 +4589,7 @@
   {
     "idx": "418",
     "name": "霜澈霄",
-    "key": "longshuangchexiao",
+    "key": "qwen-audio-3.0-tts-plus-longshuangchexiao",
     "gender": "女",
     "age": "23",
     "feature": "傲娇闺秀音",
@@ -4600,7 +4600,7 @@
   {
     "idx": "419",
     "name": "凌瑾泉",
-    "key": "longlingjinquan",
+    "key": "qwen-audio-3.0-tts-plus-longlingjinquan",
     "gender": "女",
     "age": "24",
     "feature": "元气少女音",
@@ -4611,7 +4611,7 @@
   {
     "idx": "420",
     "name": "嵐凌莹",
-    "key": "longlanlingying",
+    "key": "qwen-audio-3.0-tts-plus-longlanlingying",
     "gender": "女",
     "age": "24",
     "feature": "灵动少女音",
@@ -4622,7 +4622,7 @@
   {
     "idx": "421",
     "name": "兰琴鸾",
-    "key": "longlanqinluan",
+    "key": "qwen-audio-3.0-tts-plus-longlanqinluan",
     "gender": "女",
     "age": "25",
     "feature": "沉稳知性音",
@@ -4633,7 +4633,7 @@
   {
     "idx": "422",
     "name": "霄羽岚",
-    "key": "longxiaoyulan",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoyulan",
     "gender": "女",
     "age": "20",
     "feature": "成熟御姐音",
@@ -4644,7 +4644,7 @@
   {
     "idx": "423",
     "name": "煜湘凤",
-    "key": "longyuxiangfeng",
+    "key": "qwen-audio-3.0-tts-plus-longyuxiangfeng",
     "gender": "女",
     "age": "26",
     "feature": "温柔知性音",
@@ -4655,7 +4655,7 @@
   {
     "idx": "424",
     "name": "雪风荷",
-    "key": "longxuefenghe",
+    "key": "qwen-audio-3.0-tts-plus-longxuefenghe",
     "gender": "女",
     "age": "22",
     "feature": "甜萌可爱音",
@@ -4666,7 +4666,7 @@
   {
     "idx": "425",
     "name": "岭汀岫",
-    "key": "longlingtingxiu",
+    "key": "qwen-audio-3.0-tts-plus-longlingtingxiu",
     "gender": "女",
     "age": "29",
     "feature": "温柔邻家音",
@@ -4677,7 +4677,7 @@
   {
     "idx": "426",
     "name": "珂焱瑜",
-    "key": "longkeyanyu",
+    "key": "qwen-audio-3.0-tts-plus-longkeyanyu",
     "gender": "女",
     "age": "26",
     "feature": "稳重沉着音",
@@ -4688,7 +4688,7 @@
   {
     "idx": "427",
     "name": "焱虹琳",
-    "key": "longyanhonglin",
+    "key": "qwen-audio-3.0-tts-plus-longyanhonglin",
     "gender": "女",
     "age": "27",
     "feature": "温柔俏皮音",
@@ -4699,7 +4699,7 @@
   {
     "idx": "428",
     "name": "潇湘涟",
-    "key": "longxiaoxianglian",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoxianglian",
     "gender": "女",
     "age": "24",
     "feature": "御姐成熟音",
@@ -4710,7 +4710,7 @@
   {
     "idx": "429",
     "name": "岭星翼",
-    "key": "longlingxingyi",
+    "key": "qwen-audio-3.0-tts-plus-longlingxingyi",
     "gender": "女",
     "age": "27",
     "feature": "成熟御姐音",
@@ -4721,7 +4721,7 @@
   {
     "idx": "430",
     "name": "蝶暮珺",
-    "key": "longdiemujun",
+    "key": "qwen-audio-3.0-tts-plus-longdiemujun",
     "gender": "女",
     "age": "9",
     "feature": "柔弱楚楚音",
@@ -4732,7 +4732,7 @@
   {
     "idx": "431",
     "name": "辉岭芙",
-    "key": "longhuilingfu",
+    "key": "qwen-audio-3.0-tts-plus-longhuilingfu",
     "gender": "女",
     "age": "25",
     "feature": "温柔俏皮音",
@@ -4743,7 +4743,7 @@
   {
     "idx": "432",
     "name": "霁霜暮",
-    "key": "longjishuangmu",
+    "key": "qwen-audio-3.0-tts-plus-longjishuangmu",
     "gender": "女",
     "age": "25",
     "feature": "善解人意音",
@@ -4754,7 +4754,7 @@
   {
     "idx": "433",
     "name": "菊朔蓉",
-    "key": "longjushuorong",
+    "key": "qwen-audio-3.0-tts-plus-longjushuorong",
     "gender": "女",
     "age": "25",
     "feature": "温柔知性音",
@@ -4765,7 +4765,7 @@
   {
     "idx": "434",
     "name": "桃星鹊",
-    "key": "longtaoxingque",
+    "key": "qwen-audio-3.0-tts-plus-longtaoxingque",
     "gender": "男",
     "age": "25",
     "feature": "清朗少年音",
@@ -4776,7 +4776,7 @@
   {
     "idx": "435",
     "name": "松麟望",
-    "key": "longsonglinwang",
+    "key": "qwen-audio-3.0-tts-plus-longsonglinwang",
     "gender": "男",
     "age": "36",
     "feature": "温润磁性音",
@@ -4787,7 +4787,7 @@
   {
     "idx": "436",
     "name": "潇焱岭",
-    "key": "longxiaoyanling",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoyanling",
     "gender": "男",
     "age": "28",
     "feature": "温润磁性音",
@@ -4798,7 +4798,7 @@
   {
     "idx": "437",
     "name": "晦荷汀",
-    "key": "longhuiheting",
+    "key": "qwen-audio-3.0-tts-plus-longhuiheting",
     "gender": "男",
     "age": "25",
     "feature": "清朗少年音",
@@ -4809,7 +4809,7 @@
   {
     "idx": "438",
     "name": "昕川漪",
-    "key": "longxinchuanyi",
+    "key": "qwen-audio-3.0-tts-plus-longxinchuanyi",
     "gender": "男",
     "age": "24",
     "feature": "温柔亲和音",
@@ -4820,7 +4820,7 @@
   {
     "idx": "439",
     "name": "杉岫涟",
-    "key": "longshanxiulian",
+    "key": "qwen-audio-3.0-tts-plus-longshanxiulian",
     "gender": "男",
     "age": "26",
     "feature": "善解人意音",
@@ -4831,7 +4831,7 @@
   {
     "idx": "440",
     "name": "朗霁朔",
-    "key": "longlangjishuo",
+    "key": "qwen-audio-3.0-tts-plus-longlangjishuo",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -4842,7 +4842,7 @@
   {
     "idx": "441",
     "name": "焱川桃",
-    "key": "longyanchuantao",
+    "key": "qwen-audio-3.0-tts-plus-longyanchuantao",
     "gender": "女",
     "age": "25",
     "feature": "柔怯温婉音",
@@ -4853,7 +4853,7 @@
   {
     "idx": "442",
     "name": "霄琳芷",
-    "key": "longxiaolinzhi",
+    "key": "qwen-audio-3.0-tts-plus-longxiaolinzhi",
     "gender": "女",
     "age": "26",
     "feature": "温婉成熟音",
@@ -4864,7 +4864,7 @@
   {
     "idx": "443",
     "name": "晦樱望",
-    "key": "longhuiyingwang",
+    "key": "qwen-audio-3.0-tts-plus-longhuiyingwang",
     "gender": "女",
     "age": "24",
     "feature": "温柔知性音",
@@ -4875,7 +4875,7 @@
   {
     "idx": "444",
     "name": "瑜川岚",
-    "key": "longyuchuanlan",
+    "key": "qwen-audio-3.0-tts-plus-longyuchuanlan",
     "gender": "男",
     "age": "29",
     "feature": "温婉成熟音",
@@ -4886,7 +4886,7 @@
   {
     "idx": "445",
     "name": "瑾梅澄",
-    "key": "longjinmeicheng",
+    "key": "qwen-audio-3.0-tts-plus-longjinmeicheng",
     "gender": "男",
     "age": "27",
     "feature": "成熟沉稳音",
@@ -4897,7 +4897,7 @@
   {
     "idx": "446",
     "name": "鸾岚菊",
-    "key": "longluanlanju",
+    "key": "qwen-audio-3.0-tts-plus-longluanlanju",
     "gender": "女",
     "age": "25",
     "feature": "元气少女音",
@@ -4908,7 +4908,7 @@
   {
     "idx": "447",
     "name": "瑾彤溪",
-    "key": "longjintongxi",
+    "key": "qwen-audio-3.0-tts-plus-longjintongxi",
     "gender": "女",
     "age": "25",
     "feature": "雍容宫廷音",
@@ -4919,7 +4919,7 @@
   {
     "idx": "448",
     "name": "旭莲霞",
-    "key": "longxulianxia",
+    "key": "qwen-audio-3.0-tts-plus-longxulianxia",
     "gender": "女",
     "age": "24",
     "feature": "温甜柔美音",
@@ -4930,7 +4930,7 @@
   {
     "idx": "449",
     "name": "杏涟薇",
-    "key": "longxinglianwei",
+    "key": "qwen-audio-3.0-tts-plus-longxinglianwei",
     "gender": "女",
     "age": "25",
     "feature": "雍容宫廷音",
@@ -4941,7 +4941,7 @@
   {
     "idx": "450",
     "name": "薇荷筝",
-    "key": "longweihezheng",
+    "key": "qwen-audio-3.0-tts-plus-longweihezheng",
     "gender": "女",
     "age": "21",
     "feature": "甜萌可爱音",
@@ -4952,7 +4952,7 @@
   {
     "idx": "451",
     "name": "蓉霜暄",
-    "key": "longrongshuangxuan",
+    "key": "qwen-audio-3.0-tts-plus-longrongshuangxuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔知性音",
@@ -4963,7 +4963,7 @@
   {
     "idx": "452",
     "name": "璨蕊霜",
-    "key": "longcanruishuang",
+    "key": "qwen-audio-3.0-tts-plus-longcanruishuang",
     "gender": "女",
     "age": "8",
     "feature": "甜萌可爱音",
@@ -4974,7 +4974,7 @@
   {
     "idx": "453",
     "name": "玥彤岭",
-    "key": "longyuetongling",
+    "key": "qwen-audio-3.0-tts-plus-longyuetongling",
     "gender": "女",
     "age": "24",
     "feature": "温柔贴心音",
@@ -4985,7 +4985,7 @@
   {
     "idx": "454",
     "name": "云凌柏",
-    "key": "longyunlingbai",
+    "key": "qwen-audio-3.0-tts-plus-longyunlingbai",
     "gender": "女",
     "age": "8",
     "feature": "甜萌可爱音",
@@ -4996,7 +4996,7 @@
   {
     "idx": "455",
     "name": "川旭杏",
-    "key": "longchuanxuxing",
+    "key": "qwen-audio-3.0-tts-plus-longchuanxuxing",
     "gender": "女",
     "age": "24",
     "feature": "温润磁性音",
@@ -5007,7 +5007,7 @@
   {
     "idx": "456",
     "name": "珂瑾晖",
-    "key": "longkejinhui",
+    "key": "qwen-audio-3.0-tts-plus-longkejinhui",
     "gender": "女",
     "age": "24",
     "feature": "温甜柔美音",
@@ -5018,7 +5018,7 @@
   {
     "idx": "457",
     "name": "旭澄蕊",
-    "key": "longxuchengrui",
+    "key": "qwen-audio-3.0-tts-plus-longxuchengrui",
     "gender": "女",
     "age": "24",
     "feature": "温柔贴心音",
@@ -5029,7 +5029,7 @@
   {
     "idx": "458",
     "name": "杉蝶风",
-    "key": "longshandiefeng",
+    "key": "qwen-audio-3.0-tts-plus-longshandiefeng",
     "gender": "女",
     "age": "20",
     "feature": "温甜柔美音",
@@ -5040,7 +5040,7 @@
   {
     "idx": "459",
     "name": "澜枫霞",
-    "key": "longlanfengxia",
+    "key": "qwen-audio-3.0-tts-plus-longlanfengxia",
     "gender": "女",
     "age": "24",
     "feature": "温柔贴心音",
@@ -5051,7 +5051,7 @@
   {
     "idx": "460",
     "name": "风晓琳",
-    "key": "longfengxiaolin",
+    "key": "qwen-audio-3.0-tts-plus-longfengxiaolin",
     "gender": "男",
     "age": "25",
     "feature": "温润暖男音",
@@ -5062,7 +5062,7 @@
   {
     "idx": "461",
     "name": "玥瑾岫",
-    "key": "longyuejinxiu",
+    "key": "qwen-audio-3.0-tts-plus-longyuejinxiu",
     "gender": "男",
     "age": "24",
     "feature": "成熟稳重音",
@@ -5073,7 +5073,7 @@
   {
     "idx": "462",
     "name": "荷潇峰",
-    "key": "longhexiaofeng",
+    "key": "qwen-audio-3.0-tts-plus-longhexiaofeng",
     "gender": "男",
     "age": "37",
     "feature": "硬朗阳刚音",
@@ -5084,7 +5084,7 @@
   {
     "idx": "463",
     "name": "竹玥柏",
-    "key": "longzhuyuebai",
+    "key": "qwen-audio-3.0-tts-plus-longzhuyuebai",
     "gender": "女",
     "age": "25",
     "feature": "阳光开朗音",
@@ -5095,7 +5095,7 @@
   {
     "idx": "464",
     "name": "晖莲彤",
-    "key": "longhuiliantong",
+    "key": "qwen-audio-3.0-tts-plus-longhuiliantong",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -5106,7 +5106,7 @@
   {
     "idx": "465",
     "name": "虹妍璇",
-    "key": "longhongyanxuan",
+    "key": "qwen-audio-3.0-tts-plus-longhongyanxuan",
     "gender": "女",
     "age": "25",
     "feature": "威严将领音",
@@ -5117,7 +5117,7 @@
   {
     "idx": "466",
     "name": "杉焱璨",
-    "key": "longshanyancan",
+    "key": "qwen-audio-3.0-tts-plus-longshanyancan",
     "gender": "女",
     "age": "25",
     "feature": "热忱推荐音",
@@ -5128,7 +5128,7 @@
   {
     "idx": "467",
     "name": "湘珂瑶",
-    "key": "longxiangkeyao",
+    "key": "qwen-audio-3.0-tts-plus-longxiangkeyao",
     "gender": "女",
     "age": "24",
     "feature": "活泼开朗音",
@@ -5139,7 +5139,7 @@
   {
     "idx": "468",
     "name": "枫荷川",
-    "key": "longfenghechuan",
+    "key": "qwen-audio-3.0-tts-plus-longfenghechuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -5150,7 +5150,7 @@
   {
     "idx": "469",
     "name": "云芙鸿",
-    "key": "longyunfuhong",
+    "key": "qwen-audio-3.0-tts-plus-longyunfuhong",
     "gender": "女",
     "age": "25",
     "feature": "标准播音音",
@@ -5161,7 +5161,7 @@
   {
     "idx": "470",
     "name": "岚薇玥",
-    "key": "longlanweiyue",
+    "key": "qwen-audio-3.0-tts-plus-longlanweiyue",
     "gender": "女",
     "age": "25",
     "feature": "温柔知心音",
@@ -5172,7 +5172,7 @@
   {
     "idx": "471",
     "name": "芙旭羽",
-    "key": "longfuxuyu",
+    "key": "qwen-audio-3.0-tts-plus-longfuxuyu",
     "gender": "女",
     "age": "24",
     "feature": "专业解说音",
@@ -5183,7 +5183,7 @@
   {
     "idx": "472",
     "name": "雨暄梅",
-    "key": "longyuxuanmei",
+    "key": "qwen-audio-3.0-tts-plus-longyuxuanmei",
     "gender": "女",
     "age": "24",
     "feature": "温柔哀婉音",
@@ -5194,7 +5194,7 @@
   {
     "idx": "473",
     "name": "柏凤朔",
-    "key": "longbaifengshuo",
+    "key": "qwen-audio-3.0-tts-plus-longbaifengshuo",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -5205,7 +5205,7 @@
   {
     "idx": "474",
     "name": "望梅璨",
-    "key": "longwangmeican",
+    "key": "qwen-audio-3.0-tts-plus-longwangmeican",
     "gender": "女",
     "age": "23",
     "feature": "爽朗大笑音",
@@ -5216,7 +5216,7 @@
   {
     "idx": "475",
     "name": "焱芷荷",
-    "key": "longyanzhihe",
+    "key": "qwen-audio-3.0-tts-plus-longyanzhihe",
     "gender": "女",
     "age": "8",
     "feature": "温甜柔美音",
@@ -5227,7 +5227,7 @@
   {
     "idx": "476",
     "name": "岫霞煜",
-    "key": "longxiuxiayu",
+    "key": "qwen-audio-3.0-tts-plus-longxiuxiayu",
     "gender": "女",
     "age": "24",
     "feature": "温甜柔美音",
@@ -5238,7 +5238,7 @@
   {
     "idx": "477",
     "name": "弦凌岭",
-    "key": "longxianlingling",
+    "key": "qwen-audio-3.0-tts-plus-longxianlingling",
     "gender": "女",
     "age": "25",
     "feature": "磁性质感音",
@@ -5249,7 +5249,7 @@
   {
     "idx": "478",
     "name": "嵐蓉朔",
-    "key": "longlanrongshuo",
+    "key": "qwen-audio-3.0-tts-plus-longlanrongshuo",
     "gender": "女",
     "age": "26",
     "feature": "搞怪卡通音",
@@ -5260,7 +5260,7 @@
   {
     "idx": "479",
     "name": "漪晴晦",
-    "key": "longyiqinghui",
+    "key": "qwen-audio-3.0-tts-plus-longyiqinghui",
     "gender": "女",
     "age": "60",
     "feature": "慈祥祖母音",
@@ -5271,7 +5271,7 @@
   {
     "idx": "480",
     "name": "澈竹雨",
-    "key": "longchezhuyu",
+    "key": "qwen-audio-3.0-tts-plus-longchezhuyu",
     "gender": "女",
     "age": "25",
     "feature": "自然亲和音",
@@ -5282,7 +5282,7 @@
   {
     "idx": "481",
     "name": "澄涟松",
-    "key": "longchengliansong",
+    "key": "qwen-audio-3.0-tts-plus-longchengliansong",
     "gender": "女",
     "age": "23",
     "feature": "游戏解说音",
@@ -5293,7 +5293,7 @@
   {
     "idx": "482",
     "name": "汀鹊竹",
-    "key": "longtingquezhu",
+    "key": "qwen-audio-3.0-tts-plus-longtingquezhu",
     "gender": "女",
     "age": "23",
     "feature": "运动喘息音",
@@ -5304,7 +5304,7 @@
   {
     "idx": "483",
     "name": "彤暮渊",
-    "key": "longtongmuyuan",
+    "key": "qwen-audio-3.0-tts-plus-longtongmuyuan",
     "gender": "男",
     "age": "38",
     "feature": "焦躁烦闷音",
@@ -5315,7 +5315,7 @@
   {
     "idx": "484",
     "name": "雨岫兰",
-    "key": "longyuxiulan",
+    "key": "qwen-audio-3.0-tts-plus-longyuxiulan",
     "gender": "男",
     "age": "19",
     "feature": "撒娇甜蜜音",
@@ -5326,7 +5326,7 @@
   {
     "idx": "485",
     "name": "岫澈雨",
-    "key": "longxiucheyu",
+    "key": "qwen-audio-3.0-tts-plus-longxiucheyu",
     "gender": "男",
     "age": "26",
     "feature": "温润磁性音",
@@ -5337,7 +5337,7 @@
   {
     "idx": "486",
     "name": "朗珺霁",
-    "key": "longlangjunji",
+    "key": "qwen-audio-3.0-tts-plus-longlangjunji",
     "gender": "女",
     "age": "24",
     "feature": "温柔知性音",
@@ -5348,7 +5348,7 @@
   {
     "idx": "487",
     "name": "莲云霞",
-    "key": "longlianyunxia",
+    "key": "qwen-audio-3.0-tts-plus-longlianyunxia",
     "gender": "女",
     "age": "26",
     "feature": "凌厉剑气音",
@@ -5359,7 +5359,7 @@
   {
     "idx": "488",
     "name": "沫雨露",
-    "key": "longmoyulu",
+    "key": "qwen-audio-3.0-tts-plus-longmoyulu",
     "gender": "女",
     "age": "19",
     "feature": "热血激昂音",
@@ -5370,7 +5370,7 @@
   {
     "idx": "489",
     "name": "瑾麟枫",
-    "key": "longjinlinfeng",
+    "key": "qwen-audio-3.0-tts-plus-longjinlinfeng",
     "gender": "女",
     "age": "25",
     "feature": "大方温和音",
@@ -5381,7 +5381,7 @@
   {
     "idx": "490",
     "name": "晴鹤溪",
-    "key": "longqinghexi",
+    "key": "qwen-audio-3.0-tts-plus-longqinghexi",
     "gender": "女",
     "age": "24",
     "feature": "温柔知心音",
@@ -5392,7 +5392,7 @@
   {
     "idx": "491",
     "name": "漪兰霓",
-    "key": "longyilanni",
+    "key": "qwen-audio-3.0-tts-plus-longyilanni",
     "gender": "女",
     "age": "21",
     "feature": "热血激昂音",
@@ -5403,7 +5403,7 @@
   {
     "idx": "492",
     "name": "岚星琳",
-    "key": "longlanxinglin",
+    "key": "qwen-audio-3.0-tts-plus-longlanxinglin",
     "gender": "女",
     "age": "42",
     "feature": "智慧祖母音",
@@ -5414,7 +5414,7 @@
   {
     "idx": "493",
     "name": "霁沫燕",
-    "key": "longjimoyan",
+    "key": "qwen-audio-3.0-tts-plus-longjimoyan",
     "gender": "女",
     "age": "24",
     "feature": "温柔贴心音",
@@ -5425,7 +5425,7 @@
   {
     "idx": "494",
     "name": "蕊蓉岫",
-    "key": "longruirongxiu",
+    "key": "qwen-audio-3.0-tts-plus-longruirongxiu",
     "gender": "男",
     "age": "26",
     "feature": "随性自在音",
@@ -5436,7 +5436,7 @@
   {
     "idx": "495",
     "name": "莹桃霁",
-    "key": "longyingtaoji",
+    "key": "qwen-audio-3.0-tts-plus-longyingtaoji",
     "gender": "男",
     "age": "25",
     "feature": "成熟稳重音",
@@ -5447,7 +5447,7 @@
   {
     "idx": "496",
     "name": "风昕蝶",
-    "key": "longfengxindie",
+    "key": "qwen-audio-3.0-tts-plus-longfengxindie",
     "gender": "女",
     "age": "26",
     "feature": "亲和自然音",
@@ -5458,7 +5458,7 @@
   {
     "idx": "497",
     "name": "萱樱露",
-    "key": "longxuanyinglu",
+    "key": "qwen-audio-3.0-tts-plus-longxuanyinglu",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -5469,7 +5469,7 @@
   {
     "idx": "498",
     "name": "晴辉朗",
-    "key": "longqinghuilang",
+    "key": "qwen-audio-3.0-tts-plus-longqinghuilang",
     "gender": "女",
     "age": "24",
     "feature": "知性姐姐音",
@@ -5480,7 +5480,7 @@
   {
     "idx": "499",
     "name": "蓉虹雪",
-    "key": "longronghongxue",
+    "key": "qwen-audio-3.0-tts-plus-longronghongxue",
     "gender": "女",
     "age": "24",
     "feature": "专业解说音",
@@ -5491,7 +5491,7 @@
   {
     "idx": "500",
     "name": "蕊沫柳",
-    "key": "longruimoliu",
+    "key": "qwen-audio-3.0-tts-plus-longruimoliu",
     "gender": "女",
     "age": "28",
     "feature": "自然亲和音",
@@ -5502,7 +5502,7 @@
   {
     "idx": "501",
     "name": "荷潇璇",
-    "key": "longhexiaoxuan",
+    "key": "qwen-audio-3.0-tts-plus-longhexiaoxuan",
     "gender": "男",
     "age": "38",
     "feature": "文雅书卷音",
@@ -5513,7 +5513,7 @@
   {
     "idx": "502",
     "name": "澄瑜辉",
-    "key": "longchengyuhui",
+    "key": "qwen-audio-3.0-tts-plus-longchengyuhui",
     "gender": "女",
     "age": "8",
     "feature": "调皮少年音",
@@ -5524,7 +5524,7 @@
   {
     "idx": "503",
     "name": "萱琳菊",
-    "key": "longxuanlinju",
+    "key": "qwen-audio-3.0-tts-plus-longxuanlinju",
     "gender": "女",
     "age": "22",
     "feature": "大方温和音",
@@ -5535,7 +5535,7 @@
   {
     "idx": "504",
     "name": "麟琳莹",
-    "key": "longlinlinying",
+    "key": "qwen-audio-3.0-tts-plus-longlinlinying",
     "gender": "女",
     "age": "22",
     "feature": "伤感低回音",
@@ -5546,7 +5546,7 @@
   {
     "idx": "505",
     "name": "熠朗燕",
-    "key": "longyilangyan",
+    "key": "qwen-audio-3.0-tts-plus-longyilangyan",
     "gender": "女",
     "age": "24",
     "feature": "温柔知性音",
@@ -5557,7 +5557,7 @@
   {
     "idx": "506",
     "name": "霜岚晖",
-    "key": "longshuanglanhui",
+    "key": "qwen-audio-3.0-tts-plus-longshuanglanhui",
     "gender": "女",
     "age": "25",
     "feature": "大方温和音",
@@ -5568,7 +5568,7 @@
   {
     "idx": "507",
     "name": "漪瑜弦",
-    "key": "longyiyuxian",
+    "key": "qwen-audio-3.0-tts-plus-longyiyuxian",
     "gender": "女",
     "age": "8",
     "feature": "温柔知性音",
@@ -5579,7 +5579,7 @@
   {
     "idx": "508",
     "name": "松琳鹤",
-    "key": "longsonglinhe",
+    "key": "qwen-audio-3.0-tts-plus-longsonglinhe",
     "gender": "女",
     "age": "25",
     "feature": "温柔知性音",
@@ -5590,7 +5590,7 @@
   {
     "idx": "509",
     "name": "萱芷琳",
-    "key": "longxuanzhilin",
+    "key": "qwen-audio-3.0-tts-plus-longxuanzhilin",
     "gender": "女",
     "age": "25",
     "feature": "耐心教导音",
@@ -5601,7 +5601,7 @@
   {
     "idx": "510",
     "name": "峰雨霄",
-    "key": "longfengyuxiao",
+    "key": "qwen-audio-3.0-tts-plus-longfengyuxiao",
     "gender": "男",
     "age": "29",
     "feature": "温润磁性音",
@@ -5612,7 +5612,7 @@
   {
     "idx": "511",
     "name": "霄漪荷",
-    "key": "longxiaoyihe",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoyihe",
     "gender": "男",
     "age": "42",
     "feature": "温润暖男音",
@@ -5623,7 +5623,7 @@
   {
     "idx": "512",
     "name": "莲樱玥",
-    "key": "longlianyingyue",
+    "key": "qwen-audio-3.0-tts-plus-longlianyingyue",
     "gender": "女",
     "age": "28",
     "feature": "成熟知心音",
@@ -5634,7 +5634,7 @@
   {
     "idx": "513",
     "name": "晴翼瑶",
-    "key": "longqingyiyao",
+    "key": "qwen-audio-3.0-tts-plus-longqingyiyao",
     "gender": "女",
     "age": "25",
     "feature": "大方温和音",
@@ -5645,7 +5645,7 @@
   {
     "idx": "514",
     "name": "霜薇鹤",
-    "key": "longshuangweihe",
+    "key": "qwen-audio-3.0-tts-plus-longshuangweihe",
     "gender": "女",
     "age": "24",
     "feature": "惊奇讶异音",
@@ -5656,7 +5656,7 @@
   {
     "idx": "515",
     "name": "泉桃嵐",
-    "key": "longquantaolan",
+    "key": "qwen-audio-3.0-tts-plus-longquantaolan",
     "gender": "女",
     "age": "27",
     "feature": "成熟沉稳音",
@@ -5667,7 +5667,7 @@
   {
     "idx": "516",
     "name": "川樱玥",
-    "key": "longchuanyingyue",
+    "key": "qwen-audio-3.0-tts-plus-longchuanyingyue",
     "gender": "男",
     "age": "38",
     "feature": "腹黑深沉音",
@@ -5678,7 +5678,7 @@
   {
     "idx": "517",
     "name": "柳桃虹",
-    "key": "longliutaohong",
+    "key": "qwen-audio-3.0-tts-plus-longliutaohong",
     "gender": "女",
     "age": "22",
     "feature": "傲娇俏皮音",
@@ -5689,7 +5689,7 @@
   {
     "idx": "518",
     "name": "蓉弦煜",
-    "key": "longrongxianyu",
+    "key": "qwen-audio-3.0-tts-plus-longrongxianyu",
     "gender": "女",
     "age": "26",
     "feature": "雍容宫廷音",
@@ -5700,7 +5700,7 @@
   {
     "idx": "519",
     "name": "鸾萱凌",
-    "key": "longluanxuanling",
+    "key": "qwen-audio-3.0-tts-plus-longluanxuanling",
     "gender": "女",
     "age": "25",
     "feature": "温柔姐姐音",
@@ -5711,7 +5711,7 @@
   {
     "idx": "520",
     "name": "鹤峰涟",
-    "key": "longhefenglian",
+    "key": "qwen-audio-3.0-tts-plus-longhefenglian",
     "gender": "女",
     "age": "24",
     "feature": "清亮明朗音",
@@ -5722,7 +5722,7 @@
   {
     "idx": "521",
     "name": "珺芙羽",
-    "key": "longjunfuyu",
+    "key": "qwen-audio-3.0-tts-plus-longjunfuyu",
     "gender": "女",
     "age": "23",
     "feature": "慵懒童趣音",
@@ -5733,7 +5733,7 @@
   {
     "idx": "522",
     "name": "峰琴霁",
-    "key": "longfengqinji",
+    "key": "qwen-audio-3.0-tts-plus-longfengqinji",
     "gender": "女",
     "age": "26",
     "feature": "温润磁性音",
@@ -5744,7 +5744,7 @@
   {
     "idx": "523",
     "name": "樱翼瑜",
-    "key": "longyingyiyu",
+    "key": "qwen-audio-3.0-tts-plus-longyingyiyu",
     "gender": "女",
     "age": "23",
     "feature": "萌宠拟声音",
@@ -5755,7 +5755,7 @@
   {
     "idx": "524",
     "name": "澈芷虹",
-    "key": "longchezhihong",
+    "key": "qwen-audio-3.0-tts-plus-longchezhihong",
     "gender": "女",
     "age": "26",
     "feature": "耐心教导音",
@@ -5766,7 +5766,7 @@
   {
     "idx": "525",
     "name": "芙凌暮",
-    "key": "longfulingmu",
+    "key": "qwen-audio-3.0-tts-plus-longfulingmu",
     "gender": "女",
     "age": "24",
     "feature": "正太变声音",
@@ -5777,7 +5777,7 @@
   {
     "idx": "526",
     "name": "璇松杏",
-    "key": "longxuansongxing",
+    "key": "qwen-audio-3.0-tts-plus-longxuansongxing",
     "gender": "女",
     "age": "24",
     "feature": "柔弱楚楚音",
@@ -5788,7 +5788,7 @@
   {
     "idx": "527",
     "name": "鹤澈蓉",
-    "key": "longhecherong",
+    "key": "qwen-audio-3.0-tts-plus-longhecherong",
     "gender": "女",
     "age": "16",
     "feature": "清亮明朗音",
@@ -5799,7 +5799,7 @@
   {
     "idx": "528",
     "name": "莲嵐渊",
-    "key": "longlianlanyuan",
+    "key": "qwen-audio-3.0-tts-plus-longlianlanyuan",
     "gender": "女",
     "age": "25",
     "feature": "温柔贴心音",
@@ -5810,7 +5810,7 @@
   {
     "idx": "529",
     "name": "岫桐霓",
-    "key": "longxiutongni",
+    "key": "qwen-audio-3.0-tts-plus-longxiutongni",
     "gender": "女",
     "age": "24",
     "feature": "清亮明朗音",
@@ -5821,7 +5821,7 @@
   {
     "idx": "530",
     "name": "桐荷霁",
-    "key": "longtongheji",
+    "key": "qwen-audio-3.0-tts-plus-longtongheji",
     "gender": "女",
     "age": "25",
     "feature": "温润磁性音",
@@ -5832,7 +5832,7 @@
   {
     "idx": "531",
     "name": "枫沫晖",
-    "key": "longfengmohui",
+    "key": "qwen-audio-3.0-tts-plus-longfengmohui",
     "gender": "女",
     "age": "26",
     "feature": "温柔贴心音",
@@ -5843,7 +5843,7 @@
   {
     "idx": "532",
     "name": "泉暄霜",
-    "key": "longquanxuanshuang",
+    "key": "qwen-audio-3.0-tts-plus-longquanxuanshuang",
     "gender": "女",
     "age": "23",
     "feature": "温柔亲和音",
@@ -5854,7 +5854,7 @@
   {
     "idx": "533",
     "name": "麟荷熠",
-    "key": "longlinheyi",
+    "key": "qwen-audio-3.0-tts-plus-longlinheyi",
     "gender": "女",
     "age": "22",
     "feature": "温柔贴心音",
@@ -5865,7 +5865,7 @@
   {
     "idx": "534",
     "name": "晦松晓",
-    "key": "longhuisongxiao",
+    "key": "qwen-audio-3.0-tts-plus-longhuisongxiao",
     "gender": "女",
     "age": "27",
     "feature": "御姐成熟音",
@@ -5876,7 +5876,7 @@
   {
     "idx": "535",
     "name": "翼雨烁",
-    "key": "longyiyushuo",
+    "key": "qwen-audio-3.0-tts-plus-longyiyushuo",
     "gender": "女",
     "age": "14",
     "feature": "威严将领音",
@@ -5887,7 +5887,7 @@
   {
     "idx": "536",
     "name": "昕渊星",
-    "key": "longxinyuanxing",
+    "key": "qwen-audio-3.0-tts-plus-longxinyuanxing",
     "gender": "女",
     "age": "7",
     "feature": "慵懒童趣音",
@@ -5898,7 +5898,7 @@
   {
     "idx": "537",
     "name": "晓星漪",
-    "key": "longxiaoxingyi",
+    "key": "qwen-audio-3.0-tts-plus-longxiaoxingyi",
     "gender": "女",
     "age": "23",
     "feature": "灵动少女音",
@@ -5909,7 +5909,7 @@
   {
     "idx": "538",
     "name": "涟瑾星",
-    "key": "longlianjinxing",
+    "key": "qwen-audio-3.0-tts-plus-longlianjinxing",
     "gender": "女",
     "age": "26",
     "feature": "温柔知性音",
@@ -5920,7 +5920,7 @@
   {
     "idx": "539",
     "name": "杉筝琴",
-    "key": "longshanzhengqin",
+    "key": "qwen-audio-3.0-tts-plus-longshanzhengqin",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -5931,7 +5931,7 @@
   {
     "idx": "540",
     "name": "萱桃烁",
-    "key": "longxuantaoshuo",
+    "key": "qwen-audio-3.0-tts-plus-longxuantaoshuo",
     "gender": "女",
     "age": "9",
     "feature": "元气活力音",
@@ -5942,7 +5942,7 @@
   {
     "idx": "541",
     "name": "翎薇鸾",
-    "key": "longlingweiluan",
+    "key": "qwen-audio-3.0-tts-plus-longlingweiluan",
     "gender": "女",
     "age": "24",
     "feature": "雍容宫廷音",
@@ -5953,7 +5953,7 @@
   {
     "idx": "542",
     "name": "凤岫澈",
-    "key": "longfengxiuche",
+    "key": "qwen-audio-3.0-tts-plus-longfengxiuche",
     "gender": "女",
     "age": "24",
     "feature": "温柔邻家音",
@@ -5964,7 +5964,7 @@
   {
     "idx": "543",
     "name": "琳朔溪",
-    "key": "longlinshuoxi",
+    "key": "qwen-audio-3.0-tts-plus-longlinshuoxi",
     "gender": "女",
     "age": "23",
     "feature": "温柔知性音",
@@ -5975,7 +5975,7 @@
   {
     "idx": "544",
     "name": "瑶凤鹤",
-    "key": "longyaofenghe",
+    "key": "qwen-audio-3.0-tts-plus-longyaofenghe",
     "gender": "女",
     "age": "23",
     "feature": "磁性质感音",
@@ -5986,7 +5986,7 @@
   {
     "idx": "545",
     "name": "雨璨晓",
-    "key": "longyucanxiao",
+    "key": "qwen-audio-3.0-tts-plus-longyucanxiao",
     "gender": "女",
     "age": "22",
     "feature": "清亮明朗音",
@@ -5997,7 +5997,7 @@
   {
     "idx": "546",
     "name": "溪澜雀",
-    "key": "longxilanque",
+    "key": "qwen-audio-3.0-tts-plus-longxilanque",
     "gender": "女",
     "age": "24",
     "feature": "柔怯温婉音",
@@ -6008,7 +6008,7 @@
   {
     "idx": "547",
     "name": "澈琴漪",
-    "key": "longcheqinyi",
+    "key": "qwen-audio-3.0-tts-plus-longcheqinyi",
     "gender": "女",
     "age": "25",
     "feature": "清亮明朗音",
@@ -6019,7 +6019,7 @@
   {
     "idx": "548",
     "name": "雪泉朔",
-    "key": "longxuequanshuo",
+    "key": "qwen-audio-3.0-tts-plus-longxuequanshuo",
     "gender": "女",
     "age": "24",
     "feature": "磁性质感音",
@@ -6030,7 +6030,7 @@
   {
     "idx": "549",
     "name": "杉瑜星",
-    "key": "longshanyuxing",
+    "key": "qwen-audio-3.0-tts-plus-longshanyuxing",
     "gender": "女",
     "age": "25",
     "feature": "灵动少女音",
@@ -6041,7 +6041,7 @@
   {
     "idx": "550",
     "name": "岚彤鸾",
-    "key": "longlantongluan",
+    "key": "qwen-audio-3.0-tts-plus-longlantongluan",
     "gender": "女",
     "age": "24",
     "feature": "大气司仪音",
@@ -6052,7 +6052,7 @@
   {
     "idx": "551",
     "name": "柏澈萱",
-    "key": "longbaichexuan",
+    "key": "qwen-audio-3.0-tts-plus-longbaichexuan",
     "gender": "男",
     "age": "28",
     "feature": "磁性质感音",
@@ -6063,7 +6063,7 @@
   {
     "idx": "552",
     "name": "朗沫玥",
-    "key": "longlangmoyue",
+    "key": "qwen-audio-3.0-tts-plus-longlangmoyue",
     "gender": "男",
     "age": "42",
     "feature": "沉稳内敛音",
@@ -6074,7 +6074,7 @@
   {
     "idx": "553",
     "name": "望霁溪",
-    "key": "longwangjixi",
+    "key": "qwen-audio-3.0-tts-plus-longwangjixi",
     "gender": "男",
     "age": "25",
     "feature": "睿智亲和音",
@@ -6085,7 +6085,7 @@
   {
     "idx": "554",
     "name": "霜琴雀",
-    "key": "longshuangqinque",
+    "key": "qwen-audio-3.0-tts-plus-longshuangqinque",
     "gender": "女",
     "age": "25",
     "feature": "成熟知心音",
@@ -6096,7 +6096,7 @@
   {
     "idx": "555",
     "name": "珂月璨",
-    "key": "longkeyuecan",
+    "key": "qwen-audio-3.0-tts-plus-longkeyuecan",
     "gender": "女",
     "age": "7",
     "feature": "搞怪卡通音",
@@ -6107,7 +6107,7 @@
   {
     "idx": "556",
     "name": "渊蕊翎",
-    "key": "longyuanruiling",
+    "key": "qwen-audio-3.0-tts-plus-longyuanruiling",
     "gender": "女",
     "age": "23",
     "feature": "温柔知性音",
@@ -6118,7 +6118,7 @@
   {
     "idx": "557",
     "name": "雀枫朔",
-    "key": "longquefengshuo",
+    "key": "qwen-audio-3.0-tts-plus-longquefengshuo",
     "gender": "女",
     "age": "26",
     "feature": "温柔姐姐音",
@@ -6129,7 +6129,7 @@
   {
     "idx": "558",
     "name": "溪烁璇",
-    "key": "longxishuoxuan",
+    "key": "qwen-audio-3.0-tts-plus-longxishuoxuan",
     "gender": "女",
     "age": "26",
     "feature": "清亮明朗音",
@@ -6140,7 +6140,7 @@
   {
     "idx": "559",
     "name": "彤泉溪",
-    "key": "longtongquanxi",
+    "key": "qwen-audio-3.0-tts-plus-longtongquanxi",
     "gender": "女",
     "age": "24",
     "feature": "温柔姐姐音",
@@ -6151,7 +6151,7 @@
   {
     "idx": "560",
     "name": "鹤彤璨",
-    "key": "longhetongcan",
+    "key": "qwen-audio-3.0-tts-plus-longhetongcan",
     "gender": "女",
     "age": "25",
     "feature": "磁性质感音",
@@ -6162,7 +6162,7 @@
   {
     "idx": "561",
     "name": "瑜羽筝",
-    "key": "longyuyuzheng",
+    "key": "qwen-audio-3.0-tts-plus-longyuyuzheng",
     "gender": "女",
     "age": "24",
     "feature": "温柔亲和音",
@@ -6173,7 +6173,7 @@
   {
     "idx": "562",
     "name": "珺鹊羽",
-    "key": "longjunqueyu",
+    "key": "qwen-audio-3.0-tts-plus-longjunqueyu",
     "gender": "女",
     "age": "25",
     "feature": "自然亲和音",
@@ -6184,7 +6184,7 @@
   {
     "idx": "563",
     "name": "筝兰瑶",
-    "key": "longzhenglanyao",
+    "key": "qwen-audio-3.0-tts-plus-longzhenglanyao",
     "gender": "女",
     "age": "8",
     "feature": "清亮明朗音",
@@ -6195,7 +6195,7 @@
   {
     "idx": "564",
     "name": "晴霄湘",
-    "key": "longqingxiaoxiang",
+    "key": "qwen-audio-3.0-tts-plus-longqingxiaoxiang",
     "gender": "女",
     "age": "27",
     "feature": "自信从容音",
@@ -6206,7 +6206,7 @@
   {
     "idx": "565",
     "name": "月瑶翎",
-    "key": "longyueyaoling",
+    "key": "qwen-audio-3.0-tts-plus-longyueyaoling",
     "gender": "男",
     "age": "25",
     "feature": "成熟沉稳音",
@@ -6217,7 +6217,7 @@
   {
     "idx": "566",
     "name": "麟鸿溪",
-    "key": "longlinhongxi",
+    "key": "qwen-audio-3.0-tts-plus-longlinhongxi",
     "gender": "男",
     "age": "22",
     "feature": "青年朝气音",
@@ -6228,7 +6228,7 @@
   {
     "idx": "567",
     "name": "澄汀桐",
-    "key": "longchengtingtong",
+    "key": "qwen-audio-3.0-tts-plus-longchengtingtong",
     "gender": "女",
     "age": "26",
     "feature": "尖亮穿透音",
@@ -6239,7 +6239,7 @@
   {
     "idx": "568",
     "name": "桐荷薇",
-    "key": "longtonghewei",
+    "key": "qwen-audio-3.0-tts-plus-longtonghewei",
     "gender": "女",
     "age": "28",
     "feature": "低沉深邃音",
@@ -6250,7 +6250,7 @@
   {
     "idx": "569",
     "name": "澜菊露",
-    "key": "longlanjulu",
+    "key": "qwen-audio-3.0-tts-plus-longlanjulu",
     "gender": "女",
     "age": "25",
     "feature": "磁性质感音",
@@ -6261,7 +6261,7 @@
   {
     "idx": "570",
     "name": "莹蝶琳",
-    "key": "longyingdielin",
+    "key": "qwen-audio-3.0-tts-plus-longyingdielin",
     "gender": "男",
     "age": "42",
     "feature": "热血激昂音",
@@ -6272,7 +6272,7 @@
   {
     "idx": "571",
     "name": "羽莲蓉",
-    "key": "longyulianrong",
+    "key": "qwen-audio-3.0-tts-plus-longyulianrong",
     "gender": "男",
     "age": "28",
     "feature": "沉稳解说音",
@@ -6283,7 +6283,7 @@
   {
     "idx": "572",
     "name": "辉焱杏",
-    "key": "longhuiyanxing",
+    "key": "qwen-audio-3.0-tts-plus-longhuiyanxing",
     "gender": "男",
     "age": "42",
     "feature": "沉稳解说音",
@@ -6294,7 +6294,7 @@
   {
     "idx": "573",
     "name": "雀旭辉",
-    "key": "longquexuhui",
+    "key": "qwen-audio-3.0-tts-plus-longquexuhui",
     "gender": "女",
     "age": "35",
     "feature": "自然亲和音",
@@ -6305,7 +6305,7 @@
   {
     "idx": "574",
     "name": "珂煜望",
-    "key": "longkeyuwang",
+    "key": "qwen-audio-3.0-tts-plus-longkeyuwang",
     "gender": "女",
     "age": "27",
     "feature": "专业解说音",
@@ -6316,7 +6316,7 @@
   {
     "idx": "575",
     "name": "瑜杉鸾",
-    "key": "longyushanluan",
+    "key": "qwen-audio-3.0-tts-plus-longyushanluan",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -6327,7 +6327,7 @@
   {
     "idx": "576",
     "name": "薇泉澄",
-    "key": "longweiquancheng",
+    "key": "qwen-audio-3.0-tts-plus-longweiquancheng",
     "gender": "女",
     "age": "26",
     "feature": "温柔亲和音",
@@ -6338,7 +6338,7 @@
   {
     "idx": "577",
     "name": "Olivia Lin",
-    "key": "loongolivialin",
+    "key": "qwen-audio-3.0-tts-plus-loongolivialin",
     "gender": "女",
     "age": "28",
     "feature": "温柔知性音",
@@ -6349,7 +6349,7 @@
   {
     "idx": "578",
     "name": "Luna Wang",
-    "key": "loonglunawang",
+    "key": "qwen-audio-3.0-tts-plus-loonglunawang",
     "gender": "女",
     "age": "21",
     "feature": "智能助手音",
@@ -6360,7 +6360,7 @@
   {
     "idx": "579",
     "name": "Alexander Hu",
-    "key": "loongalexanderhu",
+    "key": "qwen-audio-3.0-tts-plus-loongalexanderhu",
     "gender": "男",
     "age": "27",
     "feature": "复古磁带音",
@@ -6371,7 +6371,7 @@
   {
     "idx": "580",
     "name": "Nora Hu",
-    "key": "loongnorahu",
+    "key": "qwen-audio-3.0-tts-plus-loongnorahu",
     "gender": "女",
     "age": "25",
     "feature": "活泼灵动音",
@@ -6382,7 +6382,7 @@
   {
     "idx": "581",
     "name": "Adrian Gao",
-    "key": "loongadriangao",
+    "key": "qwen-audio-3.0-tts-plus-loongadriangao",
     "gender": "男",
     "age": "22",
     "feature": "沉稳大气音",
@@ -6393,7 +6393,7 @@
   {
     "idx": "582",
     "name": "James Zhao",
-    "key": "loongjameszhao",
+    "key": "qwen-audio-3.0-tts-plus-loongjameszhao",
     "gender": "男",
     "age": "28",
     "feature": "新闻播报音",
@@ -6404,7 +6404,7 @@
   {
     "idx": "583",
     "name": "Ryan Ma",
-    "key": "loongryanma",
+    "key": "qwen-audio-3.0-tts-plus-loongryanma",
     "gender": "男",
     "age": "38",
     "feature": "电子潮流音",
@@ -6415,7 +6415,7 @@
   {
     "idx": "584",
     "name": "Ivy Hu",
-    "key": "loongivyhu",
+    "key": "qwen-audio-3.0-tts-plus-loongivyhu",
     "gender": "女",
     "age": "54",
     "feature": "自信从容音",
@@ -6426,7 +6426,7 @@
   {
     "idx": "585",
     "name": "应宝子",
-    "key": "longyingbaozi",
+    "key": "qwen-audio-3.0-tts-plus-longyingbaozi",
     "gender": "女",
     "age": "25",
     "feature": "邻家亲切音",
@@ -6437,7 +6437,7 @@
   {
     "idx": "586",
     "name": "应压力",
-    "key": "longyingyali",
+    "key": "qwen-audio-3.0-tts-plus-longyingyali",
     "gender": "男",
     "age": "27",
     "feature": "理性告知音",
@@ -6448,7 +6448,7 @@
   {
     "idx": "587",
     "name": "应越越",
-    "key": "longyingyueyue",
+    "key": "qwen-audio-3.0-tts-plus-longyingyueyue",
     "gender": "女",
     "age": "22",
     "feature": "耐心专业音",
@@ -6459,7 +6459,7 @@
   {
     "idx": "588",
     "name": "应小辣",
-    "key": "longyingxiaola",
+    "key": "qwen-audio-3.0-tts-plus-longyingxiaola",
     "gender": "女",
     "age": "25",
     "feature": "稳健顾问音",
@@ -6470,7 +6470,7 @@
   {
     "idx": "589",
     "name": "应一帆",
-    "key": "longyingyifan",
+    "key": "qwen-audio-3.0-tts-plus-longyingyifan",
     "gender": "男",
     "age": "30",
     "feature": "启蒙导师音",
@@ -6481,7 +6481,7 @@
   {
     "idx": "590",
     "name": "应岚心",
-    "key": "longyinglanxin",
+    "key": "qwen-audio-3.0-tts-plus-longyinglanxin",
     "gender": "女",
     "age": "23",
     "feature": "理性告知音",
@@ -6492,7 +6492,7 @@
   {
     "idx": "591",
     "name": "应沐语",
-    "key": "longyingmuyu",
+    "key": "qwen-audio-3.0-tts-plus-longyingmuyu",
     "gender": "女",
     "age": "25",
     "feature": "温柔亲和音",
@@ -6503,7 +6503,7 @@
   {
     "idx": "592",
     "name": "应玉路",
-    "key": "longyingyulu",
+    "key": "qwen-audio-3.0-tts-plus-longyingyulu",
     "gender": "女",
     "age": "22",
     "feature": "真诚邀请音",
@@ -6514,7 +6514,7 @@
   {
     "idx": "593",
     "name": "应末末",
-    "key": "longyingmomo",
+    "key": "qwen-audio-3.0-tts-plus-longyingmomo",
     "gender": "男",
     "age": "30",
     "feature": "诚恳稳重音",
@@ -6525,7 +6525,7 @@
   {
     "idx": "594",
     "name": "应时渝",
-    "key": "longyingshiyu",
+    "key": "qwen-audio-3.0-tts-plus-longyingshiyu",
     "gender": "女",
     "age": "30",
     "feature": "干练响应音",
@@ -6536,7 +6536,7 @@
   {
     "idx": "595",
     "name": "应海台",
-    "key": "longyinghaitai",
+    "key": "qwen-audio-3.0-tts-plus-longyinghaitai",
     "gender": "女",
     "age": "28",
     "feature": "耐心包容音",
@@ -6547,7 +6547,7 @@
   {
     "idx": "596",
     "name": "应海远",
-    "key": "longyinghaiyuan",
+    "key": "qwen-audio-3.0-tts-plus-longyinghaiyuan",
     "gender": "女",
     "age": "35",
     "feature": "克制礼貌音",
@@ -6558,7 +6558,7 @@
   {
     "idx": "597",
     "name": "应吾茂",
-    "key": "longyingwumao",
+    "key": "qwen-audio-3.0-tts-plus-longyingwumao",
     "gender": "男",
     "age": "30",
     "feature": "客观冷静音",
