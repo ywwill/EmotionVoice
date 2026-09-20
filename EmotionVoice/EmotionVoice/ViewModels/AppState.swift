@@ -26,7 +26,13 @@ final class AppState: ObservableObject {
     @Published var voices: [Voice] = []
 
     /// 当前选中的音色（在 voice studio 中切换）
-    @Published var selectedVoice: Voice?
+    @Published var selectedVoice: Voice? {
+        didSet {
+            if let voice = selectedVoice {
+                UserDefaults.standard.set(voice.key, forKey: "selectedVoiceKey")
+            }
+        }
+    }
 
     /// 触发动画效果（生成完成/开始时）
     @Published var isGenerating: Bool = false
@@ -45,6 +51,28 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - 音色库筛选状态（跨视图持久化）
+
+    /// 音色库当前选中的分类（nil 表示"全部"）
+    @Published var voiceLibrarySelectedCategory: VoiceCategory? = nil {
+        didSet { UserDefaults.standard.set(voiceLibrarySelectedCategory?.rawValue, forKey: "voiceLibrarySelectedCategory") }
+    }
+
+    /// 音色库搜索文本
+    @Published var voiceLibrarySearchText: String = "" {
+        didSet { UserDefaults.standard.set(voiceLibrarySearchText, forKey: "voiceLibrarySearchText") }
+    }
+
+    /// 音色库是否仅显示收藏
+    @Published var voiceLibraryShowFavoritesOnly: Bool = false {
+        didSet { UserDefaults.standard.set(voiceLibraryShowFavoritesOnly, forKey: "voiceLibraryShowFavoritesOnly") }
+    }
+
+    /// 音色库当前页码
+    @Published var voiceLibraryCurrentPage: Int = 1 {
+        didSet { UserDefaults.standard.set(voiceLibraryCurrentPage, forKey: "voiceLibraryCurrentPage") }
+    }
+
     init() {
         self.creditsBalance = CreditsService.shared.balance
         self.monthlyUsed = CreditsService.shared.monthlyUsed
@@ -56,7 +84,20 @@ final class AppState: ObservableObject {
         self.defaultFormat = savedFormat.isEmpty ? Constants.defaultFormat.uppercased() : savedFormat.uppercased()
         self.defaultSampleRate = savedSampleRate > 0 ? savedSampleRate : Constants.defaultSampleRate
 
-        if self.selectedVoice == nil {
+        // 加载音色库筛选状态
+        if let categoryRaw = UserDefaults.standard.string(forKey: "voiceLibrarySelectedCategory") {
+            self.voiceLibrarySelectedCategory = VoiceCategory(rawValue: categoryRaw)
+        }
+        self.voiceLibrarySearchText = UserDefaults.standard.string(forKey: "voiceLibrarySearchText") ?? ""
+        self.voiceLibraryShowFavoritesOnly = UserDefaults.standard.bool(forKey: "voiceLibraryShowFavoritesOnly")
+        let savedPage = UserDefaults.standard.integer(forKey: "voiceLibraryCurrentPage")
+        self.voiceLibraryCurrentPage = savedPage > 0 ? savedPage : 1
+
+        // 恢复上次选中的音色，如果没有则使用默认音色
+        if let savedVoiceKey = UserDefaults.standard.string(forKey: "selectedVoiceKey"),
+           let savedVoice = voices.first(where: { $0.key == savedVoiceKey }) {
+            self.selectedVoice = savedVoice
+        } else {
             self.selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
         }
     }
@@ -70,9 +111,13 @@ final class AppState: ObservableObject {
     /// 刷新音色数据
     func refreshVoices() {
         voices = VoiceService.shared.fetchAll()
+        // 尝试从新的音色列表中找到之前选中的音色（可能因数据更新而变化）
         if let selected = selectedVoice,
            let updated = voices.first(where: { $0.key == selected.key }) {
             selectedVoice = updated
+        } else if selectedVoice == nil {
+            // 如果没有选中音色，使用默认音色
+            selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
         }
     }
 }

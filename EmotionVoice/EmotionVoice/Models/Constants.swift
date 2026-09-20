@@ -139,7 +139,6 @@ enum Constants {
         SampleRateItem(rate: 16000, displayName: "16 kHz",   useCase: "AI 语音"),
         SampleRateItem(rate: 22050, displayName: "22.05 kHz", useCase: "网络语音"),
         SampleRateItem(rate: 24000, displayName: "24 kHz",   useCase: "语音合成"),
-        SampleRateItem(rate: 32000, displayName: "32 kHz",   useCase: "音乐剪辑"),
         SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频"),
         SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频"),
     ]

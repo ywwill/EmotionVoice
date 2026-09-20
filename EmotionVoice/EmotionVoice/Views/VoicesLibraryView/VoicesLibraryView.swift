@@ -23,7 +23,7 @@ struct VoicesLibraryView: View {
     @Environment(\.voiceLibraryUseHandler) private var useHandler
     @Environment(\.voiceLibraryDismiss) private var sheetDismiss
 
-    @StateObject private var vm = VoicesLibraryViewModel()
+    @StateObject private var vm: VoicesLibraryViewModel
     @ObservedObject private var previewPlayer = AudioPreviewPlayer.shared
 
     // 滚动定位
@@ -33,12 +33,29 @@ struct VoicesLibraryView: View {
     @State private var gridAvailableWidth: CGFloat = 0
     // 页码输入框本地状态
     @State private var pageInputText: String = "1"
+    // 搜索防抖任务
+    @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var lastSearchText: String = ""
+    // 音色列表入场动画状态
+    @State private var voicesAppear: Bool = false
 
     // 每行 3 个音色的目标行数
     private static let rowsPerPage: Int = 4
     // 卡片最小宽度 + 间距（与下方 GridItem 保持一致）
     private static let cardMinWidth: CGFloat = 220
     private static let gridSpacing: CGFloat = 14
+
+    // MARK: - 初始化
+
+    init() {
+        // 初始占位值，会在 onAppear 中用 AppState 的真实值替换
+        _vm = StateObject(wrappedValue: VoicesLibraryViewModel(
+            selectedCategory: nil,
+            searchText: "",
+            showFavoritesOnly: false,
+            currentPage: 1
+        ))
+    }
 
     // MARK: - 视图入口
 
@@ -47,12 +64,35 @@ struct VoicesLibraryView: View {
             toolbar
             content
         }
+        .onAppear {
+            // 从 AppState 同步筛选状态（视图重新出现时保持之前的选择）
+            vm.syncFromAppState(
+                selectedCategory: appState.voiceLibrarySelectedCategory,
+                searchText: appState.voiceLibrarySearchText,
+                showFavoritesOnly: appState.voiceLibraryShowFavoritesOnly,
+                currentPage: appState.voiceLibraryCurrentPage
+            )
+            syncPageInput()
+            // 触发音色列表入场动画
+            withAnimation(.easeOut(duration: 0.4)) {
+                voicesAppear = true
+            }
+        }
         .onChange(of: appState.voices) { _, _ in
             // 收藏等操作触发 appState.voices 变化时，仅刷新当前页
             vm.reloadCurrentPage()
         }
         .onDisappear {
+            // 离开视图时保存当前状态到 AppState
+            appState.voiceLibrarySelectedCategory = vm.selectedCategory
+            appState.voiceLibrarySearchText = vm.searchText
+            appState.voiceLibraryShowFavoritesOnly = vm.showFavoritesOnly
+            appState.voiceLibraryCurrentPage = vm.currentPage
+            // 取消搜索防抖任务
+            searchDebounceTask?.cancel()
             AudioPreviewPlayer.shared.stop()
+            // 重置动画状态
+            voicesAppear = false
         }
     }
 
@@ -76,6 +116,8 @@ struct VoicesLibraryView: View {
 
                             // 单分类卡片列表（分页由 vm 管理）
                             singleCategoryCardList
+                                .opacity(voicesAppear ? 1 : 0)
+                                .scaleEffect(voicesAppear ? 1 : 0.95)
                         }
                     }
                     .onChange(of: vm.selectedCategory) { _, _ in
@@ -180,6 +222,7 @@ struct VoicesLibraryView: View {
             Button {
                 vm.prevPage()
                 syncPageInput()
+                syncPageToAppState()
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
@@ -229,6 +272,7 @@ struct VoicesLibraryView: View {
             Button {
                 vm.nextPage()
                 syncPageInput()
+                syncPageToAppState()
             } label: {
                 HStack(spacing: 4) {
                     Text("下一页".localized())
@@ -286,6 +330,7 @@ struct VoicesLibraryView: View {
         let clamped = clampPage(page)
         vm.goToPage(clamped)
         syncPageInput()
+        syncPageToAppState()
     }
 
     /// 页码 clamp 到 [1, totalPages]
@@ -311,11 +356,6 @@ struct VoicesLibraryView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("音色库".localized())
                         .font(.system(size: 16, weight: .semibold))
-                    Text(vm.showFavoritesOnly
-                         ? "收藏的音色".localized()
-                         : "共 %d 个精选音色 · 支持方言和角色".localized(vm.totalAll))
-                        .font(AppFont.bodySmall)
-                        .foregroundStyle(AppColor.textTertiary)
                 }
 
                 Spacer()
@@ -327,8 +367,8 @@ struct VoicesLibraryView: View {
                         dismissWrapper()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppColor.textTertiary)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.white)
                             .frame(width: 30, height: 30)
                             .background(AppColor.bgTertiary)
                             .clipShape(Circle())
@@ -356,7 +396,14 @@ struct VoicesLibraryView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(AppColor.textTertiary)
-            TextField("搜索".localized(), text: $vm.searchText)
+            TextField("搜索".localized(), text: Binding(
+                get: { vm.searchText },
+                set: { newValue in
+                    vm.searchText = newValue
+                    appState.voiceLibrarySearchText = newValue
+                    debouncedReload()
+                }
+            ))
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppColor.textPrimary)
                 .frame(width: 220)
@@ -387,6 +434,8 @@ struct VoicesLibraryView: View {
                     showHeart: true
                 ) {
                     vm.toggleFavoritesFilter()
+                    syncToAppState()
+                    vm.reloadCurrentPage()
                 }
 
                 CountChip(
@@ -396,6 +445,8 @@ struct VoicesLibraryView: View {
                 ) {
                     vm.selectedCategory = nil
                     vm.showFavoritesOnly = false
+                    syncToAppState()
+                    vm.reloadCurrentPage()
                 }
 
                 primaryRowChip(for: .premium)
@@ -413,6 +464,8 @@ struct VoicesLibraryView: View {
                         accent: cat.dimension == .premium
                     ) {
                         vm.selectCategory(cat)
+                        syncToAppState()
+                        vm.reloadCurrentPage()
                     }
                 }
             }
@@ -428,6 +481,8 @@ struct VoicesLibraryView: View {
             accent: cat.dimension == .premium
         ) {
             vm.selectCategory(cat)
+            syncToAppState()
+            vm.reloadCurrentPage()
         }
     }
 
@@ -442,6 +497,8 @@ struct VoicesLibraryView: View {
                 vm.searchText = ""
                 vm.selectedCategory = nil
                 vm.showFavoritesOnly = false
+                syncToAppState()
+                vm.reloadCurrentPage()
             } label: {
                 Text(vm.showFavoritesOnly ? "查看全部".localized() : "重置".localized())
                     .font(.system(size: 12, weight: .medium))
@@ -480,7 +537,35 @@ struct VoicesLibraryView: View {
             appState.selectedSection = .voiceStudio
         }
     }
+
+    /// 同步筛选状态到 AppState（分类、搜索、收藏筛选变化时调用）
+    private func syncToAppState() {
+        appState.voiceLibrarySelectedCategory = vm.selectedCategory
+        appState.voiceLibrarySearchText = vm.searchText
+        appState.voiceLibraryShowFavoritesOnly = vm.showFavoritesOnly
+    }
+
+    /// 同步页码到 AppState（翻页时调用）
+    private func syncPageToAppState() {
+        appState.voiceLibraryCurrentPage = vm.currentPage
+    }
+
+    /// 防抖搜索重新加载（180ms）
+    private func debouncedReload() {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 180_000_000) // 180ms
+                guard !Task.isCancelled else { return }
+                vm.reloadCurrentPage()
+                syncToAppState()
+            } catch {
+                // Task was cancelled, ignore
+            }
+        }
+    }
 }
+
 
 // MARK: - 带数量徽标的 Chip
 

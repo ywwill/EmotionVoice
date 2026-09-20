@@ -67,6 +67,13 @@ struct VoiceRow: View {
         .background(
             isSelected ? AppColor.bgTertiary : Color.clear
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(
+                    isSelected ? AppColor.accentPrimary : Color.clear,
+                    lineWidth: 1.5
+                )
+        )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
         .contentShape(RoundedRectangle(cornerRadius: AppRadius.small))
         // 整行响应选中：点击行内任意非试听按钮区域都触发 action

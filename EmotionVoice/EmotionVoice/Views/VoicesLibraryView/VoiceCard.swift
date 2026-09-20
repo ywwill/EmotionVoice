@@ -62,15 +62,21 @@ struct VoiceCard: View {
             .background(cardBackground)
             .overlay(cardBorder)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+            .shadow(
+                color: isSelected ? AppColor.accentPrimary.opacity(0.2) : Color.black.opacity(0.05),
+                radius: isSelected ? 8 : 4,
+                x: 0,
+                y: isSelected ? 4 : 2
+            )
             .overlay(alignment: .topTrailing) {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(AppColor.accentPrimary)
-                        .font(.system(size: 14))
+                        .font(.system(size: 16))
                         .background(
                             Circle()
                                 .fill(AppColor.bgSecondary)
-                                .frame(width: 16, height: 16)
+                                .frame(width: 18, height: 18)
                         )
                         .offset(x: 6, y: -6)
                         .allowsHitTesting(false)
@@ -132,11 +138,11 @@ struct VoiceCard: View {
     private var cardBorder: some View {
         RoundedRectangle(cornerRadius: AppRadius.medium)
             .stroke(
-                isSelected ? AppColor.accentPrimary.opacity(0.5)
+                isSelected ? AppColor.accentPrimary
                           : (isHovered ? AppColor.borderMedium
-                                       : (isFeatured ? AppColor.accentPrimary.opacity(0.25)
+                                       : (isFeatured ? AppColor.accentPrimary.opacity(0.3)
                                                      : AppColor.borderSubtle)),
-                lineWidth: 1
+                lineWidth: isSelected ? 2 : 1
             )
             .animation(.easeInOut(duration: 0.15), value: isHovered)
             .animation(.easeInOut(duration: 0.15), value: isSelected)

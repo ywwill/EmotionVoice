@@ -248,6 +248,7 @@ struct VoiceStudioView: View {
                         HStack(spacing: 4) {
                             Text(voice.name)
                                 .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
                             if voice.isPremium {
                                 Text("⭐ 旗舰".localized())
                                     .font(AppFont.monoSmall)
@@ -261,7 +262,7 @@ struct VoiceStudioView: View {
                         if !voice.desc.isEmpty {
                             Text(voice.desc)
                                 .font(AppFont.caption)
-                                .foregroundStyle(AppColor.textSecondary)
+                                .foregroundStyle(.white)
                                 .lineLimit(1)
                         }
                     }
@@ -271,7 +272,7 @@ struct VoiceStudioView: View {
                     } label: {
                         Text("更换".localized())
                             .font(AppFont.caption)
-                            .foregroundStyle(AppColor.textSecondary)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .background(AppColor.bgTertiary)
@@ -284,6 +285,15 @@ struct VoiceStudioView: View {
                     .buttonStyle(.plain)
                     .pointingHandCursor()
                 }
+                .padding(12)
+                .background(
+                    LinearGradient(
+                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
             }
 
             Divider().background(AppColor.borderSubtle)

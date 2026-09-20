@@ -17,19 +17,18 @@ import Combine
 @MainActor
 final class VoicesLibraryViewModel: ObservableObject {
 
-    // MARK: - 用户输入
+    // MARK: - 用户输入（引用外部状态）
 
     /// 当前选中的分类（nil 表示"全部"）
-    @Published var selectedCategory: VoiceCategory? = nil
+    var selectedCategory: VoiceCategory?
     /// 搜索文本
-    @Published var searchText: String = ""
+    var searchText: String
     /// 是否仅显示收藏
-    @Published var showFavoritesOnly: Bool = false
+    var showFavoritesOnly: Bool
+    /// 当前页码
+    var currentPage: Int
 
     // MARK: - 分页状态
-
-    /// 当前页码（1-based）
-    @Published private(set) var currentPage: Int = 1
     /// 每页显示数量（默认 16 = 4 行 × 4 列；视图按实际列数动态调整）
     @Published private(set) var pageSize: Int = 16
     /// 命中总数（按当前 selectedCategory + searchText 过滤）
@@ -63,19 +62,32 @@ final class VoicesLibraryViewModel: ObservableObject {
 
     // MARK: - 初始化
 
-    init() {
-        // 分类 / 搜索 / 收藏筛选变化 → 重置到第 1 页并重新加载
-        Publishers.CombineLatest3($selectedCategory, $searchText, $showFavoritesOnly)
-            .dropFirst()
-            .debounce(for: .milliseconds(180), scheduler: RunLoop.main)
-            .sink { [weak self] _, _, _ in
-                guard let self else { return }
-                self.currentPage = 1
-                self.reloadCurrentPage()
-            }
-            .store(in: &cancellables)
+    init(
+        selectedCategory: VoiceCategory?,
+        searchText: String,
+        showFavoritesOnly: Bool,
+        currentPage: Int
+    ) {
+        self.selectedCategory = selectedCategory
+        self.searchText = searchText
+        self.showFavoritesOnly = showFavoritesOnly
+        self.currentPage = currentPage
 
-        // 首次加载（无需防抖）
+        // 首次加载
+        reloadCurrentPage()
+    }
+
+    /// 从 AppState 同步最新状态（当视图重新出现时调用）
+    func syncFromAppState(
+        selectedCategory: VoiceCategory?,
+        searchText: String,
+        showFavoritesOnly: Bool,
+        currentPage: Int
+    ) {
+        self.selectedCategory = selectedCategory
+        self.searchText = searchText
+        self.showFavoritesOnly = showFavoritesOnly
+        self.currentPage = currentPage
         reloadCurrentPage()
     }
 
@@ -106,9 +118,12 @@ final class VoicesLibraryViewModel: ObservableObject {
     // MARK: - 数据加载
 
     /// 重新加载当前页：刷新总数（如签名变化）+ 重新拉取当前页数据
+    /// 注意：搜索时忽略分类，在全部数据中搜索
     func reloadCurrentPage() {
         let needle = searchText.trimmingCharacters(in: .whitespaces)
-        let category = selectedCategory
+        // 搜索时忽略分类，在全部数据中搜索
+        let isSearching = !needle.isEmpty
+        let category = isSearching ? nil : selectedCategory
         let showingFavorites = showFavoritesOnly
         let key = "\(showingFavorites ? "__fav__" : (category?.rawValue ?? Self.allKey))|\(needle)"
 
