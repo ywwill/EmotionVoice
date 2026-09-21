@@ -73,6 +73,9 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(voiceLibraryCurrentPage, forKey: "voiceLibraryCurrentPage") }
     }
 
+    /// Combine 订阅管理
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
         self.creditsBalance = CreditsService.shared.balance
         self.monthlyUsed = CreditsService.shared.monthlyUsed
@@ -105,11 +108,32 @@ final class AppState: ObservableObject {
         } else {
             self.selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
         }
+
+        // 从云端同步积分（应用启动时调用）
+        syncCreditsFromCloud()
+
+        // 监听 CreditManager 的 balance 变化
+        CreditManager.shared.$balance
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newBalance in
+                self?.creditsBalance = newBalance
+            }
+            .store(in: &cancellables)
+    }
+
+    /// 从云端同步积分
+    private func syncCreditsFromCloud() {
+        Task {
+            // 先更新本地余额
+            self.creditsBalance = CreditManager.shared.balance
+            // 再从云端同步
+            CreditManager.shared.syncFromCloud()
+        }
     }
 
     /// 刷新积分数据
     func refreshCredits() {
-        creditsBalance = CreditsService.shared.balance
+        creditsBalance = CreditManager.shared.balance
         monthlyUsed = CreditsService.shared.monthlyUsed
     }
 

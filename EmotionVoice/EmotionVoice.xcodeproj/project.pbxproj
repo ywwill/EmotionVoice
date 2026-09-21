@@ -663,6 +663,21 @@
 		6F209F77303EC88F00A770BB /* longdiechuanling.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AF1303EC88F00A770BB /* longdiechuanling.m4a */; };
 		6F209F78303EC88F00A770BB /* longcheyanxuan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AE9303EC88F00A770BB /* longcheyanxuan.m4a */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
+		6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE53060D7680005713F /* StoreKitManager.swift */; };
+		6FCA9CE83060D7680005713F /* CreditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE33060D7680005713F /* CreditService.swift */; };
+		6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE23060D7680005713F /* CreditManager.swift */; };
+		6FCA9CEA3060D7680005713F /* DeviceIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */; };
+		6FCA9CED3060D7C50005713F /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9CEC3060D7C50005713F /* KeychainSwift */; };
+		6FCA9D7A3060F2FB0005713F /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D793060F2FB0005713F /* Auth */; };
+		6FCA9D7C3060F2FB0005713F /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D7B3060F2FB0005713F /* Functions */; };
+		6FCA9D7E3060F2FB0005713F /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D7D3060F2FB0005713F /* PostgREST */; };
+		6FCA9D803060F2FB0005713F /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D7F3060F2FB0005713F /* Realtime */; };
+		6FCA9D823060F2FB0005713F /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D813060F2FB0005713F /* Storage */; };
+		6FCA9D843060F2FB0005713F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D833060F2FB0005713F /* Supabase */; };
+		6FCA9D873060F3340005713F /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D863060F3340005713F /* SupabaseManager.swift */; };
+		6FCA9D8A3060F34D0005713F /* DeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D883060F34D0005713F /* DeviceInfo.swift */; };
+		6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D893060F34D0005713F /* UserCreditsModel.swift */; };
+		6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
 		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
 		E001000331010101AABBCCDD /* EmotionTokenAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */; };
@@ -1330,6 +1345,14 @@
 		6F209D1E303EC88F00A770BB /* loongolivialin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongolivialin.m4a; sourceTree = "<group>"; };
 		6F209D1F303EC88F00A770BB /* loongryanma.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongryanma.m4a; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
+		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
+		6FCA9CE33060D7680005713F /* CreditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditService.swift; sourceTree = "<group>"; };
+		6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentifier.swift; sourceTree = "<group>"; };
+		6FCA9CE53060D7680005713F /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		6FCA9D863060F3340005713F /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		6FCA9D883060F34D0005713F /* DeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfo.swift; sourceTree = "<group>"; };
+		6FCA9D893060F34D0005713F /* UserCreditsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCreditsModel.swift; sourceTree = "<group>"; };
+		6FCA9D8E3060F6D80005713F /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E001000231010101AABBCCDD /* TTSContentItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSContentItem.swift; sourceTree = "<group>"; };
 		E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenAttachment.swift; sourceTree = "<group>"; };
@@ -1344,7 +1367,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6FCA9CED3060D7C50005713F /* KeychainSwift in Frameworks */,
 				6FEE97FB3027062400C39C26 /* SQLite in Frameworks */,
+				6FCA9D823060F2FB0005713F /* Storage in Frameworks */,
+				6FCA9D7C3060F2FB0005713F /* Functions in Frameworks */,
+				6FCA9D843060F2FB0005713F /* Supabase in Frameworks */,
+				6FCA9D803060F2FB0005713F /* Realtime in Frameworks */,
+				6FCA9D7A3060F2FB0005713F /* Auth in Frameworks */,
+				6FCA9D7E3060F2FB0005713F /* PostgREST in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1385,6 +1415,7 @@
 			children = (
 				6F2090EE303EC80500A770BB /* Const.swift */,
 				6F2090EF303EC80500A770BB /* Func.swift */,
+				6FCA9D8E3060F6D80005713F /* TextSplitter.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -1488,10 +1519,10 @@
 		6F20937B303EC80500A770BB /* VoiceStudioView */ = {
 			isa = PBXGroup;
 			children = (
+				6F20937A303EC80500A770BB /* VoiceStudioView.swift */,
 				6F209377303EC80500A770BB /* EmotionButton.swift */,
 				6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */,
 				6F209379303EC80500A770BB /* VoiceRow.swift */,
-				6F20937A303EC80500A770BB /* VoiceStudioView.swift */,
 				6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */,
 				E001001131010101AABBCCDD /* EmotionToken */,
 			);
@@ -1519,13 +1550,15 @@
 		6F209387303EC80500A770BB /* EmotionVoice */ = {
 			isa = PBXGroup;
 			children = (
+				6F2090F0303EC80500A770BB /* Helper */,
 				6F2090E4303EC80500A770BB /* Database */,
+				6FCA9CE63060D7680005713F /* Store */,
+				6FCA9D853060F3210005713F /* Supabase */,
+				6F20935A303EC80500A770BB /* Services */,
 				6F2090E9303EC80500A770BB /* DesignSystem */,
 				6F209D20303EC88F00A770BB /* Voices */,
 				6F2090ED303EC80500A770BB /* Extension */,
-				6F2090F0303EC80500A770BB /* Helper */,
 				6F2090F6303EC80500A770BB /* Models */,
-				6F20935A303EC80500A770BB /* Services */,
 				6F20935E303EC80500A770BB /* ViewModels */,
 				6F209380303EC80500A770BB /* Views */,
 				6F209381303EC80500A770BB /* Assets.xcassets */,
@@ -2143,6 +2176,27 @@
 			path = Voices;
 			sourceTree = "<group>";
 		};
+		6FCA9CE63060D7680005713F /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				6FCA9CE23060D7680005713F /* CreditManager.swift */,
+				6FCA9CE33060D7680005713F /* CreditService.swift */,
+				6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */,
+				6FCA9CE53060D7680005713F /* StoreKitManager.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
+		6FCA9D853060F3210005713F /* Supabase */ = {
+			isa = PBXGroup;
+			children = (
+				6FCA9D863060F3340005713F /* SupabaseManager.swift */,
+				6FCA9D883060F34D0005713F /* DeviceInfo.swift */,
+				6FCA9D893060F34D0005713F /* UserCreditsModel.swift */,
+			);
+			path = Supabase;
+			sourceTree = "<group>";
+		};
 		6FEE97E2302705C600C39C26 = {
 			isa = PBXGroup;
 			children = (
@@ -2190,6 +2244,13 @@
 			name = Emora;
 			packageProductDependencies = (
 				6FEE97FA3027062400C39C26 /* SQLite */,
+				6FCA9CEC3060D7C50005713F /* KeychainSwift */,
+				6FCA9D793060F2FB0005713F /* Auth */,
+				6FCA9D7B3060F2FB0005713F /* Functions */,
+				6FCA9D7D3060F2FB0005713F /* PostgREST */,
+				6FCA9D7F3060F2FB0005713F /* Realtime */,
+				6FCA9D813060F2FB0005713F /* Storage */,
+				6FCA9D833060F2FB0005713F /* Supabase */,
 			);
 			productName = EmotionVoice;
 			productReference = 6FEE97EB302705C600C39C26 /* Emora.app */;
@@ -2222,6 +2283,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6FEE97F93027062400C39C26 /* XCRemoteSwiftPackageReference "SQLite" */,
+				6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */,
+				6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6FEE97EC302705C600C39C26 /* Products */;
@@ -2855,6 +2918,7 @@
 				6F20938A303EC80500A770BB /* AppFont.swift in Sources */,
 				6F20938B303EC80500A770BB /* AppRadius.swift in Sources */,
 				6F20938C303EC80500A770BB /* View+Extension.swift in Sources */,
+				6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */,
 				6F20938D303EC80500A770BB /* AudioDuration.swift in Sources */,
 				6F20938E303EC80500A770BB /* Formatters.swift in Sources */,
 				6F20938F303EC80500A770BB /* String+Extension.swift in Sources */,
@@ -2865,6 +2929,12 @@
 				6F209394303EC80500A770BB /* Constants.swift in Sources */,
 				6F209395303EC80500A770BB /* Transaction.swift in Sources */,
 				6F209396303EC80500A770BB /* Voice.swift in Sources */,
+				6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */,
+				6FCA9CE83060D7680005713F /* CreditService.swift in Sources */,
+				6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */,
+				6FCA9D8A3060F34D0005713F /* DeviceInfo.swift in Sources */,
+				6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */,
+				6FCA9CEA3060D7680005713F /* DeviceIdentifier.swift in Sources */,
 				6F209397303EC80500A770BB /* AudioPreviewPlayer.swift in Sources */,
 				6F209398303EC80500A770BB /* BailianTTSService.swift in Sources */,
 				6F209399303EC80500A770BB /* BasicVoiceLoader.swift in Sources */,
@@ -2876,6 +2946,7 @@
 				6F20939E303EC80500A770BB /* AppState.swift in Sources */,
 				6F20939F303EC80500A770BB /* VoicesLibraryViewModel.swift in Sources */,
 				6F2093A0303EC80500A770BB /* VoiceStudioViewModel.swift in Sources */,
+				6FCA9D873060F3340005713F /* SupabaseManager.swift in Sources */,
 				6F2093A1303EC80500A770BB /* CreditsView.swift in Sources */,
 				6F2093A2303EC80500A770BB /* PackageCardView.swift in Sources */,
 				6F2093A3303EC80500A770BB /* HeroSection.swift in Sources */,
@@ -3164,6 +3235,24 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/evgenyneu/keychain-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
+		6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+			traits = (
+			);
+		};
 		6FEE97F93027062400C39C26 /* XCRemoteSwiftPackageReference "SQLite" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
@@ -3175,6 +3264,41 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		6FCA9CEC3060D7C50005713F /* KeychainSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */;
+			productName = KeychainSwift;
+		};
+		6FCA9D793060F2FB0005713F /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		6FCA9D7B3060F2FB0005713F /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		6FCA9D7D3060F2FB0005713F /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		6FCA9D7F3060F2FB0005713F /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		6FCA9D813060F2FB0005713F /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		6FCA9D833060F2FB0005713F /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
 		6FEE97FA3027062400C39C26 /* SQLite */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6FEE97F93027062400C39C26 /* XCRemoteSwiftPackageReference "SQLite" */;

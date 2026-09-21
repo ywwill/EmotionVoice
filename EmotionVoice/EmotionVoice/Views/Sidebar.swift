@@ -31,9 +31,9 @@ struct Sidebar: View {
             // 项目管理
             VStack(alignment: .leading, spacing: 2) {
                 sectionHeader("资源管理".localized())
+                SidebarItem(section: .credits)
                 SidebarItem(section: .projects,
                             badge: "\(ProjectService.shared.fetchAllAudios().count)")
-                SidebarItem(section: .credits)
                 SidebarItem(section: .stats)
             }
             .padding(.horizontal, 12)

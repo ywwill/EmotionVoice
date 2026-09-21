@@ -23,7 +23,7 @@ struct RegionConfig {
 }
 
 /// 区域配置管理器
-final class RegionManager {
+class RegionManager {
 
     static let shared = RegionManager()
 
