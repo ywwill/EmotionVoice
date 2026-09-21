@@ -37,6 +37,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private let premiumSubdir: String? = nil
 
     private var player: AVAudioPlayer?
+    private var avPlayer: AVPlayer?  // 回退播放器，用于播放 AVAudioPlayer 不支持的格式
+    private var playerItemObserver: NSKeyValueObservation?  // 监听 AVPlayer 播放状态
     private var cachedURLs: [String: URL] = [:]
 
     private override init() {
@@ -102,6 +104,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
         stop()
 
+        // 优先使用 AVAudioPlayer
         do {
             let p = try AVAudioPlayer(contentsOf: url)
             p.delegate = self
@@ -109,13 +112,14 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
             // 检查音频是否可播放
             if p.duration <= 0 {
-                Log(message: "AudioPreviewPlayer: audio duration is 0 for \(url.lastPathComponent)")
-                return false
+                Log(message: "AudioPreviewPlayer: AVAudioPlayer duration is 0 for \(url.lastPathComponent), trying AVPlayer")
+                // 尝试使用 AVPlayer
+                return playWithAVPlayer(url: url, key: key)
             }
 
             guard p.play() else {
-                Log(message: "AudioPreviewPlayer: play() returned false for \(url.lastPathComponent)")
-                return false
+                Log(message: "AudioPreviewPlayer: AVAudioPlayer play() returned false, trying AVPlayer")
+                return playWithAVPlayer(url: url, key: key)
             }
             self.player = p
             self.playingKey = key
@@ -123,9 +127,68 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             Log(message: "AudioPreviewPlayer: started playing \(url.lastPathComponent), duration=\(p.duration)")
             return true
         } catch {
-            Log(message: "AudioPreviewPlayer: init player failed for \(url.lastPathComponent): \(error)")
+            Log(message: "AudioPreviewPlayer: AVAudioPlayer failed for \(url.lastPathComponent): \(error)")
+            Log(message: "AudioPreviewPlayer: trying AVPlayer as fallback")
+            return playWithAVPlayer(url: url, key: key)
+        }
+    }
+    
+    /// 使用 AVPlayer 播放（回退方案）
+    @discardableResult
+    private func playWithAVPlayer(url: URL, key: String) -> Bool {
+        // 停止旧的 AVPlayer
+        avPlayer?.pause()
+        avPlayer = nil
+        playerItemObserver?.invalidate()
+        playerItemObserver = nil
+        
+        // 确保文件存在
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            Log(message: "AudioPreviewPlayer: AVPlayer file not found at \(url.path)")
             return false
         }
+        
+        // 创建 AVPlayer
+        let playerItem = AVPlayerItem(url: url)
+        let newPlayer = AVPlayer(playerItem: playerItem)
+        self.avPlayer = newPlayer
+        self.playingKey = key
+        
+        // 监听播放状态
+        playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+            Task { @MainActor in
+                switch item.status {
+                case .readyToPlay:
+                    self?.isPlaying = true
+                    newPlayer.play()
+                    Log(message: "AudioPreviewPlayer: AVPlayer ready and playing \(url.lastPathComponent)")
+                case .failed:
+                    Log(message: "AudioPreviewPlayer: AVPlayer item failed: \(item.error?.localizedDescription ?? "unknown error")")
+                    self?.isPlaying = false
+                    self?.playingKey = nil
+                case .unknown:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        }
+        
+        // 监听播放结束
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.isPlaying = false
+                self?.playingKey = nil
+            }
+        }
+        
+        // 开始播放
+        newPlayer.play()
+        return true
     }
 
     /// 停止播放
@@ -133,6 +196,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         let wasPlaying = isPlaying
         player?.stop()
         player = nil
+        avPlayer?.pause()
+        avPlayer = nil
+        playerItemObserver?.invalidate()
+        playerItemObserver = nil
         if wasPlaying {
             isPlaying = false
         }
@@ -147,6 +214,33 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     /// 是否正在播放指定 URL 对应的音频
     func isPlaying(url: URL) -> Bool {
         return playingKey == url.path && isPlaying
+    }
+    
+    /// 获取当前播放时间（秒）
+    var currentTime: TimeInterval {
+        if let p = player {
+            return p.currentTime
+        } else if let av = avPlayer {
+            return av.currentTime().seconds
+        }
+        return 0
+    }
+    
+    /// 获取音频总时长（秒）
+    var duration: TimeInterval {
+        if let p = player {
+            return p.duration
+        }
+        return 0
+    }
+    
+    /// 跳转到指定时间
+    func seek(to time: TimeInterval) {
+        if let p = player {
+            p.currentTime = time
+        } else if let av = avPlayer {
+            av.seek(to: CMTime(seconds: time, preferredTimescale: 600))
+        }
     }
 
     // MARK: - 资源解析

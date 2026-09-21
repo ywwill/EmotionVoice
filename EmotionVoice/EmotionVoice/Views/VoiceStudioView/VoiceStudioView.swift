@@ -15,23 +15,43 @@ struct VoiceStudioView: View {
     @StateObject private var vm = VoiceStudioViewModel.shared
     @ObservedObject private var player = AudioPreviewPlayer.shared
     @State private var showVoiceLibrarySheet: Bool = false
+    @State private var showGenerationModal: Bool = false
+    
+    /// 弹窗高度：生成中状态较短，完成状态较长
+    private var modalHeight: CGFloat {
+        if vm.isGenerating {
+            return 400  // 生成中状态：较矮
+        } else {
+            return 600  // 完成状态：较高
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 工具栏
-            toolbar
-
-            // 内容：左 / 右 两列分栏（音色回到 rightPanel）
-            HStack(alignment: .top, spacing: 16) {
-                editorColumn
-                rightPanel
+        
+        HStack(spacing: 16) {
+            // 左侧：输入框和情感面板
+            VStack(alignment: .leading, spacing: 12) {
+                textEditorCard
+                emotionCard
             }
-            .padding(20)
-            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // 右侧：生成栏 + 右侧面板
+            VStack(alignment: .leading, spacing: 12) {
+                generateBar
+                editPanel
+            }
+            .frame(width: 360)
         }
+        .padding(20)
+        .padding(.bottom, 16)
         .sheet(isPresented: $showVoiceLibrarySheet) {
             VoiceLibrarySheet()
                 .frame(width: 1400, height: 880)
+        }
+        .sheet(isPresented: $showGenerationModal) {
+            AudioGenerationModal(vm: vm, isPresented: $showGenerationModal)
+                .frame(width: 520, height: modalHeight)
         }
         .alert(item: $vm.alertItem) { item in
             Alert(
@@ -54,48 +74,6 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = newKey
             }
         }
-    }
-
-    // MARK: - 工具栏
-
-    private var toolbar: some View {
-        HStack(spacing: 16) {
-            // 左侧标题
-            VStack(alignment: .leading, spacing: 2) {
-                Text("文字转语音".localized())
-                    .font(.system(size: 16, weight: .semibold))
-                Text("将文字转化为带有情感的语音内容".localized())
-                    .font(AppFont.bodySmall)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-
-            Spacer(minLength: 16)
-
-            // 右侧：消耗积分 + 操作按钮（generateBar 内联）
-            generateBar
-        }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 16)
-        .background(
-            Color(hex: 0x0E0F12).opacity(0.4)
-                .background(.ultraThinMaterial)
-        )
-        .overlay(alignment: .bottom) {
-            Divider().background(AppColor.borderSubtle)
-        }
-    }
-
-    // MARK: - 编辑器列
-
-    private var editorColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 文本编辑区
-            textEditorCard
-
-            // 情感面板
-            emotionCard
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - 文本编辑器
@@ -215,7 +193,7 @@ struct VoiceStudioView: View {
 
     // MARK: - 右侧面板
 
-    private var rightPanel: some View {
+    private var editPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 voiceCard
@@ -224,10 +202,8 @@ struct VoiceStudioView: View {
                 nlCard
             }
         }
-        .frame(width: 320)
+        .frame(width: 350)
     }
-
-    // MARK: - 音色卡片（在 rightPanel 中）
 
     private var voiceCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -252,7 +228,7 @@ struct VoiceStudioView: View {
                             if voice.isPremium {
                                 Text("⭐ 旗舰".localized())
                                     .font(AppFont.monoSmall)
-                                    .foregroundStyle(AppColor.accentGlow)
+                                    .foregroundStyle(.white)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 1)
                                     .background(AppColor.accentPrimary.opacity(0.15))
@@ -286,12 +262,10 @@ struct VoiceStudioView: View {
                     .pointingHandCursor()
                 }
                 .padding(12)
-                .background(
-                    LinearGradient(
-                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                .background(AppColor.accentPrimary.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                        .stroke(AppColor.accentPrimary.opacity(0.3), lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
             }
@@ -624,57 +598,102 @@ struct VoiceStudioView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 
-    /// 顶部工具栏内的操作区：预览 / 生成按钮 + 下方积分消耗与进度
-    /// 原为右侧面板底部卡片，迁移至顶部 toolbar 后改为按钮在上、积分与进度在下的紧凑布局。
+    /// 生成栏：生成按钮 + 积分信息
+    /// - 生成音频按钮（主操作）
+    /// - 总积分余额 / 本月已用 / 预计消耗
+    /// - 跳转积分中心入口
     private var generateBar: some View {
-        VStack(alignment: .trailing, spacing: 6) {
-            // 按钮行
-            HStack(spacing: 8) {
-                SecondaryButton(
-                    title: player.isPlaying(key: vm.selectedVoiceKey) ? "停止".localized() : "预览".localized(),
-                    icon: player.isPlaying(key: vm.selectedVoiceKey) ? "stop.fill" : "play.fill"
-                ) {
-                    if player.isPlaying(key: vm.selectedVoiceKey) {
-                        AudioPreviewPlayer.shared.stop()
-                    } else {
-                        AudioPreviewPlayer.shared.play(key: vm.selectedVoiceKey)
-                    }
-                }
-
-                PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
-                    vm.generate { success in
-                        if success {
-                            appState.refreshCredits()
-                        }
+        let state = appState
+        
+        return HStack(spacing: 10) {
+            // 左侧：生成音频按钮
+            PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
+                if !validateInputs() { return }
+                showGenerationModal = true
+                vm.generate { success in
+                    if success {
+                        state.refreshCredits()
                     }
                 }
             }
-
-            // 下方信息行：消耗积分（生成中显示具体进度）
-            HStack(spacing: 8) {
-                Spacer()
-
-                // 生成中：显示具体进度（0~100%）
-                if vm.isGenerating {
-                    HStack(spacing: 8) {
-                        ProgressView(value: vm.generationProgress, total: 1.0)
-                            .progressViewStyle(.linear)
-                            .tint(AppColor.accentPrimary)
-                            .frame(width: 140)
-                        Text("\(Int(vm.generationProgress * 100))%")
+            
+            Spacer()
+            
+            // 右侧：积分信息
+            HStack(spacing: 5) {
+                
+                VStack(alignment: .leading) {
+                    // 剩余积分
+                    HStack {
+                        Text("剩余积分")
                             .font(AppFont.monoSmall)
+                            .foregroundStyle(AppColor.textTertiary)
+                        Text("\(state.creditsBalance)")
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(AppColor.accentPrimary)
-                            .monospacedDigit()
+                    }
+                    
+                    Rectangle()
+                        .fill(AppColor.borderSubtle)
+                        .frame(height: 1)
+                    
+                    // 预计消耗
+                    HStack {
+                        Text("预计消耗")
+                            .font(AppFont.monoSmall)
+                            .foregroundStyle(AppColor.textTertiary)
+                        Text("≈ \(vm.estimatedPoints)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(vm.estimatedPoints > state.creditsBalance ? Color.red : AppColor.textPrimary)
                     }
                 }
-
-                Text("本次消耗".localized() + " ")
-                    .font(AppFont.label)
-                    .foregroundStyle(AppColor.textTertiary)
-                + Text("约 %d 积分".localized(vm.estimatedPoints))
-                    .font(AppFont.label)
+                
+                // 充值按钮
+                Button {
+                    state.selectedSection = .credits
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                        Text("充值".localized())
+                            .font(AppFont.monoSmall)
+                    }
                     .foregroundStyle(AppColor.accentPrimary)
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
             }
         }
+        .padding(16)
+        .background(AppColor.bgSecondary)
+        .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.medium)
+                    .stroke(AppColor.borderSubtle, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+    }
+    
+    /// 验证输入是否正确
+    private func validateInputs() -> Bool {
+        // 检查文本是否为空
+        if vm.text.trimmingCharacters(in: .whitespaces).isEmpty {
+            vm.alertItem = AlertItem(title: "无法生成".localized(),
+                                     message: "请先输入要合成的文本".localized())
+            return false
+        }
+        // 检查是否选择了音色
+        guard vm.voice != nil else {
+            vm.alertItem = AlertItem(title: "无法生成".localized(),
+                                     message: "请先选择一个音色".localized())
+            return false
+        }
+        // 检查积分是否足够
+        let points = vm.estimatedPoints
+        guard CreditsService.shared.canConsume(points) else {
+            vm.alertItem = AlertItem(title: "积分不足".localized(),
+                                     message: "本次合成需要约 %d 积分，请先充值".localized(points))
+            return false
+        }
+        return true
     }
 }

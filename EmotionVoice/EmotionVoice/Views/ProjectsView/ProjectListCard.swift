@@ -89,8 +89,8 @@ struct AudioListCard: View {
                             editingName = audio.shownName.strippingExtension
                             isRenaming = true
                         } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10))
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 14))
                                 .foregroundStyle(AppColor.textTertiary)
                         }
                         .buttonStyle(.plain)

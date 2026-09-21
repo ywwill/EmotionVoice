@@ -15,7 +15,6 @@ struct CreditsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            toolbar
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     balanceHero
@@ -32,34 +31,6 @@ struct CreditsView: View {
 
     private func reload() {
         transactions = CreditsService.shared.fetchTransactions()
-    }
-
-    // MARK: - 工具栏
-
-    private var toolbar: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("积分中心".localized())
-                    .font(.system(size: 16, weight: .semibold))
-                Text("充值积分，管理你的订阅与消费".localized())
-                    .font(AppFont.bodySmall)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            Spacer()
-            ToolbarButton(title: "消费明细".localized(), icon: "📋") {}
-            ToolbarButton(title: "充值".localized(), icon: "+", isPrimary: true) {
-                // 演示：跳到套餐
-            }
-        }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 16)
-        .background(
-            Color(hex: 0x0E0F12).opacity(0.4)
-                .background(.ultraThinMaterial)
-        )
-        .overlay(alignment: .bottom) {
-            Divider().background(AppColor.borderSubtle)
-        }
     }
 
     // MARK: - 余额 Hero

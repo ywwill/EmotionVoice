@@ -662,6 +662,7 @@
 		6F209F76303EC88F00A770BB /* longxiaoyuque.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C53303EC88F00A770BB /* longxiaoyuque.m4a */; };
 		6F209F77303EC88F00A770BB /* longdiechuanling.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AF1303EC88F00A770BB /* longdiechuanling.m4a */; };
 		6F209F78303EC88F00A770BB /* longcheyanxuan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AE9303EC88F00A770BB /* longcheyanxuan.m4a */; };
+		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
 		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
 		E001000331010101AABBCCDD /* EmotionTokenAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */; };
@@ -1328,6 +1329,7 @@
 		6F209D1D303EC88F00A770BB /* loongnorahu.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongnorahu.m4a; sourceTree = "<group>"; };
 		6F209D1E303EC88F00A770BB /* loongolivialin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongolivialin.m4a; sourceTree = "<group>"; };
 		6F209D1F303EC88F00A770BB /* loongryanma.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongryanma.m4a; sourceTree = "<group>"; };
+		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E001000231010101AABBCCDD /* TTSContentItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSContentItem.swift; sourceTree = "<group>"; };
 		E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenAttachment.swift; sourceTree = "<group>"; };
@@ -1490,6 +1492,7 @@
 				6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */,
 				6F209379303EC80500A770BB /* VoiceRow.swift */,
 				6F20937A303EC80500A770BB /* VoiceStudioView.swift */,
+				6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */,
 				E001001131010101AABBCCDD /* EmotionToken */,
 			);
 			path = VoiceStudioView;
@@ -2867,6 +2870,7 @@
 				6F209399303EC80500A770BB /* BasicVoiceLoader.swift in Sources */,
 				6F20939A303EC80500A770BB /* CreditsService.swift in Sources */,
 				6F20939B303EC80500A770BB /* ProjectService.swift in Sources */,
+				6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */,
 				6F20939C303EC80500A770BB /* RegionConfig.swift in Sources */,
 				6F20939D303EC80500A770BB /* VoiceService.swift in Sources */,
 				6F20939E303EC80500A770BB /* AppState.swift in Sources */,
@@ -3068,7 +3072,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -3113,7 +3117,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";

@@ -41,6 +41,7 @@ final class BailianTTSService {
         volume: Double = 100,
         sampleRate: Int = 48000,
         language: String = "mandarin",
+        format: String = "wav",
         nlInstruction: String? = nil
     ) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
@@ -52,6 +53,7 @@ final class BailianTTSService {
                 volume: volume,
                 sampleRate: sampleRate,
                 language: language,
+                format: format,
                 nlInstruction: nlInstruction,
                 onAudio: nil,
                 completion: { result in
@@ -70,6 +72,7 @@ final class BailianTTSService {
         volume: Double = 100,
         sampleRate: Int = 48000,
         language: String = "mandarin",
+        format: String = "wav",
         nlInstruction: String? = nil,
         onAudio: ((Data) -> Void)? = nil,
         completion: @escaping (Result<Data, Error>) -> Void
@@ -84,6 +87,7 @@ final class BailianTTSService {
                     volume: volume,
                     sampleRate: sampleRate,
                     language: language,
+                    format: format,
                     nlInstruction: nlInstruction,
                     onAudio: onAudio
                 )
@@ -103,6 +107,7 @@ final class BailianTTSService {
         volume: Double,
         sampleRate: Int,
         language: String,
+        format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
     ) async throws -> Data {
@@ -118,6 +123,7 @@ final class BailianTTSService {
                 volume: volume,
                 sampleRate: sampleRate,
                 language: language,
+                format: format,
                 nlInstruction: nlInstruction,
                 onAudio: onAudio
             )
@@ -161,6 +167,7 @@ final class BailianTTSService {
         volume: Double,
         sampleRate: Int,
         language: String,
+        format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
     ) async throws -> Data {
@@ -182,6 +189,7 @@ final class BailianTTSService {
             rate: rate,
             volume: volume,
             sampleRate: sampleRate,
+            format: format,
             instruction: nlInstruction
         )
 
@@ -321,7 +329,13 @@ final class BailianTTSService {
             throw TTSError.noAudioData
         }
 
-        Log(message: "收到音频数据: \(completeAudioData.count) bytes")
+        // 诊断：检查音频数据是否有 WAV header
+        let hasRIFFHeader = completeAudioData.count >= 4 &&
+            completeAudioData[0] == 0x52 && // R
+            completeAudioData[1] == 0x49 && // I
+            completeAudioData[2] == 0x46 && // F
+            completeAudioData[3] == 0x46    // F
+        Log(message: "收到音频数据: \(completeAudioData.count) bytes, hasRIFFHeader=\(hasRIFFHeader)")
 
         // 音频生成完成后主动断开连接，下次使用时再重新建立
         closeConnectionInternal()
@@ -447,12 +461,13 @@ final class BailianTTSService {
         rate: Double,
         volume: Double,
         sampleRate: Int,
+        format: String,
         instruction: String?
     ) -> String {
         var parameters: [String: Any] = [
             "text_type": "PlainText",
             "voice": voice,
-            "format": "wav",
+            "format": format.lowercased(),
             "sample_rate": sampleRate,
             "volume": Int(volume),
             "rate": rate,

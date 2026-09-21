@@ -49,10 +49,6 @@ struct Sidebar: View {
             .padding(.horizontal, 12)
 
             Spacer()
-
-            // 底部积分卡
-            CreditsCardView()
-                .padding(16)
         }
         .frame(width: 220)
         .background(AppColor.bgSidebar.opacity(0.6))
@@ -133,60 +129,5 @@ struct SidebarItem: View {
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
-    }
-}
-
-/// 底部积分卡
-struct CreditsCardView: View {
-
-    @EnvironmentObject var appState: AppState
-
-    var body: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.22)) {
-                appState.selectedSection = .credits
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("积分余额".localized())
-                    .font(AppFont.label)
-                    .foregroundStyle(AppColor.textTertiary)
-                    .textCase(.uppercase)
-                    .tracking(0.06)
-
-                Text(appState.creditsBalance.separatedThousands)
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
-                    .foregroundStyle(AppColor.accentGlow)
-
-                Text("有效期至 %@".localized(formattedDate(Date().addingTimeInterval(365 * 24 * 3600))))
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [
-                        AppColor.accentPrimary.opacity(0.12),
-                        AppColor.accentPrimary.opacity(0.04)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .stroke(AppColor.accentPrimary.opacity(0.25), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-    }
-
-    private func formattedDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
     }
 }
