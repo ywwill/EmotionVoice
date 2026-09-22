@@ -281,7 +281,7 @@ final class CreditsService {
                 id: "c_\(consume.id)",
                 type: .consumption,
                 title: consume.voiceName,
-                subtitle: "音频 \(consume.formattedDuration)",
+                subtitle: "\(consume.formattedDuration)",
                 amount: consume.points,
                 createdAt: consume.createdAt
             ))
@@ -292,8 +292,8 @@ final class CreditsService {
             combinedRecords.append(CreditRecord(
                 id: "p_\(purchase.id)",
                 type: .purchase,
-                title: "购买积分",
-                subtitle: "积分充值",
+                title: "购买积分".localized(),
+                subtitle: "/",
                 amount: purchase.quantity,
                 createdAt: purchase.createdAt
             ))

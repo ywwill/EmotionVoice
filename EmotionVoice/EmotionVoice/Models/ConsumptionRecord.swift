@@ -25,7 +25,7 @@ struct ConsumptionRecord: Identifiable, Hashable {
     var formattedDuration: String {
         let minutes = Int(audioDuration) / 60
         let seconds = Int(audioDuration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        return String(format: "%02d:%02d", minutes, seconds)
     }
     
     /// 格式化积分

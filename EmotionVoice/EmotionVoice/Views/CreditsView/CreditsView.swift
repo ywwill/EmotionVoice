@@ -179,15 +179,17 @@ struct CreditsView: View {
                 // 表头
                 HStack {
                     Text("类型".localized())
-                        .frame(width: 40, alignment: .leading)
+                        .frame(width: 100, alignment: .leading)
                     Text("详情".localized())
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("时长".localized())
+                        .frame(width: 100, alignment: .center)
                     Text("积分".localized())
-                        .frame(width: 70, alignment: .trailing)
+                        .frame(width: 100, alignment: .trailing)
                     Text("时间".localized())
-                        .frame(width: 130, alignment: .trailing)
+                        .frame(width: 150, alignment: .trailing)
                 }
-                .font(AppFont.label)
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppColor.textTertiary)
                 .textCase(.uppercase)
                 .tracking(0.05)
@@ -242,29 +244,35 @@ struct CreditsView: View {
                 .frame(width: 28, height: 28)
                 .overlay(
                     Text(record.type.icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(recordColor(for: record.type))
                 )
-                .frame(width: 40, alignment: .leading)
+                .frame(width: 100, alignment: .leading)
             
             // 详情（单行）
             Text(record.title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppColor.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
+            // 时长（消耗记录显示，购买记录为空）
+            Text(record.subtitle)
+                .font(.system(size: 13))
+                .foregroundStyle(AppColor.textSecondary)
+                .frame(width: 100, alignment: .center)
+            
             // 积分
             Text(record.formattedAmount)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(record.isPositive ? AppColor.statusSuccess : AppColor.textSecondary)
-                .frame(width: 70, alignment: .trailing)
+                .foregroundStyle(record.isPositive ? AppColor.statusSuccess : .red)
+                .frame(width: 100, alignment: .trailing)
             
-            // 时间（具体到秒）
+            // 时间
             Text(record.createdAt.shortDateTimeString)
                 .font(AppFont.monoSmall)
                 .foregroundStyle(AppColor.textTertiary)
-                .frame(width: 130, alignment: .trailing)
+                .frame(width: 150, alignment: .trailing)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
