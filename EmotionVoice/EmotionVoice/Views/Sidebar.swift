@@ -30,7 +30,6 @@ struct Sidebar: View {
 
             // 项目管理
             VStack(alignment: .leading, spacing: 2) {
-                sectionHeader("资源管理".localized())
                 SidebarItem(section: .credits)
                 SidebarItem(section: .projects,
                             badge: "\(ProjectService.shared.fetchAllAudios().count)")
@@ -58,17 +57,6 @@ struct Sidebar: View {
                 .frame(width: 1),
             alignment: .trailing
         )
-    }
-
-    @ViewBuilder
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(AppFont.label)
-            .foregroundStyle(AppColor.textTertiary)
-            .textCase(.uppercase)
-            .tracking(0.06)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
     }
 }
 

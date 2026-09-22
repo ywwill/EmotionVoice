@@ -1,6 +1,6 @@
 //
 //  TextSplitter.swift
-//  CloneVoice
+//  EmotionVoice
 //
 //  文本智能分割工具（按阿里云计费字符数）
 //

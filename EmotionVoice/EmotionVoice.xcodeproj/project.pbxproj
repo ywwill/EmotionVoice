@@ -34,6 +34,7 @@
 		6F2093A0303EC80500A770BB /* VoiceStudioViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935D303EC80500A770BB /* VoiceStudioViewModel.swift */; };
 		6F2093A1303EC80500A770BB /* CreditsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935F303EC80500A770BB /* CreditsView.swift */; };
 		6F2093A2303EC80500A770BB /* PackageCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209360303EC80500A770BB /* PackageCardView.swift */; };
+		6F2093A2303EC80500B770BB /* ProductCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209360303EC80500B770BB /* ProductCardView.swift */; };
 		6F2093A3303EC80500A770BB /* HeroSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209362303EC80500A770BB /* HeroSection.swift */; };
 		6F2093A4303EC80500A770BB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209363303EC80500A770BB /* HomeView.swift */; };
 		6F2093A5303EC80500A770BB /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209364303EC80500A770BB /* ProgressBar.swift */; };
@@ -715,6 +716,7 @@
 		6F20935D303EC80500A770BB /* VoiceStudioViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioViewModel.swift; sourceTree = "<group>"; };
 		6F20935F303EC80500A770BB /* CreditsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsView.swift; sourceTree = "<group>"; };
 		6F209360303EC80500A770BB /* PackageCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackageCardView.swift; sourceTree = "<group>"; };
+		6F209360303EC80500B770BB /* ProductCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductCardView.swift; sourceTree = "<group>"; };
 		6F209362303EC80500A770BB /* HeroSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroSection.swift; sourceTree = "<group>"; };
 		6F209363303EC80500A770BB /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6F209364303EC80500A770BB /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
@@ -1461,6 +1463,7 @@
 			children = (
 				6F20935F303EC80500A770BB /* CreditsView.swift */,
 				6F209360303EC80500A770BB /* PackageCardView.swift */,
+				6F209360303EC80500B770BB /* ProductCardView.swift */,
 			);
 			path = CreditsView;
 			sourceTree = "<group>";
@@ -2949,6 +2952,7 @@
 				6FCA9D873060F3340005713F /* SupabaseManager.swift in Sources */,
 				6F2093A1303EC80500A770BB /* CreditsView.swift in Sources */,
 				6F2093A2303EC80500A770BB /* PackageCardView.swift in Sources */,
+				6F2093A2303EC80500B770BB /* ProductCardView.swift in Sources */,
 				6F2093A3303EC80500A770BB /* HeroSection.swift in Sources */,
 				6F2093A4303EC80500A770BB /* HomeView.swift in Sources */,
 				6F2093A5303EC80500A770BB /* ProgressBar.swift in Sources */,

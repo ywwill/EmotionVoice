@@ -6,22 +6,23 @@
 //
 
 import SwiftUI
+import StoreKit
 
 /// 积分中心
 struct CreditsView: View {
 
     @EnvironmentObject var appState: AppState
+    @StateObject private var storeManager = StoreKitManager.shared
     @State private var transactions: [TransactionRecord] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    packagesSection
                     balanceHero
                     twoColumnStats
-                    packagesSection
                     costReferenceSection
-                    historySection
                 }
                 .padding(24)
             }
@@ -59,7 +60,7 @@ struct CreditsView: View {
                         Circle()
                             .fill(AppColor.statusSuccess)
                             .frame(width: 6, height: 6)
-                        Text("有效期至 2027-08-08".localized())
+                        Text("积分永久有效".localized())
                     }
                     Text("本月已使用 \(appState.monthlyUsed) 积分".localized())
                 }
@@ -67,10 +68,6 @@ struct CreditsView: View {
                 .foregroundStyle(AppColor.textSecondary)
             }
             Spacer()
-            VStack(spacing: 8) {
-                PrimaryButton(title: "⚡ 立即充值".localized(), icon: nil) {}
-                SecondaryButton(title: "📋 消费明细".localized(), icon: nil) {}
-            }
         }
         .padding(32)
         .background(AppColor.bgSecondary)
@@ -242,30 +239,44 @@ struct CreditsView: View {
                 Text("💎 推荐套餐".localized())
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Button {} label: {
-                    Text("查看完整定价 →".localized())
-                        .font(AppFont.caption)
-                        .foregroundStyle(AppColor.accentPrimary)
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
             }
 
-            HStack(spacing: 12) {
-                ForEach(Constants.creditsPackages) { pkg in
-                    PackageCardView(package: pkg) {
-                        // 购买演示
-                        CreditsService.shared.purchase(pkg.points)
-                        CreditsService.shared.addTransaction(TransactionRecord(
-                            id: 0,
-                            type: .purchase,
-                            title: "购买\(pkg.name)".localized(),
-                            amount: pkg.points,
-                            meta: "微信支付",
-                            createdAt: Date()
-                        ))
-                        appState.refreshCredits()
-                        reload()
+            if storeManager.isLoading {
+                skeletonProductCards
+            } else if storeManager.products.isEmpty {
+                emptyProductsView
+            } else {
+                productCards
+            }
+        }
+    }
+
+    private var productCards: some View {
+        HStack(spacing: 12) {
+            ForEach(storeManager.products, id: \.id) { product in
+                ProductCardView(product: product, creditProduct: CreditProduct(rawValue: product.id)) {
+                    Task {
+                        await storeManager.purchase(product)
+                    }
+                }
+            }
+        }
+    }
+
+    private var skeletonProductCards: some View {
+        HStack(spacing: 12) {
+            ForEach(0..<4, id: \.self) { _ in
+                SkeletonProductCard()
+            }
+        }
+    }
+
+    private var emptyProductsView: some View {
+        HStack(spacing: 12) {
+            ForEach(CreditProduct.allCases, id: \.rawValue) { creditProduct in
+                ProductCardView(product: nil, creditProduct: creditProduct) {
+                    Task {
+                        await storeManager.loadProducts()
                     }
                 }
             }
@@ -334,50 +345,6 @@ struct CreditsView: View {
                         Divider()
                             .background(AppColor.borderSubtle)
                             .padding(.horizontal, 12)
-                    }
-                }
-            }
-            .background(AppColor.bgSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
-        }
-    }
-
-    // MARK: - 交易记录
-
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("📋 交易记录".localized())
-                    .font(.system(size: 14, weight: .semibold))
-                Spacer()
-                Button {} label: {
-                    Text("查看全部 →".localized())
-                        .font(AppFont.caption)
-                        .foregroundStyle(AppColor.accentPrimary)
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-            }
-
-            VStack(spacing: 0) {
-                if transactions.isEmpty {
-                        Text("暂无数据".localized())
-                            .font(AppFont.bodyMedium)
-                            .foregroundStyle(AppColor.textTertiary)
-                            .padding(40)
-                            .frame(maxWidth: .infinity)
-                } else {
-                    ForEach(transactions.prefix(6)) { tx in
-                        historyRow(tx)
-                        if tx.id != transactions.prefix(6).last?.id {
-                            Divider()
-                                .background(AppColor.borderSubtle)
-                                .padding(.horizontal, 16)
-                        }
                     }
                 }
             }

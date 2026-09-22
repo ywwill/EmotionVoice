@@ -1,6 +1,6 @@
 //
 //  DeviceIdentifier.swift
-//  CloneVoice
+//  EmotionVoice
 //
 
 import Foundation

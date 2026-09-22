@@ -1,6 +1,6 @@
 //
 //  StoreKitManager.swift
-//  CloneVoice
+//  EmotionVoice
 //
 //  StoreKit 2 内购管理模块
 //
@@ -11,14 +11,16 @@ import Combine
 
 // MARK: - 商品配置
 enum CreditProduct: String, CaseIterable, Sendable {
-    case credits6 = "ai.emora.credit.6"      // ¥6 → 60 积分
-    case credits30 = "ai.emora.credit.30"    // ¥30 → 400 积分（主推）
-    case credits98 = "ai.emora.credit.98"    // ¥98 → 1500 积分
+    case credits6 = "ai.emora.credit.60"      // $1.99 → 60 积分
+    case credits30 = "ai.emora.credit.30"     // $9.99 → 400 积分（主推）
+    case credits60 = "ai.emora.credit.900"     // $19.99 → 900 积分（主推）
+    case credits98 = "ai.emora.credit.1500"   // $29.99 → 1500 积分
     
     nonisolated var creditsAmount: Int {
         switch self {
         case .credits6: return 60
         case .credits30: return 400
+        case .credits60: return 900
         case .credits98: return 1500
         }
     }

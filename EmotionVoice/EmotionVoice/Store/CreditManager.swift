@@ -1,6 +1,6 @@
 //
 //  CreditManager.swift
-//  CloneVoice
+//  EmotionVoice
 //
 //  积分管理模块 - 负责积分的存储、增减和校验
 //  支持本地缓存 + Supabase 云端同步
