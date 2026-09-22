@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 /// 设置
 struct SettingsView: View {
@@ -14,12 +16,11 @@ struct SettingsView: View {
 
     @State private var selectedCategory: SettingsCategory = .voice
 
+    @State private var showingDirectoryPicker: Bool = false
+
     enum SettingsCategory: String, CaseIterable, Identifiable {
         case voice = "语音合成"
-        case shortcut = "快捷键"
         case file = "文件"
-        case notification = "通知"
-        case language = "语言"
 
         var id: String { rawValue }
         var displayName: String { rawValue.localized() }
@@ -27,10 +28,7 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .voice: return "waveform"
-            case .shortcut: return "keyboard"
             case .file: return "folder"
-            case .notification: return "bell.fill"
-            case .language: return "globe"
             }
         }
     }
@@ -46,7 +44,6 @@ struct SettingsView: View {
             // 右侧内容
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    settingsHeader
                     content(for: selectedCategory)
                 }
                 .padding(32)
@@ -139,10 +136,7 @@ struct SettingsView: View {
     private var headerSubtitle: String {
         switch selectedCategory {
         case .voice: return "配置音色和音频输出选项".localized()
-        case .shortcut: return "自定义快捷键以提升效率".localized()
         case .file: return "管理文件存储与缓存".localized()
-        case .notification: return "配置应用通知".localized()
-        case .language: return "选择界面语言".localized()
         }
     }
 
@@ -152,10 +146,7 @@ struct SettingsView: View {
     private func content(for cat: SettingsCategory) -> some View {
         switch cat {
         case .voice:      voiceContent
-        case .shortcut:   shortcutContent
         case .file:       fileContent
-        case .notification: notificationContent
-        case .language:   languageContent
         }
     }
 
@@ -204,7 +195,7 @@ struct SettingsView: View {
 
                 divider()
 
-                settingRowWithTrailing(
+                settingRow(
                     label: "采样率".localized(),
                     desc: "音频质量".localized(),
                     control: {
@@ -218,76 +209,10 @@ struct SettingsView: View {
                         }
                         .labelsHidden()
                         .frame(width: 280)
-                    },
-                    trailing: {
-                        Text("24-bit")
-                            .font(AppFont.caption)
-                            .foregroundStyle(AppColor.textTertiary)
                     }
-                )
-
-                divider()
-
-                settingRow(
-                    label: "自动添加元数据".localized(),
-                    desc: "嵌入标题、艺术家信息".localized(),
-                    control: { Toggle("", isOn: .constant(true))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .tint(AppColor.accentPrimary) }
                 )
             }
         }
-    }
-
-    // MARK: 快捷键
-
-    private var shortcutContent: some View {
-        VStack(spacing: 20) {
-            sectionCard(icon: "⌨️", title: "快捷键".localized()) {
-                shortcutRow("生成语音".localized(), desc: "立即开始合成音频".localized(), keys: ["⌘", "↵"])
-                divider()
-                shortcutRow("预览播放".localized(), desc: "播放/暂停当前预览".localized(), keys: ["⌘", "P"])
-                divider()
-                shortcutRow("导出音频".localized(), desc: "导出当前音频文件".localized(), keys: ["⌘", "E"])
-                divider()
-                shortcutRow("保存草稿".localized(), desc: "保存当前编辑".localized(), keys: ["⌘", "S"])
-                divider()
-                shortcutRow("切换音色".localized(), desc: "打开音色选择器".localized(), keys: ["⌘", "K"])
-            }
-        }
-    }
-
-    private func shortcutRow(_ label: String, desc: String, keys: [String]) -> some View {
-        settingRowWithTrailing(
-            label: label,
-            desc: desc,
-            control: {
-                HStack(spacing: 4) {
-                    ForEach(keys, id: \.self) { key in
-                        Text(key)
-                            .font(.system(size: 11, design: .monospaced))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(AppColor.bgTertiary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                }
-            },
-            trailing: {
-                Button {} label: {
-                    Text("编辑".localized())
-                        .font(AppFont.caption)
-                        .foregroundStyle(AppColor.textTertiary)
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-            }
-        )
     }
 
     // MARK: 文件
@@ -299,16 +224,24 @@ struct SettingsView: View {
                     label: "导出目录".localized(),
                     desc: "音频文件保存位置".localized(),
                     control: {
-                        HStack(spacing: 6) {
-                            Text("~/Documents/EmotionVoice/")
-                                .font(AppFont.monoMedium)
-                                .foregroundStyle(AppColor.textSecondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(AppColor.bgTertiary)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                            Button {} label: {
-                                Text("更改...".localized())
+                        HStack() {
+                            if let exportDir = appState.exportDirectory {
+                                Text(exportDir.path)
+                                    .font(AppFont.monoMedium)
+                                    .foregroundStyle(AppColor.textSecondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(maxWidth: 240)
+                                    .help(exportDir.path)
+                            } else {
+                                Text("未设置".localized())
+                                    .font(AppFont.monoMedium)
+                                    .foregroundStyle(AppColor.textTertiary)
+                            }
+                            Button {
+                                selectExportDirectory()
+                            } label: {
+                                Text(appState.exportDirectory == nil ? "打开...".localized() : "更改".localized())
                                     .font(AppFont.caption)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
@@ -342,72 +275,31 @@ struct SettingsView: View {
                 )
             }
         }
-    }
-
-    // MARK: 通知
-
-    private var notificationContent: some View {
-        VStack(spacing: 20) {
-            sectionCard(icon: "🔔", title: "通知".localized()) {
-                settingRow(
-                    label: "生成完成".localized(),
-                    desc: "音频合成完成后通知".localized(),
-                    control: { Toggle("", isOn: .constant(true)).labelsHidden().toggleStyle(.switch).tint(AppColor.accentPrimary) }
-                )
-                divider()
-                settingRow(
-                    label: "积分不足".localized(),
-                    desc: "积分低于 100 时提醒".localized(),
-                    control: { Toggle("", isOn: .constant(true)).labelsHidden().toggleStyle(.switch).tint(AppColor.accentPrimary) }
-                )
-                divider()
-                settingRow(
-                    label: "系统更新".localized(),
-                    desc: "新版本发布时通知".localized(),
-                    control: { Toggle("", isOn: .constant(false)).labelsHidden().toggleStyle(.switch).tint(AppColor.accentPrimary) }
-                )
-            }
-        }
-    }
-
-    // MARK: 语言
-
-    private var languageContent: some View {
-        VStack(spacing: 20) {
-            sectionCard(icon: "🌐", title: "语言".localized()) {
-                settingRow(
-                    label: "界面语言".localized(),
-                    desc: "应用界面显示语言".localized(),
-                    control: {
-                        Picker("", selection: .constant("zh-Hans")) {
-                            Text("简体中文").tag("zh-Hans")
-                            Text("English").tag("en")
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
+        .fileImporter(
+            isPresented: $showingDirectoryPicker,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    // 获取安全访问的 bookmark 数据
+                    if url.startAccessingSecurityScopedResource() {
+                        appState.exportDirectory = url
+                        url.stopAccessingSecurityScopedResource()
+                    } else {
+                        // 如果无法访问安全范围资源，直接使用路径
+                        appState.exportDirectory = url
                     }
-                )
+                }
+            case .failure:
+                break
             }
         }
     }
 
-    private func aboutButton(_ title: String) -> some View {
-        Button {} label: {
-            HStack {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.textPrimary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
+    private func selectExportDirectory() {
+        showingDirectoryPicker = true
     }
 
     // MARK: - 通用组件
@@ -450,30 +342,6 @@ struct SettingsView: View {
             }
             Spacer()
             control()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-    }
-
-    @ViewBuilder
-    private func settingRowWithTrailing<Control: View, Trailing: View>(
-        label: String,
-        desc: String,
-        @ViewBuilder control: () -> Control,
-        @ViewBuilder trailing: () -> Trailing
-    ) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.textPrimary)
-                Text(desc)
-                    .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            Spacer()
-            control()
-            trailing()
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)

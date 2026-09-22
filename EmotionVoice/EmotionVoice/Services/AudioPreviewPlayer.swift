@@ -31,6 +31,24 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     @Published private(set) var playingKey: String? = nil
     /// 是否正在播放
     @Published private(set) var isPlaying: Bool = false
+    /// 当前播放进度（0.0 - 1.0）
+    @Published private(set) var progress: Double = 0.0
+    /// 当前播放时间（秒）
+    @Published private(set) var currentTime: Double = 0.0
+    /// 音频总时长（秒）
+    @Published private(set) var duration: Double = 0.0
+    /// 当前倍速
+    @Published var playbackRate: Float = 1.0
+
+    /// 可选的倍速选项
+    static let playbackRateOptions: [(rate: Float, label: String)] = [
+        (0.5, "0.5x"),
+        (0.75, "0.75x"),
+        (1.0, "1x"),
+        (1.25, "1.25x"),
+        (1.5, "1.5x"),
+        (2.0, "2x")
+    ]
 
         /// Bundle 内音频子目录（已废弃，文件平铺在 Resources 根目录）
     private let basicSubdir: String? = nil
@@ -39,6 +57,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private var player: AVAudioPlayer?
     private var avPlayer: AVPlayer?  // 回退播放器，用于播放 AVAudioPlayer 不支持的格式
     private var playerItemObserver: NSKeyValueObservation?  // 监听 AVPlayer 播放状态
+    private var progressTimer: Timer?  // 进度更新定时器
     private var cachedURLs: [String: URL] = [:]
 
     private override init() {
@@ -109,6 +128,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             let p = try AVAudioPlayer(contentsOf: url)
             p.delegate = self
             p.prepareToPlay()
+            p.rate = playbackRate
+            p.enableRate = true
 
             // 检查音频是否可播放
             if p.duration <= 0 {
@@ -122,8 +143,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
                 return playWithAVPlayer(url: url, key: key)
             }
             self.player = p
+            self.duration = p.duration
             self.playingKey = key
             self.isPlaying = true
+            self.startProgressTimer()
             Log(message: "AudioPreviewPlayer: started playing \(url.lastPathComponent), duration=\(p.duration)")
             return true
         } catch {
@@ -141,26 +164,29 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         avPlayer = nil
         playerItemObserver?.invalidate()
         playerItemObserver = nil
-        
+
         // 确保文件存在
         guard FileManager.default.fileExists(atPath: url.path) else {
             Log(message: "AudioPreviewPlayer: AVPlayer file not found at \(url.path)")
             return false
         }
-        
+
         // 创建 AVPlayer
         let playerItem = AVPlayerItem(url: url)
         let newPlayer = AVPlayer(playerItem: playerItem)
+        newPlayer.rate = playbackRate
         self.avPlayer = newPlayer
         self.playingKey = key
-        
+
         // 监听播放状态
         playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
                 switch item.status {
                 case .readyToPlay:
+                    self?.duration = item.duration.seconds.isNaN ? 0 : item.duration.seconds
                     self?.isPlaying = true
                     newPlayer.play()
+                    self?.startProgressTimer()
                     Log(message: "AudioPreviewPlayer: AVPlayer ready and playing \(url.lastPathComponent)")
                 case .failed:
                     Log(message: "AudioPreviewPlayer: AVPlayer item failed: \(item.error?.localizedDescription ?? "unknown error")")
@@ -173,7 +199,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
                 }
             }
         }
-        
+
         // 监听播放结束
         NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
@@ -183,9 +209,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             Task { @MainActor in
                 self?.isPlaying = false
                 self?.playingKey = nil
+                self?.stopProgressTimer()
             }
         }
-        
+
         // 开始播放
         newPlayer.play()
         return true
@@ -200,6 +227,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         avPlayer = nil
         playerItemObserver?.invalidate()
         playerItemObserver = nil
+        stopProgressTimer()
+        // 重置进度
+        progress = 0
+        currentTime = 0
         if wasPlaying {
             isPlaying = false
         }
@@ -216,30 +247,61 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         return playingKey == url.path && isPlaying
     }
     
-    /// 获取当前播放时间（秒）
-    var currentTime: TimeInterval {
-        if let p = player {
-            return p.currentTime
-        } else if let av = avPlayer {
-            return av.currentTime().seconds
-        }
-        return 0
-    }
-    
-    /// 获取音频总时长（秒）
-    var duration: TimeInterval {
-        if let p = player {
-            return p.duration
-        }
-        return 0
-    }
-    
     /// 跳转到指定时间
     func seek(to time: TimeInterval) {
         if let p = player {
             p.currentTime = time
         } else if let av = avPlayer {
             av.seek(to: CMTime(seconds: time, preferredTimescale: 600))
+        }
+        updateProgress()
+    }
+
+    /// 设置倍速播放
+    func setPlaybackRate(_ rate: Float) {
+        playbackRate = rate
+        if let p = player {
+            p.rate = rate
+        } else if let av = avPlayer {
+            av.rate = rate
+        }
+    }
+
+    // MARK: - 进度更新
+
+    /// 启动进度更新定时器
+    private func startProgressTimer() {
+        stopProgressTimer()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateProgress()
+            }
+        }
+    }
+
+    /// 停止进度更新定时器
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    /// 更新当前进度
+    private func updateProgress() {
+        if let p = player {
+            currentTime = p.currentTime
+            duration = p.duration
+        } else if let av = avPlayer {
+            currentTime = av.currentTime().seconds
+            if let item = av.currentItem {
+                let d = item.duration.seconds
+                duration = d.isNaN ? 0 : d
+            }
+        }
+
+        if duration > 0 {
+            progress = currentTime / duration
+        } else {
+            progress = 0
         }
     }
 
@@ -265,6 +327,9 @@ extension AudioPreviewPlayer: AVAudioPlayerDelegate {
         Task { @MainActor in
             self.isPlaying = false
             self.playingKey = nil
+            self.stopProgressTimer()
+            self.progress = 0
+            self.currentTime = 0
         }
     }
 
@@ -274,6 +339,7 @@ extension AudioPreviewPlayer: AVAudioPlayerDelegate {
         Task { @MainActor in
             self.isPlaying = false
             self.playingKey = nil
+            self.stopProgressTimer()
         }
     }
 }

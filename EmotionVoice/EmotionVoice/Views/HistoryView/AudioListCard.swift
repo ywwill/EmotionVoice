@@ -20,6 +20,9 @@ struct AudioListCard: View {
     @State private var editingName: String = ""
     @ObservedObject private var player = AudioPreviewPlayer.shared
 
+    /// 是否展开播放区域
+    @State private var isExpanded: Bool = false
+
     init(audio: AudioItem,
          onPlay: @escaping () -> Void,
          onDelete: @escaping () -> Void,
@@ -31,12 +34,14 @@ struct AudioListCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             header
 
             Divider().background(AppColor.borderSubtle)
 
             statsRow
+
+            Divider().background(AppColor.borderSubtle)
 
             actions
         }
@@ -45,9 +50,20 @@ struct AudioListCard: View {
         .background(AppColor.bgSecondary)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.large)
-                .stroke(AppColor.borderSubtle, lineWidth: 1)
+                .stroke(isPlayingThisCard ? AppColor.accentPrimary.opacity(0.5) : AppColor.borderSubtle, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+        .overlay(alignment: .top) {
+            if isPlayingThisCard {
+                playbackOverlay
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isPlayingThisCard)
+        .onTapGesture {
+            if isPlayable {
+                togglePlayback()
+            }
+        }
     }
 
     // MARK: - 子视图
@@ -62,7 +78,7 @@ struct AudioListCard: View {
                         TextField("显示名".localized(), text: $editingName)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 14, weight: .semibold))
-                            .frame(maxWidth: 260)
+                            .frame(maxWidth: 200)
                             .onSubmit { commitRename() }
                         Button("保存".localized()) { commitRename() }
                             .buttonStyle(.borderless)
@@ -102,6 +118,14 @@ struct AudioListCard: View {
                     .lineLimit(1)
             }
             Spacer()
+
+            // 展开/收起指示器
+            if isPlayable {
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppColor.textTertiary)
+                    .padding(.top, 4)
+            }
         }
     }
 
@@ -125,6 +149,92 @@ struct AudioListCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    // MARK: - 播放区域（Overlay 方式，不影响卡片高度）
+
+    private var playbackOverlay: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 音频文本
+            if !audio.text.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("📝 音频文本".localized())
+                        .font(AppFont.label)
+                        .foregroundStyle(AppColor.textTertiary)
+
+                    Text(audio.text)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColor.textSecondary)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            // 进度条
+            VStack(spacing: 6) {
+                // 进度滑块
+                Slider(value: Binding(
+                    get: { player.progress },
+                    set: { newValue in
+                        let time = newValue * player.duration
+                        player.seek(to: time)
+                    }
+                ), in: 0...1)
+                .tint(AppColor.accentPrimary)
+
+                // 时间显示
+                HStack {
+                    Text(formatTime(player.currentTime))
+                        .font(AppFont.monoSmall)
+                        .foregroundStyle(AppColor.textTertiary)
+
+                    Spacer()
+
+                    Text(formatTime(player.duration))
+                        .font(AppFont.monoSmall)
+                        .foregroundStyle(AppColor.textTertiary)
+                }
+            }
+
+            // 倍速选择器
+            HStack(spacing: 8) {
+                Text("倍速".localized())
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textTertiary)
+
+                ForEach(AudioPreviewPlayer.playbackRateOptions, id: \.rate) { option in
+                    Button {
+                        player.setPlaybackRate(option.rate)
+                    } label: {
+                        Text(option.label)
+                            .font(.system(size: 12, weight: player.playbackRate == option.rate ? .semibold : .regular))
+                            .foregroundStyle(player.playbackRate == option.rate ? .white : AppColor.textSecondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                player.playbackRate == option.rate
+                                    ? AppColor.accentPrimary
+                                    : AppColor.bgTertiary
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColor.bgElevated)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    // MARK: - 操作按钮
 
     private var actions: some View {
         HStack(spacing: 8) {
@@ -156,18 +266,13 @@ struct AudioListCard: View {
             // 播放 / 停止
             if isPlayable {
                 let url = audioURL
-                let isPlaying = url.map { player.isPlaying(url: $0) } ?? false
                 Button {
-                    if isPlaying {
-                        AudioPreviewPlayer.shared.stop()
-                    } else if let url {
-                        AudioPreviewPlayer.shared.play(url: url)
-                    }
+                    togglePlayback()
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                        Image(systemName: isPlayingThisCard ? "stop.fill" : "play.fill")
                             .font(.system(size: 11))
-                        Text(isPlaying ? "停止".localized() : "播放".localized())
+                        Text(isPlayingThisCard ? "停止".localized() : "播放".localized())
                             .font(AppFont.caption)
                     }
                     .foregroundStyle(.white)
@@ -224,6 +329,32 @@ struct AudioListCard: View {
 
     private var isPlayable: Bool {
         audio.status == .completed && audio.isOnDisk
+    }
+
+    private var isPlayingThisCard: Bool {
+        guard let url = audioURL else { return false }
+        return player.isPlaying(url: url)
+    }
+
+    // MARK: - 辅助方法
+
+    private func togglePlayback() {
+        guard let url = audioURL else { return }
+
+        if isPlayingThisCard {
+            player.stop()
+            isExpanded = false
+        } else {
+            player.play(url: url)
+            isExpanded = true
+        }
+    }
+
+    private func formatTime(_ time: Double) -> String {
+        guard !time.isNaN && time.isFinite else { return "0:00" }
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 
     // MARK: - 重命名提交

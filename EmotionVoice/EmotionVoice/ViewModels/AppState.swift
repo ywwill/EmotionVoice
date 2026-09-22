@@ -51,6 +51,17 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// 导出目录（用户选择的文件保存位置）
+    @Published var exportDirectory: URL? {
+        didSet {
+            if let url = exportDirectory {
+                UserDefaults.standard.set(url.path, forKey: "exportDirectory")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "exportDirectory")
+            }
+        }
+    }
+
     // MARK: - 音色库筛选状态（跨视图持久化）
 
     /// 音色库当前选中的分类（nil 表示"全部"）
@@ -100,6 +111,13 @@ final class AppState: ObservableObject {
         self.voiceLibraryShowFavoritesOnly = UserDefaults.standard.bool(forKey: "voiceLibraryShowFavoritesOnly")
         let savedPage = UserDefaults.standard.integer(forKey: "voiceLibraryCurrentPage")
         self.voiceLibraryCurrentPage = savedPage > 0 ? savedPage : 1
+
+        // 加载保存的导出目录
+        if let savedPath = UserDefaults.standard.string(forKey: "exportDirectory") {
+            self.exportDirectory = URL(fileURLWithPath: savedPath)
+        } else {
+            self.exportDirectory = nil
+        }
 
         // 恢复上次选中的音色，如果没有则使用默认音色
         if let savedVoiceKey = UserDefaults.standard.string(forKey: "selectedVoiceKey"),
