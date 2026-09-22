@@ -244,12 +244,12 @@ final class BailianTTSService {
 
                 if let jsonText = message.text {
                     // 打印收到的 WebSocket 文本消息
-                    if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
-                       let event = (json["header"] as? [String: Any])?["event"] as? String {
-                        Log(message: "[WS RECV] event=\(event)")
-                    } else {
-                        Log(message: "[WS RECV] \(jsonText.prefix(200))")
-                    }
+//                    if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
+//                       let event = (json["header"] as? [String: Any])?["event"] as? String {
+//                        Log(message: "[WS RECV] event=\(event)")
+//                    } else {
+//                        Log(message: "[WS RECV] \(jsonText.prefix(200))")
+//                    }
 
                     // JSON 文本消息
                     if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
@@ -308,7 +308,7 @@ final class BailianTTSService {
                     }
                 } else if let binaryData = message.binaryData {
                     // 打印收到的二进制数据大小
-                    Log(message: "[WS RECV] binary data: \(binaryData.count) bytes")
+//                    Log(message: "[WS RECV] binary data: \(binaryData.count) bytes")
                     // 二进制音频数据
                     if !binaryData.isEmpty {
                         completeAudioData.append(binaryData)

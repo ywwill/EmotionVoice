@@ -142,65 +142,6 @@ enum Constants {
         SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频"),
         SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频"),
     ]
-
-    // MARK: - 积分套餐
-    static let creditsPackages: [CreditsPackage] = [
-        CreditsPackage(id: "trial",
-                       icon: "🌱",
-                       name: "体验包",
-                       price: 9.9,
-                       points: 500,
-                       unitPrice: 0.020,
-                       features: ["适合尝鲜体验", "12 个月有效"],
-                       isRecommended: false),
-        CreditsPackage(id: "basic",
-                       icon: "⭐",
-                       name: "基础包",
-                       price: 49,
-                       points: 3000,
-                       unitPrice: 0.016,
-                       features: ["个人创作首选", "12 个月有效"],
-                       isRecommended: false),
-        CreditsPackage(id: "pro",
-                       icon: "💎",
-                       name: "专业包",
-                       price: 199,
-                       points: 15000,
-                       unitPrice: 0.013,
-                       features: ["高频使用推荐", "12 个月有效", "优先客服支持"],
-                       isRecommended: true),
-        CreditsPackage(id: "ultimate",
-                       icon: "👑",
-                       name: "旗舰包",
-                       price: 599,
-                       points: 50000,
-                       unitPrice: 0.012,
-                       features: ["专业创作者", "12 个月有效", "企业级 API"],
-                       isRecommended: false),
-    ]
-
-    // MARK: - 积分消耗参考
-    static let costReference: [CostItem] = [
-        CostItem(type: "短句 / 文案",  range: "50-200 字",   points: "1-5",   scene: "客服回复、朋友圈"),
-        CostItem(type: "中等段落",    range: "200-500 字",  points: "5-15",  scene: "产品介绍、短视频"),
-        CostItem(type: "长文本",      range: "500-2,000 字", points: "15-60", scene: "文章朗读、广告"),
-        CostItem(type: "有声书章节",  range: "2,000-5,000 字", points: "60-150", scene: "有声书、广播剧"),
-        CostItem(type: "完整节目",    range: "5,000+ 字",   points: "150+",  scene: "播客、纪录片"),
-    ]
-
-    // MARK: - 月度统计默认值（首次启动演示）
-    static let defaultMonthlyStats = MonthlyStats(
-        month: monthKey(Date()),
-        pointsUsed: 4560,
-        audioCount: 28,
-        voiceCount: 18
-    )
-
-    static func monthKey(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM"
-        return f.string(from: date)
-    }
 }
 
 /// 情感条目（用于网格选择）

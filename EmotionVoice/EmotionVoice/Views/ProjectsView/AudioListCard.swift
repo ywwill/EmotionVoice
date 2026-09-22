@@ -3,9 +3,6 @@
 //  EmotionVoice
 //
 //  历史记录页面使用的音频卡片
-//  （类型已从 ProjectListCard 重命名为 AudioListCard，文件保留旧名以便最小化 Xcode 工程变更）
-//
-//  展示：显示名（可编辑）、时长、格式、创建时间、播放 / 删除。
 //
 
 import SwiftUI

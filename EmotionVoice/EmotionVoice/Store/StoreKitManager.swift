@@ -170,6 +170,9 @@ final class StoreKitManager: NSObject, ObservableObject {
                     // 添加积分
                     CreditManager.shared.addCredits(credits)
                     
+                    // 保存购买记录
+                    CreditsService.shared.addPurchaseRecord(quantity: credits)
+                    
                     Log(messageType: "StoreKit", message: "✅ 购买成功，获得 \(credits) 积分")
                     purchaseState = .success(credits: credits)
                 }
@@ -238,6 +241,8 @@ final class StoreKitManager: NSObject, ObservableObject {
                     if let creditProduct = CreditProduct(rawValue: transaction.productID) {
                         let credits = creditProduct.creditsAmount
                         await CreditManager.shared.addCredits(credits)
+                        // 保存购买记录
+                        CreditsService.shared.addPurchaseRecord(quantity: credits)
                         Log(messageType: "StoreKit", message: "✅ 恢复交易，获得 \(credits) 积分")
                     }
                     

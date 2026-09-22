@@ -158,7 +158,7 @@ enum SidebarSection: Hashable, Identifiable {
     case voices
     case projects
     case credits
-    case stats
+//    case stats
     case settings
 
     var id: Self { self }
@@ -168,9 +168,9 @@ enum SidebarSection: Hashable, Identifiable {
         case .home:        return "首页".localized()
         case .voiceStudio: return "语音合成".localized()
         case .voices:      return "音色库".localized()
-        case .projects:    return "历史记录".localized()
+        case .projects:    return "我的项目".localized()
         case .credits:     return "积分中心".localized()
-        case .stats:       return "使用统计".localized()
+//        case .stats:       return "使用统计".localized()
         case .settings:    return "设置".localized()
         }
     }
@@ -182,7 +182,7 @@ enum SidebarSection: Hashable, Identifiable {
         case .voices:      return "person.wave.2.fill"
         case .projects:    return "folder.fill"
         case .credits:     return "diamond.fill"
-        case .stats:       return "chart.bar.fill"
+//        case .stats:       return "chart.bar.fill"
         case .settings:    return "gearshape.fill"
         }
     }

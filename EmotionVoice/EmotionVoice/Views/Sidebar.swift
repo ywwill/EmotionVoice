@@ -17,8 +17,7 @@ struct Sidebar: View {
             // 主导航
             VStack(alignment: .leading, spacing: 2) {
                 ForEach([SidebarSection.voiceStudio, SidebarSection.voices]) { section in
-                    SidebarItem(section: section,
-                                badge: section == .voices ? "\(appState.voices.count)" : nil)
+                    SidebarItem(section: section)
                 }
             }
             .padding(.horizontal, 12)
@@ -31,9 +30,8 @@ struct Sidebar: View {
             // 项目管理
             VStack(alignment: .leading, spacing: 2) {
                 SidebarItem(section: .credits)
-                SidebarItem(section: .projects,
-                            badge: "\(ProjectService.shared.fetchAllAudios().count)")
-                SidebarItem(section: .stats)
+                SidebarItem(section: .projects)
+//                SidebarItem(section: .stats)
             }
             .padding(.horizontal, 12)
 

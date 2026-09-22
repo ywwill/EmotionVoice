@@ -41,9 +41,12 @@ struct CreditsView: View {
         .onAppear { reload() }
         .onChange(of: storeManager.purchaseState) { _, newState in
             // 购买成功后刷新积分记录
-            if case .success = newState {
+            if case .success = newState, case .success = lastPurchaseState {
+                // 跳过连续相同的成功状态
+            } else if case .success = newState {
                 reload()
             }
+            lastPurchaseState = newState
         }
     }
 
@@ -179,7 +182,7 @@ struct CreditsView: View {
                 // 表头
                 HStack {
                     Text("类型".localized())
-                        .frame(width: 40, alignment: .leading)
+                        .frame(width: 50, alignment: .leading)
                     Text("详情".localized())
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Text("积分".localized())
@@ -236,7 +239,7 @@ struct CreditsView: View {
     
     private func creditRecordRow(_ record: CreditRecord) -> some View {
         HStack {
-            // 类型图标（只显示图标，不显示文字，节省空间）
+            // 类型图标
             Circle()
                 .fill(recordColor(for: record.type).opacity(0.15))
                 .frame(width: 28, height: 28)
@@ -245,7 +248,7 @@ struct CreditsView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(recordColor(for: record.type))
                 )
-                .frame(width: 40, alignment: .leading)
+                .frame(width: 50, alignment: .leading)
             
             // 详情（单行）
             Text(record.title)
@@ -272,7 +275,7 @@ struct CreditsView: View {
     
     private func recordColor(for type: CreditRecordType) -> Color {
         switch type {
-        case .consumption: return Color.red
+        case .consumption: return Color(hex: 0x6B8BC9)
         case .purchase: return AppColor.statusSuccess
         }
     }

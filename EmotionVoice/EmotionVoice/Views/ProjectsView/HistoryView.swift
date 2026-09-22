@@ -1,12 +1,10 @@
 //
-//  ProjectsView.swift
+//  HistoryView.swift
 //  EmotionVoice
 //
 //  Created by young on 2026/8/8.
 //
 //  历史记录页面：扁平展示所有音频条目。
-//  文件名保留为 ProjectsView 以避免破坏 Xcode 工程的文件引用；
-//  类型重命名为 HistoryView，对外语义是"历史记录"。
 //
 
 import SwiftUI
@@ -78,7 +76,7 @@ struct HistoryView: View {
     private var toolbar: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("历史记录".localized())
+                Text("我的项目".localized())
                     .font(.system(size: 16, weight: .semibold))
                 Text("查看你生成过的所有音频".localized())
                     .font(AppFont.bodySmall)
@@ -214,6 +212,3 @@ struct HistoryView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 }
-
-/// 类型别名：保留 ProjectsView 名称，便于 Xcode 工程引用与未来扩展。
-typealias ProjectsView = HistoryView

@@ -143,16 +143,14 @@ struct ProductCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.large)
                 .stroke(
-                    isRecommended ? AppColor.accentPrimary : (isHovered ? AppColor.accentPrimary : AppColor.borderSubtle),
-                    lineWidth: isRecommended ? 1 : (isHovered ? 1 : 1)
+                    isHovered ? AppColor.accentPrimary : AppColor.borderSubtle,
+                    lineWidth: isHovered ? 1 : 1
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
-        .offset(y: isHovered ? -2 : 0)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
+            // 直接更新状态，不使用动画，避免干扰按钮点击
+            isHovered = hovering
         }
     }
 
@@ -165,7 +163,7 @@ struct ProductCardView: View {
         case .credits60:
             return ["个人创作首选", "积分永久有效"]
         case .credits98:
-            return ["高频使用推荐", "积分永久有效", "优先客服支持"]
+            return ["高频使用推荐", "积分永久有效"]
         case .none:
             return ["积分永久有效"]
         }

@@ -1,10 +1,3 @@
-//
-//  Transaction.swift
-//  EmotionVoice
-//
-//  Created by young on 2026/8/8.
-//
-
 import Foundation
 
 /// 交易类型
@@ -44,24 +37,4 @@ struct TransactionRecord: Identifiable, Hashable {
     let amount: Int
     let meta: String?
     let createdAt: Date
-}
-
-/// 月度统计
-struct MonthlyStats: Hashable {
-    let month: String          // YYYY-MM
-    let pointsUsed: Int
-    let audioCount: Int
-    let voiceCount: Int
-}
-
-/// 积分套餐
-struct CreditsPackage: Identifiable, Hashable {
-    let id: String
-    let icon: String
-    let name: String
-    let price: Double
-    let points: Int
-    let unitPrice: Double
-    let features: [String]
-    let isRecommended: Bool
 }

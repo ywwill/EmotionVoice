@@ -25,8 +25,10 @@ final class DatabaseManager {
     let voices = Table("voices")
     /// 交易记录
     let transactions = Table("transactions")
-    /// 统计
-    let monthlyStats = Table("monthly_stats")
+    /// 消耗记录
+    let consumptionRecords = Table("consumption_records")
+    /// 购买记录
+    let purchaseRecords = Table("purchase_records")
 
     // MARK: - 音频条目字段
     let audioId = SQLite.Expression<Int64>("id")
@@ -68,11 +70,18 @@ final class DatabaseManager {
     let txMeta = SQLite.Expression<String?>("meta")
     let txCreatedAt = SQLite.Expression<Date>("created_at")
 
-    // MARK: - 月度统计字段
-    let statMonth = SQLite.Expression<String>("month")
-    let statPointsUsed = SQLite.Expression<Int>("points_used")
-    let statAudioCount = SQLite.Expression<Int>("audio_count")
-    let statVoiceCount = SQLite.Expression<Int>("voice_count")
+    // MARK: - 消耗记录字段
+    let consumeId = SQLite.Expression<Int64>("id")
+    let consumeVoiceName = SQLite.Expression<String>("voice_name")
+    let consumeVoiceKey = SQLite.Expression<String>("voice_key")
+    let consumeAudioDuration = SQLite.Expression<Double>("audio_duration")
+    let consumePoints = SQLite.Expression<Int>("points")
+    let consumeCreatedAt = SQLite.Expression<Date>("created_at")
+
+    // MARK: - 购买记录字段
+    let purchaseId = SQLite.Expression<Int64>("id")
+    let purchaseQuantity = SQLite.Expression<Int>("quantity")
+    let purchaseCreatedAt = SQLite.Expression<Date>("created_at")
 
     // MARK: - JSON 同步指纹
     private let fingerprintKey = "EmotionVoice.basicVoicesFingerprint"
@@ -135,11 +144,21 @@ final class DatabaseManager {
             t.column(txCreatedAt)
         })
 
-        try db.run(monthlyStats.create(ifNotExists: true) { t in
-            t.column(statMonth, primaryKey: true)
-            t.column(statPointsUsed, defaultValue: 0)
-            t.column(statAudioCount, defaultValue: 0)
-            t.column(statVoiceCount, defaultValue: 0)
+        // 消耗记录表
+        try db.run(consumptionRecords.create(ifNotExists: true) { t in
+            t.column(consumeId, primaryKey: .autoincrement)
+            t.column(consumeVoiceName)
+            t.column(consumeVoiceKey)
+            t.column(consumeAudioDuration, defaultValue: 0.0)
+            t.column(consumePoints, defaultValue: 0)
+            t.column(consumeCreatedAt)
+        })
+
+        // 购买记录表
+        try db.run(purchaseRecords.create(ifNotExists: true) { t in
+            t.column(purchaseId, primaryKey: .autoincrement)
+            t.column(purchaseQuantity, defaultValue: 0)
+            t.column(purchaseCreatedAt)
         })
     }
 

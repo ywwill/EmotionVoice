@@ -32,9 +32,9 @@ struct ContentView: View {
                 VoiceStudioView()
             case .voiceStudio: VoiceStudioView()
             case .voices:      VoicesLibraryView()
-            case .projects:    ProjectsView()
+            case .projects:    HistoryView()
             case .credits:     CreditsView()
-            case .stats:       StatsView()
+//            case .stats:       StatsView()
             case .settings:    SettingsView()
             }
         }

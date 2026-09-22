@@ -62,7 +62,7 @@ extension Date {
     /// 例：2026-08-16 11:35
     var shortDateTimeString: String {
         let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm"
+        f.dateFormat = "yyyy/MM/dd HH:mm:ss"
         return f.string(from: self)
     }
 
