@@ -244,7 +244,7 @@ struct CreditsView: View {
                 .frame(width: 28, height: 28)
                 .overlay(
                     Text(record.type.icon)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(recordColor(for: record.type))
                 )
                 .frame(width: 100, alignment: .leading)

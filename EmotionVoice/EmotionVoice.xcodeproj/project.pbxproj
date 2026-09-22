@@ -1509,7 +1509,7 @@
 				6F209376303EC80500A770BB /* VoicesLibraryView */,
 				6F209361303EC80500A770BB /* CreditsView */,
 				6F20936E303EC80500A770BB /* SettingsView */,
-				6F2DAF8830624B920086FD6F /* ProjectsView */,
+				6F2DAF8830624B920086FD6F /* HistoryView */,
 				6F2DAF8A30624B920086FD6F /* SettingsView */,
 				6F209370303EC80500A770BB /* StatsView */,
 				6F20937C303EC80500A770BB /* Components.swift */,
@@ -2149,14 +2149,14 @@
 			path = Voices;
 			sourceTree = "<group>";
 		};
-		6F2DAF8830624B920086FD6F /* ProjectsView */ = {
+		6F2DAF8830624B920086FD6F /* HistoryView */ = {
 			isa = PBXGroup;
 			children = (
 				6F2DAF8630624B920086FD6F /* HistoryView.swift */,
 				6F2DAF8530624B920086FD6F /* AudioListCard.swift */,
 				6F2DAF8730624B920086FD6F /* SummaryCard.swift */,
 			);
-			path = ProjectsView;
+			path = HistoryView;
 			sourceTree = "<group>";
 		};
 		6F2DAF8A30624B920086FD6F /* SettingsView */ = {
