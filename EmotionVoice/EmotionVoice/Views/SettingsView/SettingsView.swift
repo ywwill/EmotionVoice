@@ -316,6 +316,7 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 content()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppColor.bgSecondary)
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.large)
@@ -331,7 +332,7 @@ struct SettingsView: View {
         desc: String,
         @ViewBuilder control: () -> Control
     ) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.system(size: 13, weight: .medium))
@@ -340,7 +341,10 @@ struct SettingsView: View {
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textTertiary)
             }
+            .frame(maxWidth: 200, alignment: .leading)
+
             Spacer()
+
             control()
         }
         .padding(.horizontal, 20)

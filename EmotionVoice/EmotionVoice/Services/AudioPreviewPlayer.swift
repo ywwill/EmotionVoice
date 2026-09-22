@@ -31,6 +31,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     @Published private(set) var playingKey: String? = nil
     /// 是否正在播放
     @Published private(set) var isPlaying: Bool = false
+    /// 是否处于暂停状态（保持播放器，可恢复播放）
+    @Published private(set) var isPaused: Bool = false
     /// 当前播放进度（0.0 - 1.0）
     @Published private(set) var progress: Double = 0.0
     /// 当前播放时间（秒）
@@ -208,6 +210,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.isPlaying = false
+                self?.isPaused = false
                 self?.playingKey = nil
                 self?.stopProgressTimer()
             }
@@ -234,7 +237,35 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         if wasPlaying {
             isPlaying = false
         }
+        isPaused = false
         playingKey = nil
+    }
+
+    /// 暂停播放（保持当前状态，波形图不消失）
+    func pause() {
+        player?.pause()
+        avPlayer?.pause()
+        isPaused = true
+        if isPlaying {
+            isPlaying = false
+        }
+    }
+
+    /// 恢复播放（从暂停位置继续）
+    func resume() {
+        guard isPaused, playingKey != nil else { return }
+        
+        if let p = player {
+            p.play()
+            isPlaying = true
+            isPaused = false
+            startProgressTimer()
+        } else if let av = avPlayer {
+            av.play()
+            isPlaying = true
+            isPaused = false
+            startProgressTimer()
+        }
     }
 
     /// 是否正在播放指定 key
@@ -326,6 +357,7 @@ extension AudioPreviewPlayer: AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             self.isPlaying = false
+            self.isPaused = false
             self.playingKey = nil
             self.stopProgressTimer()
             self.progress = 0

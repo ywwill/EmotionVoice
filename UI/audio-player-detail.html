@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频播放详情 - EmotionVoice</title>
+    <style>
+        :root {
+            /* Cold Luxury Palette */
+            --bg-primary: #0E0F12;
+            --bg-secondary: #15171B;
+            --bg-tertiary: #1C1F24;
+            --bg-elevated: #22262D;
+            --bg-hover: rgba(255, 255, 255, 0.06);
+            --accent-primary: #E8A968;
+            --accent-secondary: #D49B5B;
+            --accent-glow: #F2C088;
+            --accent-dim: rgba(232, 169, 104, 0.15);
+            --text-primary: #F5F5F7;
+            --text-secondary: #A8ABB4;
+            --text-tertiary: #6B6E76;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            --macos-red: #FF453A;
+            --macos-yellow: #FFD60A;
+            --macos-green: #30D158;
+            /* Spacing */
+            --toolbar-height: 52px;
+            --sidebar-width: 220px;
+            --list-width: 340px;
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===== MACOS WINDOW ===== */
+        .macos-window {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+        }
+
+        /* Title Bar */
+        .titlebar {
+            height: var(--toolbar-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: linear-gradient(180deg, rgba(30, 32, 37, 0.95) 0%, rgba(21, 23, 27, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+            -webkit-app-region: drag;
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            -webkit-app-region: no-drag;
+        }
+
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+        }
+
+        .traffic-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: all 0.15s ease;
+        }
+
+        .traffic-light:hover { filter: brightness(1.1); }
+        .traffic-light.close { background: #FF453A; }
+        .traffic-light.minimize { background: #FFD60A; }
+        .traffic-light.zoom { background: #30D158; }
+
+        .titlebar-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* ===== THREE COLUMN LAYOUT ===== */
+        .app-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== LEFT SIDEBAR (Menu) ===== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(14, 15, 18, 0.4);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-section {
+            padding: 16px 12px;
+        }
+
+        .sidebar-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-item.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 18px;
+            background: var(--accent-primary);
+            border-radius: 0 2px 2px 0;
+        }
+
+        .sidebar-item-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-badge {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            background: var(--bg-elevated);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: var(--border-subtle);
+            margin: 8px 16px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .credits-card {
+            background: linear-gradient(135deg, rgba(232, 169, 104, 0.12), rgba(232, 169, 104, 0.04));
+            border: 1px solid rgba(232, 169, 104, 0.25);
+            border-radius: var(--radius-md);
+            padding: 12px;
+        }
+
+        .credits-label {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .credits-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-glow);
+            font-family: 'SF Mono', monospace;
+            margin-bottom: 2px;
+        }
+
+        .credits-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        /* ===== MIDDLE (Audio List) ===== */
+        .audio-list-panel {
+            width: var(--list-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .list-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .list-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .list-count {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .list-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .search-input {
+            width: 100%;
+            height: 32px;
+            padding: 0 12px 0 32px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-primary);
+            background: var(--bg-elevated);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .audio-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+
+        .audio-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 4px;
+        }
+
+        .audio-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .audio-item.selected {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-medium);
+        }
+
+        .audio-item.playing {
+            background: var(--accent-dim);
+            border: 1px solid rgba(232, 169, 104, 0.3);
+        }
+
+        .audio-item-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--bg-primary);
+            flex-shrink: 0;
+        }
+
+        .audio-item.playing .audio-item-avatar {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(232, 169, 104, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(232, 169, 104, 0); }
+        }
+
+        .audio-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .audio-item-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .audio-item-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .audio-item-play-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .audio-item-play-icon:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .audio-item-play-icon svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .audio-item.selected .audio-item-play-icon {
+            color: var(--accent-primary);
+        }
+
+        /* ===== RIGHT (Player Detail) ===== */
+        .player-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+
+        .player-toolbar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: rgba(21, 23, 27, 0.5);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .player-toolbar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .player-toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        /* Empty State */
+        .player-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-tertiary);
+        }
+
+        .player-empty-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+
+        .player-empty-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .player-empty-desc {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Player Content */
+        .player-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .player-inner {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        /* Audio Header */
+        .audio-header {
+            margin-bottom: 28px;
+            text-align: center;
+        }
+
+        .audio-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .audio-meta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .audio-meta-separator {
+            opacity: 0.5;
+        }
+
+        /* Waveform */
+        .waveform-section {
+            margin-bottom: 20px;
+        }
+
+        .waveform-container {
+            position: relative;
+            height: 72px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .waveform-container:hover {
+            border-color: var(--border-medium);
+        }
+
+        .waveform {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            padding: 10px 14px;
+            gap: 2px;
+        }
+
+        .waveform-bar {
+            flex: 1;
+            max-width: 4px;
+            background: var(--bg-elevated);
+            border-radius: 2px;
+            transition: background 0.2s ease;
+        }
+
+        .waveform-bar.played {
+            background: var(--accent-primary);
+        }
+
+        .waveform-progress-indicator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-glow);
+            box-shadow: 0 0 8px rgba(232, 169, 104, 0.6);
+            pointer-events: none;
+            display: none;
+        }
+
+        .waveform-container:hover .waveform-progress-indicator {
+            display: block;
+        }
+
+        .waveform-time-tooltip {
+            position: absolute;
+            top: -28px;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-sm);
+            padding: 4px 8px;
+            font-size: 11px;
+            font-family: 'SF Mono', monospace;
+            color: var(--text-primary);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .waveform-container:hover .waveform-time-tooltip {
+            opacity: 1;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            font-family: 'SF Mono', monospace;
+            color: var(--text-tertiary);
+        }
+
+        /* Playback Controls */
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            color: var(--text-secondary);
+        }
+
+        .control-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .control-btn.skip-btn {
+            font-size: 10px;
+            font-weight: 600;
+            width: 44px;
+            height: 36px;
+            border-radius: 18px;
+        }
+
+        .play-btn {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+            box-shadow: 0 4px 16px rgba(232, 169, 104, 0.3);
+        }
+
+        .play-btn:hover {
+            background: linear-gradient(135deg, var(--accent-glow), var(--accent-primary));
+            transform: scale(1.03);
+        }
+
+        .play-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: currentColor;
+        }
+
+        /* Speed Control */
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .speed-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .speed-menu {
+            position: relative;
+        }
+
+        .speed-btn {
+            height: 26px;
+            padding: 0 10px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-family: 'SF Mono', monospace;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .speed-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-medium);
+            color: var(--text-primary);
+        }
+
+        .speed-dropdown {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 90px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            padding: 4px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.15s ease;
+            z-index: 100;
+        }
+
+        .speed-menu.open .speed-dropdown {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .speed-option {
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-family: 'SF Mono', monospace;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        .speed-option:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .speed-option.selected {
+            background: var(--accent-dim);
+            color: var(--accent-glow);
+        }
+
+        /* Action Buttons */
+        .audio-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .action-btn {
+            height: 30px;
+            padding: 0 14px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-medium);
+            color: var(--text-primary);
+        }
+
+        .action-btn svg {
+            width: 13px;
+            height: 13px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        /* Voice Info */
+        .voice-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            margin-bottom: 20px;
+        }
+
+        .voice-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--bg-primary);
+            flex-shrink: 0;
+        }
+
+        .voice-details {
+            flex: 1;
+        }
+
+        .voice-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .voice-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .voice-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--accent-dim);
+            color: var(--accent-glow);
+        }
+
+        /* Divider */
+        .section-divider {
+            height: 1px;
+            background: var(--border-subtle);
+            margin: 20px 0;
+        }
+
+        /* Original Text */
+        .original-text-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .original-text {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            padding: 16px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .original-text-content {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 3px;
+        }
+
+        /* Tooltips */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 8px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-sm);
+            font-size: 10px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.15s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-md);
+            padding: 10px 20px;
+            font-size: 12px;
+            color: var(--text-primary);
+            z-index: 1000;
+            animation: toastIn 0.2s ease;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="macos-window">
+        <!-- Title Bar -->
+        <div class="titlebar">
+            <div class="titlebar-left">
+                <div class="traffic-lights">
+                    <div class="traffic-light close"></div>
+                    <div class="traffic-light minimize"></div>
+                    <div class="traffic-light zoom"></div>
+                </div>
+            </div>
+            <div class="titlebar-center">EmotionVoice</div>
+            <div style="width: 80px;"></div>
+        </div>
+
+        <!-- Main Body -->
+        <div class="app-body">
+            <!-- Left Sidebar (Menu) -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item active">
+                        <span class="sidebar-item-icon">🎵</span>
+                        <span>全部音频</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🕐</span>
+                        <span>最近播放</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⭐</span>
+                        <span>收藏</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">项目</div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📖</span>
+                        <span>有声书系列</span>
+                        <span class="sidebar-badge">12</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎙️</span>
+                        <span>播客内容</span>
+                        <span class="sidebar-badge">8</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📱</span>
+                        <span>短视频配音</span>
+                        <span class="sidebar-badge">24</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">📚</span>
+                        <span>教育培训</span>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">工具</div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">🎤</span>
+                        <span>语音合成</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <span class="sidebar-item-icon">⚙️</span>
+                        <span>设置</span>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="credits-card">
+                        <div class="credits-label">积分余额</div>
+                        <div class="credits-value">1,280</div>
+                        <div class="credits-meta">有效期至 2027/08/08</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Middle (Audio List) -->
+            <div class="audio-list-panel">
+                <div class="list-header">
+                    <span class="list-title">全部音频</span>
+                    <span class="list-count">44 个</span>
+                </div>
+                <div class="list-search">
+                    <div class="search-container">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" placeholder="搜索音频...">
+                    </div>
+                </div>
+                <div class="audio-list" id="audioList">
+                    <!-- Audio items will be generated by JS -->
+                </div>
+            </div>
+
+            <!-- Right (Player Detail) -->
+            <div class="player-panel">
+                <div class="player-toolbar">
+                    <span class="player-toolbar-title" id="playerTitle">选择音频播放</span>
+                    <div class="player-toolbar-actions">
+                        <button class="toolbar-btn" data-tooltip="分享" id="shareBtn">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="18" cy="5" r="3"/>
+                                <circle cx="6" cy="12" r="3"/>
+                                <circle cx="18" cy="19" r="3"/>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                        </button>
+                        <button class="toolbar-btn" data-tooltip="更多" id="moreBtn">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="1"/>
+                                <circle cx="19" cy="12" r="1"/>
+                                <circle cx="5" cy="12" r="1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="player-empty" id="playerEmpty">
+                    <div class="player-empty-icon">🎵</div>
+                    <div class="player-empty-title">选择一个音频</div>
+                    <div class="player-empty-desc">从左侧列表中选择要播放的音频</div>
+                </div>
+
+                <!-- Player Content -->
+                <div class="player-content" id="playerContent" style="display: none;">
+                    <div class="player-inner">
+                        <!-- Audio Header -->
+                        <header class="audio-header">
+                            <h1 class="audio-title" id="audioTitle">产品介绍</h1>
+                            <div class="audio-meta">
+                                <span id="audioVoice">中文女声 · 晓晓</span>
+                                <span class="audio-meta-separator">·</span>
+                                <span id="audioDuration">03:48</span>
+                                <span class="audio-meta-separator">·</span>
+                                <span id="audioCost">76 积分</span>
+                            </div>
+                        </header>
+
+                        <!-- Waveform -->
+                        <section class="waveform-section">
+                            <div class="waveform-container" id="waveformContainer">
+                                <div class="waveform" id="waveform"></div>
+                                <div class="waveform-progress-indicator" id="progressIndicator"></div>
+                                <div class="waveform-time-tooltip" id="timeTooltip">00:00</div>
+                            </div>
+                            <div class="time-display">
+                                <span id="currentTimeDisplay">00:00</span>
+                                <span id="totalTimeDisplay">03:48</span>
+                            </div>
+                        </section>
+
+                        <!-- Playback Controls -->
+                        <div class="playback-controls">
+                            <button class="control-btn skip-btn" id="skipBackBtn" data-tooltip="后退 15 秒">
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="11 19 2 12 11 5 11 19"/>
+                                    <polygon points="22 19 13 12 22 5 22 19"/>
+                                </svg>
+                            </button>
+                            <button class="control-btn skip-btn" id="skipBack5Btn" data-tooltip="后退 5 秒">
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="11 19 2 12 11 5 11 19"/>
+                                </svg>
+                            </button>
+                            <button class="control-btn play-btn" id="playBtn" data-tooltip="播放 (Space)">
+                                <svg id="playIcon" viewBox="0 0 24 24">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                                <svg id="pauseIcon" viewBox="0 0 24 24" style="display: none;">
+                                    <rect x="6" y="4" width="4" height="16"/>
+                                    <rect x="14" y="4" width="4" height="16"/>
+                                </svg>
+                            </button>
+                            <button class="control-btn skip-btn" id="skipForward5Btn" data-tooltip="前进 5 秒">
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="13 19 22 12 13 5 13 19"/>
+                                </svg>
+                            </button>
+                            <button class="control-btn skip-btn" id="skipForwardBtn" data-tooltip="前进 15 秒">
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="13 19 22 12 13 5 13 19"/>
+                                    <polygon points="2 19 11 12 2 5 2 19"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Speed Control -->
+                        <div class="speed-control">
+                            <span class="speed-label">播放速度</span>
+                            <div class="speed-menu" id="speedMenu">
+                                <button class="speed-btn" id="speedBtn">
+                                    <span id="currentSpeed">1×</span>
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </button>
+                                <div class="speed-dropdown">
+                                    <div class="speed-option" data-speed="0.5">0.5×</div>
+                                    <div class="speed-option" data-speed="0.75">0.75×</div>
+                                    <div class="speed-option selected" data-speed="1">1×</div>
+                                    <div class="speed-option" data-speed="1.25">1.25×</div>
+                                    <div class="speed-option" data-speed="1.5">1.5×</div>
+                                    <div class="speed-option" data-speed="2">2×</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="audio-actions">
+                            <button class="action-btn" id="exportBtn">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                导出
+                            </button>
+                            <button class="action-btn" id="copyNameBtn">
+                                <svg viewBox="0 0 24 24">
+                                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                                复制名称
+                            </button>
+                            <button class="action-btn" id="favoriteBtn">
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                                收藏
+                            </button>
+                        </div>
+
+                        <!-- Voice Info -->
+                        <div class="voice-info">
+                            <div class="voice-avatar" id="voiceAvatar">晓</div>
+                            <div class="voice-details">
+                                <div class="voice-name" id="voiceName">晓晓 · 旗舰音色</div>
+                                <div class="voice-meta" id="voiceMeta">女声 · 25岁 · 中文普通话</div>
+                            </div>
+                            <span class="voice-badge">推荐</span>
+                        </div>
+
+                        <div class="section-divider"></div>
+
+                        <!-- Original Text -->
+                        <section class="original-text-section">
+                            <h2 class="section-title">原文</h2>
+                            <div class="original-text">
+                                <p class="original-text-content" id="originalTextContent">欢迎使用我们的 AI 文字转语音工具。这个全新的语音合成系统能够将您输入的文字快速转换为自然流畅的语音。</p>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== AUDIO DATA =====
+        const audioData = [
+            {
+                id: 1,
+                name: '产品介绍',
+                voice: '晓晓',
+                voiceChar: '晓',
+                duration: '03:48',
+                durationSec: 228,
+                cost: 76,
+                voiceType: '中文女声',
+                voiceAge: '25岁',
+                language: '中文普通话',
+                text: '欢迎使用我们的 AI 文字转语音工具。这个全新的语音合成系统能够将您输入的文字快速转换为自然流畅的语音。'
+            },
+            {
+                id: 2,
+                name: '播客开场白',
+                voice: '小宇',
+                voiceChar: '宇',
+                duration: '01:23',
+                durationSec: 83,
+                cost: 28,
+                voiceType: '中文男声',
+                voiceAge: '30岁',
+                language: '中文普通话',
+                text: '大家好，欢迎收听本期播客。今天我们来聊一聊人工智能的最新发展趋势。'
+            },
+            {
+                id: 3,
+                name: '有声书·第一章',
+                voice: '安然',
+                voiceChar: '安',
+                duration: '05:12',
+                durationSec: 312,
+                cost: 102,
+                voiceType: '中文女声',
+                voiceAge: '28岁',
+                language: '中文普通话',
+                text: '清晨的阳光透过窗帘洒进房间，新的一天开始了。这是一个关于成长和梦想的故事。'
+            },
+            {
+                id: 4,
+                name: '广告配音',
+                voice: '小雅',
+                voiceChar: '雅',
+                duration: '00:45',
+                durationSec: 45,
+                cost: 18,
+                voiceType: '中文女声',
+                voiceAge: '25岁',
+                language: '中文普通话',
+                text: '限时优惠，现在购买享受八折优惠。品质保证，售后无忧。'
+            },
+            {
+                id: 5,
+                name: '新闻播报',
+                voice: '明远',
+                voiceChar: '明',
+                duration: '02:34',
+                durationSec: 154,
+                cost: 52,
+                voiceType: '中文男声',
+                voiceAge: '35岁',
+                language: '中文普通话',
+                text: '今日要闻：科技行业迎来新一轮创新浪潮，多项突破性技术相继发布。'
+            },
+            {
+                id: 6,
+                name: '儿童故事',
+                voice: '甜甜',
+                voiceChar: '甜',
+                duration: '04:15',
+                durationSec: 255,
+                cost: 88,
+                voiceType: '中文女声',
+                voiceAge: '儿童',
+                language: '中文普通话',
+                text: '小兔子和小熊是好朋友，它们一起在森林里探险，寻找神奇的宝藏。'
+            }
+        ];
+
+        // ===== GENERATE AUDIO LIST =====
+        const audioList = document.getElementById('audioList');
+        let selectedId = null;
+        let isPlaying = false;
+        let currentTime = 0;
+        let playbackSpeed = 1;
+        let currentAudio = null;
+
+        function renderAudioList() {
+            audioList.innerHTML = audioData.map(audio => `
+                <div class="audio-item ${audio.id === selectedId ? 'selected' : ''} ${audio.id === selectedId && isPlaying ? 'playing' : ''}" data-id="${audio.id}">
+                    <div class="audio-item-avatar">${audio.voiceChar}</div>
+                    <div class="audio-item-info">
+                        <div class="audio-item-name">${audio.name}</div>
+                        <div class="audio-item-meta">
+                            <span>${audio.voice}</span>
+                            <span>·</span>
+                            <span>${audio.duration}</span>
+                        </div>
+                    </div>
+                    <button class="audio-item-play-icon" data-play="${audio.id}">
+                        <svg viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            audioList.querySelectorAll('.audio-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.audio-item-play-icon')) {
+                        const playId = parseInt(e.target.closest('.audio-item-play-icon').dataset.play);
+                        selectAndPlay(playId);
+                    } else {
+                        const id = parseInt(item.dataset.id);
+                        selectAudio(id);
+                    }
+                });
+            });
+        }
+
+        function selectAudio(id) {
+            selectedId = id;
+            currentAudio = audioData.find(a => a.id === id);
+            renderAudioList();
+            updatePlayerUI();
+        }
+
+        function selectAndPlay(id) {
+            if (selectedId === id && isPlaying) {
+                // Toggle pause
+                isPlaying = false;
+                renderAudioList();
+                updatePlayButton();
+            } else {
+                selectAudio(id);
+                isPlaying = true;
+                currentTime = 0;
+                renderAudioList();
+                updatePlayButton();
+                startPlayback();
+            }
+        }
+
+        function updatePlayerUI() {
+            const empty = document.getElementById('playerEmpty');
+            const content = document.getElementById('playerContent');
+            
+            if (!currentAudio) {
+                empty.style.display = 'flex';
+                content.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            content.style.display = 'flex';
+
+            document.getElementById('playerTitle').textContent = currentAudio.name;
+            document.getElementById('audioTitle').textContent = currentAudio.name;
+            document.getElementById('audioVoice').textContent = `${currentAudio.voiceType} · ${currentAudio.voice}`;
+            document.getElementById('audioDuration').textContent = currentAudio.duration;
+            document.getElementById('audioCost').textContent = `${currentAudio.cost} 积分`;
+            document.getElementById('totalTimeDisplay').textContent = currentAudio.duration;
+            document.getElementById('voiceAvatar').textContent = currentAudio.voiceChar;
+            document.getElementById('voiceName').textContent = `${currentAudio.voice} · 旗舰音色`;
+            document.getElementById('voiceMeta').textContent = `${currentAudio.voiceType} · ${currentAudio.voiceAge} · ${currentAudio.language}`;
+            document.getElementById('originalTextContent').textContent = currentAudio.text;
+
+            generateWaveform();
+            updateProgress();
+        }
+
+        // ===== WAVEFORM =====
+        function generateWaveform() {
+            const waveform = document.getElementById('waveform');
+            waveform.innerHTML = '';
+            const barCount = 100;
+            
+            for (let i = 0; i < barCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'waveform-bar';
+                const height = Math.sin(i * 0.2) * 15 + Math.random() * 12 + 8;
+                bar.style.height = `${height}px`;
+                waveform.appendChild(bar);
+            }
+        }
+
+        function updateProgress() {
+            if (!currentAudio) return;
+            
+            const progress = currentTime / currentAudio.durationSec;
+            const bars = document.querySelectorAll('.waveform-bar');
+            const playedCount = Math.floor(progress * bars.length);
+            
+            bars.forEach((bar, i) => {
+                bar.classList.toggle('played', i < playedCount);
+            });
+
+            document.getElementById('progressIndicator').style.left = `${progress * 100}%`;
+            document.getElementById('currentTimeDisplay').textContent = formatTime(currentTime);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ===== PLAYBACK =====
+        function startPlayback() {
+            if (isPlaying && currentAudio) {
+                currentTime += 0.1 * playbackSpeed;
+                if (currentTime >= currentAudio.durationSec) {
+                    currentTime = 0;
+                    isPlaying = false;
+                    renderAudioList();
+                    updatePlayButton();
+                    return;
+                }
+                updateProgress();
+                requestAnimationFrame(() => setTimeout(startPlayback, 100));
+            }
+        }
+
+        function skip(seconds) {
+            if (!currentAudio) return;
+            currentTime = Math.max(0, Math.min(currentAudio.durationSec, currentTime + seconds));
+            updateProgress();
+        }
+
+        function updatePlayButton() {
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
+            playIcon.style.display = isPlaying ? 'none' : 'block';
+            pauseIcon.style.display = isPlaying ? 'block' : 'none';
+        }
+
+        // ===== EVENT HANDLERS =====
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!currentAudio) return;
+            isPlaying = !isPlaying;
+            updatePlayButton();
+            renderAudioList();
+            if (isPlaying) startPlayback();
+        });
+
+        document.getElementById('skipBackBtn').addEventListener('click', () => skip(-15));
+        document.getElementById('skipBack5Btn').addEventListener('click', () => skip(-5));
+        document.getElementById('skipForward5Btn').addEventListener('click', () => skip(5));
+        document.getElementById('skipForwardBtn').addEventListener('click', () => skip(15));
+
+        // Speed control
+        const speedMenu = document.getElementById('speedMenu');
+        document.getElementById('speedBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            speedMenu.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.speed-option').forEach(option => {
+            option.addEventListener('click', () => {
+                playbackSpeed = parseFloat(option.dataset.speed);
+                document.getElementById('currentSpeed').textContent = `${playbackSpeed}×`;
+                document.querySelectorAll('.speed-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                speedMenu.classList.remove('open');
+            });
+        });
+
+        document.addEventListener('click', () => speedMenu.classList.remove('open'));
+
+        // Waveform click
+        document.getElementById('waveformContainer').addEventListener('click', (e) => {
+            if (!currentAudio) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const progress = (e.clientX - rect.left) / rect.width;
+            currentTime = progress * currentAudio.durationSec;
+            updateProgress();
+        });
+
+        document.getElementById('waveformContainer').addEventListener('mousemove', (e) => {
+            if (!currentAudio) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const progress = (e.clientX - rect.left) / rect.width;
+            const time = progress * currentAudio.durationSec;
+            document.getElementById('timeTooltip').textContent = formatTime(time);
+            document.getElementById('timeTooltip').style.left = `${e.clientX - rect.left}px`;
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    if (currentAudio) {
+                        isPlaying = !isPlaying;
+                        updatePlayButton();
+                        renderAudioList();
+                        if (isPlaying) startPlayback();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    skip(e.shiftKey ? -15 : -5);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    skip(e.shiftKey ? 15 : 5);
+                    break;
+            }
+        });
+
+        // Action buttons
+        document.getElementById('exportBtn').addEventListener('click', () => showToast('显示导出面板...'));
+        document.getElementById('copyNameBtn').addEventListener('click', () => {
+            if (currentAudio) {
+                navigator.clipboard.writeText(currentAudio.name);
+                showToast('已复制音频名称');
+            }
+        });
+        document.getElementById('favoriteBtn').addEventListener('click', () => showToast('已添加到收藏'));
+        document.getElementById('shareBtn').addEventListener('click', () => showToast('显示分享选项...'));
+        document.getElementById('moreBtn').addEventListener('click', () => showToast('显示更多操作...'));
+
+        // Toast
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.2s ease';
+                setTimeout(() => toast.remove(), 200);
+            }, 2000);
+        }
+
+        // Initialize
+        renderAudioList();
+    </script>
+</body>
+</html>

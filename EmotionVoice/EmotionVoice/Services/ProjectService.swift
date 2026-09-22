@@ -21,29 +21,53 @@ final class ProjectService {
 
     // MARK: - 音频条目
 
+    /// 每页加载的音频数量
+    static let pageSize: Int = 50
+
+    /// 获取音频条目（支持分页）
+    /// - Parameters:
+    ///   - page: 页码（从1开始）
+    ///   - pageSize: 每页数量
+    /// - Returns: (音频列表, 总数)
+    func fetchAudios(page: Int, pageSize: Int = ProjectService.pageSize) -> (audios: [AudioItem], total: Int) {
+        let offset = (page - 1) * pageSize
+        var allAudios: [AudioItem] = []
+        var totalCount: Int = 0
+
+        do {
+            // 获取总数
+            totalCount = try db.db.scalar(db.audioItems.count)
+
+            // 获取分页数据
+            let query = db.audioItems
+                .order(db.audioCreatedAt.desc)
+                .limit(pageSize, offset: offset)
+
+            allAudios = try db.db.prepare(query).map { row in
+                AudioItem(
+                    id: row[db.audioId],
+                    fileName: row[db.audioFileName],
+                    displayName: row[db.audioDisplayName],
+                    text: row[db.audioText],
+                    voice: row[db.audioVoice],
+                    format: row[db.audioFormat],
+                    sampleRate: row[db.audioSampleRate],
+                    duration: row[db.audioDuration],
+                    pointsCost: row[db.audioPointsCost],
+                    status: AudioStatus(rawValue: row[db.audioStatus]) ?? .pending,
+                    createdAt: row[db.audioCreatedAt]
+                )
+            }
+        } catch {
+            Log(message: "ProjectService.fetchAudios error: \(error)")
+        }
+
+        return (allAudios, totalCount)
+    }
+
     /// 获取所有音频条目，按创建时间倒序
     func fetchAllAudios() -> [AudioItem] {
-        do {
-            return try db.db.prepare(db.audioItems.order(db.audioCreatedAt.desc))
-                .map { row in
-                    AudioItem(
-                        id: row[db.audioId],
-                        fileName: row[db.audioFileName],
-                        displayName: row[db.audioDisplayName],
-                        text: row[db.audioText],
-                        voice: row[db.audioVoice],
-                        format: row[db.audioFormat],
-                        sampleRate: row[db.audioSampleRate],
-                        duration: row[db.audioDuration],
-                        pointsCost: row[db.audioPointsCost],
-                        status: AudioStatus(rawValue: row[db.audioStatus]) ?? .pending,
-                        createdAt: row[db.audioCreatedAt]
-                    )
-                }
-        } catch {
-            Log(message: "ProjectService.fetchAllAudios error: \(error)")
-            return []
-        }
+        return fetchAudios(page: 1, pageSize: Int.max).audios
     }
 
     /// 创建音频条目（顶层；不再需要 projectId，也不再保存完整路径）

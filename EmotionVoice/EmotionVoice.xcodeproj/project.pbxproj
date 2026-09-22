@@ -655,10 +655,11 @@
 		6F209F76303EC88F00A770BB /* longxiaoyuque.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C53303EC88F00A770BB /* longxiaoyuque.m4a */; };
 		6F209F77303EC88F00A770BB /* longdiechuanling.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AF1303EC88F00A770BB /* longdiechuanling.m4a */; };
 		6F209F78303EC88F00A770BB /* longcheyanxuan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AE9303EC88F00A770BB /* longcheyanxuan.m4a */; };
-		6F2DAF8B30624B920086FD6F /* AudioListCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8530624B920086FD6F /* AudioListCard.swift */; };
 		6F2DAF8C30624B920086FD6F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8930624B920086FD6F /* SettingsView.swift */; };
 		6F2DAF8D30624B920086FD6F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8630624B920086FD6F /* HistoryView.swift */; };
 		6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8730624B920086FD6F /* SummaryCard.swift */; };
+		6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */; };
+		6F2DB01C3062649F0086FD6F /* AudioPlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
 		6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE53060D7680005713F /* StoreKitManager.swift */; };
 		6FCA9CE83060D7680005713F /* CreditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE33060D7680005713F /* CreditService.swift */; };
@@ -1334,10 +1335,11 @@
 		6F209D1D303EC88F00A770BB /* loongnorahu.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongnorahu.m4a; sourceTree = "<group>"; };
 		6F209D1E303EC88F00A770BB /* loongolivialin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongolivialin.m4a; sourceTree = "<group>"; };
 		6F209D1F303EC88F00A770BB /* loongryanma.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = loongryanma.m4a; sourceTree = "<group>"; };
-		6F2DAF8530624B920086FD6F /* AudioListCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioListCard.swift; sourceTree = "<group>"; };
 		6F2DAF8630624B920086FD6F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		6F2DAF8730624B920086FD6F /* SummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryCard.swift; sourceTree = "<group>"; };
 		6F2DAF8930624B920086FD6F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerDetailView.swift; sourceTree = "<group>"; };
+		6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRowItem.swift; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
 		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		6FCA9CE33060D7680005713F /* CreditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditService.swift; sourceTree = "<group>"; };
@@ -2153,7 +2155,8 @@
 			isa = PBXGroup;
 			children = (
 				6F2DAF8630624B920086FD6F /* HistoryView.swift */,
-				6F2DAF8530624B920086FD6F /* AudioListCard.swift */,
+				6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */,
+				6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */,
 				6F2DAF8730624B920086FD6F /* SummaryCard.swift */,
 			);
 			path = HistoryView;
@@ -2947,6 +2950,8 @@
 				6F2093AE303EC80500A770BB /* RangeSlider.swift in Sources */,
 				6F2093AF303EC80500A770BB /* StaticButtonStyle.swift in Sources */,
 				6F2093B0303EC80500A770BB /* VoiceCard.swift in Sources */,
+				6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */,
+				6F2DB01C3062649F0086FD6F /* AudioPlayerDetailView.swift in Sources */,
 				6F2093B1303EC80500A770BB /* VoiceLibraryEnvironment.swift in Sources */,
 				6F2093B2303EC80500A770BB /* VoicesLibraryView.swift in Sources */,
 				6F2093B3303EC80500A770BB /* EmotionButton.swift in Sources */,
@@ -2960,7 +2965,6 @@
 				6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */,
 				6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */,
 				6F2093B7303EC80500A770BB /* Components.swift in Sources */,
-				6F2DAF8B30624B920086FD6F /* AudioListCard.swift in Sources */,
 				6F2DAF8C30624B920086FD6F /* SettingsView.swift in Sources */,
 				6F2DAF8D30624B920086FD6F /* HistoryView.swift in Sources */,
 				6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */,

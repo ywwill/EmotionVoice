@@ -542,7 +542,7 @@ struct AudioGenerationModal: View {
                             .frame(width: 3, height: CGFloat.random(in: 8...40))
                     }
                 }
-                .frame(height: 48)
+                .frame(height: 50)
                 
                 // 时间显示
                 Text("\(formattedCurrentTime) / \(formattedDuration)")
