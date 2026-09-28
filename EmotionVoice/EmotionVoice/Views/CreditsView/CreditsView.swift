@@ -114,12 +114,6 @@ struct CreditsView: View {
 
     private var packagesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("💎 推荐套餐".localized())
-                    .font(.system(size: 14, weight: .semibold))
-                Spacer()
-            }
-
             if storeManager.isLoading {
                 skeletonProductCards
             } else if storeManager.products.isEmpty {

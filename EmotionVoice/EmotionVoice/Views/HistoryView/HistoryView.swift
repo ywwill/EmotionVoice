@@ -173,88 +173,89 @@ struct HistoryView: View {
 
     // MARK: - 批量操作栏
 
+    private var isAllSelected: Bool {
+        !viewModel.displayedAudios.isEmpty && selectedAudioIds.count == viewModel.displayedAudios.count
+    }
+
     private var batchOperationBar: some View {
         VStack(spacing: 0) {
-            Divider().background(AppColor.borderSubtle)
+            Divider()
+                .background(AppColor.borderSubtle)
 
-            // 操作按钮组
             HStack(spacing: 12) {
-                // 辅助操作区
+                // 左侧：已选数量
                 HStack(spacing: 8) {
-                    Button {
-                        selectAll()
-                    } label: {
-                        Text("全选")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(AppColor.textSecondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(AppColor.bgTertiary)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
+                    Text("\(selectedAudioIds.count)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppColor.bgPrimary)
+                        .frame(minWidth: 22, minHeight: 22)
+                        .padding(.horizontal, 6)
+                        .background(AppColor.accentPrimary)
+                        .clipShape(Capsule())
 
-                    Button {
-                        exitSelectionMode()
-                    } label: {
-                        Text("取消")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(AppColor.textSecondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(AppColor.bgTertiary)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
+                    Text("已选择")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColor.textSecondary)
                 }
 
                 Spacer()
 
-                // 危险操作区
-                HStack(spacing: 8) {
+                // 右侧：操作按钮组
+                HStack(spacing: 6) {
+                    // 全选 / 取消全选
                     Button {
-                        exportSelected()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 11))
+                        if isAllSelected {
+                            selectedAudioIds.removeAll()
+                        } else {
+                            selectAll()
                         }
-                        .foregroundStyle(selectedAudioIds.isEmpty ? AppColor.textTertiary : AppColor.textPrimary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(AppColor.bgTertiary)
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(selectedAudioIds.isEmpty ? Color.clear : AppColor.borderSubtle, lineWidth: 1)
-                        )
+                    } label: {
+                        Text(isAllSelected ? "取消全选" : "全选")
+                            .font(.system(size: 12, weight: .medium))
                     }
                     .buttonStyle(.plain)
-                    .disabled(selectedAudioIds.isEmpty)
-                    .help("导出音频")
+                    .foregroundStyle(AppColor.accentPrimary)
 
+                    Divider()
+                        .frame(height: 16)
+                        .padding(.horizontal, 2)
+
+                    // 取消
+                    Button("取消") {
+                        exitSelectionMode()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(AppColor.textSecondary)
+
+                    // 删除
                     Button {
                         deleteSelected()
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                        }
-                        .foregroundStyle(selectedAudioIds.isEmpty ? AppColor.textTertiary : AppColor.statusError)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(selectedAudioIds.isEmpty ? AppColor.bgTertiary : AppColor.statusError.opacity(0.12))
-                        .clipShape(Capsule())
+                        Image(systemName: "trash")
+                            .font(.system(size: 13))
+                            .frame(width: 28, height: 22)
                     }
                     .buttonStyle(.plain)
+                    .foregroundStyle(selectedAudioIds.isEmpty ? AppColor.textTertiary : AppColor.statusError)
                     .disabled(selectedAudioIds.isEmpty)
-                    .help("删除")
+
+                    // 导出
+                    Button {
+                        exportSelected()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 13))
+                            .frame(width: 28, height: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(selectedAudioIds.isEmpty ? AppColor.textTertiary : AppColor.textPrimary)
+                    .disabled(selectedAudioIds.isEmpty)
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(AppColor.bgTertiary)
+            .padding(.vertical, 10)
         }
+        .background(AppColor.bgElevated)
     }
 
     // MARK: - 右侧播放详情面板
@@ -282,7 +283,7 @@ struct HistoryView: View {
                         } else {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.system(size: 14))
-                                .foregroundStyle(AppColor.textTertiary)
+                                .foregroundStyle(AppColor.textPrimary)
                         }
                     }
                     .frame(width: 32, height: 32)
