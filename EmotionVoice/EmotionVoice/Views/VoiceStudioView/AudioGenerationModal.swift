@@ -260,6 +260,24 @@ struct AudioGenerationModal: View {
         let seconds = Int(current) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+
+    /// 时长格式化 HH:mm:ss
+    private var formattedDurationHHMMSS: String {
+        let duration = audioDuration > 0 ? audioDuration : 0
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    /// 格式化采样率
+    private func formatSampleRate(_ rate: Int) -> String {
+        if rate >= 1000 {
+            return "\(rate / 1000) kHz"
+        } else {
+            return "\(rate) Hz"
+        }
+    }
     
     // MARK: - 头部
     
@@ -471,14 +489,18 @@ struct AudioGenerationModal: View {
                             .font(.system(size: 10))
                         Text(formattedFileSize)
                     }
-                    
+
                     Text("·")
-                    
-                    Text("48 kHz")
-                    
+
+                    Text(formatSampleRate(vm.sampleRate))
+
                     Text("·")
-                    
+
                     Text(vm.selectedFormat.uppercased())
+
+                    Text("·")
+
+                    Text(formattedDurationHHMMSS)
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(AppColor.textTertiary)
@@ -495,69 +517,69 @@ struct AudioGenerationModal: View {
     
     private var audioPlayerCard: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 16) {
-                // 播放按钮
-                Button {
-                    togglePlayback()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+            // 播放按钮 + 波形条撑满整行
+            GeometryReader { geometry in
+                HStack(spacing: 16) {
+                    // 播放按钮
+                    Button {
+                        togglePlayback()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                            .frame(width: 48, height: 48)
-                            .shadow(color: AppColor.accentPrimary.opacity(0.3), radius: 8, y: 4)
-                        
-                        if isPlaying {
-                            // 暂停图标
-                            HStack(spacing: 3) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(AppColor.bgPrimary)
-                                    .frame(width: 4, height: 16)
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(AppColor.bgPrimary)
-                                    .frame(width: 4, height: 16)
+                                .frame(width: 48, height: 48)
+                                .shadow(color: AppColor.accentPrimary.opacity(0.3), radius: 8, y: 4)
+
+                            if isPlaying {
+                                // 暂停图标
+                                HStack(spacing: 3) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(AppColor.bgPrimary)
+                                        .frame(width: 4, height: 16)
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(AppColor.bgPrimary)
+                                        .frame(width: 4, height: 16)
+                                }
+                            } else {
+                                // 播放图标
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(AppColor.bgPrimary)
+                                    .offset(x: 2)
                             }
-                        } else {
-                            // 播放图标
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppColor.bgPrimary)
-                                .offset(x: 2)
                         }
                     }
-                }
-                .buttonStyle(.plain)
-                .pointingHandCursor()
-                
-                // 波形条
-                HStack(spacing: 2) {
-                    ForEach(0..<60, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 1.5)
-                            .fill(i < Int(60 * playbackProgress) ? AppColor.accentPrimary : AppColor.bgElevated)
-                            .frame(width: 3, height: CGFloat.random(in: 8...40))
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
+
+                    // 波形条撑满剩余空间
+                    let barCount = max(20, Int(geometry.size.width / 5))
+                    HStack(spacing: 2) {
+                        ForEach(0..<barCount, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(i < Int(Double(barCount) * playbackProgress) ? AppColor.accentPrimary : AppColor.bgElevated)
+                                .frame(width: 3, height: CGFloat.random(in: 8...40))
+                        }
                     }
+                    .frame(height: 50)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(height: 50)
-                
-                // 时间显示
-                Text("\(formattedCurrentTime) / \(formattedDuration)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(AppColor.textTertiary)
-                    .frame(minWidth: 85, alignment: .trailing)
             }
-            
+            .frame(height: 50)
+
             // 进度条
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(AppColor.bgElevated)
                         .frame(height: 4)
-                    
+
                     RoundedRectangle(cornerRadius: 2)
                         .fill(
                             LinearGradient(
@@ -589,6 +611,17 @@ struct AudioGenerationModal: View {
             }
             .frame(height: 4)
             .pointingHandCursor()
+
+            // 底部时间：左 = 当前进度，右 = 总时长
+            HStack {
+                Text(formattedCurrentTime)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(AppColor.textSecondary)
+                Spacer()
+                Text(formattedDuration)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(AppColor.textTertiary)
+            }
         }
         .padding(20)
         .background(AppColor.bgTertiary)

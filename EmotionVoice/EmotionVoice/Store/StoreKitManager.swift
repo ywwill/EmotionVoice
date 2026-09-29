@@ -90,6 +90,7 @@ final class StoreKitManager: NSObject, ObservableObject {
     @Published private(set) var products: [Product] = []
     @Published private(set) var purchaseState: PurchaseState = .idle
     @Published private(set) var isLoading = false
+    @Published private(set) var purchasingProductId: String?
     
     private var updateListenerTask: Task<Void, Error>?
 
@@ -146,6 +147,7 @@ final class StoreKitManager: NSObject, ObservableObject {
     // MARK: - 购买商品
     
     func purchase(_ product: Product) async {
+        purchasingProductId = product.id
         purchaseState = .purchasing
         
         do {
@@ -160,6 +162,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                     Log(messageType: "StoreKit", message: "⚠️ 交易 \(transaction.id) 已处理，跳过重复发放")
                     await transaction.finish()
                     purchaseState = .success(credits: 0)
+                    purchasingProductId = nil
                     return
                 }
                 
@@ -175,6 +178,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                     
                     Log(messageType: "StoreKit", message: "✅ 购买成功，获得 \(credits) 积分")
                     purchaseState = .success(credits: credits)
+                    purchasingProductId = nil
                 }
                 
                 // 完成交易
@@ -183,17 +187,21 @@ final class StoreKitManager: NSObject, ObservableObject {
             case .userCancelled:
                 Log(messageType: "StoreKit", message: "⚠️ 用户取消购买")
                 purchaseState = .failed(message: StoreError.userCancelled.localizedDescription)
+                purchasingProductId = nil
                 
             case .pending:
                 Log(messageType: "StoreKit", message: "⏳ 购买等待确认")
                 purchaseState = .failed(message: StoreError.pending.localizedDescription)
+                purchasingProductId = nil
                 
             @unknown default:
                 purchaseState = .failed(message: StoreError.unknown.localizedDescription)
+                purchasingProductId = nil
             }
         } catch {
             Log(messageType: "StoreKit", message: "❌ 购买失败: \(error.localizedDescription)")
             purchaseState = .failed(message: error.localizedDescription)
+            purchasingProductId = nil
         }
     }
     
@@ -209,6 +217,7 @@ final class StoreKitManager: NSObject, ObservableObject {
     /// 重置购买状态
     func resetPurchaseState() {
         purchaseState = .idle
+        purchasingProductId = nil
     }
     
     // MARK: - 私有方法

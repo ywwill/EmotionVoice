@@ -72,6 +72,8 @@ class CreditManager: ObservableObject {
                 let (cloudCredits, _) = try await SupabaseManager.shared.initializeUser()
                 await MainActor.run {
                     self.balance = cloudCredits
+                    // 同步到本地存储
+                    self.saveBalanceLocally()
                     self.isSyncing = false
                     Log(messageType: "Credit", message: "☁️ 云端同步成功，积分: \(cloudCredits)")
                 }

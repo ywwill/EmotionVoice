@@ -68,24 +68,12 @@ final class CreditsService {
     static let shared = CreditsService()
 
     private let db = DatabaseManager.shared
-
-    private let balanceKey = "ev.credits.balance"
-    private let monthlyUsedKey = "ev.credits.monthly_used"
+    private let creditManager = CreditManager.shared
     
     private let pageSize = 10
 
-    /// 当前余额
-    var balance: Int {
-        get {
-            let v = UserDefaults.standard.integer(forKey: balanceKey)
-            return v == 0 ? Constants.defaultCreditsBalance : v
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: balanceKey)
-        }
-    }
-
-    /// 本月已用积分
+    /// 本月已用积分（本地存储，不需要云端同步）
+    private let monthlyUsedKey = "ev.credits.monthly_used"
     var monthlyUsed: Int {
         get {
             let v = UserDefaults.standard.integer(forKey: monthlyUsedKey)
@@ -96,20 +84,24 @@ final class CreditsService {
         }
     }
 
+    /// 当前余额（使用 CreditManager 的云端同步数据）
+    var balance: Int {
+        creditManager.balance
+    }
+
     /// 消耗积分（生成成功后调用）
     func consume(_ points: Int) {
-        balance = max(0, balance - points)
-        monthlyUsed += points
+        creditManager.deduct(for: .createVoice)
     }
 
     /// 检查是否可以消耗积分
     func canConsume(_ points: Int) -> Bool {
-        return balance >= points
+        return creditManager.balance >= points
     }
 
     /// 充值
     func purchase(_ points: Int) {
-        balance += points
+        creditManager.addCredits(points)
     }
 
     // MARK: - 交易记录

@@ -16,6 +16,8 @@ struct VoiceStudioView: View {
     @ObservedObject private var player = AudioPreviewPlayer.shared
     @State private var showVoiceLibrarySheet: Bool = false
     @State private var showGenerationModal: Bool = false
+    /// 积分不足时弹出购买页面
+    @State private var showCreditsPurchaseSheet: Bool = false
     
     /// 弹窗高度：生成中状态较短，完成状态较长
     private var modalHeight: CGFloat {
@@ -52,6 +54,10 @@ struct VoiceStudioView: View {
         .sheet(isPresented: $showGenerationModal) {
             AudioGenerationModal(vm: vm, isPresented: $showGenerationModal)
                 .frame(width: 520, height: modalHeight)
+        }
+        .sheet(isPresented: $showCreditsPurchaseSheet) {
+            CreditsPurchaseView()
+                .frame(width: 480, height: 620)
         }
         .alert(item: $vm.alertItem) { item in
             Alert(
@@ -608,7 +614,15 @@ struct VoiceStudioView: View {
         return HStack(spacing: 10) {
             // 左侧：生成音频按钮
             PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
+                // 1. 验证文本和音色
                 if !validateInputs() { return }
+                // 2. 验证积分是否足够
+                let points = vm.estimatedPoints
+                guard CreditsService.shared.canConsume(points) else {
+                    showCreditsPurchaseSheet = true
+                    return
+                }
+                // 3. 积分充足，开始生成
                 showGenerationModal = true
                 vm.generate { success in
                     if success {
@@ -673,7 +687,7 @@ struct VoiceStudioView: View {
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
     }
     
-    /// 验证输入是否正确
+    /// 验证输入是否正确（仅检查文本和音色，不含积分检查）
     private func validateInputs() -> Bool {
         // 检查文本是否为空
         if vm.text.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -685,13 +699,6 @@ struct VoiceStudioView: View {
         guard vm.voice != nil else {
             vm.alertItem = AlertItem(title: "无法生成".localized(),
                                      message: "请先选择一个音色".localized())
-            return false
-        }
-        // 检查积分是否足够
-        let points = vm.estimatedPoints
-        guard CreditsService.shared.canConsume(points) else {
-            vm.alertItem = AlertItem(title: "积分不足".localized(),
-                                     message: "本次合成需要约 %d 积分，请先充值".localized(points))
             return false
         }
         return true
