@@ -531,7 +531,16 @@ struct VoicesLibraryView: View {
         if AudioPreviewPlayer.shared.isPlaying(key: key) {
             AudioPreviewPlayer.shared.stop()
         } else {
-            AudioPreviewPlayer.shared.play(key: key)
+            // 优先用 voice.audio 作为 Bundle 资源文件名（如 "longrongzhihe.m4a"），
+            // 而不是用 voice.key（如 "qwen-audio-3.0-tts-plus-longrongzhihe"）。
+            let voice = vm.displayedVoices.first(where: { $0.key == key })
+                ?? appState.voices.first(where: { $0.key == key })
+            if let voice = voice, !voice.audio.isEmpty {
+                AudioPreviewPlayer.shared.play(audioFile: voice.audio, identifier: key)
+            } else {
+                // 兜底：仍按 key 查找
+                AudioPreviewPlayer.shared.play(key: key)
+            }
         }
     }
 

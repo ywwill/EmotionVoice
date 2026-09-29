@@ -259,13 +259,14 @@ struct VoiceCard: View {
             .pointingHandCursor()
 
             Spacer()
-            
-            // 播放波形（仅播放时展示，替代静态预览按钮位置）
-            if isPlaying {
-                playingWaveform
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            
+
+            // 播放波形：始终占位，仅在播放时可见。
+            // 这样 isPlaying 切换时不会插入/移除视图，整个 VoiceCard 的 frame 完全不变。
+            playingWaveform
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(isPlaying ? 1 : 0)
+                .allowsHitTesting(false)
+
             Spacer()
 
             Button(action: onUse) {
@@ -286,7 +287,9 @@ struct VoiceCard: View {
 
     // MARK: - 播放波形
 
-    /// 10 条柱状波形，播放时高低随机抖动；非播放时不渲染（避免抢空间）
+    /// 12 条柱状波形，播放时高低随机抖动。
+    /// 视图本身始终渲染，由调用方用 opacity 控制可见性，
+    /// 以保证 isPlaying 切换时整个 VoiceCard 的 frame 不变。
     private var playingWaveform: some View {
         PlayingWaveform()
             .frame(height: 18)

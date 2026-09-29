@@ -108,6 +108,33 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         return play(url: url, identifier: key)
     }
 
+    /// 根据音频文件名播放预览音频（文件名由 voice.audio 字段提供）
+    /// - Parameters:
+    ///   - audioFile: 音频文件名（如 "longrongzhihe.m4a"，可含扩展名）
+    ///   - identifier: 当前播放的标识（用于同源续播判断，建议传入 voice.key）
+    /// - Returns: true 表示开始播放（或已开始播放同一文件），false 表示文件未找到
+    @discardableResult
+    func play(audioFile: String, identifier: String? = nil) -> Bool {
+        let key = identifier ?? audioFile
+
+        // 已经在播放同一文件 → 视为"重新触发"，重置进度从头播放
+        if playingKey == key, isPlaying {
+            player?.currentTime = 0
+            player?.play()
+            return true
+        }
+
+        stop()
+
+        guard let url = resolveURL(forAudio: audioFile) else {
+            Log(message: "AudioPreviewPlayer: audio file not found: \(audioFile)")
+            return false
+        }
+
+        Log(message: "AudioPreviewPlayer: resolved URL for \(audioFile): \(url.path)")
+        return play(url: url, identifier: key)
+    }
+
     /// 从文件 URL 播放（用于"所有项目"中点击生成的音频）
     /// - Parameters:
     ///   - url: 音频文件 URL（本地 wav/mp3 等）
@@ -344,6 +371,20 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         // 文件直接平铺在 Resources/ 根目录
         if let url = Bundle.main.url(forResource: key, withExtension: "m4a") {
             cachedURLs[key] = url
+            return url
+        }
+        return nil
+    }
+
+    /// 根据音频文件名解析 bundle 内音频 URL（文件名由 voice.audio 字段提供）
+    /// - Parameter audio: 音频文件名，可含扩展名（如 "longrongzhihe.m4a"），也可不含（如 "longrongzhihe"，默认按 m4a 处理）
+    private func resolveURL(forAudio audio: String) -> URL? {
+        if let cached = cachedURLs[audio] { return cached }
+        let ns = audio as NSString
+        let fileName = ns.deletingPathExtension
+        let ext = ns.pathExtension.isEmpty ? "m4a" : ns.pathExtension
+        if let url = Bundle.main.url(forResource: fileName, withExtension: ext) {
+            cachedURLs[audio] = url
             return url
         }
         return nil
