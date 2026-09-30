@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		4A1B2C3D4E5F6A7B8C9D0E1F /* ConsumptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D4E5F6A7B8C9D0E2F /* ConsumptionRecord.swift */; };
 		5B2C3D4E5F6A7B8C9D0E1F2A /* PurchaseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2C3D4E5F6A7B8C9D0E1F3A /* PurchaseRecord.swift */; };
-		6F209788303EC80500A770BB /* CreditsPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209789303EC80500A770BB /* CreditsPurchaseView.swift */; };
 		6F209388303EC80500A770BB /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090E3303EC80500A770BB /* DatabaseManager.swift */; };
 		6F209389303EC80500A770BB /* AppColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090E5303EC80500A770BB /* AppColor.swift */; };
 		6F20938A303EC80500A770BB /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090E6303EC80500A770BB /* AppFont.swift */; };
@@ -56,6 +55,7 @@
 		6F2093BC303EC80500A770BB /* EmotionVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209383303EC80500A770BB /* EmotionVoiceApp.swift */; };
 		6F209615303EC80500A770BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F209381303EC80500A770BB /* Assets.xcassets */; };
 		6F209616303EC80500A770BB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F209386303EC80500A770BB /* Localizable.strings */; };
+		6F209788303EC80500A770BB /* CreditsPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209789303EC80500A770BB /* CreditsPurchaseView.swift */; };
 		6F209D21303EC88F00A770BB /* longxuanzhufeng.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C86303EC88F00A770BB /* longxuanzhufeng.m4a */; };
 		6F209D22303EC88F00A770BB /* longxiaqueshan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C56303EC88F00A770BB /* longxiaqueshan.m4a */; };
 		6F209D23303EC88F00A770BB /* loongryanma.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209D1F303EC88F00A770BB /* loongryanma.m4a */; };
@@ -689,7 +689,6 @@
 /* Begin PBXFileReference section */
 		4A1B2C3D4E5F6A7B8C9D0E2F /* ConsumptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsumptionRecord.swift; sourceTree = "<group>"; };
 		5B2C3D4E5F6A7B8C9D0E1F3A /* PurchaseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseRecord.swift; sourceTree = "<group>"; };
-		6F209789303EC80500A770BB /* CreditsPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsPurchaseView.swift; sourceTree = "<group>"; };
 		6F2090E3303EC80500A770BB /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
 		6F2090E5303EC80500A770BB /* AppColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppColor.swift; sourceTree = "<group>"; };
 		6F2090E6303EC80500A770BB /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
@@ -737,6 +736,7 @@
 		6F209383303EC80500A770BB /* EmotionVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionVoiceApp.swift; sourceTree = "<group>"; };
 		6F209384303EC80500A770BB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6F209385303EC80500A770BB /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		6F209789303EC80500A770BB /* CreditsPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsPurchaseView.swift; sourceTree = "<group>"; };
 		6F209AC8303EC88F00A770BB /* basic_voices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = basic_voices.json; sourceTree = "<group>"; };
 		6F209AC9303EC88F00A770BB /* longanlingxin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = longanlingxin.m4a; sourceTree = "<group>"; };
 		6F209ACA303EC88F00A770BB /* longanlufeng.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = longanlufeng.m4a; sourceTree = "<group>"; };

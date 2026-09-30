@@ -256,6 +256,7 @@ struct VoiceCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
+            .help("收藏")
             .pointingHandCursor()
 
             Spacer()
@@ -270,16 +271,16 @@ struct VoiceCard: View {
             Spacer()
 
             Button(action: onUse) {
-                Label("使用".localized(), systemImage: "arrow.right.circle.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 16))
+                    .padding(6)
                     .background(AppColor.accentPrimary)
                     .foregroundStyle(AppColor.bgPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .contentShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(Circle())
+                    .contentShape(Circle())
             }
-            .buttonStyle(StaticButtonStyle())
+            .buttonStyle(.plain)
+            .help("点击使用")
             .pointingHandCursor()
         }
         .frame(maxWidth: .infinity)
