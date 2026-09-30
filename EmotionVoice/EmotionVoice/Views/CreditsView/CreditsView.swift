@@ -280,46 +280,83 @@ struct CreditsView: View {
     }
     
     private var paginationControl: some View {
-        HStack(spacing: 16) {
-            Button {
-                if currentPage > 1 {
-                    currentPage -= 1
+        HStack(spacing: 0) {
+            Spacer()
+
+            // 左侧导航按钮组（聚合在一起）
+            HStack(spacing: 4) {
+                Button {
+                    currentPage = 1
                     loadCreditRecords()
+                } label: {
+                    Image(systemName: "chevron.left.2")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                    Text("上一页".localized())
-                }
-                .font(AppFont.bodyMedium)
+                .buttonStyle(.plain)
                 .foregroundStyle(currentPage > 1 ? AppColor.accentPrimary : AppColor.textTertiary)
-            }
-            .disabled(currentPage <= 1)
-            .buttonStyle(.plain)
-            
-            Spacer()
-            
-            Text("第 \(currentPage) / \(creditRecords.totalPages) 页".localized())
-                .font(AppFont.caption)
-                .foregroundStyle(AppColor.textSecondary)
-            
-            Spacer()
-            
-            Button {
-                if currentPage < creditRecords.totalPages {
-                    currentPage += 1
-                    loadCreditRecords()
+                .disabled(currentPage <= 1)
+
+                Button {
+                    if currentPage > 1 {
+                        currentPage -= 1
+                        loadCreditRecords()
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
-            } label: {
-                HStack(spacing: 4) {
-                    Text("下一页".localized())
+                .buttonStyle(.plain)
+                .foregroundStyle(currentPage > 1 ? AppColor.accentPrimary : AppColor.textTertiary)
+                .disabled(currentPage <= 1)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppColor.bgTertiary)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+
+            // 中间页码区
+            pageNumberButtons
+
+            // 右侧导航按钮组（聚合在一起）
+            HStack(spacing: 4) {
+                Button {
+                    if currentPage < creditRecords.totalPages {
+                        currentPage += 1
+                        loadCreditRecords()
+                    }
+                } label: {
                     Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
-                .font(AppFont.bodyMedium)
+                .buttonStyle(.plain)
                 .foregroundStyle(currentPage < creditRecords.totalPages ? AppColor.accentPrimary : AppColor.textTertiary)
+                .disabled(currentPage >= creditRecords.totalPages)
+
+                Button {
+                    currentPage = creditRecords.totalPages
+                    loadCreditRecords()
+                } label: {
+                    Image(systemName: "chevron.right.2")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(currentPage < creditRecords.totalPages ? AppColor.accentPrimary : AppColor.textTertiary)
+                .disabled(currentPage >= creditRecords.totalPages)
             }
-            .disabled(currentPage >= creditRecords.totalPages)
-            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppColor.bgTertiary)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+
+            Spacer()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -329,6 +366,49 @@ struct CreditsView: View {
                 .stroke(AppColor.borderSubtle, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+    }
+
+    /// 页码数字按钮组件
+    @ViewBuilder
+    private var pageNumberButtons: some View {
+        let totalPages = creditRecords.totalPages
+        let current = currentPage
+
+        HStack(spacing: 8) {
+            // 当前页码 / 总页数
+            Text("\(current)")
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .foregroundStyle(AppColor.accentPrimary)
+
+            Text("/")
+                .font(.system(size: 13))
+                .foregroundStyle(AppColor.textTertiary)
+
+            Text("\(totalPages)")
+                .font(.system(size: 15, weight: .medium, design: .monospaced))
+                .foregroundStyle(AppColor.textSecondary)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    /// 单个页码按钮
+    private func pageNumberButton(_ page: Int) -> some View {
+        Button {
+            currentPage = page
+            loadCreditRecords()
+        } label: {
+            Text("\(page)")
+                .font(.system(size: 13, weight: currentPage == page ? .semibold : .regular, design: .monospaced))
+                .foregroundStyle(currentPage == page ? AppColor.accentPrimary : AppColor.textSecondary)
+                .frame(minWidth: 32, minHeight: 32)
+                .background(
+                    currentPage == page
+                        ? AppColor.accentPrimary.opacity(0.15)
+                        : Color.clear
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        }
+        .buttonStyle(.plain)
     }
 }
 

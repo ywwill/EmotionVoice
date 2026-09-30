@@ -258,17 +258,17 @@ final class CreditsService {
     
     /// 获取统一积分记录（消耗 + 购买，合并后按时间排序）
     func fetchCreditRecords(page: Int) -> PagedResult<CreditRecord> {
-        // 获取消耗记录
-        let consumptionResult = fetchConsumptionRecords(page: page)
+        // 获取所有消耗记录
+        let allConsumption = fetchAllConsumptionRecords()
         
-        // 获取购买记录
-        let purchaseResult = fetchPurchaseRecords(page: page)
+        // 获取所有购买记录
+        let allPurchase = fetchAllPurchaseRecords()
         
         // 合并记录
         var combinedRecords: [CreditRecord] = []
         
         // 添加消耗记录
-        for consume in consumptionResult.items {
+        for consume in allConsumption {
             combinedRecords.append(CreditRecord(
                 id: "c_\(consume.id)",
                 type: .consumption,
@@ -280,7 +280,7 @@ final class CreditsService {
         }
         
         // 添加购买记录
-        for purchase in purchaseResult.items {
+        for purchase in allPurchase {
             combinedRecords.append(CreditRecord(
                 id: "p_\(purchase.id)",
                 type: .purchase,
@@ -294,16 +294,65 @@ final class CreditsService {
         // 按时间排序（最新的在前）
         combinedRecords.sort { $0.createdAt > $1.createdAt }
         
-        // 计算总记录数
-        let totalCount = consumptionResult.totalCount + purchaseResult.totalCount
+        // 计算总页数
+        let totalCount = combinedRecords.count
         let totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
         
+        // 计算分页偏移量
+        let offset = (page - 1) * pageSize
+        let endIndex = min(offset + pageSize, totalCount)
+        
+        // 提取当前页的数据
+        let pageItems: [CreditRecord]
+        if offset < totalCount {
+            pageItems = Array(combinedRecords[offset..<endIndex])
+        } else {
+            pageItems = []
+        }
+        
         return PagedResult(
-            items: combinedRecords,
+            items: pageItems,
             totalCount: totalCount,
             currentPage: page,
             pageSize: pageSize,
             totalPages: totalPages
         )
+    }
+    
+    /// 获取所有消耗记录
+    private func fetchAllConsumptionRecords() -> [ConsumptionRecord] {
+        do {
+            let query = db.consumptionRecords.order(db.consumeCreatedAt.desc)
+            return try db.db.prepare(query).map { row in
+                ConsumptionRecord(
+                    id: row[db.consumeId],
+                    voiceName: row[db.consumeVoiceName],
+                    voiceKey: row[db.consumeVoiceKey],
+                    audioDuration: row[db.consumeAudioDuration],
+                    points: row[db.consumePoints],
+                    createdAt: row[db.consumeCreatedAt]
+                )
+            }
+        } catch {
+            Log(message: "CreditsService.fetchAllConsumptionRecords error: \(error)")
+            return []
+        }
+    }
+    
+    /// 获取所有购买记录
+    private func fetchAllPurchaseRecords() -> [PurchaseRecord] {
+        do {
+            let query = db.purchaseRecords.order(db.purchaseCreatedAt.desc)
+            return try db.db.prepare(query).map { row in
+                PurchaseRecord(
+                    id: row[db.purchaseId],
+                    createdAt: row[db.purchaseCreatedAt],
+                    quantity: row[db.purchaseQuantity]
+                )
+            }
+        } catch {
+            Log(message: "CreditsService.fetchAllPurchaseRecords error: \(error)")
+            return []
+        }
     }
 }
