@@ -92,10 +92,10 @@ final class VoiceStudioViewModel: ObservableObject {
             .count
     }
 
-    /// 预估积分消耗（使用 CreditManager 计算真实的积分消耗）
-    var estimatedPoints: Int {
+    /// 预估积分消耗（使用 CreditManager 计算真实的积分消耗，最多保留 2 位小数）
+    var estimatedPoints: Double {
         let charCount = TextSplitter.calculateCharCount(text)
-        return CreditManager.shared.calculateCredits(for: .normalTTS(characterCount: charCount))
+        return CreditManager.shared.calculateCreditsDouble(for: .normalTTS(characterCount: charCount))
     }
 
     /// 当前音色
@@ -312,8 +312,9 @@ final class VoiceStudioViewModel: ObservableObject {
                     // 保存音频 ID 用于后续重命名
                     self.generatedAudioId = audio.id
 
-                    // 扣减积分
-                    CreditsService.shared.consume(points)
+                    // 扣减积分（根据实际文本长度计算）
+                    let charCount = TextSplitter.calculateCharCount(self.text)
+                    CreditManager.shared.deduct(for: .normalTTS(characterCount: charCount))
                     
                     // 保存消耗记录
                     CreditsService.shared.addConsumptionRecord(

@@ -57,7 +57,7 @@ struct AudioItem: Identifiable, Hashable {
     var format: String
     var sampleRate: Int
     var duration: Double
-    var pointsCost: Int
+    var pointsCost: Double
     var status: AudioStatus
     var createdAt: Date
 

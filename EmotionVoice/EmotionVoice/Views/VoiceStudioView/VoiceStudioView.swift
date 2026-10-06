@@ -616,9 +616,10 @@ struct VoiceStudioView: View {
             PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
                 // 1. 验证文本和音色
                 if !validateInputs() { return }
-                // 2. 验证积分是否足够
+                // 2. 验证积分是否足够（向上取整后比较）
                 let points = vm.estimatedPoints
-                guard CreditsService.shared.canConsume(points) else {
+                let pointsRequired = Int(points.rounded(.up))
+                guard CreditsService.shared.canConsume(pointsRequired) else {
                     showCreditsPurchaseSheet = true
                     return
                 }
@@ -642,7 +643,7 @@ struct VoiceStudioView: View {
                         Text("剩余积分")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
-                        Text("\(state.creditsBalance)")
+                        Text(formatCredits(Double(state.creditsBalance)))
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(AppColor.accentPrimary)
                     }
@@ -656,9 +657,9 @@ struct VoiceStudioView: View {
                         Text("预计消耗")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
-                        Text("≈ \(vm.estimatedPoints)")
+                        Text("≈ \(formatCredits(vm.estimatedPoints))")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(vm.estimatedPoints > state.creditsBalance ? Color.red : AppColor.textPrimary)
+                            .foregroundStyle(vm.estimatedPoints > Double(state.creditsBalance) ? Color.red : AppColor.textPrimary)
                     }
                 }
                 

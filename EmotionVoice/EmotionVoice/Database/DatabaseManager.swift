@@ -40,7 +40,7 @@ final class DatabaseManager {
     let audioSampleRate = SQLite.Expression<Int>("sample_rate")
     let audioDuration = SQLite.Expression<Double>("duration")
     let audioDisplayName = SQLite.Expression<String?>("display_name")
-    let audioPointsCost = SQLite.Expression<Int>("points_cost")
+    let audioPointsCost = SQLite.Expression<Double>("points_cost")
     let audioStatus = SQLite.Expression<String>("status")
     let audioCreatedAt = SQLite.Expression<Date>("created_at")
 
@@ -66,7 +66,7 @@ final class DatabaseManager {
     let txId = SQLite.Expression<Int64>("id")
     let txType = SQLite.Expression<String>("type")
     let txTitle = SQLite.Expression<String>("title")
-    let txAmount = SQLite.Expression<Int>("amount")
+    let txAmount = SQLite.Expression<Double>("amount")
     let txMeta = SQLite.Expression<String?>("meta")
     let txCreatedAt = SQLite.Expression<Date>("created_at")
 
@@ -75,7 +75,7 @@ final class DatabaseManager {
     let consumeVoiceName = SQLite.Expression<String>("voice_name")
     let consumeVoiceKey = SQLite.Expression<String>("voice_key")
     let consumeAudioDuration = SQLite.Expression<Double>("audio_duration")
-    let consumePoints = SQLite.Expression<Int>("points")
+    let consumePoints = SQLite.Expression<Double>("points")
     let consumeCreatedAt = SQLite.Expression<Date>("created_at")
 
     // MARK: - 购买记录字段

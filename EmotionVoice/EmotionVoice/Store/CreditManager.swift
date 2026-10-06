@@ -99,11 +99,25 @@ class CreditManager: ObservableObject {
     
     // MARK: - 公开方法
     
-    /// 计算所需积分
+    /// 计算所需积分（整型，用于扣除）
     func calculateCredits(for type: CreditConsumptionType) -> Int {
         switch type {
         case .createVoice:
             return Constants.createVoiceCost
+            
+        case .normalTTS(let characterCount):
+            return Int(calculateTTSCredits(characterCount: characterCount, rate: Constants.normalTTSRate).rounded(.up))
+            
+        case .cloneTTS(let characterCount):
+            return Int(calculateTTSCredits(characterCount: characterCount, rate: Constants.cloneTTSRate).rounded(.up))
+        }
+    }
+    
+    /// 计算所需积分（Double 类型，用于预估显示）
+    func calculateCreditsDouble(for type: CreditConsumptionType) -> Double {
+        switch type {
+        case .createVoice:
+            return Double(Constants.createVoiceCost)
             
         case .normalTTS(let characterCount):
             return calculateTTSCredits(characterCount: characterCount, rate: Constants.normalTTSRate)
@@ -159,11 +173,12 @@ class CreditManager: ObservableObject {
     
     // MARK: - 私有方法
     
-    private func calculateTTSCredits(characterCount: Int, rate: Int) -> Int {
+    private func calculateTTSCredits(characterCount: Int, rate: Int) -> Double {
         guard characterCount > 0 else { return 0 }
-        // 向上取整：(count + 99) / 100
-        let units = (characterCount + Constants.charactersPerUnit - 1) / Constants.charactersPerUnit
-        return units * rate
+        // 按实际字符数计算，最多保留 2 位小数
+        let billableCount = max(100, characterCount)
+        let credits = Double(billableCount) / Double(Constants.charactersPerUnit) * Double(rate)
+        return (credits * 100).rounded() / 100  // 保留最多 2 位小数
     }
     
     private func saveBalanceLocally() {
@@ -174,16 +189,16 @@ class CreditManager: ObservableObject {
 // MARK: - 便捷扩展
 
 extension CreditManager {
-    /// 普通 TTS 所需积分
-    func creditsForNormalTTS(text: String) -> Int {
+    /// 普通 TTS 所需积分（Double，用于预估显示）
+    func creditsForNormalTTS(text: String) -> Double {
         let count = TextSplitter.calculateCharCount(text)
-        return calculateCredits(for: .normalTTS(characterCount: count))
+        return calculateCreditsDouble(for: .normalTTS(characterCount: count))
     }
     
-    /// 声音复刻 TTS 所需积分
-    func creditsForCloneTTS(text: String) -> Int {
+    /// 声音复刻 TTS 所需积分（Double，用于预估显示）
+    func creditsForCloneTTS(text: String) -> Double {
         let count = TextSplitter.calculateCharCount(text)
-        return calculateCredits(for: .cloneTTS(characterCount: count))
+        return calculateCreditsDouble(for: .cloneTTS(characterCount: count))
     }
     
     /// 创建音色所需积分

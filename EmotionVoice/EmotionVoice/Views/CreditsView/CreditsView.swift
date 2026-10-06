@@ -26,6 +26,9 @@ struct CreditsView: View {
     
     // 监听购买状态
     @State private var lastPurchaseState: PurchaseState = .idle
+    
+    // 计费规则弹窗
+    @State private var showCreditRulePopover = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -82,6 +85,65 @@ struct CreditsView: View {
                             .fill(AppColor.statusSuccess)
                             .frame(width: 6, height: 6)
                         Text("积分永久有效".localized())
+                    }
+                    
+                    Divider()
+                        .frame(height: 12)
+                        .background(AppColor.borderSubtle)
+                    
+                    // 积分计算规则
+                    Button {
+                        showCreditRulePopover.toggle()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 11))
+                            Text("计费规则".localized())
+                                .font(AppFont.caption)
+                        }
+                        .foregroundStyle(AppColor.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
+                    .popover(isPresented: $showCreditRulePopover) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("积分计算规则".localized())
+                                .font(.system(size: 13, weight: .semibold))
+                                .padding(.bottom, 4)
+                            
+                            Group {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(AppColor.accentPrimary)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text("2 积分 / 100 字符".localized())
+                                        .font(AppFont.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(AppColor.accentPrimary)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text("中日韩文字按 2 字符计算".localized())
+                                        .font(AppFont.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(AppColor.accentPrimary)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text("英文、数字、标点按 1 字符计算".localized())
+                                        .font(AppFont.caption)
+                                }
+                            }
+                            .foregroundStyle(AppColor.textSecondary)
+                        }
+                        .padding(16)
+                        .frame(width: 260)
+                        .presentationCompactAdaptation(.popover)
                     }
                 }
                 .font(AppFont.caption)
@@ -409,13 +471,5 @@ struct CreditsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - CreditRecord 扩展
-
-extension CreditRecord {
-    var formattedAmount: String {
-        return (isPositive ? "+" : "−") + "\(amount)"
     }
 }

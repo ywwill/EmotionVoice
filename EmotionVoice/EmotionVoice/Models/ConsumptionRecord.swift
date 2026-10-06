@@ -17,7 +17,7 @@ struct ConsumptionRecord: Identifiable, Hashable {
     /// 生成音频的时长（秒）
     let audioDuration: Double
     /// 使用的积分数量
-    let points: Int
+    let points: Double
     /// 使用时间
     let createdAt: Date
     
@@ -30,6 +30,6 @@ struct ConsumptionRecord: Identifiable, Hashable {
     
     /// 格式化积分
     var formattedPoints: String {
-        return "-\(points)"
+        "-" + formatCredits(points)
     }
 }

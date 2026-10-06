@@ -38,11 +38,21 @@ struct CreditRecord: Identifiable, Hashable {
     let type: CreditRecordType
     let title: String
     let subtitle: String
-    let amount: Int
+    let amount: Double
     let createdAt: Date
     
     var isPositive: Bool {
         type == .purchase
+    }
+    
+    /// 格式化积分显示
+    var formattedAmount: String {
+        let formatted = formatCredits(amount)
+        if type == .purchase {
+            return "+\(formatted)"
+        } else {
+            return "-\(formatted)"
+        }
     }
 }
 
@@ -148,7 +158,7 @@ final class CreditsService {
     
     /// 添加消耗记录
     @discardableResult
-    func addConsumptionRecord(voiceName: String, voiceKey: String, audioDuration: Double, points: Int) -> Bool {
+    func addConsumptionRecord(voiceName: String, voiceKey: String, audioDuration: Double, points: Double) -> Bool {
         do {
             try db.db.run(db.consumptionRecords.insert(
                 db.consumeVoiceName <- voiceName,
@@ -286,7 +296,7 @@ final class CreditsService {
                 type: .purchase,
                 title: "购买积分".localized(),
                 subtitle: "/",
-                amount: purchase.quantity,
+                amount: Double(purchase.quantity),
                 createdAt: purchase.createdAt
             ))
         }

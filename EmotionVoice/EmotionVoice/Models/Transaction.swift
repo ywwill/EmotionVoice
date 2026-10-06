@@ -34,7 +34,7 @@ struct TransactionRecord: Identifiable, Hashable {
     let id: Int64
     let type: TransactionType
     let title: String
-    let amount: Int
+    let amount: Double
     let meta: String?
     let createdAt: Date
 }

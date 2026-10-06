@@ -78,7 +78,7 @@ final class ProjectService {
         voice: String,
         format: String,
         sampleRate: Int,
-        pointsCost: Int,
+        pointsCost: Double,
         status: AudioStatus = .completed,
         displayName: String? = nil,
         duration: Double = 0.0

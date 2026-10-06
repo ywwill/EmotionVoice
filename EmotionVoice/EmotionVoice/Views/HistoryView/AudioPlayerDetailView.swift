@@ -60,7 +60,7 @@ struct AudioPlayerDetailView: View {
                 Text("·")
                     .foregroundStyle(AppColor.textTertiary.opacity(0.5))
 
-                Text("\(audio.pointsCost) 积分")
+                Text("\(formatCredits(audio.pointsCost)) 积分")
                     .font(.system(size: 12))
                     .foregroundStyle(AppColor.textTertiary)
             }

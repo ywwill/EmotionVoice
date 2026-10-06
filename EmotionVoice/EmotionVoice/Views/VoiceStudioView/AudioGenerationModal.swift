@@ -709,7 +709,7 @@ struct AudioGenerationModal: View {
             
             Spacer()
             
-            Text("\(vm.estimatedPoints)")
+            Text(formatCredits(vm.estimatedPoints))
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundStyle(AppColor.accentPrimary)
         }
