@@ -317,10 +317,10 @@ struct PurchaseProductRow: View {
 
     private var productDescription: String {
         switch creditProduct {
-        case .credits6: return "适合尝鲜"
-        case .credits30: return "个人创作首选"
-        case .credits60: return "进阶用户"
-        case .credits98: return "高频使用"
+        case .credits6: return "适合尝鲜".localized()
+        case .credits30: return "个人创作首选".localized()
+        case .credits60: return "进阶用户".localized()
+        case .credits98: return "高频使用".localized()
         case .none: return ""
         }
     }

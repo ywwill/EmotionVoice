@@ -110,7 +110,7 @@ final class VoiceStudioViewModel: ObservableObject {
     func insertEmotion(tag: String) {
         let combined = Constants.emotions + Constants.richLanguageTags
         guard let item = combined.first(where: { $0.tag == tag }) else { return }
-        insertTokenLabel = item.label
+        insertTokenLabel = item.label.localized()
         insertTokenEmoji = item.emoji
         insertTokenEnglishTag = item.tag
         insertTokenTrigger &+= 1

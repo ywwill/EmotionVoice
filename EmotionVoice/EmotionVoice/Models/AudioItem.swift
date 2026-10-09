@@ -35,10 +35,10 @@ enum AudioStatus: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .completed: return "已完成"
-        case .generating: return "生成中"
-        case .pending: return "待处理"
-        case .failed: return "失败"
+        case .completed: return "已完成".localized()
+        case .generating: return "生成中".localized()
+        case .pending: return "待处理".localized()
+        case .failed: return "失败".localized()
         }
     }
 }

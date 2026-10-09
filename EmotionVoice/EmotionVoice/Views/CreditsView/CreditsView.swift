@@ -63,7 +63,7 @@ struct CreditsView: View {
     private var balanceHero: some View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
-                Text("💰 当前余额".localized())
+                Text("当前余额".localized())
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(AppColor.textTertiary)
                     .textCase(.uppercase)
@@ -84,7 +84,7 @@ struct CreditsView: View {
                         Circle()
                             .fill(AppColor.statusSuccess)
                             .frame(width: 6, height: 6)
-                        Text("积分永久有效".localized())
+                        Text("永久有效".localized())
                     }
                     
                     Divider()
@@ -225,7 +225,7 @@ struct CreditsView: View {
                 Text("📋 积分记录".localized())
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Text("共 \(creditRecords.totalCount) 条".localized())
+                Text("共 %d 条".localized(creditRecords.totalCount))
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textTertiary)
             }

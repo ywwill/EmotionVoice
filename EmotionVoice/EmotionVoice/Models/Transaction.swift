@@ -10,9 +10,9 @@ enum TransactionType: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .purchase: return "购买"
-        case .consume: return "消费"
-        case .refund: return "返还"
+        case .purchase: return "购买".localized()
+        case .consume: return "消费".localized()
+        case .refund: return "返还".localized()
         }
     }
 

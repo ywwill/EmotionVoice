@@ -95,7 +95,7 @@ struct VoiceStudioView: View {
                 Text("文本输入区".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
-                Text("\(vm.charCount) 字".localized())    
+                Text("%d 字".localized(vm.charCount))
                 .font(AppFont.monoSmall)
                 .foregroundStyle(AppColor.textTertiary)
             }
@@ -295,7 +295,7 @@ struct VoiceStudioView: View {
                 HStack(spacing: 5) {
                     Text(emotion.emoji)
                         .font(.system(size: 14))
-                    Text(emotion.label)
+                    Text(emotion.label.localized())
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(AppColor.textPrimary)
                 }
@@ -309,6 +309,7 @@ struct VoiceStudioView: View {
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
             }
             .buttonStyle(.plain)
+            .help(emotion.description.localized())
             .pointingHandCursor()
         }
     }
@@ -324,7 +325,7 @@ struct VoiceStudioView: View {
                 HStack(spacing: 5) {
                     Text(tag.emoji)
                         .font(.system(size: 14))
-                    Text(tag.label)
+                    Text(tag.label.localized())
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(AppColor.textPrimary)
                 }
@@ -338,6 +339,7 @@ struct VoiceStudioView: View {
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
             }
             .buttonStyle(.plain)
+            .help(tag.description.localized())
             .pointingHandCursor()
         }
     }
@@ -362,7 +364,7 @@ struct VoiceStudioView: View {
                 Text("🎭 音色切换".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
-                Text("\(appState.voices.count) 个可用".localized())
+                Text("%d 个可用".localized(appState.voices.count))
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textTertiary)
             }
@@ -377,7 +379,7 @@ struct VoiceStudioView: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.white)
                             if voice.isPremium {
-                                Text("⭐ 旗舰".localized())
+                                Text("⭐ 旗舰")
                                     .font(AppFont.monoSmall)
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 6)
@@ -449,7 +451,7 @@ struct VoiceStudioView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 10))
-                    Text("查看全部音色库".localized())
+                    Text("查看更多音色".localized())
                         .font(AppFont.caption)
                 }
                 .foregroundStyle(AppColor.accentPrimary)
@@ -711,16 +713,16 @@ struct VoiceStudioView: View {
                     Text("或自定义描述你想听到的声音...".localized())
                         .font(AppFont.bodyMedium)
                         .foregroundStyle(AppColor.textTertiary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 7)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $vm.nlInstruction)
                     .font(AppFont.bodyMedium)
                     .foregroundStyle(AppColor.textPrimary)
                     .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 3)
             }
             .background(AppColor.bgTertiary)
             .overlay(

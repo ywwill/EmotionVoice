@@ -112,7 +112,7 @@ enum Constants {
         EmotionItem(label: "大笑", emoji: "😆", tag: "laughing",
                    description: "大笑"),
         EmotionItem(label: "咯咯笑", emoji: "🤭", tag: "giggles",
-                   description: "咯咯轻"),
+                   description: "咯咯笑"),
         EmotionItem(label: "叹息", emoji: "😮‍💨", tag: "sighing",
                    description: "叹息声"),
         EmotionItem(label: "倒吸气", emoji: "😲", tag: "gasp",
@@ -127,20 +127,20 @@ enum Constants {
 
     // MARK: - 语言/方言
     static let languages: [LanguageItem] = [
-        LanguageItem(name: "中文普通话", code: "mandarin"),
-        LanguageItem(name: "粤语", code: "cantonese"),
-        LanguageItem(name: "四川话", code: "sichuan"),
-        LanguageItem(name: "英文", code: "english"),
+        LanguageItem(name: "中文".localized(), code: "mandarin"),
+        LanguageItem(name: "英文".localized(), code: "english"),
+        LanguageItem(name: "粤语".localized(), code: "cantonese"),
+        LanguageItem(name: "四川话".localized(), code: "sichuan"),
     ]
 
     // MARK: - 采样率
     static let sampleRates: [SampleRateItem] = [
-        SampleRateItem(rate: 8000,  displayName: "8 kHz",    useCase: "语音通话"),
-        SampleRateItem(rate: 16000, displayName: "16 kHz",   useCase: "AI 语音"),
-        SampleRateItem(rate: 22050, displayName: "22.05 kHz", useCase: "网络语音"),
-        SampleRateItem(rate: 24000, displayName: "24 kHz",   useCase: "语音合成"),
-        SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频"),
-        SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频"),
+        SampleRateItem(rate: 8000,  displayName: "8 kHz",    useCase: "语音通话".localized()),
+        SampleRateItem(rate: 16000, displayName: "16 kHz",   useCase: "AI 语音".localized()),
+        SampleRateItem(rate: 22050, displayName: "22.05 kHz", useCase: "网络语音".localized()),
+        SampleRateItem(rate: 24000, displayName: "24 kHz",   useCase: "语音合成".localized()),
+        SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频".localized()),
+        SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频".localized()),
     ]
 }
 

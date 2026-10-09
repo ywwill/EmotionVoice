@@ -77,7 +77,7 @@ struct ProductCardView: View {
         let formattedPrice = unitPriceFormattedString
         let symbol = currencySymbol
         let priceNumber = formattedPrice.replacingOccurrences(of: symbol, with: "").trimmingCharacters(in: .whitespaces)
-        var attributedString = AttributedString("≈ \(formattedPrice) / 积分")
+        var attributedString = AttributedString("≈ \(formattedPrice) / \("积分".localized())")
         // 货币符号设置为小字体
         if let symbolRange = attributedString.range(of: symbol) {
             attributedString[symbolRange].font = .system(size: 11)
@@ -91,7 +91,7 @@ struct ProductCardView: View {
             attributedString[numberRange].font = .system(size: 12)
         }
         // / 积分 设置为小字体
-        if let unitRange = attributedString.range(of: " / 积分") {
+        if let unitRange = attributedString.range(of: " / \("积分".localized())") {
             attributedString[unitRange].font = .system(size: 11)
         }
         return attributedString
@@ -128,12 +128,16 @@ struct ProductCardView: View {
 
             // 价格
             Text(formattedPrice)
-                .foregroundStyle(AppColor.textPrimary)
+                .foregroundStyle(AppColor.accentGlow)
 
             // 积分
-            Text("\(points) 积分".localized())
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(AppColor.accentGlow)
+            HStack(spacing: 6) {
+                Text("\(points)")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text("积分")
+                    .font(.system(size: 18, weight: .semibold))
+            }
 
             // 单位价格
             Text(formattedUnitPrice)
@@ -197,15 +201,15 @@ struct ProductCardView: View {
     private var features: [String] {
         switch creditProduct {
         case .credits6:
-            return ["适合尝鲜体验", "积分永久有效"]
+            return ["适合尝鲜体验".localized(), "永久有效".localized()]
         case .credits30:
-            return ["个人创作首选", "积分永久有效"]
+            return ["个人创作首选".localized(), "永久有效".localized()]
         case .credits60:
-            return ["个人创作首选", "积分永久有效"]
+            return ["个人创作首选".localized(), "永久有效".localized()]
         case .credits98:
-            return ["高频使用推荐", "积分永久有效"]
+            return ["高频使用推荐".localized(), "永久有效".localized()]
         case .none:
-            return ["积分永久有效"]
+            return ["永久有效".localized()]
         }
     }
 
