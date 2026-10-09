@@ -33,22 +33,68 @@ struct ProductCardView: View {
         creditProduct?.creditsAmount ?? 0
     }
 
-    private var displayPrice: String {
-        product?.displayPrice ?? "¥--"
+    private var currencySymbol: String {
+        guard let product = product else { return "¥" }
+        let currencyCode = product.priceFormatStyle.currencyCode
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currencyCode
+        return formatter.currencySymbol ?? "¥"
     }
 
-    private var unitPriceText: String {
+    private var priceValue: String {
+        product?.displayPrice ?? "--"
+    }
+
+    private var formattedPrice: AttributedString {
+        var attributedString = AttributedString(priceValue)
+        // 货币符号部分设置为小字体
+        if let symbolRange = attributedString.range(of: currencySymbol) {
+            attributedString[symbolRange].font = .system(size: 16, weight: .medium)
+        }
+        // 数字部分设置为大字体
+        if let numberRange = attributedString.range(of: priceValue.replacingOccurrences(of: currencySymbol, with: "").trimmingCharacters(in: .whitespaces)) {
+            attributedString[numberRange].font = .system(size: 28, weight: .bold)
+        }
+        return attributedString
+    }
+
+    private var unitPriceFormattedString: String {
         guard let product = product, let creditProduct = creditProduct else {
             return "--"
         }
         let unitPrice = product.price / Decimal(creditProduct.creditsAmount)
-        let doubleValue = NSDecimalNumber(decimal: unitPrice).doubleValue
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
+        formatter.locale = .current
         formatter.currencyCode = product.priceFormatStyle.currencyCode
         formatter.maximumFractionDigits = 4
         formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: doubleValue)) ?? String(format: "%.4f", doubleValue)
+        return formatter.string(from: unitPrice as NSDecimalNumber) ?? "--"
+    }
+
+    private var formattedUnitPrice: AttributedString {
+        let formattedPrice = unitPriceFormattedString
+        let symbol = currencySymbol
+        let priceNumber = formattedPrice.replacingOccurrences(of: symbol, with: "").trimmingCharacters(in: .whitespaces)
+        var attributedString = AttributedString("≈ \(formattedPrice) / 积分")
+        // 货币符号设置为小字体
+        if let symbolRange = attributedString.range(of: symbol) {
+            attributedString[symbolRange].font = .system(size: 11)
+        }
+        // ≈ 设置为小字体
+        if let approxRange = attributedString.range(of: "≈") {
+            attributedString[approxRange].font = .system(size: 11)
+        }
+        // 数字部分设置为稍大字体
+        if let numberRange = attributedString.range(of: priceNumber) {
+            attributedString[numberRange].font = .system(size: 12)
+        }
+        // / 积分 设置为小字体
+        if let unitRange = attributedString.range(of: " / 积分") {
+            attributedString[unitRange].font = .system(size: 11)
+        }
+        return attributedString
     }
 
     private var isLoading: Bool {
@@ -81,14 +127,8 @@ struct ProductCardView: View {
                 .foregroundStyle(AppColor.textTertiary)
 
             // 价格
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text("¥")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(AppColor.textSecondary)
-                Text(displayPrice.replacingOccurrences(of: "¥", with: ""))
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(AppColor.textPrimary)
-            }
+            Text(formattedPrice)
+                .foregroundStyle(AppColor.textPrimary)
 
             // 积分
             Text("\(points) 积分".localized())
@@ -96,9 +136,9 @@ struct ProductCardView: View {
                 .foregroundStyle(AppColor.accentGlow)
 
             // 单位价格
-            Text("≈ \(unitPriceText) / 积分".localized())
-                .font(AppFont.caption)
-                .foregroundStyle(AppColor.textTertiary)
+            Text(formattedUnitPrice)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppColor.textSecondary)
 
             Divider()
                 .background(AppColor.borderSubtle)
