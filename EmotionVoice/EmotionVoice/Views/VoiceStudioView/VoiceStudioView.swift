@@ -131,62 +131,43 @@ struct VoiceStudioView: View {
 
     // MARK: - 情感卡片
 
+    /// 情感控制面板：包含语气控制（23个）和拟声效果（7个）
+    /// 采用分组式布局，参考拟声效果的视觉风格
     private var emotionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // 标题区：语气控制 + 数量统计
             HStack {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppColor.accentPrimary)
                 Text("语气控制".localized())
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
             }
 
-            // 控制类情感网格（23 个）
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 10),
-                spacing: 6
-            ) {
-                ForEach(Constants.emotions) { emotion in
-                    EmotionButton(emotion: emotion) {
-                        vm.insertEmotion(tag: emotion.tag)
-                    }
-                }
-            }
+            // 控制类情感网格（23 个）- 使用流式布局，参考拟声效果风格
+            emotionTagsGrid
 
-            Divider().background(AppColor.borderSubtle).padding(.vertical, 6)
-
-            // 富语言效果（7 个拟声标签）
-            VStack(alignment: .leading, spacing: 8) {
+            // 分隔区域：拟声效果
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
+                    Image(systemName: "waveform.badge.plus")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColor.accentPrimary)
                     Text("拟声效果".localized())
                         .font(.system(size: 14, weight: .semibold))
                 }
 
-                HStack(spacing: 6) {
+                // 拟声标签网格（流式布局，自动换行）
+                FlowLayout(spacing: 6) {
                     ForEach(Constants.richLanguageTags) { tag in
-                        Button {
+                        RichLanguageTagButton(tag: tag) {
                             vm.insertEmotion(tag: tag.tag)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(tag.emoji)
-                                    .font(.system(size: 18))
-                                Text("\(tag.label)")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(AppColor.textSecondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(AppColor.bgTertiary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.small)
-                                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-                            .foregroundStyle(AppColor.textSecondary)
                         }
-                        .buttonStyle(.plain)
-                        .pointingHandCursor()
                     }
                 }
             }
+            .padding(12)
         }
         .padding(18)
         .background(AppColor.bgSecondary)
@@ -195,6 +176,78 @@ struct VoiceStudioView: View {
                 .stroke(AppColor.borderSubtle, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+    }
+
+    /// 控制类情感标签网格（23 个情感按钮）
+    /// 使用流式布局，自动换行，参考拟声效果风格
+    private var emotionTagsGrid: some View {
+        FlowLayout(spacing: 6) {
+            ForEach(Constants.emotions) { emotion in
+                EmotionTagButton(emotion: emotion) {
+                    vm.insertEmotion(tag: emotion.tag)
+                }
+            }
+        }
+    }
+
+    // MARK: - 情感卡片子组件
+
+    /// 语气控制标签按钮
+    /// 包含 emoji 和中文标签，参考拟声效果的视觉风格
+    struct EmotionTagButton: View {
+        let emotion: EmotionItem
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Text(emotion.emoji)
+                        .font(.system(size: 14))
+                    Text(emotion.label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColor.textPrimary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColor.bgSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                        .stroke(AppColor.borderSubtle, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+        }
+    }
+
+    /// 拟声效果标签按钮
+    /// 包含 emoji 和中文标签
+    struct RichLanguageTagButton: View {
+        let tag: EmotionItem
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Text(tag.emoji)
+                        .font(.system(size: 14))
+                    Text(tag.label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColor.textPrimary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColor.bgSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                        .stroke(AppColor.borderSubtle, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+        }
     }
 
     // MARK: - 右侧面板
