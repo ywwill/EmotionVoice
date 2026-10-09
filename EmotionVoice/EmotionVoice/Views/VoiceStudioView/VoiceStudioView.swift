@@ -27,6 +27,11 @@ struct VoiceStudioView: View {
             return 600  // 完成状态：较高
         }
     }
+    
+    /// 语气控制说明弹窗
+    @State private var showEmotionRulePopover: Bool = false
+    /// 拟声效果说明弹窗
+    @State private var showRichLanguageRulePopover: Bool = false
 
     var body: some View {
         
@@ -142,6 +147,56 @@ struct VoiceStudioView: View {
                     .foregroundStyle(AppColor.accentPrimary)
                 Text("语气控制".localized())
                     .font(.system(size: 14, weight: .semibold))
+                
+                Button {
+                    showEmotionRulePopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColor.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .popover(isPresented: $showEmotionRulePopover) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("语气控制".localized())
+                            .font(.system(size: 13, weight: .semibold))
+                            .padding(.bottom, 4)
+                        
+                        Group {
+                            HStack(alignment: .top, spacing: 8) {
+                                Circle()
+                                    .fill(AppColor.accentPrimary)
+                                    .frame(width: 5, height: 5)
+                                    .padding(.top, 6)
+                                Text("控制类标签用于设定语音的情感或风格")
+                                    .font(AppFont.caption)
+                            }
+                            
+                            HStack(alignment: .top, spacing: 8) {
+                                Circle()
+                                    .fill(AppColor.accentPrimary)
+                                    .frame(width: 5, height: 5)
+                                    .padding(.top, 6)
+                                Text("将标签写在文本中，标签会作用于其后的所有文本")
+                                    .font(AppFont.caption)
+                            }
+                            
+                            HStack(alignment: .top, spacing: 8) {
+                                Circle()
+                                    .fill(AppColor.accentPrimary)
+                                    .frame(width: 5, height: 5)
+                                    .padding(.top, 6)
+                                Text("直到遇到下一个控制类标签，或因句子较长被自动切分为止")
+                                    .font(AppFont.caption)
+                            }
+                        }
+                        .foregroundStyle(AppColor.textSecondary)
+                    }
+                    .padding(16)
+                    .presentationCompactAdaptation(.popover)
+                }
+                
                 Spacer()
             }
 
@@ -156,6 +211,47 @@ struct VoiceStudioView: View {
                         .foregroundStyle(AppColor.accentPrimary)
                     Text("拟声效果".localized())
                         .font(.system(size: 14, weight: .semibold))
+                    Button {
+                        showRichLanguageRulePopover.toggle()
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppColor.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
+                    .popover(isPresented: $showRichLanguageRulePopover) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("拟声效果".localized())
+                                .font(.system(size: 13, weight: .semibold))
+                                .padding(.bottom, 4)
+                            
+                            Group {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(AppColor.accentPrimary)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text("在当前位置插入一段拟声效果")
+                                        .font(AppFont.caption)
+                                }
+                                
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(AppColor.accentPrimary)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text("不影响前后文本的情感风格")
+                                        .font(AppFont.caption)
+                                }
+                            }
+                            .foregroundStyle(AppColor.textSecondary)
+                        }
+                        .padding(16)
+                        .presentationCompactAdaptation(.popover)
+                    }
+                    
+                    Spacer()
                 }
 
                 // 拟声标签网格（流式布局，自动换行）

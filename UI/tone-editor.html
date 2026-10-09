@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语气编辑器 v2 - EmotionVoice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=SF+Pro+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --macos-bg: #f5f5f7;
+            --macos-surface: #ffffff;
+            --macos-surface-secondary: #f0f0f2;
+            --macos-border: rgba(0, 0, 0, 0.1);
+            --macos-text: #1d1d1f;
+            --macos-text-secondary: #86868b;
+            --macos-accent: #0071e3;
+            --macos-accent-hover: #0077ed;
+            --macos-red: #ff3b30;
+            --macos-green: #34c759;
+            --macos-orange: #ff9500;
+            --macos-yellow: #ffcc00;
+            --macos-blue: #5ac8fa;
+            --macos-purple: #af52de;
+            --macos-pink: #ff2d55;
+            --macos-gray: #8e8e93;
+            --macos-shadow: rgba(0, 0, 0, 0.04);
+            --macos-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --macos-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: var(--macos-bg);
+            color: var(--macos-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--macos-shadow-md);
+        }
+
+        .header-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .header-text h1 {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--macos-text);
+        }
+
+        .header-text p {
+            font-size: 14px;
+            color: var(--macos-text-secondary);
+            margin-top: 2px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--macos-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--macos-shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--macos-border);
+        }
+
+        .panel-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--macos-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-header-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .panel-header h2 {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--macos-text);
+        }
+
+        .panel-header .count {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--macos-text-secondary);
+            background: var(--macos-surface-secondary);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .panel-content {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .panel-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 2px;
+        }
+
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .item-grid.single-col {
+            grid-template-columns: 1fr;
+        }
+
+        .item-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: var(--macos-surface-secondary);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--macos-text);
+            text-align: left;
+        }
+
+        .item-btn:hover {
+            background: #e8e8ed;
+            transform: translateY(-1px);
+        }
+
+        .item-btn:active {
+            transform: translateY(0);
+            background: #ddd;
+        }
+
+        .item-btn.selected {
+            background: var(--macos-accent);
+            color: white;
+            border-color: var(--macos-accent);
+        }
+
+        .item-btn .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .effect-btn {
+            justify-content: flex-start;
+            padding: 10px 12px;
+        }
+
+        .effect-btn .effect-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .effect-btn .effect-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .effect-btn .effect-name {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .effect-btn .effect-desc {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .editor-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .editor-panel {
+            background: var(--macos-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--macos-shadow-md);
+            border: 1px solid var(--macos-border);
+            overflow: hidden;
+        }
+
+        .editor-toolbar {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--macos-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            background: var(--macos-surface-secondary);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--macos-text);
+        }
+
+        .toolbar-btn:hover {
+            background: #e8e8ed;
+        }
+
+        .toolbar-btn:active {
+            transform: scale(0.97);
+        }
+
+        .toolbar-btn.primary {
+            background: var(--macos-accent);
+            color: white;
+        }
+
+        .toolbar-btn.primary:hover {
+            background: var(--macos-accent-hover);
+        }
+
+        .toolbar-btn.danger {
+            color: var(--macos-red);
+        }
+
+        .toolbar-btn.danger:hover {
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .toolbar-btn.end {
+            background: var(--macos-orange);
+            color: white;
+        }
+
+        .toolbar-btn.end:hover {
+            background: #e68a00;
+        }
+
+        .toolbar-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--macos-border);
+            margin: 0 4px;
+        }
+
+        .current-mode {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: auto;
+        }
+
+        .current-mode.idle {
+            background: var(--macos-surface-secondary);
+            color: var(--macos-text-secondary);
+        }
+
+        .current-mode.active {
+            background: var(--macos-green);
+            color: white;
+            animation: modePulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes modePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .current-mode .mode-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* 富文本编辑区域 */
+        .rich-editor {
+            width: 100%;
+            min-height: 300px;
+            padding: 16px 20px;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--macos-text-secondary);
+            border: none;
+            outline: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            background: var(--macos-surface);
+        }
+
+        .rich-editor:empty::before {
+            content: attr(data-placeholder);
+            color: var(--macos-text-secondary);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* 语气标签样式 */
+        .tone-tag {
+            display: inline;
+            white-space: nowrap;
+        }
+
+        .tone-tag .tag-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 10px 0 0 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            vertical-align: middle;
+        }
+
+        .tone-tag .tag-content {
+            display: inline;
+            padding: 2px 8px;
+            border-radius: 0 4px 4px 0;
+            font-weight: 500;
+            vertical-align: middle;
+        }
+
+        /* 效果标签样式 */
+        .effect-tag {
+            display: inline;
+            white-space: nowrap;
+        }
+
+        .effect-tag .tag-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            vertical-align: middle;
+        }
+
+        .syntax-hint {
+            padding: 10px 16px;
+            background: var(--macos-surface-secondary);
+            border-top: 1px solid var(--macos-border);
+            font-size: 11px;
+            color: var(--macos-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .syntax-hint code {
+            background: rgba(0, 0, 0, 0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            color: var(--macos-text);
+        }
+
+        .tag-status-bar {
+            padding: 6px 16px;
+            background: rgba(0, 0, 0, 0.02);
+            border-top: 1px solid var(--macos-border);
+            font-size: 11px;
+            color: var(--macos-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .tag-status-bar .stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tag-status-bar .stat-value {
+            font-weight: 600;
+            color: var(--macos-text);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--macos-text);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: var(--macos-shadow-lg);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 800px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>语气编辑器</h1>
+                <p>选择语气 → 输入内容 → 查看彩色效果</p>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <aside class="sidebar">
+                <!-- 语气选择面板 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-header-icon" style="background: rgba(0, 113, 227, 0.12);">
+                            <svg viewBox="0 0 24 24" fill="#0071e3">
+                                <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/>
+                            </svg>
+                        </div>
+                        <h2>语气</h2>
+                        <span class="count">23 种</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="item-grid" id="toneGrid"></div>
+                    </div>
+                </div>
+
+                <!-- 拟声效果面板 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-header-icon" style="background: rgba(175, 82, 222, 0.12);">
+                            <svg viewBox="0 0 24 24" fill="#af52de">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                            </svg>
+                        </div>
+                        <h2>拟声效果</h2>
+                        <span class="count">7 种</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="item-grid single-col" id="effectGrid"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="editor-section">
+                <div class="editor-panel">
+                    <div class="editor-toolbar">
+                        <div id="currentMode" class="current-mode idle">
+                            <span class="mode-dot"></span>
+                            <span id="modeLabel">等待选择语气...</span>
+                        </div>
+                        
+                        <div style="flex: 1;"></div>
+                        
+                        <button class="toolbar-btn danger" onclick="clearAll()" title="清空">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                            清空
+                        </button>
+                        
+                        <div class="toolbar-divider"></div>
+                        
+                        <button class="toolbar-btn primary" id="insertBtn" onclick="insertTag()" disabled>
+                            插入标签
+                        </button>
+
+                        <button class="toolbar-btn end" id="endBtn" onclick="endCurrentTag()" style="display: none;">
+                            结束标签
+                        </button>
+                    </div>
+                    
+                    <div class="rich-editor" 
+                         id="textInput" 
+                         contenteditable="true"
+                         data-placeholder="选择左侧语气后点击「插入标签」，输入内容，再点击「结束标签」..."
+                         spellcheck="false"></div>
+
+                    <div class="syntax-hint">
+                        <span>提示：</span>
+                        <code>Ctrl+Enter</code> 插入
+                        <code>Ctrl+E</code> 结束
+                        <code>Esc</code> 取消
+                    </div>
+
+                    <div class="tag-status-bar">
+                        <span class="stat">
+                            语气：
+                            <span class="stat-value" id="toneCount">0</span>
+                        </span>
+                        <span class="stat">
+                            效果：
+                            <span class="stat-value" id="effectCount">0</span>
+                        </span>
+                        <span class="stat">
+                            字符：
+                            <span class="stat-value" id="charCount">0</span>
+                        </span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 23种语气配置
+        const tones = [
+            { id: 'calm', name: '平静', color: '#5ac8fa' },
+            { id: 'excited', name: '兴奋', color: '#ff9500' },
+            { id: 'sad', name: '悲伤', color: '#5c6bc0' },
+            { id: 'angry', name: '愤怒', color: '#ff3b30' },
+            { id: 'gentle', name: '温柔', color: '#f8bbd9' },
+            { id: 'serious', name: '严肃', color: '#607d8b' },
+            { id: 'humorous', name: '幽默', color: '#ffeb3b' },
+            { id: 'romantic', name: '浪漫', color: '#ec407a' },
+            { id: 'nervous', name: '紧张', color: '#ab47bc' },
+            { id: 'confused', name: '困惑', color: '#8d6e63' },
+            { id: 'surprised', name: '惊讶', color: '#26c6da' },
+            { id: 'confident', name: '自信', color: '#66bb6a' },
+            { id: 'tired', name: '疲惫', color: '#90a4ae' },
+            { id: 'hesitant', name: '犹豫', color: '#a1887f' },
+            { id: 'firm', name: '坚定', color: '#4db6ac' },
+            { id: 'sweet', name: '甜美', color: '#f48fb1' },
+            { id: 'hoarse', name: '沙哑', color: '#78909c' },
+            { id: 'lively', name: '活泼', color: '#ffca28' },
+            { id: 'cold', name: '冷淡', color: '#b0bec5' },
+            { id: 'envious', name: '羡慕', color: '#ce93d8' },
+            { id: 'adoring', name: '崇拜', color: '#ffcc80' },
+            { id: 'sarcastic', name: '讽刺', color: '#aed581' },
+            { id: 'weary', name: '倦怠', color: '#bcaaa4' }
+        ];
+
+        // 7种拟声效果配置
+        const effects = [
+            { id: 'laugh', name: '大笑', desc: '插入笑声', icon: '😄', bgColor: '#ffcc00' },
+            { id: 'smile', name: '微笑', desc: '插入微笑', icon: '😊', bgColor: '#34c759' },
+            { id: 'sigh', name: '叹息', desc: '插入叹气', icon: '😔', bgColor: '#5ac8fa' },
+            { id: 'cry', name: '哭泣', desc: '插入哭泣', icon: '😭', bgColor: '#5c6bc0' },
+            { id: 'cough', name: '咳嗽', desc: '插入咳嗽', icon: '🤧', bgColor: '#ff9500' },
+            { id: 'gasp', name: '倒吸气', desc: '插入吸气', icon: '😮', bgColor: '#ff2d55' },
+            { id: 'breath', name: '深呼吸', desc: '插入呼吸', icon: '😌', bgColor: '#66bb6a' }
+        ];
+
+        let selectedTone = null;
+        let selectedEffect = null;
+        let isInTagMode = false;
+        let currentTagName = null;
+        let currentTagColor = null;
+        let pendingTags = []; // 待闭合的标签
+
+        // 初始化
+        function init() {
+            renderTones();
+            renderEffects();
+            setupEventListeners();
+            updateStats();
+        }
+
+        // 渲染语气按钮
+        function renderTones() {
+            const grid = document.getElementById('toneGrid');
+            grid.innerHTML = tones.map(tone => `
+                <button class="item-btn ${selectedTone?.id === tone.id ? 'selected' : ''}" 
+                        data-tone-id="${tone.id}"
+                        onclick="selectTone('${tone.id}')">
+                    <span class="dot" style="background: ${tone.color};"></span>
+                    ${tone.name}
+                </button>
+            `).join('');
+        }
+
+        // 渲染拟声效果按钮
+        function renderEffects() {
+            const grid = document.getElementById('effectGrid');
+            grid.innerHTML = effects.map(effect => `
+                <button class="item-btn effect-btn ${selectedEffect?.id === effect.id ? 'selected' : ''}"
+                        data-effect-id="${effect.id}"
+                        onclick="selectEffect('${effect.id}')">
+                    <span class="effect-icon" style="background: ${effect.bgColor}20; color: ${effect.bgColor};">
+                        ${effect.icon}
+                    </span>
+                    <span class="effect-text">
+                        <span class="effect-name">${effect.name}</span>
+                        <span class="effect-desc">${effect.desc}</span>
+                    </span>
+                </button>
+            `).join('');
+        }
+
+        // 选择语气
+        function selectTone(toneId) {
+            if (isInTagMode) {
+                showToast('请先结束当前标签');
+                return;
+            }
+            const tone = tones.find(t => t.id === toneId);
+            if (selectedTone?.id === toneId) {
+                selectedTone = null;
+            } else {
+                selectedTone = tone;
+                selectedEffect = null;
+            }
+            updateInsertButton();
+            renderTones();
+            renderEffects();
+        }
+
+        // 选择拟声效果
+        function selectEffect(effectId) {
+            if (isInTagMode) {
+                showToast('请先结束当前标签');
+                return;
+            }
+            const effect = effects.find(e => e.id === effectId);
+            if (selectedEffect?.id === effectId) {
+                selectedEffect = null;
+            } else {
+                selectedEffect = effect;
+                selectedTone = null;
+            }
+            updateInsertButton();
+            renderTones();
+            renderEffects();
+        }
+
+        // 更新按钮状态
+        function updateInsertButton() {
+            const insertBtn = document.getElementById('insertBtn');
+            const endBtn = document.getElementById('endBtn');
+            const modeDiv = document.getElementById('currentMode');
+            const modeLabel = document.getElementById('modeLabel');
+            
+            if (isInTagMode) {
+                insertBtn.style.display = 'none';
+                endBtn.style.display = 'flex';
+                modeDiv.className = 'current-mode active';
+                modeLabel.textContent = `正在输入: ${currentTagName}`;
+            } else {
+                insertBtn.style.display = 'flex';
+                endBtn.style.display = 'none';
+                modeDiv.className = 'current-mode idle';
+                
+                if (selectedTone) {
+                    modeLabel.textContent = `已选: ${selectedTone.name}`;
+                } else if (selectedEffect) {
+                    modeLabel.textContent = `已选: ${selectedEffect.name}`;
+                } else {
+                    modeLabel.textContent = '等待选择...';
+                }
+            }
+            
+            insertBtn.disabled = !selectedTone && !selectedEffect;
+        }
+
+        // 获取编辑器内容（纯文本）
+        function getEditorText() {
+            return document.getElementById('textInput').innerText || '';
+        }
+
+        // 在光标位置插入HTML
+        function insertAtCursor(html) {
+            const editor = document.getElementById('textInput');
+            
+            // 移除临时标签，恢复内容
+            processPendingTags();
+            
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                
+                const template = document.createElement('template');
+                template.innerHTML = html;
+                const fragment = template.content;
+                
+                range.insertNode(fragment);
+                
+                // 移动光标到插入内容之后
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                editor.innerHTML += html;
+            }
+            
+            updateStats();
+            editor.focus();
+        }
+
+        // 插入标签
+        function insertTag() {
+            if (isInTagMode) return;
+            
+            if (!selectedTone && !selectedEffect) {
+                showToast('请先选择语气或效果');
+                return;
+            }
+
+            const editor = document.getElementById('textInput');
+            
+            // 处理之前的待闭合标签
+            processPendingTags();
+
+            let openTag = '';
+            let tagName = '';
+            let color = '';
+            let tagType = '';
+
+            if (selectedTone) {
+                openTag = `<span class="tone-tag" data-pending="true" data-name="${selectedTone.name}" data-color="${selectedTone.color}">
+                    <span class="tag-label" style="background: ${selectedTone.color};">
+                        🎤 ${selectedTone.name}
+                    </span>
+                    <span class="tag-content" style="background: ${selectedTone.color}22; color: ${selectedTone.color};">`;
+                tagName = selectedTone.name;
+                color = selectedTone.color;
+                tagType = 'tone';
+                
+                // 进入编辑模式
+                isInTagMode = true;
+                currentTagName = tagName;
+                currentTagColor = color;
+                
+                insertAtCursor(openTag);
+                updateInsertButton();
+                showToast(`输入「${tagName}」内容后点击「结束标签」`);
+                
+                selectedTone = null;
+                renderTones();
+                updateInsertButton();
+                
+            } else {
+                // 拟声效果直接闭合
+                openTag = `<span class="effect-tag">
+                    <span class="tag-label" style="background: #af52de;">
+                        ${selectedEffect.icon} ${selectedEffect.name}
+                    </span>
+                </span>&nbsp;`;
+                
+                insertAtCursor(openTag);
+                showToast(`已插入「${selectedEffect.name}」`);
+                
+                selectedEffect = null;
+                renderEffects();
+                updateInsertButton();
+            }
+        }
+
+        // 处理待闭合的标签
+        function processPendingTags() {
+            const editor = document.getElementById('textInput');
+            const pendingSpans = editor.querySelectorAll('span[data-pending="true"]');
+            
+            pendingSpans.forEach(span => {
+                span.removeAttribute('data-pending');
+                // 添加闭合内容
+                const contentSpan = span.querySelector('.tag-content');
+                if (contentSpan && !contentSpan.textContent.trim()) {
+                    contentSpan.textContent = ' ';
+                }
+                // 添加结束标记
+                const endMark = document.createElement('span');
+                endMark.className = 'tag-end-mark';
+                endMark.textContent = ' ⟫';
+                endMark.style.cssText = 'opacity: 0.5; font-size: 11px;';
+                span.appendChild(endMark);
+            });
+        }
+
+        // 结束当前标签
+        function endCurrentTag() {
+            if (!isInTagMode) return;
+
+            isInTagMode = false;
+            currentTagName = null;
+            currentTagColor = null;
+            
+            // 处理待闭合的标签
+            processPendingTags();
+            
+            updateInsertButton();
+            showToast('标签已结束');
+            updateStats();
+        }
+
+        // 清除所有
+        function clearAll() {
+            if (isInTagMode) {
+                isInTagMode = false;
+                currentTagName = null;
+                currentTagColor = null;
+            }
+            
+            document.getElementById('textInput').innerHTML = '';
+            selectedTone = null;
+            selectedEffect = null;
+            
+            renderTones();
+            renderEffects();
+            updateInsertButton();
+            updateStats();
+            showToast('已清空');
+        }
+
+        // 更新统计
+        function updateStats() {
+            const text = getEditorText();
+            const toneMatches = text.match(/语气:/g) || [];
+            const effectMatches = text.match(/效果:/g) || [];
+            
+            document.getElementById('toneCount').textContent = toneMatches.length;
+            document.getElementById('effectCount').textContent = effectMatches.length;
+            document.getElementById('charCount').textContent = text.length;
+        }
+
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 事件监听
+        function setupEventListeners() {
+            const editor = document.getElementById('textInput');
+            
+            editor.addEventListener('input', () => {
+                updateStats();
+            });
+
+            editor.addEventListener('keydown', (e) => {
+                // Ctrl+Enter 插入
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!isInTagMode && (selectedTone || selectedEffect)) {
+                        insertTag();
+                    } else if (isInTagMode) {
+                        endCurrentTag();
+                    }
+                }
+                // Ctrl+E 结束
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    if (isInTagMode) {
+                        endCurrentTag();
+                    }
+                }
+                // Escape 取消
+                if (e.key === 'Escape' && isInTagMode) {
+                    // 移除未完成的标签
+                    const pendingSpans = editor.querySelectorAll('span[data-pending="true"]');
+                    pendingSpans.forEach(span => span.remove());
+                    isInTagMode = false;
+                    currentTagName = null;
+                    currentTagColor = null;
+                    updateInsertButton();
+                    showToast('已取消');
+                }
+            });
+
+            // 防止粘贴时带格式
+            editor.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

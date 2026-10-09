@@ -142,7 +142,6 @@ struct CreditsView: View {
                             .foregroundStyle(AppColor.textSecondary)
                         }
                         .padding(16)
-                        .frame(width: 260)
                         .presentationCompactAdaptation(.popover)
                     }
                 }
