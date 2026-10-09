@@ -95,11 +95,7 @@ struct VoiceStudioView: View {
                 Text("文本输入区".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
-                HStack(spacing: 12) {
-                    Text("\(vm.charCount) 字".localized())
-                    Text("·")
-                    Text("约 \(vm.estimatedPoints) 积分".localized())
-                }
+                Text("\(vm.charCount) 字".localized())    
                 .font(AppFont.monoSmall)
                 .foregroundStyle(AppColor.textTertiary)
             }
