@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语气编辑器 - EmotionVoice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=SF+Pro+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --macos-bg: #f5f5f7;
+            --macos-surface: #ffffff;
+            --macos-surface-secondary: #f0f0f2;
+            --macos-border: rgba(0, 0, 0, 0.1);
+            --macos-text: #1d1d1f;
+            --macos-text-secondary: #86868b;
+            --macos-accent: #0071e3;
+            --macos-accent-hover: #0077ed;
+            --macos-red: #ff3b30;
+            --macos-green: #34c759;
+            --macos-orange: #ff9500;
+            --macos-yellow: #ffcc00;
+            --macos-blue: #5ac8fa;
+            --macos-purple: #af52de;
+            --macos-pink: #ff2d55;
+            --macos-teal: #5ac8fa;
+            --macos-gray: #8e8e93;
+            --macos-shadow: rgba(0, 0, 0, 0.04);
+            --macos-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --macos-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: var(--macos-bg);
+            color: var(--macos-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--macos-shadow-md);
+        }
+
+        .header-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .header-text h1 {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--macos-text);
+        }
+
+        .header-text p {
+            font-size: 14px;
+            color: var(--macos-text-secondary);
+            margin-top: 2px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--macos-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--macos-shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--macos-border);
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--macos-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-header-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .panel-header h2 {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--macos-text);
+        }
+
+        .panel-header .count {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--macos-text-secondary);
+            background: var(--macos-surface-secondary);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .panel-content {
+            padding: 12px;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
+
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .item-grid.single-col {
+            grid-template-columns: 1fr;
+        }
+
+        .item-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--macos-surface-secondary);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--macos-text);
+            text-align: left;
+        }
+
+        .item-btn:hover {
+            background: #e8e8ed;
+            transform: translateY(-1px);
+        }
+
+        .item-btn:active {
+            transform: translateY(0);
+            background: #ddd;
+        }
+
+        .item-btn.inserted {
+            background: var(--macos-accent);
+            color: white;
+            border-color: var(--macos-accent);
+        }
+
+        .item-btn.inserted:hover {
+            background: var(--macos-accent-hover);
+        }
+
+        .item-btn .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .effect-btn {
+            justify-content: flex-start;
+            padding: 12px 14px;
+        }
+
+        .effect-btn .effect-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .effect-btn .effect-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .effect-btn .effect-name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .effect-btn .effect-desc {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .editor-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .editor-panel {
+            background: var(--macos-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--macos-shadow-md);
+            border: 1px solid var(--macos-border);
+            overflow: hidden;
+        }
+
+        .editor-toolbar {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--macos-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--macos-surface-secondary);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--macos-text);
+        }
+
+        .toolbar-btn:hover {
+            background: #e8e8ed;
+        }
+
+        .toolbar-btn:active {
+            transform: scale(0.97);
+        }
+
+        .toolbar-btn.primary {
+            background: var(--macos-accent);
+            color: white;
+        }
+
+        .toolbar-btn.primary:hover {
+            background: var(--macos-accent-hover);
+        }
+
+        .toolbar-btn.danger {
+            color: var(--macos-red);
+        }
+
+        .toolbar-btn.danger:hover {
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .toolbar-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--macos-border);
+            margin: 0 4px;
+        }
+
+        .editor-area {
+            position: relative;
+            min-height: 280px;
+        }
+
+        .text-input {
+            width: 100%;
+            min-height: 280px;
+            padding: 20px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: 'SF Pro Text', -apple-system, sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--macos-text);
+            background: transparent;
+        }
+
+        .text-input::placeholder {
+            color: var(--macos-text-secondary);
+        }
+
+        .preview-panel {
+            background: var(--macos-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--macos-shadow-md);
+            border: 1px solid var(--macos-border);
+        }
+
+        .preview-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--macos-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .preview-header h3 {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-header h3 svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--macos-text-secondary);
+        }
+
+        .preview-content {
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .preview-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .preview-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .preview-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
+
+        .tag-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 2px;
+            vertical-align: middle;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tag-inline:hover {
+            transform: scale(1.05);
+        }
+
+        .tag-inline .remove-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            font-size: 10px;
+            margin-left: 2px;
+            opacity: 0.8;
+        }
+
+        .tag-inline .remove-tag:hover {
+            opacity: 1;
+        }
+
+        .tag-tone {
+            background: var(--macos-accent);
+            color: white;
+        }
+
+        .tag-effect {
+            background: var(--macos-purple);
+            color: white;
+        }
+
+        .tag-text {
+            color: var(--macos-text);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--macos-text-secondary);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            fill: var(--macos-text-secondary);
+            opacity: 0.5;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--macos-text);
+            color: white;
+            padding: 14px 24px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--macos-shadow-lg);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .insert-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--macos-yellow);
+            color: #7a6200;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation for button press */
+        @keyframes buttonPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+
+        .btn-press {
+            animation: buttonPop 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>语气编辑器</h1>
+                <p>选择语气和拟声效果，为你的语音注入情感</p>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <aside class="sidebar">
+                <!-- 语气选择面板 -->
+                <div class="panel" id="tonePanel">
+                    <div class="panel-header">
+                        <div class="panel-header-icon" style="background: rgba(0, 113, 227, 0.12);">
+                            <svg viewBox="0 0 24 24" fill="#0071e3">
+                                <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                            </svg>
+                        </div>
+                        <h2>语气选择</h2>
+                        <span class="count">23 种</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="item-grid" id="toneGrid"></div>
+                    </div>
+                </div>
+
+                <!-- 拟声效果面板 -->
+                <div class="panel" id="effectPanel">
+                    <div class="panel-header">
+                        <div class="panel-header-icon" style="background: rgba(175, 82, 222, 0.12);">
+                            <svg viewBox="0 0 24 24" fill="#af52de">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                            </svg>
+                        </div>
+                        <h2>拟声效果</h2>
+                        <span class="count">7 种</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="item-grid single-col" id="effectGrid"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="editor-section">
+                <!-- 编辑器工具栏 -->
+                <div class="editor-panel">
+                    <div class="editor-toolbar">
+                        <div id="insertIndicator" class="insert-indicator" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                            </svg>
+                            <span id="insertLabel">等待插入语气...</span>
+                        </div>
+                        
+                        <div style="flex: 1;"></div>
+                        
+                        <button class="toolbar-btn" onclick="clearAllTags()" title="清除所有标签">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                            清除全部
+                        </button>
+                        
+                        <div class="toolbar-divider"></div>
+                        
+                        <button class="toolbar-btn primary" onclick="insertTag()" title="插入标签">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                            </svg>
+                            插入标签
+                        </button>
+                    </div>
+                    
+                    <div class="editor-area">
+                        <textarea 
+                            class="text-input" 
+                            id="textInput" 
+                            placeholder="在这里输入文本...
+
+选择左侧的语气或拟声效果后，点击「插入标签」或直接点击下方预览中的标签位置。
+
+输入的文本将按照语气标签依次朗读：平静 → 兴奋 → 悲伤 → ... 直到遇到下一个语气标签。"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- 预览面板 -->
+                <div class="preview-panel">
+                    <div class="preview-header">
+                        <h3>
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                            预览
+                        </h3>
+                        <button class="toolbar-btn" onclick="refreshPreview()" title="刷新预览">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="preview-content" id="previewContent">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>
+                            </svg>
+                            <p>输入文本并添加语气标签后<br>这里将显示带标签的预览效果</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 23种语气配置
+        const tones = [
+            { id: 'calm', name: '平静', color: '#5ac8fa' },
+            { id: 'excited', name: '兴奋', color: '#ff9500' },
+            { id: 'sad', name: '悲伤', color: '#5c6bc0' },
+            { id: 'angry', name: '愤怒', color: '#ff3b30' },
+            { id: 'gentle', name: '温柔', color: '#f8bbd9' },
+            { id: 'serious', name: '严肃', color: '#607d8b' },
+            { id: 'humorous', name: '幽默', color: '#ffeb3b' },
+            { id: 'romantic', name: '浪漫', color: '#ec407a' },
+            { id: 'nervous', name: '紧张', color: '#ab47bc' },
+            { id: 'confused', name: '困惑', color: '#8d6e63' },
+            { id: 'surprised', name: '惊讶', color: '#26c6da' },
+            { id: 'confident', name: '自信', color: '#66bb6a' },
+            { id: 'tired', name: '疲惫', color: '#90a4ae' },
+            { id: 'hesitant', name: '犹豫', color: '#a1887f' },
+            { id: 'firm', name: '坚定', color: '#4db6ac' },
+            { id: 'sweet', name: '甜美', color: '#f48fb1' },
+            { id: 'hoarse', name: '沙哑', color: '#78909c' },
+            { id: 'lively', name: '活泼', color: '#ffca28' },
+            { id: 'cold', name: '冷淡', color: '#b0bec5' },
+            { id: 'envious', name: '羡慕', color: '#ce93d8' },
+            { id: 'adoring', name: '崇拜', color: '#ffcc80' },
+            { id: 'sarcastic', name: '讽刺', color: '#aed581' },
+            { id: 'weary', name: '疲惫', color: '#bcaaa4' }
+        ];
+
+        // 7种拟声效果配置
+        const effects = [
+            { id: 'laugh', name: '大笑', desc: '插入笑声效果', icon: '😄', bgColor: '#ffcc00' },
+            { id: 'smile', name: '微笑', desc: '插入微笑效果', icon: '😊', bgColor: '#34c759' },
+            { id: 'sigh', name: '叹息', desc: '插入叹气声', icon: '😔', bgColor: '#5ac8fa' },
+            { id: 'cry', name: '哭泣', desc: '插入哭泣声', icon: '😭', bgColor: '#5c6bc0' },
+            { id: 'cough', name: '咳嗽', desc: '插入咳嗽声', icon: '🤧', bgColor: '#ff9500' },
+            { id: 'gasp', name: '倒吸气', desc: '插入惊讶吸气', icon: '😮', bgColor: '#ff2d55' },
+            { id: 'breath', name: '深呼吸', desc: '插入呼吸声', icon: '😌', bgColor: '#66bb6a' }
+        ];
+
+        let selectedTone = null;
+        let selectedEffect = null;
+        let insertedTags = [];
+
+        // 初始化UI
+        function init() {
+            renderTones();
+            renderEffects();
+            setupEventListeners();
+        }
+
+        // 渲染语气按钮
+        function renderTones() {
+            const grid = document.getElementById('toneGrid');
+            grid.innerHTML = tones.map(tone => `
+                <button class="item-btn ${selectedTone?.id === tone.id ? 'inserted' : ''}" 
+                        data-tone-id="${tone.id}"
+                        onclick="selectTone('${tone.id}')">
+                    <span class="dot" style="background: ${tone.color};"></span>
+                    ${tone.name}
+                </button>
+            `).join('');
+        }
+
+        // 渲染拟声效果按钮
+        function renderEffects() {
+            const grid = document.getElementById('effectGrid');
+            grid.innerHTML = effects.map(effect => `
+                <button class="item-btn effect-btn ${selectedEffect?.id === effect.id ? 'inserted' : ''}"
+                        data-effect-id="${effect.id}"
+                        onclick="selectEffect('${effect.id}')">
+                    <span class="effect-icon" style="background: ${effect.bgColor}20; color: ${effect.bgColor};">
+                        ${effect.icon}
+                    </span>
+                    <span class="effect-text">
+                        <span class="effect-name">${effect.name}</span>
+                        <span class="effect-desc">${effect.desc}</span>
+                    </span>
+                </button>
+            `).join('');
+        }
+
+        // 选择语气
+        function selectTone(toneId) {
+            const tone = tones.find(t => t.id === toneId);
+            if (selectedTone?.id === toneId) {
+                selectedTone = null;
+                updateInsertIndicator();
+            } else {
+                selectedTone = tone;
+                selectedEffect = null;
+                updateInsertIndicator();
+            }
+            renderTones();
+            renderEffects();
+        }
+
+        // 选择拟声效果
+        function selectEffect(effectId) {
+            const effect = effects.find(e => e.id === effectId);
+            if (selectedEffect?.id === effectId) {
+                selectedEffect = null;
+                updateInsertIndicator();
+            } else {
+                selectedEffect = effect;
+                selectedTone = null;
+                updateInsertIndicator();
+            }
+            renderTones();
+            renderEffects();
+        }
+
+        // 更新插入指示器
+        function updateInsertIndicator() {
+            const indicator = document.getElementById('insertIndicator');
+            const label = document.getElementById('insertLabel');
+            
+            if (selectedTone) {
+                indicator.style.display = 'flex';
+                indicator.style.background = selectedTone.color;
+                indicator.style.color = 'white';
+                label.textContent = `插入「${selectedTone.name}」`;
+            } else if (selectedEffect) {
+                indicator.style.display = 'flex';
+                indicator.style.background = '#af52de';
+                indicator.style.color = 'white';
+                label.textContent = `插入「${selectedEffect.name}」`;
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
+
+        // 插入标签
+        function insertTag() {
+            if (!selectedTone && !selectedEffect) {
+                showToast('请先选择语气或拟声效果');
+                return;
+            }
+
+            const textarea = document.getElementById('textInput');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+
+            let tagText = '';
+            let tagType = '';
+
+            if (selectedTone) {
+                tagText = `[语气:${selectedTone.name}]`;
+                tagType = 'tone';
+            } else if (selectedEffect) {
+                tagText = `[效果:${selectedEffect.name}]`;
+                tagType = 'effect';
+            }
+
+            // 插入标签
+            const newText = text.substring(0, start) + tagText + text.substring(end);
+            textarea.value = newText;
+
+            // 记录标签
+            insertedTags.push({
+                type: tagType,
+                id: selectedTone?.id || selectedEffect?.id,
+                name: selectedTone?.name || selectedEffect?.name,
+                position: start,
+                length: tagText.length
+            });
+
+            // 移动光标到标签后
+            const newPosition = start + tagText.length;
+            textarea.setSelectionRange(newPosition, newPosition);
+            textarea.focus();
+
+            // 刷新预览
+            refreshPreview();
+
+            // 取消选择
+            selectedTone = null;
+            selectedEffect = null;
+            updateInsertIndicator();
+            renderTones();
+            renderEffects();
+
+            showToast(`已插入${tagType === 'tone' ? '语气' : '效果'}标签「${tagText.slice(1, -1)}」`);
+        }
+
+        // 移除标签
+        function removeTag(index) {
+            if (index < 0 || index >= insertedTags.length) return;
+
+            const tag = insertedTags[index];
+            const textarea = document.getElementById('textInput');
+            const text = textarea.value;
+
+            // 查找并移除标签
+            const tagPattern = tag.type === 'tone' 
+                ? `[语气:${tag.name}]` 
+                : `[效果:${tag.name}]`;
+            
+            // 找到所有相同名称的标签
+            let searchStart = 0;
+            let foundIndex = -1;
+            let foundCount = 0;
+            
+            while (searchStart < text.length) {
+                const pos = text.indexOf(tagPattern, searchStart);
+                if (pos === -1) break;
+                
+                if (foundCount === index - (insertedTags.filter(t => t.name === tag.name && t.type === tag.type).length - insertedTags.slice(0, index + 1).filter(t => t.name === tag.name && t.type === tag.type).length) + foundIndex + 1) {
+                    foundIndex = pos;
+                    break;
+                }
+                foundCount++;
+                searchStart = pos + 1;
+            }
+
+            // 简化处理：直接移除第一个匹配的标签
+            const realIndex = text.indexOf(tagPattern);
+            if (realIndex !== -1) {
+                const newText = text.substring(0, realIndex) + text.substring(realIndex + tagPattern.length);
+                textarea.value = newText;
+            }
+
+            insertedTags.splice(index, 1);
+            refreshPreview();
+            showToast(`已移除「${tag.name}」`);
+        }
+
+        // 清除所有标签
+        function clearAllTags() {
+            const textarea = document.getElementById('textInput');
+            let text = textarea.value;
+            
+            // 移除所有语气和效果标签
+            insertedTags.forEach(tag => {
+                const pattern = tag.type === 'tone' 
+                    ? `[语气:${tag.name}]` 
+                    : `[效果:${tag.name}]`;
+                text = text.split(pattern).join('');
+            });
+
+            textarea.value = text;
+            insertedTags = [];
+            refreshPreview();
+            showToast('已清除所有标签');
+        }
+
+        // 刷新预览
+        function refreshPreview() {
+            const textarea = document.getElementById('textInput');
+            const preview = document.getElementById('previewContent');
+            const text = textarea.value;
+
+            if (!text.trim()) {
+                preview.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>
+                        </svg>
+                        <p>输入文本并添加语气标签后<br>这里将显示带标签的预览效果</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 解析文本并生成预览HTML
+            let html = '';
+            let remaining = text;
+            let lastIndex = 0;
+
+            // 匹配所有标签
+            const tagRegex = /\[(语气|效果):([^\]]+)\]/g;
+            let match;
+
+            while ((match = tagRegex.exec(text)) !== null) {
+                // 添加标签前的文本
+                if (match.index > lastIndex) {
+                    html += `<span class="tag-text">${escapeHtml(text.substring(lastIndex, match.index))}</span>`;
+                }
+
+                const tagType = match[1];
+                const tagName = match[2];
+                const tagIndex = insertedTags.findIndex(t => t.name === tagName && t.type === (tagType === '语气' ? 'tone' : 'effect'));
+
+                if (tagType === '语气') {
+                    const tone = tones.find(t => t.name === tagName);
+                    const color = tone?.color || '#0071e3';
+                    html += `
+                        <span class="tag-inline tag-tone" 
+                              style="background: ${color}; color: white;" 
+                              title="点击移除此语气"
+                              onclick="removeTag(${tagIndex})">
+                            🎤 ${tagName}
+                            <span class="remove-tag">×</span>
+                        </span>
+                    `;
+                } else {
+                    const effect = effects.find(e => e.name === tagName);
+                    html += `
+                        <span class="tag-inline tag-effect" 
+                              title="点击移除此效果"
+                              onclick="removeTag(${tagIndex})">
+                            ${effect?.icon || '🔊'} ${tagName}
+                            <span class="remove-tag">×</span>
+                        </span>
+                    `;
+                }
+
+                lastIndex = match.index + match[0].length;
+            }
+
+            // 添加剩余文本
+            if (lastIndex < text.length) {
+                html += `<span class="tag-text">${escapeHtml(text.substring(lastIndex))}</span>`;
+            }
+
+            preview.innerHTML = html || '<span class="tag-text">无文本内容</span>';
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 事件监听
+        function setupEventListeners() {
+            const textarea = document.getElementById('textInput');
+            
+            // 输入时更新预览
+            textarea.addEventListener('input', () => {
+                // 延迟刷新避免频繁更新
+                clearTimeout(textarea.previewTimeout);
+                textarea.previewTimeout = setTimeout(refreshPreview, 100);
+            });
+
+            // 键盘快捷键
+            textarea.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + Enter 插入标签
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    insertTag();
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
