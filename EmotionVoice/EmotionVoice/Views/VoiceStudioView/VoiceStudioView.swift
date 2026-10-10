@@ -750,7 +750,7 @@ struct VoiceStudioView: View {
                         // 切换语言选择
                         vm.toggleLanguage(lang.name)
                     } label: {
-                        Text(lang.name)
+                        Text(lang.name.localized())
                             .font(.system(size: 10))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -788,7 +788,7 @@ struct VoiceStudioView: View {
                         // 应用预设（单选切换）
                         vm.applyPreset(preset)
                     } label: {
-                        Text(preset)
+                        Text(preset.localized())
                             .font(AppFont.caption)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
@@ -1000,12 +1000,12 @@ struct NLRulePopover: View {
             .padding(20)
         }
         .textSelection(.enabled)
-        .frame(width: 420, height: 580)
+        .frame(width: 500, height: 600)
     }
 
     private func ruleRow(_ number: String, _ title: String, _ content: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text(number)
+            Text(number.localized())
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 18, height: 18)
@@ -1014,10 +1014,10 @@ struct NLRulePopover: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.localized())
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(AppColor.textPrimary)
-                Text(content)
+                Text(content.localized())
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textSecondary)
             }
@@ -1062,9 +1062,9 @@ struct NLRulePopover: View {
 
     private func dimensionRow(_ label: String, _ content: String, index: Int) -> some View {
         HStack(spacing: 0) {
-            Text(label)
+            Text(label.localized())
                 .frame(width: 60, alignment: .leading)
-            Text(content)
+            Text(content.localized())
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(AppFont.caption)
@@ -1080,11 +1080,11 @@ struct NLRulePopover: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 10))
                     .foregroundStyle(AppColor.accentPrimary)
-                Text(title)
+                Text(title.localized())
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(AppColor.textPrimary)
             }
-            Text(content)
+            Text(content.localized())
                 .font(AppFont.caption)
                 .foregroundStyle(AppColor.textSecondary)
                 .padding(.leading, 18)

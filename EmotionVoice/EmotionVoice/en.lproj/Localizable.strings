@@ -54,6 +54,7 @@
 "请先输入要合成的文本" = "Please enter text to synthesize first";
 "请先选择一个音色" = "Please select a voice first";
 "仅支持中文和英文输入" = "Only Chinese and English input is supported.";
+"🌐 语言" = "🌐 Language";
 
 // 音色
 "旗舰音色" = "Flagship Voice";
@@ -65,12 +66,11 @@
 "老年" = "Senior";
 "青年" = "Young Adult";
 "青少年" = "Teenager";
-"中文" = "Chinese";
-"英文" = "English";
 "儿童" = "Children";
 "角色" = "Character";
 
 // 自然语言指令预设
+"✨ 描述预设" = "✨ Description Presets";
 "温柔女声" = "Gentle Female Voice";
 "活泼男声" = "Lively Male Voice";
 "新闻播报" = "News Broadcast";
@@ -78,6 +78,52 @@
 "广告配音" = "Commercial Narration";
 "教学讲解" = "Tutorial Narration";
 "描述你想听到的声音..." = "Describe the sound you want to hear...";
+"温柔的女性声音，语速适中，音色柔和亲切" = "A gentle female voice with a moderate speaking pace and a soft, warm tone";
+"年轻活泼的男性声音，语速偏快，语调积极" = "A young, energetic male voice with a fast speaking pace and an upbeat tone";
+"标准播音风格，吐字清晰，字正腔圆" = "A standard broadcasting style with clear articulation and precise pronunciation";
+"知性沉稳的讲述风格，富有感染力" = "An intelligent, composed narration style with an engaging and expressive delivery";
+"充满激情和说服力的广告风格，节奏明快" = "A passionate and persuasive advertising style with a lively pace";
+"耐心细致的教学讲解风格，逻辑清晰" = "A patient and detailed instructional style with clear, logical explanations";
+"如何编写高质量的声音描述" = "How to Write High-Quality Voice Descriptions";
+"核心原则" = "Core Principles";
+"具体而非模糊" = "Be Specific, Not Vague";
+"使用描绘声音特质的词语，如 “低沉” “清脆” “语速偏快”，避免 “好听” “普通” 等模糊的表述。" = "Use words that describe vocal characteristics, such as 'deep' 'crisp' and 'fast-paced' Avoid vague descriptions like 'pleasant' or 'ordinary' ";
+"多维而非单一" = "Cover Multiple Dimensions";
+"好的描述通常涵盖多个维度，如性别、年龄、情感等。仅写 “女声” 过于宽泛，难以生成有特色的音色。" = "Good descriptions typically cover multiple dimensions, such as gender, age, and emotion. Simply writing 'female voice' is too broad to produce a distinctive voice.";
+"客观而非主观" = "Be Objective, Not Subjective";
+"聚焦声音的物理和感知特征。例如，用 “音调偏高，富有活力” 代替 “我最喜欢的声音”。" = "Focus on the physical and perceptual characteristics of the voice. For example, use 'high-pitched and energetic' instead of 'my favorite voice' ";
+"原创而非模仿" = "Describe, Don’t Imitate";
+"描述声音的特质，而非要求模仿特定人物，如名人或演员。模型不支持模仿特定人物，且此类要求可能涉及版权风险。" = "Describe vocal characteristics rather than asking the model to imitate specific people, such as celebrities or actors. The model does not support imitating specific individuals, and such requests may involve copyright risks.";
+"简洁而非冗余" = "Be Concise, Not Redundant";
+"确保每个词都有明确作用，避免重复的同义词或无意义的修饰。" = "Make sure every word serves a clear purpose. Avoid redundant synonyms and meaningless embellishments.";
+"描述维度参考" = "Voice Description Dimensions";
+"建议组合以下维度描述声音，维度越丰富，生成效果越精准。" = "Combine the following dimensions to describe a voice. The more dimensions you include, the more precise the generated result will be.";
+"示例" = "Examples";
+"标准播音风格" = "Standard Broadcasting Style";
+"吐字清晰精准，字正腔圆" = "Clear and precise articulation with perfect pronunciation";
+"年轻女性声音" = "Young Female Voice";
+"语速较快，带有明显的上扬语调，适合介绍时尚产品" = "Fast-paced with a noticeable rising intonation, ideal for introducing fashion products";
+"沉稳中年男性" = "Mature Male Voice";
+"语速缓慢，音色低沉有磁性，适合朗读新闻或纪录片解说" = "Slow-paced with a deep, resonant voice, ideal for reading news or narrating documentaries";
+"温柔知性女性" = "Gentle, Intelligent Female Voice";
+"30岁左右，语调平和，适合有声书朗读" = "Around 30 years old, with a calm and even tone, ideal for audiobook narration";
+"可爱儿童声音" = "Cute Child’s Voice";
+"大约8岁女孩，说话略带稚气，适合动画角色配音" = "An approximately 8-year-old girl with a slightly childish tone, ideal for animated character voice-overs";
+"维度" = "Dimension";
+"描述示例" = "Description Examples";
+"性别" = "Gender";
+"男性、女性、中性" = "Male, Female, Neutral";
+"年龄" = "Age";
+"儿童、青少年、青年、中年、老年" = "Child, Teenager, Young Adult, Middle-Aged, Senior";
+"音调" = "Pitch";
+"高音、中音、低音、偏高、偏低" = "High, Mid, Low, Slightly High, Slightly Low";
+"快速、中速、缓慢、偏快、偏慢" = "Fast, Moderate, Slow, Slightly Fast, Slightly Slow";
+"情感" = "Emotion";
+"开朗、沉稳、温柔、严肃、活泼、冷静、治愈" = "Cheerful, Composed, Gentle, Serious, Lively, Calm, Soothing";
+"特点" = "Features";
+"有磁性、清脆、沙哑、圆润、甜美、浑厚、有力" = "Resonant, Clear, Husky, Smooth, Sweet, Deep, Powerful";
+"用途" = "Use";
+"新闻播报、广告配音、有声书、动画角色、语音助手" = "News Broadcasting, Advertising, Audiobooks, Animation Characters, Voice Assistants";
 
 // 语气控制标签
 "悲伤" = "Sad";
@@ -196,3 +242,29 @@
 "积分" = "Points";
 "加载中..." = "Loading...";
 "暂无音频" = "No audio available";
+
+// 语言
+"中文" = "Chinese";
+"英文" = "English";
+"粤语" = "Cantonese";
+"重庆话" = "Chongqing Dialect";
+"四川话" = "Sichuan Dialect";
+"东北话" = "Northeastern Chinese Dialect";
+"河南话" = "Henan Dialect";
+"陕西话" = "Shaanxi Dialect";
+"天津话" = "Tianjin Dialect";
+"山东话" = "Shandong Dialect";
+"法语" = "French";
+"德语" = "German";
+"日语" = "Japanese";
+"韩语" = "Korean";
+"俄语" = "Russian";
+"葡萄牙语" = "Portuguese";
+"泰语" = "Thai";
+"印尼语" = "Indonesian";
+"越南语" = "Vietnamese";
+"西班牙语" = "Spanish";
+"意大利语" = "Italian";
+"马来西亚语" = "Malay";
+"菲律宾语" = "Filipino";
+"阿拉伯语" = "Arabic";

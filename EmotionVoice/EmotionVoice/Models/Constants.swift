@@ -130,7 +130,7 @@ enum Constants {
     static let nlLanguages: [NLLanguageItem] = [
         // 中文方言
         NLLanguageItem(name: "中文", code: "mandarin", region: "中文方言"),
-        NLLanguageItem(name: "英语", code: "english", region: "英语"),
+        NLLanguageItem(name: "英文", code: "english", region: "英文"),
         NLLanguageItem(name: "粤语", code: "cantonese", region: "中文方言"),
         NLLanguageItem(name: "重庆话", code: "chongqing", region: "中文方言"),
         NLLanguageItem(name: "四川话", code: "sichuan", region: "中文方言"),
