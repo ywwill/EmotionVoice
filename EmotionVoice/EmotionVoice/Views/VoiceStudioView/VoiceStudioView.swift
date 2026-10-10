@@ -19,15 +19,6 @@ struct VoiceStudioView: View {
     /// 积分不足时弹出购买页面
     @State private var showCreditsPurchaseSheet: Bool = false
     
-    /// 弹窗高度：生成中状态较短，完成状态较长
-    private var modalHeight: CGFloat {
-        if vm.isGenerating {
-            return 400  // 生成中状态：较矮
-        } else {
-            return 600  // 完成状态：较高
-        }
-    }
-    
     /// 语气控制说明弹窗
     @State private var showEmotionRulePopover: Bool = false
     /// 拟声效果说明弹窗
@@ -36,32 +27,27 @@ struct VoiceStudioView: View {
     @State private var showNLRulePopover: Bool = false
 
     var body: some View {
-        
-        HStack(spacing: 16) {
-            // 左侧：输入框和情感面板
-            VStack(alignment: .leading, spacing: 12) {
-                textEditorCard
-                emotionCard
+        studioContent
+            // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域
+            .allowsHitTesting(!showGenerationModal)
+            // 生成弹窗用整窗遮罩承载，卡片在遮罩内按内容自行撑开并居中。
+            // 之前用 sheet 承载时窗口高度是固定的，内容一短，卡片下方就会露出一条黑色空白。
+            .overlay {
+                if showGenerationModal {
+                    AudioGenerationModal(vm: vm, isPresented: $showGenerationModal)
+                        .transition(.opacity)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // 右侧：生成栏 + 右侧面板
-            VStack(alignment: .leading, spacing: 12) {
-                generateBar
-                editPanel
+            // 弹窗与工作台里的 NSTextView 共处同一窗口。SwiftUI 自绘内容不是 NSView，
+            // 不参与 AppKit 的 cursor rect 判定，下层的 I-beam 会穿透到弹窗上方
+            //（异常范围正好等于卡片内容区高度）。这里在弹窗期间禁用窗口的 cursor rects，
+            // 交给弹窗内各控件的 hover 决定光标；弹窗关闭后恢复。
+            .suppressesCursorRects(showGenerationModal)
+            .animation(.easeInOut(duration: 0.25), value: showGenerationModal)
+            .sheet(isPresented: $showVoiceLibrarySheet) {
+                VoiceLibrarySheet()
+                    .frame(width: 1400, height: 880)
             }
-            .frame(width: 360)
-        }
-        .padding(20)
-        .padding(.bottom, 16)
-        .sheet(isPresented: $showVoiceLibrarySheet) {
-            VoiceLibrarySheet()
-                .frame(width: 1400, height: 880)
-        }
-        .sheet(isPresented: $showGenerationModal) {
-            AudioGenerationModal(vm: vm, isPresented: $showGenerationModal)
-                .frame(width: 520, height: modalHeight)
-        }
         .sheet(isPresented: $showCreditsPurchaseSheet) {
             CreditsPurchaseView()
                 .frame(width: 480, height: 620)
@@ -87,6 +73,29 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = newKey
             }
         }
+    }
+
+    /// 工作台主体（不含生成弹窗）
+    private var studioContent: some View {
+        HStack(spacing: 16) {
+            // 左侧：输入框和情感面板
+            VStack(alignment: .leading, spacing: 12) {
+                textEditorCard
+                emotionCard
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // 右侧：生成栏 + 右侧面板
+            VStack(alignment: .leading, spacing: 12) {
+                generateBar
+                editPanel
+            }
+            .frame(width: 360)
+        }
+        .padding(20)
+        .padding(.bottom, 16)
+        // 撑满所在区域，遮罩才能铺满整个窗口；两列高度仍是内容自身高度并垂直居中
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 文本编辑器

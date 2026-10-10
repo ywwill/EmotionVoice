@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmotionVoice · App Icon 设计</title>
+<style>
+  :root{
+    --bg:#0E0F12; --bg2:#15171B; --bg3:#1C1F24;
+    --amber:#E8A968; --amber-d:#D49B5B; --amber-h:#F2C088; --gold-hi:#FBDCAF;
+    --t1:#F5F5F7; --t2:#A8ABB4; --t3:#6B6E76;
+    --line:rgba(255,255,255,.08);
+    --r-m:12px; --r-l:16px; --r-xl:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--t1);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.6;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:64px 40px 96px}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:14px}
+  h1{font-size:38px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+  .sub{color:var(--t2);font-size:16px;margin-top:12px;max-width:640px}
+
+  .hero{
+    display:grid;grid-template-columns:300px 1fr;gap:56px;align-items:center;
+    margin:56px 0 24px;padding:48px;border-radius:var(--r-xl);
+    background:radial-gradient(120% 140% at 20% 0%,#1A1D23 0%,#111318 55%,#0A0B0E 100%);
+    border:1px solid var(--line);
+  }
+  .hero img{width:300px;height:300px;display:block}
+  .hero h2{font-size:24px;font-weight:600;margin-bottom:6px}
+  .hero .tag{color:var(--amber);font-size:13px;font-weight:600;letter-spacing:.06em;margin-bottom:16px}
+  .hero p{color:var(--t2);font-size:14.5px;margin-bottom:10px}
+
+  section{margin-top:72px}
+  h3{font-size:19px;font-weight:600;margin-bottom:6px}
+  .hint{color:var(--t3);font-size:13px;margin-bottom:24px}
+
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:28px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+
+  .layer{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:22px}
+  .layer .n{font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.1em;margin-bottom:12px}
+  .layer .sw{height:56px;border-radius:var(--r-m);margin-bottom:14px;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center}
+  .layer h4{font-size:14px;font-weight:600;margin-bottom:6px}
+  .layer p{font-size:12.5px;color:var(--t2);line-height:1.6}
+
+  .ladder{display:flex;align-items:flex-end;gap:32px;flex-wrap:wrap}
+  .step{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .step img{display:block;image-rendering:-webkit-optimize-contrast}
+  .step span{font-size:11px;color:var(--t3);font-variant-numeric:tabular-nums}
+  .stage{border-radius:var(--r-l);padding:32px;border:1px solid var(--line)}
+  .stage.dark{background:#101216}
+  .stage.light{background:#FBFBFD;border-color:rgba(0,0,0,.08)}
+  .stage.light .step span{color:#8A8D94}
+
+  .desk{
+    border-radius:var(--r-xl);padding:70px 40px 74px;position:relative;
+    background:linear-gradient(160deg,#2B3346 0%,#1B2233 38%,#141A26 70%,#0D1119 100%);
+    border:1px solid var(--line);overflow:hidden;
+  }
+  .desk::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 78% 12%,rgba(232,169,104,.16),transparent 60%);pointer-events:none}
+  .dock{
+    display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:26px;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+    backdrop-filter:blur(24px) saturate(160%);
+    box-shadow:0 18px 40px rgba(0,0,0,.45);position:relative;z-index:1;
+  }
+  .dock img{width:66px;height:66px;display:block}
+  .ph{width:53px;height:53px;border-radius:12px;display:block}
+  .ph.a{background:linear-gradient(150deg,#5B7CFA,#3B5BE0)}
+  .ph.b{background:linear-gradient(150deg,#F2F3F7,#C9CDD6)}
+  .ph.c{background:linear-gradient(150deg,#3ECF8E,#1FA97A)}
+  .ph.d{background:linear-gradient(150deg,#F2994A,#E06B3C)}
+  .ph.e{background:linear-gradient(150deg,#9B8CFA,#6E5BE0)}
+  .desk-cap{position:relative;z-index:1;margin-top:22px;font-size:12px;color:rgba(255,255,255,.62)}
+
+  .sw-row{display:flex;gap:12px;flex-wrap:wrap}
+  .chip{flex:1 1 120px;border-radius:var(--r-m);overflow:hidden;border:1px solid var(--line)}
+  .chip .c{height:64px}
+  .chip .m{padding:10px 12px;background:var(--bg3)}
+  .chip .m b{display:block;font-size:12px;font-weight:600}
+  .chip .m i{font-style:normal;font-size:11px;color:var(--t3);font-family:ui-monospace,"SF Mono",Menlo,monospace}
+
+  .usage{border-radius:var(--r-l);border:1px solid var(--line);padding:26px;display:flex;flex-direction:column;
+    align-items:center;gap:16px;justify-content:center;min-height:230px;background:#0B0C0F}
+  .usage img.mark{width:136px;height:136px}
+  .usage img.app{width:118px;height:118px}
+  .usage small{font-size:11px;color:var(--t3);letter-spacing:.04em}
+
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .vs .item{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:26px;text-align:center}
+  .vs img{width:176px;height:176px;display:block;margin:0 auto 16px}
+  .vs b{font-size:13px;display:block}
+  .vs small{font-size:12px;color:var(--t3);display:block;line-height:1.6;margin-top:4px}
+
+  .alt{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-l);padding:24px;text-align:center}
+  .alt img{width:150px;height:150px;display:block;margin:0 auto 14px}
+  .alt b{font-size:13px;display:block}
+  .alt small{font-size:12px;color:var(--t3);display:block;line-height:1.6;margin-top:4px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line)}
+  th{color:var(--t3);font-weight:500;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+  td{color:var(--t2)}
+  td:first-child{color:var(--t1);width:170px}
+  code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;color:var(--amber-h);
+    background:rgba(232,169,104,.09);padding:2px 6px;border-radius:5px}
+
+  footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);color:var(--t3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">App Icon · macOS · v2</div>
+  <h1>EmotionVoice 图标设计</h1>
+  <p class="sub">这一版抛弃了均衡器式的声波。产品真正的核心动作不是「播放声音」，而是<b style="color:var(--t1)">把情感调到想要的位置</b>——所以图标是一枚可以被你拧动的旋钮。</p>
+
+  <div class="hero">
+    <img src="preview/icon-512.png" alt="EmotionVoice App Icon">
+    <div>
+      <h2>The Emotion Knob</h2>
+      <div class="tag">情感旋钮 · 一枚精密的情感控制器</div>
+      <p>金色金属旋钮坐在深冷黑的腔体里，四周是 13 个刻度点铺开的 300° 行程，把手停在两点钟方向——情感正在被调高。</p>
+      <p>它对应的是产品里最真实的交互：音色编辑器中的情感强度、语速、音调。EmotionVoice 让「情感」变成一个可以精确调节的量。</p>
+    </div>
+  </div>
+
+  <section>
+    <h3>构成解析</h3>
+    <p class="hint">四层叠加，从背景到主体，每一层承担一个语义。</p>
+    <div class="grid4">
+      <div class="layer">
+        <div class="n">LAYER 01</div>
+        <div class="sw" style="background:linear-gradient(180deg,#1A1D24,#111318 52%,#0A0B0E)"></div>
+        <h4>深空冷黑腔体</h4>
+        <p>#1A1D24 → #0A0B0E。深夜录音棚的颜色，让金属获得最大对比。</p>
+      </div>
+      <div class="layer">
+        <div class="n">LAYER 02</div>
+        <div class="sw" style="background:radial-gradient(58% 58% at 50% 50%,rgba(232,169,104,.44),transparent 70%),#111318"></div>
+        <h4>中心暖光</h4>
+        <p>琥珀色光晕从旋钮背后渗出，暗示这台设备是「通电工作」的。</p>
+      </div>
+      <div class="layer">
+        <div class="n">LAYER 03</div>
+        <div class="sw" style="background:#111318">
+          <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
+            <g fill="#E8A968">
+              <circle cx="27" cy="4" r="2.1"/><circle cx="38.5" cy="6.4" r="2.1"/>
+              <circle cx="47.6" cy="13.2" r="2.1"/><circle cx="52" cy="23.5" r="2.1"/>
+              <circle cx="50.6" cy="34.2" r="2.1"/><circle cx="44.8" cy="43.6" r="2.1"/>
+              <circle cx="35.6" cy="49.9" r="2.1"/><circle cx="25" cy="51" r="2.1"/>
+              <circle cx="14.6" cy="48.4" r="2.1"/><circle cx="6.4" cy="41.2" r="2.1"/>
+              <circle cx="3.1" cy="30.6" r="2.1"/><circle cx="5.6" cy="20" r="2.1"/>
+              <circle cx="12.2" cy="11.2" r="2.1"/>
+            </g>
+            <circle cx="27" cy="27" r="12" fill="#C98A45"/>
+            <rect x="25" y="16" width="4" height="11" rx="2" fill="#2B1B09"/>
+          </svg>
+        </div>
+        <h4>刻度行程</h4>
+        <p>13 个刻度点铺开 300°，从克制到饱满，给「情感量」一个可读的刻度。</p>
+      </div>
+      <div class="layer">
+        <div class="n">LAYER 04</div>
+        <div class="sw" style="background:radial-gradient(120% 120% at 28% 24%,#FBDCAF 0%,#EDB273 22%,#C98A45 52%,#96682C 80%,#6B481C 100%)"></div>
+        <h4>金属旋钮</h4>
+        <p>偏心径向渐变做出球面感，机加工同心纹、倒角亮边与镜面高光，让它像一块真实的车削金属。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>尺寸阶梯</h3>
+    <p class="hint">96px 以下自动切换为加粗剪影版：刻度点收敛、旋钮放大、把手加宽，保证 Dock 与菜单栏依然可辨识。</p>
+    <div class="stage dark">
+      <div class="ladder">
+        <div class="step"><img src="preview/icon-16.png" width="16" height="16"><span>16</span></div>
+        <div class="step"><img src="preview/icon-32.png" width="32" height="32"><span>32</span></div>
+        <div class="step"><img src="preview/icon-64.png" width="64" height="64"><span>64</span></div>
+        <div class="step"><img src="preview/icon-128.png" width="128" height="128"><span>128</span></div>
+        <div class="step"><img src="preview/icon-256.png" width="256" height="256"><span>256</span></div>
+        <div class="step"><img src="preview/icon-512.png" width="256" height="256"><span>512</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="stage light">
+      <div class="ladder">
+        <div class="step"><img src="preview/icon-16.png" width="16" height="16"><span>16</span></div>
+        <div class="step"><img src="preview/icon-32.png" width="32" height="32"><span>32</span></div>
+        <div class="step"><img src="preview/icon-64.png" width="64" height="64"><span>64</span></div>
+        <div class="step"><img src="preview/icon-128.png" width="128" height="128"><span>128</span></div>
+        <div class="step"><img src="preview/icon-256.png" width="256" height="256"><span>256</span></div>
+        <div class="step"><img src="preview/icon-512.png" width="220" height="220"><span>512</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>在 Dock 中的样子</h3>
+    <p class="hint">约 64pt，与相邻图标并排的实际观感（其余方块为占位示意，同样保留 macOS 图标留白）。</p>
+    <div class="desk">
+      <div class="dock">
+        <span class="ph a"></span>
+        <span class="ph b"></span>
+        <span class="ph c"></span>
+        <img src="preview/icon-128.png" alt="EmotionVoice">
+        <span class="ph d"></span>
+        <span class="ph e"></span>
+      </div>
+      <div class="desk-cap">一整圈金色是 Dock 里少见的做法。它不会和蓝色系的系统图标抢视觉，但会是那排图标里唯一一个「温的」。</div>
+    </div>
+  </section>
+
+  <section>
+    <h3>色彩规范</h3>
+    <p class="hint">与产品 UI 的 Cold Luxury 色板同源：只有一种强调色，只是把它做出了金属的层次。</p>
+    <div class="sw-row">
+      <div class="chip"><div class="c" style="background:#1A1D24"></div><div class="m"><b>腔体上</b><i>#1A1D24</i></div></div>
+      <div class="chip"><div class="c" style="background:#0A0B0E"></div><div class="m"><b>腔体下</b><i>#0A0B0E</i></div></div>
+      <div class="chip"><div class="c" style="background:#FBDCAF"></div><div class="m"><b>金 · 镜面</b><i>#FBDCAF</i></div></div>
+      <div class="chip"><div class="c" style="background:#E8A968"></div><div class="m"><b>金 · 主（强调色）</b><i>#E8A968</i></div></div>
+      <div class="chip"><div class="c" style="background:#C98A45"></div><div class="m"><b>金 · 中间调</b><i>#C98A45</i></div></div>
+      <div class="chip"><div class="c" style="background:#6B481C"></div><div class="m"><b>金 · 暗部</b><i>#6B481C</i></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>应用示例</h3>
+    <p class="hint">同一符号的三种形态，覆盖应用图标、品牌标志与单色场景。</p>
+    <div class="grid3">
+      <div class="usage">
+        <img class="app" src="preview/icon-256.png" alt="App icon">
+        <small>APP ICON</small>
+      </div>
+      <div class="usage">
+        <img class="mark" src="preview/mark-color.png" alt="Color mark">
+        <small>MARK · 彩色（透明底）</small>
+      </div>
+      <div class="usage">
+        <img class="mark" src="preview/mark-mono.png" alt="Mono mark">
+        <small>MARK · 单色</small>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>其他方向（可随时切换）</h3>
+    <p class="hint">同一套配色下的另外两个器物隐喻，作为备选保留。</p>
+    <div class="grid3">
+      <div class="alt">
+        <img src="preview/alt/monitor.png" alt="Monitor">
+        <b>Reference Monitor</b>
+        <small>监听音箱。指向「专业录音棚」的定位，器物感最强。</small>
+      </div>
+      <div class="alt">
+        <img src="preview/alt/chip.png" alt="Emotion chip">
+        <b>Emotion Chip</b>
+        <small>情感胶囊。取自产品独有的 EmotionToken，正文中嵌入的情感标记。</small>
+      </div>
+      <div class="alt" style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left">
+        <b style="margin-bottom:8px">怎么换？</b>
+        <small>告诉我选哪个方向，我用同一套几何引擎重新出全套尺寸与图标集，几分钟的事。</small>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>与旧图标对比</h3>
+    <p class="hint">旧版是粉紫橙渐变加爱心波形，跟产品 UI 的冷调设计语言完全脱节，也是同类 App 里最常见的符号。</p>
+    <div class="vs">
+      <div class="item">
+        <img src="preview/icon-old.png" alt="旧图标">
+        <b>旧版</b>
+        <small>暖色渐变 · 与 UI 色系脱节 · 通用爱心语音符号</small>
+      </div>
+      <div class="item">
+        <img src="preview/icon-512.png" alt="新图标">
+        <b>新版 · The Emotion Knob</b>
+        <small>冷调腔体 + 金属琥珀金 · 与 UI 同源 · 独一无二的器物符号</small>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3>技术规格</h3>
+    <p class="hint">矢量源加全套位图，可直接替换进 Xcode 工程。</p>
+    <div class="card">
+      <table>
+        <tr><th>项目</th><th>说明</th></tr>
+        <tr><td>画布</td><td>1024 × 1024，主体 824 × 824 居中，四周留白 100px（符合 Apple macOS 图标规范）</td></tr>
+        <tr><td>外形</td><td>超椭圆 squircle，指数 n = 5，等效圆角半径约 182px，与 Apple 连续圆角一致</td></tr>
+        <tr><td>小尺寸</td><td>16 / 32 / 64px 使用剪影版：刻度收敛、旋钮半径 244 → 254、把手宽度 46 → 58</td></tr>
+        <tr><td>矢量源</td><td><code>EmotionVoice-AppIcon.svg</code> · <code>EmotionVoice-Mark.svg</code> · <code>EmotionVoice-Mark-Mono.svg</code></td></tr>
+        <tr><td>图标集</td><td><code>AppIcon.appiconset/</code>，含 10 个尺寸与 Contents.json，覆盖同名目录即可生效</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    EmotionVoice · App Icon v2 · 2026-10-10<br>
+    配色与设计语言对齐《EmotionVoice-macOS 产品设计文档 v1.1》与《首页设计概念》
+  </footer>
+
+</div>
+</body>
+</html>
