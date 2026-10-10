@@ -49,23 +49,54 @@ final class VoiceStudioViewModel: ObservableObject {
     @Published var rate: Double = 1.0    // 0.5 - 2.0
     @Published var volume: Double = 100  // 0 - 100
 
-    // 语言/采样率/格式
-    @Published var language: LanguageItem = Constants.languages[0]
+    // 采样率/格式
     @Published var sampleRate: Int = Constants.defaultSampleRate
     @Published var selectedFormat: String = Constants.defaultFormat
 
     // 自然语言指令
     @Published var nlInstruction: String = ""
 
-    // 预设芯片
-    let nlPresets: [String] = [
-        "温柔女声".localized(),
-        "活泼男声".localized(),
-        "新闻播报".localized(),
-        "有声书".localized(),
-        "广告配音".localized(),
-        "教学讲解".localized(),
-    ]
+    // 选中的预设
+    @Published var selectedPreset: String? = nil
+
+    // 选中的语言
+    @Published var selectedLanguage: String? = nil
+
+    // 预设芯片（从 Constants 读取）
+    var nlPresets: [String] {
+        Constants.nlPresets.map { $0.name }
+    }
+
+    /// 应用预设
+    func applyPreset(_ preset: String) {
+        // 切换选中状态
+        if selectedPreset == preset {
+            selectedPreset = nil
+        } else {
+            selectedPreset = preset
+        }
+        updateNLInstruction()
+    }
+
+    /// 切换语言选择
+    func toggleLanguage(_ language: String) {
+        if selectedLanguage == language {
+            selectedLanguage = nil
+        } else {
+            selectedLanguage = language
+        }
+        updateNLInstruction()
+    }
+
+    /// 更新指令文本：拼接语言和预设
+    private func updateNLInstruction() {
+        let parts: [String] = [
+            selectedLanguage,
+            selectedPreset.flatMap { Constants.instructionForPreset($0) }
+        ].compactMap { $0 }
+
+        nlInstruction = parts.joined(separator: "，")
+    }
 
     // 生成状态
     @Published var isGenerating: Bool = false
@@ -171,20 +202,7 @@ final class VoiceStudioViewModel: ObservableObject {
         }
         return items
     }
-
-    /// 应用预设
-    func applyPreset(_ preset: String) {
-        switch preset {
-        case "温柔女声": nlInstruction = "温柔的女性声音，语速适中，音色柔和亲切"
-        case "活泼男声": nlInstruction = "年轻活泼的男性声音，语速偏快，语调积极"
-        case "新闻播报": nlInstruction = "标准播音风格，吐字清晰，字正腔圆"
-        case "有声书":   nlInstruction = "知性沉稳的讲述风格，富有感染力"
-        case "广告配音": nlInstruction = "充满激情和说服力的广告风格，节奏明快"
-        case "教学讲解": nlInstruction = "耐心细致的教学讲解风格，逻辑清晰"
-        default: break
-        }
-    }
-
+    
     /// 生成音频（集成阿里云 TTS 服务，无字符数限制）
     /// 验证已在 VoiceStudioView 中完成，此处直接开始生成并显示弹窗进度
     func generate(completion: @escaping (Bool) -> Void) {
@@ -251,7 +269,6 @@ final class VoiceStudioViewModel: ObservableObject {
                         rate: rate,
                         volume: volume,
                         sampleRate: sampleRate,
-                        language: language.code,
                         format: self.selectedFormat.lowercased(),
                         nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
                         onAudio: onAudio,

@@ -37,7 +37,6 @@
 "更换" = "Change";
 "查看更多音色" = "View More Voices";
 "🎚️ 音频控制" = "🎚️ Audio Controls";
-"🌐 语言与采样率" = "🌐 Language & Sample Rate";
 "格式" = "Format";
 "📋 语音指令" = "📋 Voice Instructions";
 "自然语言" = "Natural Language";
@@ -47,13 +46,14 @@
 "语音合成" = "Text-to-Speech";
 "CD 级音频" = "CD-Quality Audio";
 "专业音频" = "Professional Audio";
-"💡 详细描述 = 更好的效果" = "💡 More Details = Better Results";
+"详细描述 = 更好的效果" = "More Details = Better Results";
 "粤语" = "Cantonese";
 "四川话" = "Sichuan";
 "⭐ 旗舰" = "⭐ Flagship";
 "无法生成" = "Unable to Generate";
 "请先输入要合成的文本" = "Please enter text to synthesize first";
 "请先选择一个音色" = "Please select a voice first";
+"仅支持中文和英文输入" = "Only Chinese and English input is supported.";
 
 // 音色
 "旗舰音色" = "Flagship Voice";
@@ -77,7 +77,7 @@
 "有声书" = "Audiobook";
 "广告配音" = "Commercial Narration";
 "教学讲解" = "Tutorial Narration";
-"或自定义描述你想听到的声音..." = "Or describe the voice you want to hear...";
+"描述你想听到的声音..." = "Describe the sound you want to hear...";
 
 // 语气控制标签
 "悲伤" = "Sad";

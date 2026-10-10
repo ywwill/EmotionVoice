@@ -125,12 +125,34 @@ enum Constants {
                    description: "哼声、嗤笑"),
     ]
 
-    // MARK: - 语言/方言
-    static let languages: [LanguageItem] = [
-        LanguageItem(name: "中文".localized(), code: "mandarin"),
-        LanguageItem(name: "英文".localized(), code: "english"),
-        LanguageItem(name: "粤语".localized(), code: "cantonese"),
-        LanguageItem(name: "四川话".localized(), code: "sichuan"),
+    // MARK: - 语言/方言（用于语音指令模块）
+    /// 支持的语言列表，包含中文方言和世界主要语言
+    static let nlLanguages: [NLLanguageItem] = [
+        // 中文方言
+        NLLanguageItem(name: "中文", code: "mandarin", region: "中文方言"),
+        NLLanguageItem(name: "英语", code: "english", region: "英语"),
+        NLLanguageItem(name: "粤语", code: "cantonese", region: "中文方言"),
+        NLLanguageItem(name: "重庆话", code: "chongqing", region: "中文方言"),
+        NLLanguageItem(name: "四川话", code: "sichuan", region: "中文方言"),
+        NLLanguageItem(name: "东北话", code: "dongbei", region: "中文方言"),
+        NLLanguageItem(name: "河南话", code: "henan", region: "中文方言"),
+        NLLanguageItem(name: "陕西话", code: "shaanxi", region: "中文方言"),
+        NLLanguageItem(name: "天津话", code: "tianjin", region: "中文方言"),
+        NLLanguageItem(name: "山东话", code: "shandong", region: "中文方言"),
+        NLLanguageItem(name: "法语", code: "french", region: "欧洲"),
+        NLLanguageItem(name: "德语", code: "german", region: "欧洲"),
+        NLLanguageItem(name: "日语", code: "japanese", region: "亚洲"),
+        NLLanguageItem(name: "韩语", code: "korean", region: "亚洲"),
+        NLLanguageItem(name: "俄语", code: "russian", region: "欧洲"),
+        NLLanguageItem(name: "葡萄牙语", code: "portuguese", region: "欧洲"),
+        NLLanguageItem(name: "泰语", code: "thai", region: "亚洲"),
+        NLLanguageItem(name: "印尼语", code: "indonesian", region: "亚洲"),
+        NLLanguageItem(name: "越南语", code: "vietnamese", region: "亚洲"),
+        NLLanguageItem(name: "西班牙语", code: "spanish", region: "欧洲"),
+        NLLanguageItem(name: "意大利语", code: "italian", region: "欧洲"),
+        NLLanguageItem(name: "马来西亚语", code: "malay", region: "亚洲"),
+        NLLanguageItem(name: "菲律宾语", code: "filipino", region: "亚洲"),
+        NLLanguageItem(name: "阿拉伯语", code: "arabic", region: "其他"),
     ]
 
     // MARK: - 采样率
@@ -142,6 +164,22 @@ enum Constants {
         SampleRateItem(rate: 44100, displayName: "44.1 kHz", useCase: "CD 级音频".localized()),
         SampleRateItem(rate: 48000, displayName: "48 kHz",   useCase: "专业音频".localized()),
     ]
+
+    // MARK: - 语音指令预设模板
+    /// 预设模板列表，用于快速填充语音描述
+    static let nlPresets: [NLPresetItem] = [
+        NLPresetItem(name: "温柔女声", instruction: "温柔的女性声音，语速适中，音色柔和亲切"),
+        NLPresetItem(name: "活泼男声", instruction: "年轻活泼的男性声音，语速偏快，语调积极"),
+        NLPresetItem(name: "新闻播报", instruction: "标准播音风格，吐字清晰，字正腔圆"),
+        NLPresetItem(name: "有声书", instruction: "知性沉稳的讲述风格，富有感染力"),
+        NLPresetItem(name: "广告配音", instruction: "充满激情和说服力的广告风格，节奏明快"),
+        NLPresetItem(name: "教学讲解", instruction: "耐心细致的教学讲解风格，逻辑清晰"),
+    ]
+
+    /// 根据预设名称获取对应的指令文本
+    static func instructionForPreset(_ name: String) -> String? {
+        return nlPresets.first(where: { $0.name == name })?.instruction
+    }
 }
 
 /// 情感条目（用于网格选择）
@@ -160,12 +198,27 @@ struct LanguageItem: Identifiable, Hashable {
     var id: String { code }
 }
 
+/// 语音指令模块的语言条目（支持更多语言和方言）
+struct NLLanguageItem: Identifiable, Hashable {
+    let name: String        // 显示名称（如 "重庆话"）
+    let code: String        // 语言代码
+    let region: String      // 区域分组（用于分类显示）
+    var id: String { code }
+}
+
 /// 采样率条目
 struct SampleRateItem: Identifiable, Hashable {
     let rate: Int           // 采样率（Hz）
     let displayName: String // 显示名称（如 "48 kHz"）
     let useCase: String     // 典型用途
     var id: Int { rate }
+}
+
+/// 语音指令预设条目
+struct NLPresetItem: Identifiable, Hashable {
+    let name: String
+    let instruction: String 
+    var id: String { name }
 }
 
 /// 积分消耗参考条目

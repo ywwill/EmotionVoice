@@ -40,7 +40,6 @@ final class BailianTTSService {
         rate: Double = 1.0,
         volume: Double = 100,
         sampleRate: Int = 48000,
-        language: String = "mandarin",
         format: String = "wav",
         nlInstruction: String? = nil
     ) async throws -> Data {
@@ -52,7 +51,6 @@ final class BailianTTSService {
                 rate: rate,
                 volume: volume,
                 sampleRate: sampleRate,
-                language: language,
                 format: format,
                 nlInstruction: nlInstruction,
                 onAudio: nil,
@@ -71,7 +69,6 @@ final class BailianTTSService {
         rate: Double = 1.0,
         volume: Double = 100,
         sampleRate: Int = 48000,
-        language: String = "mandarin",
         format: String = "wav",
         nlInstruction: String? = nil,
         onAudio: ((Data) -> Void)? = nil,
@@ -86,7 +83,6 @@ final class BailianTTSService {
                     rate: rate,
                     volume: volume,
                     sampleRate: sampleRate,
-                    language: language,
                     format: format,
                     nlInstruction: nlInstruction,
                     onAudio: onAudio
@@ -106,7 +102,6 @@ final class BailianTTSService {
         rate: Double,
         volume: Double,
         sampleRate: Int,
-        language: String,
         format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
@@ -122,7 +117,6 @@ final class BailianTTSService {
                 rate: rate,
                 volume: volume,
                 sampleRate: sampleRate,
-                language: language,
                 format: format,
                 nlInstruction: nlInstruction,
                 onAudio: onAudio
@@ -166,7 +160,6 @@ final class BailianTTSService {
         rate: Double,
         volume: Double,
         sampleRate: Int,
-        language: String,
         format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
@@ -194,7 +187,8 @@ final class BailianTTSService {
         )
 
         Log(message: "发送 run-task 事件，task_id: \(taskId)")
-
+        Log(message: "发送 参数: \(runTaskEvent)")
+        
         // 发送 run-task
         try await sendMessage(runTaskEvent)
 
@@ -732,8 +726,7 @@ extension BailianTTSService {
             voice: voice,
             rate: 1.0,
             volume: 100,
-            sampleRate: 48000,
-            language: "mandarin"
+            sampleRate: 48000
         )
     }
 
@@ -744,7 +737,6 @@ extension BailianTTSService {
         rate: Double = 1.0,
         volume: Double = 100,
         sampleRate: Int = 48000,
-        language: String = "mandarin",
         nlInstruction: String? = nil,
         to url: URL
     ) async throws -> URL {
@@ -755,7 +747,6 @@ extension BailianTTSService {
             rate: rate,
             volume: volume,
             sampleRate: sampleRate,
-            language: language,
             nlInstruction: nlInstruction
         )
 

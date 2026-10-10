@@ -32,6 +32,8 @@ struct VoiceStudioView: View {
     @State private var showEmotionRulePopover: Bool = false
     /// 拟声效果说明弹窗
     @State private var showRichLanguageRulePopover: Bool = false
+    /// 语音指令说明弹窗
+    @State private var showNLRulePopover: Bool = false
 
     var body: some View {
         
@@ -351,7 +353,6 @@ struct VoiceStudioView: View {
             VStack(alignment: .leading, spacing: 12) {
                 voiceCard
                 audioControlCard
-                languageCard
                 nlCard
             }
         }
@@ -540,50 +541,11 @@ struct VoiceStudioView: View {
                     displayValue: "\(Int(vm.volume))%"
                 )
             }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.bgSecondary)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.large)
-                .stroke(AppColor.borderSubtle, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
-    }
-
-    private var languageCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("🌐 语言与采样率".localized())
-                .font(.system(size: 13, weight: .semibold))
-
-            HStack(spacing: 4) {
-                ForEach(Constants.languages) { lang in
-                    let selected = vm.language == lang
-                    Button {
-                        vm.language = lang
-                    } label: {
-                        Text(lang.name)
-                            .font(.system(size: 11, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                selected ? AppColor.accentPrimary.opacity(0.2) : AppColor.bgTertiary
-                            )
-                            .foregroundStyle(
-                                selected ? AppColor.accentPrimary : AppColor.textSecondary
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
-                }
-            }
-
+            
             HStack {
                 Text("格式".localized())
                     .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
-                
+
                 HStack(spacing: 4) {
                     ForEach(["mp3", "wav"], id: \.self) { format in
                         let selected = vm.selectedFormat.lowercased() == format.lowercased()
@@ -608,11 +570,10 @@ struct VoiceStudioView: View {
                     }
                 }
             }
-            
+
             HStack {
                 Text("采样率".localized())
                     .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
                 Spacer()
             }
 
@@ -663,6 +624,7 @@ struct VoiceStudioView: View {
                     .pointingHandCursor()
                 }
             }
+            
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -679,45 +641,76 @@ struct VoiceStudioView: View {
             HStack {
                 Text("📋 语音指令".localized())
                     .font(.system(size: 13, weight: .semibold))
+                Button {
+                    showNLRulePopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColor.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .popover(isPresented: $showNLRulePopover) {
+                    NLRulePopover()
+                        .presentationCompactAdaptation(.popover)
+                }
                 Spacer()
                 Text("自然语言".localized())
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textTertiary)
             }
 
-            // 预设芯片
-            FlowLayout(spacing: 6) {
-                ForEach(vm.nlPresets, id: \.self) { preset in
-                    Button {
-                        vm.applyPreset(preset)
-                    } label: {
-                        Text(preset)
-                            .font(AppFont.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(AppColor.bgTertiary)
-                            .foregroundStyle(AppColor.textSecondary)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule().stroke(AppColor.borderSubtle, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
+            // 语言选择区域
+            nlLanguageSelector
+
+            // 预设描述区域
+            nlPresetsSelector
+
+            HStack {
+                HStack {
+                    Image(systemName: "lightbulb.min")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.yellow)
+                    Text("详细描述 = 更好的效果".localized())
+                        .font(AppFont.monoSmall)
+                        .foregroundStyle(AppColor.textTertiary)
                 }
+                
+                Spacer()
+                Text("\(vm.nlInstruction.count) / 1000")
+                    .font(AppFont.monoSmall)
+                    .foregroundStyle(vm.nlInstruction.count >= 1000 ? AppColor.accentPrimary : AppColor.textTertiary)
             }
 
+            // 提示：仅支持中英文
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.yellow)
+                Text("仅支持中文和英文输入")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.yellow)
+            }
+            
             // 输入框
             ZStack(alignment: .topLeading) {
                 if vm.nlInstruction.isEmpty {
-                    Text("或自定义描述你想听到的声音...".localized())
+                    Text("描述你想听到的声音...".localized())
                         .font(AppFont.bodyMedium)
                         .foregroundStyle(AppColor.textTertiary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 3)
                         .allowsHitTesting(false)
                 }
-                TextEditor(text: $vm.nlInstruction)
+                TextEditor(text: Binding(
+                    get: { vm.nlInstruction },
+                    set: { newValue in
+                        // 限制字符数不超过 1000
+                        if newValue.count <= 1000 {
+                            vm.nlInstruction = newValue
+                        }
+                    }
+                ))
                     .font(AppFont.bodyMedium)
                     .foregroundStyle(AppColor.textPrimary)
                     .scrollContentBackground(.hidden)
@@ -730,17 +723,7 @@ struct VoiceStudioView: View {
                     .stroke(AppColor.borderSubtle, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-            .frame(height: 80)
-
-            HStack {
-                Text("💡 详细描述 = 更好的效果".localized())
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.textTertiary)
-                Spacer()
-                Text("\(vm.nlInstruction.count) / 200")
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
+            .frame(height: 120)
         }
         .padding(16)
         .background(AppColor.bgSecondary)
@@ -750,6 +733,88 @@ struct VoiceStudioView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
+
+    // MARK: - 语言选择器
+
+    /// 语言选择区域：点击后切换语言选择（可与预设同时选中）
+    private var nlLanguageSelector: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("🌐 语言".localized())
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppColor.textTertiary)
+
+            // 语言选择网格（流式布局）
+            FlowLayout(spacing: 4) {
+                ForEach(Constants.nlLanguages) { lang in
+                    Button {
+                        // 切换语言选择
+                        vm.toggleLanguage(lang.name)
+                    } label: {
+                        Text(lang.name)
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(vm.selectedLanguage == lang.name ? AppColor.accentPrimary : AppColor.bgTertiary)
+                            .foregroundStyle(vm.selectedLanguage == lang.name ? .white : AppColor.textSecondary)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
+                }
+            }
+        }
+        .padding(10)
+        .background(AppColor.bgTertiary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+    }
+
+    // MARK: - 预设描述选择器
+
+    /// 预设描述区域：点击后应用预设内容（单选切换）
+    private var nlPresetsSelector: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("✨ 描述预设".localized())
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppColor.textTertiary)
+
+            // 预设芯片网格（流式布局，撑满宽度）
+            FlowLayout(spacing: 6) {
+                ForEach(vm.nlPresets, id: \.self) { preset in
+                    Button {
+                        // 应用预设（单选切换）
+                        vm.applyPreset(preset)
+                    } label: {
+                        Text(preset)
+                            .font(AppFont.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(vm.selectedPreset == preset ? AppColor.accentPrimary : AppColor.bgTertiary)
+                            .foregroundStyle(vm.selectedPreset == preset ? .white : AppColor.textSecondary)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(vm.selectedPreset == preset ? AppColor.accentPrimary : AppColor.borderSubtle, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandCursor()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+        .background(AppColor.bgTertiary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+    }
+
+    // MARK: - 辅助方法
 
     /// 生成栏：生成按钮 + 积分信息
     /// - 生成音频按钮（主操作）
@@ -850,5 +915,180 @@ struct VoiceStudioView: View {
             return false
         }
         return true
+    }
+}
+
+// MARK: - 语音指令说明弹窗
+
+/// 语音指令编写指南弹窗
+struct NLRulePopover: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // 标题
+                Text("如何编写高质量的声音描述")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(AppColor.textPrimary)
+
+                // 核心原则
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("核心原则")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppColor.accentPrimary)
+
+                    ruleRow(
+                        "1",
+                        "具体而非模糊",
+                        "使用描绘声音特质的词语，如 “低沉” “清脆” “语速偏快”，避免 “好听” “普通” 等模糊的表述。"
+                    )
+
+                    ruleRow(
+                        "2",
+                        "多维而非单一",
+                        "好的描述通常涵盖多个维度，如性别、年龄、情感等。仅写 “女声” 过于宽泛，难以生成有特色的音色。"
+                    )
+
+                    ruleRow(
+                        "3",
+                        "客观而非主观",
+                        "聚焦声音的物理和感知特征。例如，用 “音调偏高，富有活力” 代替 “我最喜欢的声音”。"
+                    )
+
+                    ruleRow(
+                        "4",
+                        "原创而非模仿",
+                        "描述声音的特质，而非要求模仿特定人物，如名人或演员。模型不支持模仿特定人物，且此类要求可能涉及版权风险。"
+                    )
+
+                    ruleRow(
+                        "5",
+                        "简洁而非冗余",
+                        "确保每个词都有明确作用，避免重复的同义词或无意义的修饰。"
+                    )
+                }
+
+                Divider()
+
+                // 描述维度参考
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("描述维度参考")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppColor.accentPrimary)
+
+                    Text("建议组合以下维度描述声音，维度越丰富，生成效果越精准。")
+                        .font(AppFont.caption)
+                        .foregroundStyle(AppColor.textSecondary)
+
+                    dimensionTable()
+                }
+
+                Divider()
+
+                // 示例
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("示例")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppColor.accentPrimary)
+
+                    exampleRow("标准播音风格", "吐字清晰精准，字正腔圆")
+                    exampleRow("年轻女性声音", "语速较快，带有明显的上扬语调，适合介绍时尚产品")
+                    exampleRow("沉稳中年男性", "语速缓慢，音色低沉有磁性，适合朗读新闻或纪录片解说")
+                    exampleRow("温柔知性女性", "30岁左右，语调平和，适合有声书朗读")
+                    exampleRow("可爱儿童声音", "大约8岁女孩，说话略带稚气，适合动画角色配音")
+                }
+            }
+            .padding(20)
+        }
+        .textSelection(.enabled)
+        .frame(width: 420, height: 580)
+    }
+
+    private func ruleRow(_ number: String, _ title: String, _ content: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(number)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 18, height: 18)
+                .background(AppColor.accentPrimary)
+                .clipShape(Circle())
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppColor.textPrimary)
+                Text(content)
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textSecondary)
+            }
+        }
+    }
+
+    private func dimensionTable() -> some View {
+        let rows: [(String, String)] = [
+            ("性别", "男性、女性、中性"),
+            ("年龄", "儿童、青少年、青年、中年、老年"),
+            ("音调", "高音、中音、低音、偏高、偏低"),
+            ("语速", "快速、中速、缓慢、偏快、偏慢"),
+            ("情感", "开朗、沉稳、温柔、严肃、活泼、冷静、治愈"),
+            ("特点", "有磁性、清脆、沙哑、圆润、甜美、浑厚、有力"),
+            ("用途", "新闻播报、广告配音、有声书、动画角色、语音助手")
+        ]
+
+        return VStack(spacing: 0) {
+            // 表头
+            HStack(spacing: 0) {
+                Text("维度")
+                    .frame(width: 60, alignment: .leading)
+                Text("描述示例")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(AppColor.textPrimary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(AppColor.bgTertiary)
+
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                dimensionRow(row.0, row.1, index: index)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+    }
+
+    private func dimensionRow(_ label: String, _ content: String, index: Int) -> some View {
+        HStack(spacing: 0) {
+            Text(label)
+                .frame(width: 60, alignment: .leading)
+            Text(content)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(AppFont.caption)
+        .foregroundStyle(AppColor.textSecondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(index % 2 == 0 ? Color.clear : AppColor.bgTertiary.opacity(0.3))
+    }
+
+    private func exampleRow(_ title: String, _ content: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColor.accentPrimary)
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppColor.textPrimary)
+            }
+            Text(content)
+                .font(AppFont.caption)
+                .foregroundStyle(AppColor.textSecondary)
+                .padding(.leading, 18)
+        }
+        .padding(.vertical, 4)
     }
 }

@@ -310,7 +310,6 @@ struct LabeledSlider: View {
             HStack {
                 Text(label)
                     .font(AppFont.caption)
-                    .foregroundStyle(AppColor.textTertiary)
                 Spacer()
                 Text(displayValue ?? String(format: "%.\(step < 1 ? 1 : 0)f%@", value, unit))
                     .font(AppFont.monoMedium)
