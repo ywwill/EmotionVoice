@@ -53,6 +53,7 @@ final class ProjectService {
                     format: row[db.audioFormat],
                     sampleRate: row[db.audioSampleRate],
                     duration: row[db.audioDuration],
+                    fileSize: row[db.audioFileSize],
                     pointsCost: row[db.audioPointsCost],
                     status: AudioStatus(rawValue: row[db.audioStatus]) ?? .pending,
                     createdAt: row[db.audioCreatedAt]
@@ -84,6 +85,7 @@ final class ProjectService {
         duration: Double = 0.0
     ) -> AudioItem? {
         let now = Date()
+        let fileSize = fileSizeOfAudio(named: fileName)
         do {
             let id = try db.db.run(db.audioItems.insert(
                 db.audioFileName <- fileName,
@@ -95,7 +97,8 @@ final class ProjectService {
                 db.audioDisplayName <- displayName,
                 db.audioPointsCost <- pointsCost,
                 db.audioStatus <- status.rawValue,
-                db.audioCreatedAt <- now
+                db.audioCreatedAt <- now,
+                db.audioFileSize <- fileSize
             ))
 
             return AudioItem(
@@ -107,6 +110,7 @@ final class ProjectService {
                 format: format,
                 sampleRate: sampleRate,
                 duration: duration,
+                fileSize: fileSize,
                 pointsCost: pointsCost,
                 status: status,
                 createdAt: now
@@ -154,6 +158,14 @@ final class ProjectService {
             let url = generatedAudioDirectoryURL().appendingPathComponent(name)
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    /// 读磁盘计算音频文件大小（字节）；文件不存在返回 0
+    private func fileSizeOfAudio(named fileName: String) -> Int {
+        let url = generatedAudioDirectoryURL().appendingPathComponent(fileName)
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attrs[.size] as? Int64 else { return 0 }
+        return Int(size)
     }
 
     /// 计算文本预估积分消耗

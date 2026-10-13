@@ -661,6 +661,13 @@
 		6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */; };
 		6F2DB01C3062649F0086FD6F /* AudioPlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
+		6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001000 /* PlayerTextMetrics.swift */; };
+		6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001001 /* PlayerMetaStrip.swift */; };
+		6FB000000000000000001002 /* PlayerTransportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001002 /* PlayerTransportView.swift */; };
+		6FB000000000000000001003 /* PlayerUtilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001003 /* PlayerUtilityView.swift */; };
+		6FB000000000000000001004 /* PlayerTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001004 /* PlayerTranscriptView.swift */; };
+		6FB000000000000000001005 /* PlaybackStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001005 /* PlaybackStatusBar.swift */; };
+		6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */; };
 		6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE53060D7680005713F /* StoreKitManager.swift */; };
 		6FCA9CE83060D7680005713F /* CreditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE33060D7680005713F /* CreditService.swift */; };
 		6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE23060D7680005713F /* CreditManager.swift */; };
@@ -677,14 +684,8 @@
 		6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D893060F34D0005713F /* UserCreditsModel.swift */; };
 		6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
 		6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */; };
-		6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001000 /* PlayerTextMetrics.swift */; };
-		6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001001 /* PlayerMetaStrip.swift */; };
-		6FB000000000000000001002 /* PlayerTransportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001002 /* PlayerTransportView.swift */; };
-		6FB000000000000000001003 /* PlayerUtilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001003 /* PlayerUtilityView.swift */; };
-		6FB000000000000000001004 /* PlayerTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001004 /* PlayerTranscriptView.swift */; };
-		6FB000000000000000001005 /* PlaybackStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001005 /* PlaybackStatusBar.swift */; };
-		6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
+		6FF4E271307E24DF00CC4211 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 6FF4E270307E24DF00CC4211 /* KeyboardShortcuts */; };
 		A1B2C3D4E5F60718293A4B5F /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
 		D25E3AEE86086A6B2E6754C8 /* VoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354B0D1FFDB031C321103309 /* VoiceCatalog.swift */; };
 		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
@@ -1352,6 +1353,13 @@
 		6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerDetailView.swift; sourceTree = "<group>"; };
 		6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRowItem.swift; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
+		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
+		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
+		6FA000000000000000001002 /* PlayerTransportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTransportView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001003 /* PlayerUtilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerUtilityView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001004 /* PlayerTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTranscriptView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001005 /* PlaybackStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusBar.swift; sourceTree = "<group>"; };
+		6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		6FCA9CE33060D7680005713F /* CreditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditService.swift; sourceTree = "<group>"; };
 		6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentifier.swift; sourceTree = "<group>"; };
@@ -1361,13 +1369,6 @@
 		6FCA9D893060F34D0005713F /* UserCreditsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCreditsModel.swift; sourceTree = "<group>"; };
 		6FCA9D8E3060F6D80005713F /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerWaveformView.swift; sourceTree = "<group>"; };
-		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
-		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
-		6FA000000000000000001002 /* PlayerTransportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTransportView.swift; sourceTree = "<group>"; };
-		6FA000000000000000001003 /* PlayerUtilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerUtilityView.swift; sourceTree = "<group>"; };
-		6FA000000000000000001004 /* PlayerTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTranscriptView.swift; sourceTree = "<group>"; };
-		6FA000000000000000001005 /* PlaybackStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusBar.swift; sourceTree = "<group>"; };
-		6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60718293A4B5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
@@ -1392,6 +1393,7 @@
 				6FCA9D803060F2FB0005713F /* Realtime in Frameworks */,
 				6FCA9D7A3060F2FB0005713F /* Auth in Frameworks */,
 				6FCA9D7E3060F2FB0005713F /* PostgREST in Frameworks */,
+				6FF4E271307E24DF00CC4211 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2276,6 +2278,7 @@
 				6FCA9D7F3060F2FB0005713F /* Realtime */,
 				6FCA9D813060F2FB0005713F /* Storage */,
 				6FCA9D833060F2FB0005713F /* Supabase */,
+				6FF4E270307E24DF00CC4211 /* KeyboardShortcuts */,
 			);
 			productName = EmotionVoice;
 			productReference = 6FEE97EB302705C600C39C26 /* Emora.app */;
@@ -2310,6 +2313,7 @@
 				6FEE97F93027062400C39C26 /* XCRemoteSwiftPackageReference "SQLite" */,
 				6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */,
 				6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6FEE97EC302705C600C39C26 /* Products */;
@@ -3303,6 +3307,14 @@
 				minimumVersion = 0.16.0;
 			};
 		};
+		6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -3345,6 +3357,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6FEE97F93027062400C39C26 /* XCRemoteSwiftPackageReference "SQLite" */;
 			productName = SQLite;
+		};
+		6FF4E270307E24DF00CC4211 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

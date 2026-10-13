@@ -461,7 +461,7 @@
 
                 <div class="rx-headline">
                     <span class="rx-bytes" id="rxBytes">0.00</span>
-                    <span class="rx-unit">KB 已接收</span>
+                    <span class="rx-unit" id="rxUnit">KB 已接收</span>
                     <span class="rx-rate" id="rxRate">↑ 0 KB/s</span>
                 </div>
 
@@ -658,12 +658,25 @@ function pushLog(text) {
     while (log.children.length > 4) log.removeChild(log.firstChild);
 }
 
+// 字节数 → 自动单位（B / KB / MB / GB），返回 [数值字符串, 单位]
+function fmtBytes(bytes) {
+    const b = Math.max(0, bytes);
+    if (b < 1000) return [String(Math.round(b)), 'B'];
+    let v, unit;
+    if (b < 1e6)      { v = b / 1e3; unit = 'KB'; }
+    else if (b < 1e9) { v = b / 1e6; unit = 'MB'; }
+    else              { v = b / 1e9; unit = 'GB'; }
+    return [v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), unit];
+}
+
 function startReceiving() {
     switchState('receiving');
     rx.bytes = 0; rx.chunks = 0; rx.lastBytes = 0;
     rx.start = Date.now();
     $('rxLog').innerHTML = '';
-    $('rxBytes').textContent = '0.00';
+    const r0 = fmtBytes(0);
+    $('rxBytes').textContent = r0[0];
+    $('rxUnit').textContent = r0[1] + ' 已接收';
     $('rxChunks').textContent = '0 段';
     $('rxElapsed').textContent = '00:00';
     $('rxRate').textContent = '↑ 0 KB/s';
@@ -672,26 +685,28 @@ function startReceiving() {
 
     clearInterval(rx.timer); clearInterval(rx.tick);
 
-    // 数据块持续到达
+    // 数据块持续到达（每块约 24~70 KB，rx.bytes 记为真实字节数）
     rx.timer = setInterval(() => {
         if (rx.chunks >= TOTAL_CHUNKS) { finishReceiving(); return; }
-        const size = 24 + Math.floor(Math.random() * 46);   // KB
+        const sizeBytes = (24 + Math.floor(Math.random() * 46)) * 1024;   // 字节
         rx.chunks++;
-        rx.bytes += size;
-        $('rxBytes').textContent = rx.bytes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        rx.bytes += sizeBytes;
+        const fb = fmtBytes(rx.bytes);
+        $('rxBytes').textContent = fb[0];
+        $('rxUnit').textContent = fb[1] + ' 已接收';
         $('rxChunks').textContent = rx.chunks + ' 段';
-        if (!modalOpen) $('bgPillValue').textContent =
-            rx.bytes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' KB';
-        pushLog(`<b>#${String(rx.chunks).padStart(3, '0')}</b> · +${size} KB <em>✓ 已写入缓冲区</em>`);
+        if (!modalOpen) $('bgPillValue').textContent = fb[0] + ' ' + fb[1];
+        pushLog(`<b>#${String(rx.chunks).padStart(3, '0')}</b> · +${(sizeBytes / 1024).toFixed(0)} KB <em>✓ 已写入缓冲区</em>`);
     }, 130);
 
     // 用时 / 速率
     rx.tick = setInterval(() => {
         const sec = (Date.now() - rx.start) / 1000;
         $('rxElapsed').textContent = fmtTime(sec);
-        const rate = (rx.bytes - rx.lastBytes);
+        const rate = (rx.bytes - rx.lastBytes);   // 每秒字节数
         rx.lastBytes = rx.bytes;
-        $('rxRate').textContent = '↑ ' + rate.toFixed(0) + ' KB/s';
+        const fr = fmtBytes(rate);
+        $('rxRate').textContent = '↑ ' + fr[0] + ' ' + fr[1] + '/s';
         $('rxBitrate').textContent = Math.max(96, Math.round(rate * 8 / 2)) + ' kbps';
     }, 1000);
 }

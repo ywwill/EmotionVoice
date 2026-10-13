@@ -57,9 +57,18 @@ struct AudioRowItem: View {
                     Text("·")
                         .foregroundStyle(AppColor.textTertiary)
 
-                    Text(audio.duration.durationString)
+                    Text(formatDuration(audio.duration))
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(AppColor.textTertiary)
+
+                    if audio.fileSize > 0 {
+                        Text("·")
+                            .foregroundStyle(AppColor.textTertiary)
+
+                        Text(formatDataSize(audio.fileSize))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(AppColor.textTertiary)
+                    }
                 }
             }
 

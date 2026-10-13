@@ -15,8 +15,8 @@ struct PlayerMetaStrip: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            metaCell(icon: "clock", title: "音频时长", value: audio.duration.durationString, unit: nil)
-            metaCell(icon: "doc.text", title: "文本字数", value: "\(charCount)", unit: "字")
+            metaCell(icon: "clock", title: "音频时长", value: formatDuration(audio.duration), unit: nil)
+            metaCell(icon: "internaldrive", title: "文件大小", value: formatDataSize(audio.fileSize), unit: nil)
             metaCell(icon: "sparkles", title: "消耗积分", value: formatCredits(audio.pointsCost), unit: "分")
             metaCell(icon: "person.wave.2", title: "使用音色", value: voiceName ?? "—", unit: nil)
         }

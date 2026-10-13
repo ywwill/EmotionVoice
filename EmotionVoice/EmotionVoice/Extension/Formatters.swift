@@ -17,20 +17,6 @@ extension Int {
     }
 }
 
-extension Double {
-    /// 时长格式化（秒 -> "00:32" 或 "01:30:45"）
-    var durationString: String {
-        let total = Int(self)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 {
-            return String(format: "%d:%02d:%02d", h, m, s)
-        }
-        return String(format: "%d:%02d", m, s)
-    }
-}
-
 extension String {
     /// 去掉文件扩展名（用于重命名输入框，避免重复输入 ".wav/.mp3"）。
     /// 不识别扩展名则返回原串。

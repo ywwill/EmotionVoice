@@ -57,6 +57,8 @@ struct AudioItem: Identifiable, Hashable {
     var format: String
     var sampleRate: Int
     var duration: Double
+    /// 音频文件大小（字节，整数存储，展示时再格式化）
+    var fileSize: Int = 0
     var pointsCost: Double
     var status: AudioStatus
     var createdAt: Date

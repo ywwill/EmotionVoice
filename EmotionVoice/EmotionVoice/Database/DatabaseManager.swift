@@ -41,6 +41,8 @@ final class DatabaseManager {
     let audioPointsCost = SQLite.Expression<Double>("points_cost")
     let audioStatus = SQLite.Expression<String>("status")
     let audioCreatedAt = SQLite.Expression<Date>("created_at")
+    /// 音频文件大小（字节，整数存储）
+    let audioFileSize = SQLite.Expression<Int>("file_size")
 
     // MARK: - 音色字段
     //
@@ -121,6 +123,7 @@ final class DatabaseManager {
             t.column(audioPointsCost, defaultValue: 0)
             t.column(audioStatus)
             t.column(audioCreatedAt)
+            t.column(audioFileSize, defaultValue: 0)
         })
 
         try db.run(voices.create(ifNotExists: true) { t in

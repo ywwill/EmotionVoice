@@ -16,35 +16,8 @@ import UniformTypeIdentifiers
 import AppKit
 
 // MARK: - 格式化
-
-/// 千分位 + 两位小数的 KB 数值（用于「已接收」大数字）
-private let kbNumberFormatter: NumberFormatter = {
-    let f = NumberFormatter()
-    f.numberStyle = .decimal
-    f.usesGroupingSeparator = true
-    f.groupingSeparator = ","
-    f.minimumFractionDigits = 2
-    f.maximumFractionDigits = 2
-    return f
-}()
-
-/// 已接收字节数 → "2,180.00"（单位 KB，见界面上的「KB 已接收」）
-private func formatKB(_ bytes: Int) -> String {
-    let kb = Double(max(0, bytes)) / 1000.0
-    return kbNumberFormatter.string(from: NSNumber(value: kb)) ?? String(format: "%.2f", kb)
-}
-
-/// 文件大小（1000 进制，与 App 内其它位置口径一致）
-private func formatDataSize(_ bytes: Int) -> String {
-    let value = max(0, bytes)
-    if value < 1000 {
-        return "\(value) B"
-    } else if value < 1000 * 1000 {
-        return String(format: "%.1f KB", Double(value) / 1000.0)
-    } else {
-        return String(format: "%.2f MB", Double(value) / (1000.0 * 1000.0))
-    }
-}
+// 字节 / 时长格式化（formatDataSize / autoByteUnit / receivedNumberFormatter /
+// formatDuration）已统一迁移到 Helper/Func.swift，作为公共方法供各处复用。
 
 /// 秒 → mm:ss
 private func formatClock(_ seconds: TimeInterval) -> String {
@@ -343,13 +316,13 @@ private struct ModalAudioPlayer: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(formatClock(displayTime))
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .fontDesign(.monospaced)
                         .foregroundStyle(AppColor.textPrimary)
-                    Text("/ \(formatClock(duration))")
-                        .font(.system(size: 11.5))
+                    Text("\(formatClock(duration))")
+                        .font(.system(size: 14, weight: .semibold))
                         .fontDesign(.monospaced)
-                        .foregroundStyle(AppColor.textTertiary)
+                        .foregroundStyle(AppColor.textPrimary)
                 }
 
                 Spacer()
@@ -689,17 +662,19 @@ struct AudioGenerationModal: View {
             IndeterminateProgressBar()
                 .padding(.top, 16)
 
-            // 累积字节数 + 速率
+            // 累积字节数 + 速率（单位按 1000 进制自适应 B/KB/MB/GB）
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(formatKB(Int(displayBytes)))
+                let rx = autoByteUnit(displayBytes)
+                Text(rx.value)
                     .font(.system(size: 26, weight: .semibold))
                     .fontDesign(.monospaced)
                     .foregroundStyle(AppColor.textPrimary)
-                Text("KB 已接收".localized())
+                Text("%@ 已接收".localized(rx.unit))
                     .font(.system(size: 13))
                     .foregroundStyle(AppColor.textSecondary)
                 Spacer()
-                Text("↑ \(Int(speed / 1000)) KB/s")
+                let sp = autoByteUnit(speed)
+                Text("↑ \(sp.value) \(sp.unit)/s")
                     .font(.system(size: 11))
                     .fontDesign(.monospaced)
                     .foregroundStyle(AppColor.accentPrimary)
