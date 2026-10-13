@@ -41,6 +41,21 @@
   - 与音色数据同步正交：`currentFingerprintVersion` + `voiceCountKey`（UserDefaults）只管
     `voices` 表内容是否需从 `basic_voices.json` 刷新；结构重建时会一并清掉这两个键强制重刷
 
+## 快捷键（KeyboardShortcuts 包）
+- 播放快捷键用 `sindresorhus/KeyboardShortcuts`（SPM），代码在
+  `Views/HistoryView/PlaybackKeyboardShortcuts.swift`：
+  `@MainActor` 单例 `PlaybackShortcutsController` + 7 个 `KeyboardShortcuts.Name`
+  （空格 / ← / → / ⇧← / ⇧→ / Home / End，`initial:` 给默认值）
+- **该包用 Carbon 热键（`RegisterEventHotKey`），不是 NSEvent monitor，会吞掉按键事件**：
+  事件在派发到 App 之前就被截走，所以"在回调里判断一下再决定做不做"救不回输入框
+  （等回调跑起来空格已被吃掉，搜索框打不出空格）。
+  挡输入框必须**反向做**：监听 `NSText.didBeginEditingNotification`/`didEndEditingNotification`，
+  开始编辑 → `KeyboardShortcuts.disable(all)`，结束 → `enable` 回来。
+- 同理：没在播（`player.playingKey == nil`）时 disable 掉 ←→/Home/End，把方向键还给列表滚动/行导航。
+- 包回调本身已在主线程（包内部自己 `MainActor.assumeIsolated`），但从非隔离闭包调 @MainActor 方法
+  仍要在闭包边界再套一层 `MainActor.assumeIsolated` 才能过编译。
+- 热键是 App 内全局（`GetEventDispatcherTarget()`），不会抢别的应用的键。
+
 ## 构建与验证
 - 本机 `xcodebuild` 会被沙箱挡住包解析（`sandbox-exec: Operation not permitted`）
 - 替代方案：用 `swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0
