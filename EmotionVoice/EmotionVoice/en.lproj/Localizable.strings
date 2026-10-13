@@ -55,6 +55,7 @@
 "请先选择一个音色" = "Please select a voice first";
 "仅支持中文和英文输入" = "Only Chinese and English input is supported.";
 "🌐 语言" = "🌐 Language";
+"从列表中选择要播放的音频" = "Select the audio to play from the list.";
 
 // 音色
 "旗舰音色" = "Flagship Voice";
@@ -230,8 +231,6 @@
 
 // 设置
 "配置音色和音频输出选项" = "Configure voice and audio output options";
-"默认音色" = "Default Voice";
-"新项目自动使用" = "Auto-used for new projects";
 "音频输出" = "Audio Output";
 "默认格式" = "Default Format";
 "导出音频文件格式" = "Export audio file format";

@@ -154,29 +154,6 @@ struct SettingsView: View {
 
     private var voiceContent: some View {
         VStack(spacing: 20) {
-            sectionCard(icon: "🎭", title: "默认音色".localized()) {
-                settingRow(
-                    label: "默认音色".localized(),
-                    desc: "新项目自动使用".localized(),
-                    control: {
-                        Picker("", selection: Binding(
-                            get: { appState.selectedVoice?.key ?? Constants.defaultVoice },
-                            set: { key in
-                                if let v = appState.voices.first(where: { $0.key == key }) {
-                                    appState.selectedVoice = v
-                                }
-                            })) {
-                            ForEach(appState.voices) { v in
-                                Text("\(v.name) \(v.isPremium ? "(旗舰)".localized() : "")")
-                                    .tag(v.key)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
-                    }
-                )
-            }
-
             sectionCard(icon: "🔊", title: "音频输出".localized()) {
                 settingRow(
                     label: "默认格式".localized(),

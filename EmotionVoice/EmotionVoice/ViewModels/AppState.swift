@@ -13,6 +13,9 @@ import Combine
 @MainActor
 final class AppState: ObservableObject {
 
+    /// UserDefaults 键：上次使用的音色 key
+    private static let selectedVoiceKeyUDKey = "selectedVoiceKey"
+
     /// 当前选中的侧边栏项
     @Published var selectedSection: SidebarSection = .voiceStudio
 
@@ -29,7 +32,7 @@ final class AppState: ObservableObject {
     @Published var selectedVoice: Voice? {
         didSet {
             if let voice = selectedVoice {
-                UserDefaults.standard.set(voice.key, forKey: "selectedVoiceKey")
+                UserDefaults.standard.set(voice.key, forKey: Self.selectedVoiceKeyUDKey)
             }
         }
     }
@@ -116,12 +119,8 @@ final class AppState: ObservableObject {
         }
 
         // 恢复上次选中的音色，如果没有则使用默认音色
-        if let savedVoiceKey = UserDefaults.standard.string(forKey: "selectedVoiceKey"),
-           let savedVoice = voices.first(where: { $0.key == savedVoiceKey }) {
-            self.selectedVoice = savedVoice
-        } else {
-            self.selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
-        }
+        self.selectedVoice = nil
+        resolveSelectedVoice()
 
         // 从云端同步积分（应用启动时调用）
         syncCreditsFromCloud()
@@ -154,14 +153,43 @@ final class AppState: ObservableObject {
     /// 刷新音色数据
     func refreshVoices() {
         voices = VoiceService.shared.fetchAll()
-        // 尝试从新的音色列表中找到之前选中的音色（可能因数据更新而变化）
-        if let selected = selectedVoice,
-           let updated = voices.first(where: { $0.key == selected.key }) {
-            selectedVoice = updated
-        } else if selectedVoice == nil {
-            // 如果没有选中音色，使用默认音色
-            selectedVoice = voices.first(where: { $0.key == Constants.defaultVoice }) ?? voices.first
+        resolveSelectedVoice()
+    }
+
+    // MARK: - 选中音色解析
+
+    /// 默认音色 key：旗舰音色（idx 1，Constants.defaultVoice）。
+    /// 该音色不存在时退化为任一旗舰音色，最后退化为首个可用音色。
+    var defaultVoiceKey: String {
+        if voices.contains(where: { $0.key == Constants.defaultVoice }) {
+            return Constants.defaultVoice
         }
+        return voices.first(where: { $0.isPremium })?.key
+            ?? voices.first?.key
+            ?? Constants.defaultVoice
+    }
+
+    /// 默认音色（旗舰音色 idx 1）
+    var defaultVoice: Voice? {
+        voices.first(where: { $0.key == defaultVoiceKey })
+    }
+
+    /// 上次使用的音色（UserDefaults 持久化）
+    private var lastUsedVoice: Voice? {
+        guard let key = UserDefaults.standard.string(forKey: Self.selectedVoiceKeyUDKey) else { return nil }
+        return voices.first(where: { $0.key == key })
+    }
+
+    /// 确保当前有一个可用音色：
+    /// 1. 已选中的音色仍然有效 → 保持不变
+    /// 2. 否则取「上次使用的音色」
+    /// 3. 再没有 → 回落到旗舰默认音色（idx 1）
+    func resolveSelectedVoice() {
+        if let current = selectedVoice,
+           voices.contains(where: { $0.key == current.key }) {
+            return
+        }
+        selectedVoice = lastUsedVoice ?? defaultVoice
     }
 }
 

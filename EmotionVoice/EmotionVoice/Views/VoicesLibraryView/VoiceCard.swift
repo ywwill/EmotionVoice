@@ -207,6 +207,7 @@ struct VoiceCard: View {
                     isPlaying ? AppColor.emotionHappy : AppColor.textSecondary
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
             }
             .animation(.easeInOut(duration: 0.2), value: isPlaying)
             .buttonStyle(.plain)
@@ -233,6 +234,7 @@ struct VoiceCard: View {
                         item.isFavorite ? AppColor.accentPrimary : AppColor.textSecondary
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("收藏")

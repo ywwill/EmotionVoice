@@ -141,14 +141,11 @@ struct HistoryView: View {
                     // 空状态
                     if viewModel.displayedAudios.isEmpty && !viewModel.isLoading {
                         VStack(spacing: 12) {
-                            Text("🎧")
-                                .font(.system(size: 36))
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 22))
                             Text("暂无音频")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AppColor.textSecondary)
-                            Text("前往「语音合成」生成你的第一条音频")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AppColor.textTertiary)
                         }
                         .padding(60)
                     }
@@ -264,11 +261,6 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             // 工具栏
             HStack {
-                Text(viewModel.selectedAudio?.shownName ?? "选择音频播放")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.textPrimary)
-                    .lineLimit(1)
-
                 Spacer()
 
                 // 导出按钮
@@ -313,17 +305,14 @@ struct HistoryView: View {
                         Circle()
                             .fill(AppColor.bgSecondary)
                             .frame(width: 64, height: 64)
-                        Text("🎵")
-                            .font(.system(size: 24))
+                        Image(systemName: "music.quarternote.3")
+                            .font(.system(size: 26))
+                            .symbolEffect(.pulse)
                     }
 
-                    Text("选择一个音频")
+                    Text("从列表中选择要播放的音频")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppColor.textSecondary)
-
-                    Text("从左侧列表中选择要播放的音频")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColor.textTertiary)
 
                     Spacer()
                 }

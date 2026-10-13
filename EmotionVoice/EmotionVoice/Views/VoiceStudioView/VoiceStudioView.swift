@@ -60,8 +60,13 @@ struct VoiceStudioView: View {
             )
         }
         .onAppear {
-            if let v = appState.selectedVoice {
-                vm.selectedVoiceKey = v.key
+            // 初始化音色：上次使用的音色优先，没有则回落到旗舰默认音色（idx 1）
+            appState.resolveSelectedVoice()
+            vm.selectedVoiceKey = appState.selectedVoice?.key ?? appState.defaultVoiceKey
+            // 记忆的音色在当前音色库中已不存在时，兜底到旗舰默认音色
+            if vm.voice == nil {
+                vm.selectedVoiceKey = appState.defaultVoiceKey
+                appState.selectedVoice = appState.defaultVoice
             }
             // 从设置中读取默认采样率和格式
             vm.sampleRate = appState.defaultSampleRate
