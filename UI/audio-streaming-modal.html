@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音频流式接收弹窗 - EmotionVoice</title>
+<style>
+    :root {
+        --bg-primary: #0E0F12;
+        --bg-secondary: #15171B;
+        --bg-tertiary: #1C1F24;
+        --bg-elevated: #22262D;
+        --accent-primary: #E8A968;
+        --accent-secondary: #D49B5B;
+        --accent-glow: #F2C088;
+        --text-primary: #F5F5F7;
+        --text-secondary: #A8ABB4;
+        --text-tertiary: #6B6E76;
+        --border-subtle: rgba(255,255,255,0.08);
+        --border-medium: rgba(255,255,255,0.15);
+        --success: #4ADE80;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'PingFang SC', sans-serif;
+        background: linear-gradient(135deg, #0E0F12 0%, #171A1F 50%, #0E0F12 100%);
+        min-height: 100vh;
+        display: flex; align-items: center; justify-content: center;
+        padding: 40px 20px;
+        -webkit-font-smoothing: antialiased;
+        color: var(--text-primary);
+    }
+
+    /* 模拟 App 底层内容（仅演示用） */
+    .app-backdrop {
+        position: fixed; inset: 0; z-index: 0;
+        background:
+            radial-gradient(900px 500px at 20% 10%, rgba(232,169,104,0.06), transparent 60%),
+            radial-gradient(700px 400px at 85% 80%, rgba(232,169,104,0.04), transparent 60%);
+    }
+    .app-backdrop .fake-bar {
+        position: absolute; left: 0; top: 0; bottom: 0; width: 220px;
+        background: rgba(255,255,255,0.02); border-right: 1px solid var(--border-subtle);
+    }
+    .app-backdrop .fake-line {
+        position: absolute; height: 10px; border-radius: 6px; background: rgba(255,255,255,0.045);
+    }
+
+    /* ===== 遮罩 ===== */
+    .modal-overlay {
+        position: fixed; inset: 0; z-index: 1000;
+        background: rgba(0,0,0,0.72);
+        backdrop-filter: blur(10px);
+        display: flex; align-items: center; justify-content: center;
+        animation: fadeIn .28s ease both;
+    }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+    /* ===== 弹窗 ===== */
+    .modal {
+        position: relative;
+        width: 100%; max-width: 560px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-subtle);
+        box-shadow:
+            0 0 0 .5px rgba(255,255,255,0.07),
+            0 24px 80px rgba(0,0,0,0.65),
+            0 8px 24px rgba(0,0,0,0.4),
+            0 0 70px rgba(232,169,104,0.07);
+        overflow: hidden;
+        animation: modalIn .38s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(.96) translateY(12px) }
+        to   { opacity: 1; transform: scale(1) translateY(0) }
+    }
+
+    /* 顶部一条随状态变化的发光边 */
+    .modal::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+        opacity: .55;
+    }
+
+    /* ===== Header ===== */
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--border-subtle);
+        background: rgba(28,31,36,.45);
+    }
+    .modal-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
+    .title-icon {
+        width: 28px; height: 28px; border-radius: 8px;
+        display: grid; place-items: center; font-size: 14px;
+        background: rgba(232,169,104,.12);
+        border: 1px solid rgba(232,169,104,.25);
+    }
+    .title-icon.done { background: rgba(74,222,128,.12); border-color: rgba(74,222,128,.28); }
+    .title-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 400; margin-left: 2px; }
+    .modal-close {
+        width: 26px; height: 26px; border-radius: 7px; border: 1px solid transparent;
+        background: transparent; color: var(--text-tertiary); cursor: pointer;
+        display: grid; place-items: center; font-size: 15px; line-height: 1;
+        transition: .18s;
+    }
+    .modal-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+    .modal-body { padding: 22px 20px 20px; }
+
+    /* =========================================================
+       状态一：接收中（流式累积，无百分比）
+       ========================================================= */
+    .state { display: none; }
+    .state.active { display: block; animation: stateIn .3s ease both; }
+    @keyframes stateIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+
+    /* 波形呼吸动画 */
+    .stream-visual {
+        height: 92px; border-radius: var(--radius-md);
+        background: linear-gradient(180deg, rgba(232,169,104,.05), rgba(232,169,104,.01));
+        border: 1px solid rgba(232,169,104,.14);
+        display: flex; align-items: center; justify-content: center; gap: 4px;
+        overflow: hidden; position: relative;
+    }
+    .stream-visual::after {
+        /* 从左到右扫过的高光，表示数据持续流入 */
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(232,169,104,.13), transparent);
+        transform: translateX(-100%);
+        animation: sweep 1.9s cubic-bezier(.5,0,.5,1) infinite;
+    }
+    @keyframes sweep { to { transform: translateX(100%) } }
+
+    .stream-visual span {
+        width: 4px; border-radius: 3px;
+        background: linear-gradient(180deg, var(--accent-glow), var(--accent-secondary));
+        transform-origin: center;
+        animation: barPulse 1.15s ease-in-out infinite;
+        opacity: .9;
+    }
+    @keyframes barPulse {
+        0%,100% { transform: scaleY(.28) }
+        50%     { transform: scaleY(1) }
+    }
+
+    /* 不确定进度条：不知道百分比，只表达"还在流" */
+    .indeterminate {
+        margin-top: 16px; height: 6px; border-radius: 99px;
+        background: var(--bg-tertiary); overflow: hidden; position: relative;
+    }
+    .indeterminate i {
+        position: absolute; top: 0; bottom: 0; width: 38%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, rgba(232,169,104,0), var(--accent-primary), rgba(232,169,104,0));
+        animation: slide 1.35s cubic-bezier(.65,0,.35,1) infinite;
+    }
+    @keyframes slide {
+        from { left: -40% } to { left: 102% }
+    }
+
+    .rx-headline {
+        display: flex; align-items: baseline; gap: 8px; margin-top: 16px;
+    }
+    .rx-bytes {
+        font-size: 26px; font-weight: 650; letter-spacing: -.4px;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-primary);
+    }
+    .rx-unit { font-size: 13px; color: var(--text-secondary); }
+    .rx-rate { margin-left: auto; font-size: 11px; color: var(--accent-primary); font-variant-numeric: tabular-nums; }
+
+    .rx-note {
+        display: flex; align-items: center; gap: 6px;
+        margin-top: 8px; font-size: 11.5px; color: var(--text-tertiary);
+    }
+    .rx-note .dot {
+        width: 5px; height: 5px; border-radius: 50%; background: var(--accent-primary);
+        animation: blink 1.1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+
+    .rx-stats {
+        margin-top: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .rx-stat {
+        background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm); padding: 9px 11px;
+    }
+    .rx-stat .k { font-size: 10.5px; color: var(--text-tertiary); }
+    .rx-stat .v { font-size: 14px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+    /* 数据块到达日志 */
+    .rx-log {
+        margin-top: 14px; height: 74px; overflow: hidden;
+        border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);
+        background: rgba(0,0,0,.22); padding: 8px 10px;
+        display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+    }
+    .rx-log div {
+        font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-tertiary);
+        animation: logIn .32s ease both;
+    }
+    .rx-log div b { color: var(--text-secondary); font-weight: 500; }
+    .rx-log div em { color: var(--success); font-style: normal; }
+    @keyframes logIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+
+    /* =========================================================
+       状态二：接收完成 + 播放
+       ========================================================= */
+    .done-banner {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; border-radius: var(--radius-md);
+        background: rgba(74,222,128,.07);
+        border: 1px solid rgba(74,222,128,.2);
+        margin-bottom: 16px;
+    }
+    .done-check {
+        width: 22px; height: 22px; border-radius: 50%;
+        background: var(--success); color: #0E0F12;
+        display: grid; place-items: center; font-size: 12px; font-weight: 700;
+        animation: pop .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes pop { from { transform: scale(.4); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+    .done-banner .t { font-size: 13px; font-weight: 600; }
+    .done-banner .s { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+
+    /* 文件名（可重命名） */
+    .name-row { display: flex; align-items: center; gap: 8px; }
+    .name-input {
+        flex: 1; min-width: 0;
+        background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm); color: var(--text-primary);
+        font-size: 14px; font-weight: 600; padding: 9px 11px;
+        font-family: inherit; outline: none; transition: .18s;
+    }
+    .name-input:focus { border-color: rgba(232,169,104,.5); background: var(--bg-elevated); }
+    .name-ext {
+        font-size: 11px; color: var(--accent-primary); background: rgba(232,169,104,.1);
+        border: 1px solid rgba(232,169,104,.22); border-radius: 5px; padding: 3px 7px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* 元信息网格 */
+    .meta-grid {
+        margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    }
+    .meta-cell {
+        background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm); padding: 9px 10px;
+    }
+    .meta-cell .k { font-size: 10.5px; color: var(--text-tertiary); }
+    .meta-cell .v { font-size: 13.5px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .meta-cell .v small { font-size: 10.5px; color: var(--text-secondary); font-weight: 400; }
+
+    /* 音色卡 */
+    .voice-card {
+        margin-top: 14px; display: flex; align-items: center; gap: 11px;
+        padding: 12px; border-radius: var(--radius-md);
+        background: linear-gradient(90deg, rgba(232,169,104,.09), rgba(232,169,104,.02));
+        border: 1px solid rgba(232,169,104,.22);
+    }
+    .voice-avatar {
+        width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+        background: rgba(232,169,104,.16); border: 1px solid rgba(232,169,104,.3);
+        display: grid; place-items: center; font-size: 16px; font-weight: 600; color: var(--accent-glow);
+    }
+    .voice-meta { min-width: 0; flex: 1; }
+    .voice-name { display: flex; align-items: center; gap: 6px; }
+    .voice-name b { font-size: 13.5px; font-weight: 600; }
+    .badge-premium {
+        font-size: 10px; color: var(--accent-primary);
+        background: rgba(232,169,104,.14); border: 1px solid rgba(232,169,104,.25);
+        border-radius: 4px; padding: 1px 5px;
+    }
+    .voice-desc {
+        font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .voice-scene {
+        font-size: 10.5px; color: var(--text-tertiary); margin-top: 4px;
+    }
+    .voice-scene span { color: var(--text-secondary); }
+
+    /* 播放器 */
+    .player {
+        margin-top: 14px; padding: 13px 14px; border-radius: var(--radius-md);
+        background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+    }
+    .player-top { display: flex; align-items: center; gap: 12px; }
+    .play-btn {
+        width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
+        background: var(--accent-primary); border: none; color: #14161A;
+        display: grid; place-items: center; font-size: 15px; padding-left: 2px;
+        transition: .18s; box-shadow: 0 4px 14px rgba(232,169,104,.25);
+    }
+    .play-btn:hover { transform: scale(1.06); background: var(--accent-glow); }
+    .play-btn.playing { padding-left: 0; }
+    .time-main { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .time-total { font-size: 11.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .live-dot { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; color: var(--text-tertiary); }
+    .live-dot i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
+    .live-dot.on i { background: var(--success); animation: blink 1.1s ease-in-out infinite; }
+    .live-dot.on { color: var(--success); }
+
+    /* 波形进度条：可点击 / 可拖动 */
+    .wave-wrap {
+        margin-top: 22px; position: relative; height: 46px; cursor: pointer;
+        user-select: none; touch-action: none;
+    }
+    .wave-bars { position: absolute; inset: 0; display: flex; align-items: center; gap: 2px; }
+    .wave-bars i {
+        flex: 1; border-radius: 2px; background: rgba(255,255,255,.13);
+        transition: background .15s;
+    }
+    .wave-fill {
+        /* 与底层波形完全同尺寸的副本，用 clip-path 按进度裁切，保证条对齐不缩放 */
+        position: absolute; inset: 0;
+        display: flex; align-items: center; gap: 2px;
+        clip-path: inset(0 100% 0 0);
+        pointer-events: none;
+    }
+    .wave-fill i {
+        flex: 1; border-radius: 2px;
+        background: linear-gradient(180deg, var(--accent-glow), var(--accent-secondary));
+    }
+    .wave-handle {
+        position: absolute; top: 50%; width: 12px; height: 12px; margin-left: -6px;
+        border-radius: 50%; background: #fff; border: 2px solid var(--accent-primary);
+        transform: translateY(-50%) scale(0); transition: transform .16s ease;
+        pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    }
+    .wave-wrap:hover .wave-handle,
+    .wave-wrap.dragging .wave-handle { transform: translateY(-50%) scale(1); }
+    .wave-wrap.dragging .wave-handle { transform: translateY(-50%) scale(1.18); }
+    .wave-wrap:hover .wave-bars i { background: rgba(255,255,255,.19); }
+    .wave-tip {
+        position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%);
+        background: var(--bg-elevated); border: 1px solid var(--border-medium);
+        color: var(--text-primary); font-size: 10.5px; font-variant-numeric: tabular-nums;
+        padding: 3px 7px; border-radius: 5px; opacity: 0; transition: opacity .15s;
+        pointer-events: none; white-space: nowrap; z-index: 3;
+    }
+    .wave-wrap:hover .wave-tip, .wave-wrap.dragging .wave-tip { opacity: 1; }
+
+    /* 消耗积分 */
+    .cost-row {
+        margin-top: 14px; display: flex; align-items: center; gap: 10px;
+        padding: 11px 13px; border-radius: var(--radius-sm);
+        background: rgba(255,255,255,.025); border: 1px solid var(--border-subtle);
+    }
+    .cost-icon { font-size: 13px; }
+    .cost-label { font-size: 11.5px; color: var(--text-tertiary); }
+    .cost-value { font-size: 15px; font-weight: 650; color: var(--accent-primary); font-variant-numeric: tabular-nums; }
+    .cost-rest { margin-left: auto; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+    /* ===== Footer ===== */
+    .modal-footer {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid var(--border-subtle);
+        background: rgba(28,31,36,.4);
+    }
+    .btn {
+        height: 36px; padding: 0 16px; border-radius: var(--radius-sm);
+        font-size: 13px; font-weight: 550; font-family: inherit; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px; transition: .18s; border: 1px solid transparent;
+    }
+    .btn-primary { background: var(--accent-primary); color: #14161A; margin-left: auto; }
+    .btn-primary:hover { background: var(--accent-glow); transform: translateY(-1px); }
+    .btn-ghost { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-medium); }
+    .btn-ghost:hover { background: #2A2F37; }
+    .btn-quiet { background: transparent; color: var(--text-secondary); }
+    .btn-quiet:hover { color: var(--text-primary); background: var(--bg-elevated); }
+    .footer-hint { font-size: 11px; color: var(--text-tertiary); }
+    #btnExport { margin-left: auto; }
+
+    /* ===== 演示切换器（不属于弹窗本身） ===== */
+    .demo-switcher {
+        position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+        z-index: 1200; display: flex; align-items: center; gap: 6px;
+        background: rgba(28,31,36,.92); border: 1px solid var(--border-medium);
+        border-radius: 99px; padding: 6px; backdrop-filter: blur(12px);
+        box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    }
+    .demo-switcher button {
+        border: none; background: transparent; color: var(--text-secondary);
+        font-size: 12px; font-family: inherit; cursor: pointer;
+        padding: 6px 13px; border-radius: 99px; transition: .18s;
+    }
+    .demo-switcher button:hover { color: var(--text-primary); background: rgba(255,255,255,.06); }
+    .demo-switcher button.on { background: var(--accent-primary); color: #14161A; font-weight: 600; }
+    .demo-tag {
+        position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
+        font-size: 11px; color: var(--text-tertiary); z-index: 1200;
+    }
+
+    /* ===== 后台接收提示条（关闭弹窗后出现，说明接收未被中断） ===== */
+    .bg-pill {
+        position: fixed; top: 22px; left: 50%; transform: translateX(-50%) translateY(-14px);
+        z-index: 1200; display: none; align-items: center; gap: 9px; cursor: pointer;
+        background: rgba(28,31,36,.94); border: 1px solid var(--border-medium);
+        border-radius: 99px; padding: 8px 15px; backdrop-filter: blur(12px);
+        box-shadow: 0 10px 30px rgba(0,0,0,.5);
+        font-size: 12px; color: var(--text-primary);
+        opacity: 0; transition: opacity .22s ease, transform .22s ease;
+    }
+    .bg-pill.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+    .bg-pill:hover { background: rgba(34,38,45,.96); }
+    .bg-pill i {
+        width: 6px; height: 6px; border-radius: 50%; background: var(--accent-primary);
+        animation: blink 1.1s ease-in-out infinite;
+    }
+    .bg-pill.ready i { background: var(--success); animation: none; }
+    .bg-pill span { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+    .bg-pill.ready span { color: var(--text-secondary); }
+    .bg-pill em { font-style: normal; font-size: 11px; color: var(--accent-primary); margin-left: 2px; }
+    .bg-pill.ready em { color: var(--success); }
+</style>
+</head>
+<body>
+
+<!-- 模拟底层 App 内容 -->
+<div class="app-backdrop">
+    <div class="fake-bar"></div>
+    <div class="fake-line" style="left:260px; top:70px;  width:420px"></div>
+    <div class="fake-line" style="left:260px; top:100px; width:300px; opacity:.6"></div>
+    <div class="fake-line" style="left:260px; top:150px; width:760px; height:120px; opacity:.5"></div>
+    <div class="fake-line" style="left:260px; top:300px; width:520px; opacity:.5"></div>
+    <div class="fake-line" style="left:900px; top:70px;  width:300px; height:220px; opacity:.5"></div>
+</div>
+
+<!-- ===================== 弹窗 ===================== -->
+<div class="modal-overlay">
+    <div class="modal">
+
+        <!-- Header -->
+        <div class="modal-header">
+            <div class="modal-title">
+                <div class="title-icon" id="titleIcon">🎵</div>
+                <div>
+                    <div id="titleText">正在接收音频数据</div>
+                    <div class="title-sub" id="titleSub">流式传输中 · 数据持续累积</div>
+                </div>
+            </div>
+            <button class="modal-close" id="btnClose" title="关闭（后台继续接收）">✕</button>
+        </div>
+
+        <div class="modal-body">
+
+            <!-- ========== 状态一：接收中 ========== -->
+            <div class="state active" id="stateReceiving">
+                <div class="stream-visual" id="streamVisual"></div>
+
+                <div class="indeterminate"><i></i></div>
+
+                <div class="rx-headline">
+                    <span class="rx-bytes" id="rxBytes">0.00</span>
+                    <span class="rx-unit">KB 已接收</span>
+                    <span class="rx-rate" id="rxRate">↑ 0 KB/s</span>
+                </div>
+
+                <div class="rx-note">
+                    <span class="dot"></span>
+                    音频数据持续累积中，接收完成后可立即试听
+                </div>
+
+                <div class="rx-stats">
+                    <div class="rx-stat"><div class="k">数据块</div><div class="v" id="rxChunks">0 段</div></div>
+                    <div class="rx-stat"><div class="k">已用时</div><div class="v" id="rxElapsed">00:00</div></div>
+                    <div class="rx-stat"><div class="k">当前码率</div><div class="v" id="rxBitrate">— kbps</div></div>
+                </div>
+
+                <div class="rx-log" id="rxLog"></div>
+            </div>
+
+            <!-- ========== 状态二：接收完成 ========== -->
+            <div class="state" id="stateDone">
+
+                <div class="done-banner">
+                    <div class="done-check">✓</div>
+                    <div>
+                        <div class="t">音频接收完成</div>
+                        <div class="s">共 96 段数据 · 耗时 8.4 秒 · 已写入本地库</div>
+                    </div>
+                </div>
+
+                <!-- 名称 -->
+                <div class="name-row">
+                    <input class="name-input" id="audioName" value="产品发布预告片 · 配音版" spellcheck="false">
+                    <span class="name-ext">MP3</span>
+                </div>
+
+                <!-- 元信息 -->
+                <div class="meta-grid">
+                    <div class="meta-cell"><div class="k">大小</div><div class="v">3.42 <small>MB</small></div></div>
+                    <div class="meta-cell"><div class="k">采样率</div><div class="v">24 <small>kHz</small></div></div>
+                    <div class="meta-cell"><div class="k">格式</div><div class="v">MP3</div></div>
+                    <div class="meta-cell"><div class="k">时长</div><div class="v" id="metaDuration">01:24</div></div>
+                </div>
+
+                <!-- 音色 -->
+                <div class="voice-card">
+                    <div class="voice-avatar">心</div>
+                    <div class="voice-meta">
+                        <div class="voice-name">
+                            <b>龙安灵心</b>
+                            <span class="badge-premium">⭐ 旗舰</span>
+                        </div>
+                        <div class="voice-desc">温柔知性的年轻女声，语调平和，适合情感陪伴与深夜电台</div>
+                        <div class="voice-scene">适用场景 <span>情感陪伴</span> · 中文 · 女声 · 25 岁</div>
+                    </div>
+                </div>
+
+                <!-- 播放器 -->
+                <div class="player">
+                    <div class="player-top">
+                        <button class="play-btn" id="playBtn" aria-label="播放">▶</button>
+                        <div>
+                            <div class="time-main" id="timeNow">00:00</div>
+                            <div class="time-total" id="timeTotal">/ 01:24</div>
+                        </div>
+                        <div class="live-dot" id="liveDot"><i></i><span id="liveText">已暂停</span></div>
+                    </div>
+
+                    <div class="wave-wrap" id="waveWrap" role="slider" tabindex="0"
+                         aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="wave-bars"  id="waveBars"></div>
+                        <div class="wave-fill"  id="waveFill"></div>
+                        <div class="wave-handle" id="waveHandle"></div>
+                        <div class="wave-tip"    id="waveTip">00:00</div>
+                    </div>
+                </div>
+
+                <!-- 积分 -->
+                <div class="cost-row">
+                    <span class="cost-icon">💎</span>
+                    <div>
+                        <div class="cost-label">本次消耗积分</div>
+                        <div class="cost-value">−128</div>
+                    </div>
+                    <div class="cost-rest">剩余 1,872 积分</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="modal-footer" id="modalFooter">
+            <!-- 接收中 -->
+            <div class="footer-hint" id="footerHintRx">关闭窗口不会中断，音频将在后台继续接收</div>
+
+            <!-- 完成后 -->
+            <button class="btn btn-ghost" id="btnExport" style="display:none">⬇ 导出音频</button>
+            <button class="btn btn-primary" id="btnFinish" style="display:none">完成</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- 后台接收提示条：关闭弹窗后出现，证明接收未被打断 -->
+<div class="bg-pill" id="bgPill">
+    <i></i>
+    <div id="bgPillText">后台接收中</div>
+    <span id="bgPillValue">0.00 KB</span>
+    <em id="bgPillAction">点击查看详情</em>
+</div>
+
+<div class="demo-tag">演示控件（不属于弹窗 UI）</div>
+<div class="demo-switcher">
+    <button id="tabRx" class="on">① 接收中</button>
+    <button id="tabDone">② 已完成</button>
+    <button id="tabReplay">↻ 重播演示</button>
+</div>
+
+<script>
+/* =========================================================
+   通用
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const fmtTime = s => {
+    s = Math.max(0, Math.floor(s));
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+};
+
+/* =========================================================
+   弹窗开/关（关闭只收起界面，不中断接收）
+   ========================================================= */
+let modalOpen = true;
+
+function openModal() {
+    modalOpen = true;
+    const ov = document.querySelector('.modal-overlay');
+    ov.style.display = 'flex';
+    // 重放入场动画
+    const m = ov.querySelector('.modal');
+    m.style.animation = 'none';
+    void m.offsetWidth;
+    m.style.animation = '';
+    $('bgPill').classList.remove('show');
+}
+
+function closeModal() {
+    modalOpen = false;
+    document.querySelector('.modal-overlay').style.display = 'none';
+    if (rx.chunks < TOTAL_CHUNKS) {
+        setPill('receiving');
+    } else {
+        setPill('ready');
+    }
+    $('bgPill').classList.add('show');
+}
+
+function setPill(mode) {
+    const pill = $('bgPill');
+    if (mode === 'ready') {
+        pill.classList.add('ready');
+        $('bgPillText').textContent = '音频已就绪';
+        $('bgPillValue').textContent = fmtTime(DURATION);
+        $('bgPillAction').textContent = '点击试听';
+    } else {
+        pill.classList.remove('ready');
+        $('bgPillText').textContent = '后台接收中';
+        $('bgPillValue').textContent = rx.bytes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' KB';
+        $('bgPillAction').textContent = '点击查看详情';
+    }
+}
+
+/* =========================================================
+   状态一：流式接收（累积，无百分比）
+   ========================================================= */
+const TOTAL_CHUNKS = 96;
+const rx = { bytes: 0, chunks: 0, start: 0, timer: null, tick: null, lastBytes: 0 };
+
+function buildStreamBars() {
+    const box = $('streamVisual');
+    box.innerHTML = '';
+    for (let i = 0; i < 26; i++) {
+        const b = document.createElement('span');
+        const h = 16 + Math.abs(Math.sin(i * 0.9)) * 44;
+        b.style.height = h + 'px';
+        b.style.animationDelay = (i * 0.055) + 's';
+        b.style.animationDuration = (0.9 + (i % 5) * 0.11) + 's';
+        box.appendChild(b);
+    }
+}
+
+function pushLog(text) {
+    const log = $('rxLog');
+    const line = document.createElement('div');
+    line.innerHTML = text;
+    log.appendChild(line);
+    while (log.children.length > 4) log.removeChild(log.firstChild);
+}
+
+function startReceiving() {
+    switchState('receiving');
+    rx.bytes = 0; rx.chunks = 0; rx.lastBytes = 0;
+    rx.start = Date.now();
+    $('rxLog').innerHTML = '';
+    $('rxBytes').textContent = '0.00';
+    $('rxChunks').textContent = '0 段';
+    $('rxElapsed').textContent = '00:00';
+    $('rxRate').textContent = '↑ 0 KB/s';
+    $('rxBitrate').textContent = '— kbps';
+    setPill('receiving');
+
+    clearInterval(rx.timer); clearInterval(rx.tick);
+
+    // 数据块持续到达
+    rx.timer = setInterval(() => {
+        if (rx.chunks >= TOTAL_CHUNKS) { finishReceiving(); return; }
+        const size = 24 + Math.floor(Math.random() * 46);   // KB
+        rx.chunks++;
+        rx.bytes += size;
+        $('rxBytes').textContent = rx.bytes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        $('rxChunks').textContent = rx.chunks + ' 段';
+        if (!modalOpen) $('bgPillValue').textContent =
+            rx.bytes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' KB';
+        pushLog(`<b>#${String(rx.chunks).padStart(3, '0')}</b> · +${size} KB <em>✓ 已写入缓冲区</em>`);
+    }, 130);
+
+    // 用时 / 速率
+    rx.tick = setInterval(() => {
+        const sec = (Date.now() - rx.start) / 1000;
+        $('rxElapsed').textContent = fmtTime(sec);
+        const rate = (rx.bytes - rx.lastBytes);
+        rx.lastBytes = rx.bytes;
+        $('rxRate').textContent = '↑ ' + rate.toFixed(0) + ' KB/s';
+        $('rxBitrate').textContent = Math.max(96, Math.round(rate * 8 / 2)) + ' kbps';
+    }, 1000);
+}
+
+function finishReceiving() {
+    clearInterval(rx.timer); clearInterval(rx.tick);
+    setTimeout(() => {
+        switchState('done');
+        // 弹窗已收起时，用顶部提示条告知结果（接收过程始终未被中断）
+        if (!modalOpen) { setPill('ready'); $('bgPill').classList.add('show'); }
+    }, 420);
+}
+
+/* =========================================================
+   状态二：完成 + 播放（模拟播放，时长 84s）
+   ========================================================= */
+const DURATION = 84;
+const player = { pos: 0, playing: false, raf: null, last: 0 };
+
+function buildWave() {
+    const bars = $('waveBars'), fill = $('waveFill');
+    bars.innerHTML = ''; fill.innerHTML = '';
+    const N = 60;
+    const heights = [];
+    for (let i = 0; i < N; i++) {
+        // 伪随机但确定的波形
+        const v = Math.sin(i * 0.55) * 0.35 + Math.sin(i * 0.21 + 1.3) * 0.4 + Math.sin(i * 1.7) * 0.15;
+        heights.push(Math.max(0.18, Math.min(1, 0.55 + v * 0.42)));
+    }
+    heights.forEach(h => {
+        const a = document.createElement('i');
+        a.style.height = (h * 40) + 'px';
+        bars.appendChild(a);
+        const b = document.createElement('i');
+        b.style.height = (h * 40) + 'px';
+        fill.appendChild(b);
+    });
+}
+
+function renderPlayer() {
+    const pct = player.pos / DURATION * 100;
+    $('waveFill').style.clipPath = 'inset(0 ' + (100 - pct) + '% 0 0)';
+    const h = $('waveHandle');
+    h.style.left = pct + '%';
+    $('timeNow').textContent = fmtTime(player.pos);
+    $('waveTip').textContent = fmtTime(player.pos);
+    $('waveWrap').setAttribute('aria-valuenow', Math.round(pct));
+}
+
+function playLoop(ts) {
+    if (!player.playing) return;
+    if (!player.last) player.last = ts;
+    player.pos = Math.min(DURATION, player.pos + (ts - player.last) / 1000);
+    player.last = ts;
+    renderPlayer();
+    if (player.pos >= DURATION) { pause(); player.pos = 0; renderPlayer(); return; }
+    player.raf = requestAnimationFrame(playLoop);
+}
+
+function play() {
+    player.playing = true;
+    player.last = 0;
+    $('playBtn').textContent = '❚❚';
+    $('playBtn').classList.add('playing');
+    $('liveDot').classList.add('on');
+    $('liveText').textContent = '正在播放';
+    player.raf = requestAnimationFrame(playLoop);
+}
+
+function pause() {
+    player.playing = false;
+    cancelAnimationFrame(player.raf);
+    $('playBtn').textContent = '▶';
+    $('playBtn').classList.remove('playing');
+    $('liveDot').classList.remove('on');
+    $('liveText').textContent = '已暂停';
+}
+
+$('playBtn').addEventListener('click', () => {
+    if (player.playing) { pause(); return; }
+    if (player.pos >= DURATION) player.pos = 0;
+    play();
+});
+
+/* ---- 进度条：点击定位 + 拖动 ---- */
+const wrap = $('waveWrap');
+let dragging = false;
+
+function posFromEvent(e) {
+    const r = wrap.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+}
+function seek(ratio) {
+    player.pos = ratio * DURATION;
+    renderPlayer();
+}
+
+wrap.addEventListener('pointerdown', e => {
+    dragging = true;
+    wrap.classList.add('dragging');
+    wrap.setPointerCapture(e.pointerId);
+    seek(posFromEvent(e));
+});
+wrap.addEventListener('pointermove', e => {
+    const ratio = posFromEvent(e);
+    // 悬停提示跟随
+    const r = wrap.getBoundingClientRect();
+    $('waveTip').style.left = (ratio * r.width) + 'px';
+    $('waveTip').textContent = fmtTime(ratio * DURATION);
+    if (dragging) seek(ratio);
+});
+wrap.addEventListener('pointerup', e => {
+    dragging = false;
+    wrap.classList.remove('dragging');
+    wrap.releasePointerCapture(e.pointerId);
+});
+wrap.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { seek(Math.min(1, (player.pos + 3) / DURATION)); e.preventDefault(); }
+    if (e.key === 'ArrowLeft')  { seek(Math.max(0, (player.pos - 3) / DURATION)); e.preventDefault(); }
+    if (e.key === ' ')          { player.playing ? pause() : play(); e.preventDefault(); }
+});
+
+/* =========================================================
+   状态切换
+   ========================================================= */
+function switchState(name) {
+    const isRx = name === 'receiving';
+    $('stateReceiving').classList.toggle('active', isRx);
+    $('stateDone').classList.toggle('active', !isRx);
+
+    $('titleIcon').textContent = isRx ? '🎵' : '✓';
+    $('titleIcon').classList.toggle('done', !isRx);
+    $('titleText').textContent = isRx ? '正在接收音频数据' : '音频生成完成';
+    $('titleSub').textContent  = isRx ? '流式传输中 · 数据持续累积' : '1 个音频已就绪，可试听或导出';
+
+    $('footerHintRx').style.display = isRx ? 'flex' : 'none';
+    $('btnExport').style.display    = isRx ? 'none' : 'block';
+    $('btnFinish').style.display    = isRx ? 'none' : 'block';
+
+    $('tabRx').classList.toggle('on', isRx);
+    $('tabDone').classList.toggle('on', !isRx);
+
+    if (!isRx) {
+        clearInterval(rx.timer); clearInterval(rx.tick);
+        pause(); player.pos = 0; renderPlayer();
+    }
+}
+
+/* 关闭按钮：只收起弹窗，接收任务继续在后台跑 */
+$('btnClose').addEventListener('click', closeModal);
+$('bgPill').addEventListener('click', openModal);
+$('btnFinish').addEventListener('click', closeModal);
+$('btnExport').addEventListener('click', () => { $('btnExport').textContent = '✓ 已导出到下载目录'; });
+
+$('tabRx').addEventListener('click', () => { openModal(); startReceiving(); });
+$('tabDone').addEventListener('click', () => { openModal(); switchState('done'); });
+$('tabReplay').addEventListener('click', () => { openModal(); startReceiving(); });
+
+/* 初始化 */
+buildStreamBars();
+buildWave();
+$('timeTotal').textContent = '/ ' + fmtTime(DURATION);
+$('metaDuration').textContent = fmtTime(DURATION);
+renderPlayer();
+startReceiving();
+</script>
+</body>
+</html>

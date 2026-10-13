@@ -13,7 +13,9 @@ struct VoiceStudioView: View {
     @EnvironmentObject var appState: AppState
     // 使用 shared 单例，保证页面切换时数据不丢失（文本/情感/语速音量等）
     @StateObject private var vm = VoiceStudioViewModel.shared
-    @ObservedObject private var player = AudioPreviewPlayer.shared
+    // 注意：这里刻意不订阅 AudioPreviewPlayer（不用 @ObservedObject）。
+    // 播放进度以 10Hz 刷新，一旦在页面层级订阅，整页（文本编辑器 + 全部面板）
+    // 都会跟着重算。需要播放态的地方下沉到子视图里订阅，见 VoiceRowPlayback。
     @State private var showVoiceLibrarySheet: Bool = false
     @State private var showGenerationModal: Bool = false
     /// 积分不足时弹出购买页面
@@ -130,7 +132,9 @@ struct VoiceStudioView: View {
                 insertEmoji: vm.insertTokenEmoji,
                 insertTokenEnglishTag: vm.insertTokenEnglishTag,
                 clearTrigger: vm.clearTokensTrigger,
-                textBinding: $vm.text
+                textBinding: $vm.text,
+                // 生成弹窗期间让文本域彻底不可交互：不抢焦点、不注册 I-beam 光标区
+                isInteractive: !showGenerationModal
             )
             .font(AppFont.bodyLarge)
             .foregroundStyle(AppColor.textPrimary)
@@ -441,20 +445,24 @@ struct VoiceStudioView: View {
             Divider().background(AppColor.borderSubtle)
 
             // 收藏的音色（最多显示 6 个）
+            //
+            // 播放态的订阅下沉到 VoiceRowPlayback 内部：工作台本体不再订阅播放器，
+            // 否则试听/播放时 10Hz 的刷新会把整页（含 NSTextView 编辑器）拖着重算。
+            // 与 AudioPlayerDetailView 的"订阅下沉"约定一致。
             VStack(spacing: 4) {
                 ForEach(alternateVoices) { v in
-                    VoiceRow(
+                    VoiceRowPlayback(
                         voice: v,
-                        isSelected: vm.selectedVoiceKey == v.key,
-                        isPlaying: player.isPlaying(key: v.key)
+                        isSelected: vm.selectedVoiceKey == v.key
                     ) {
                         vm.selectedVoiceKey = v.key
                         appState.selectedVoice = v
                     } onPreview: {
+                        let player = AudioPreviewPlayer.shared
                         if player.isPlaying(key: v.key) {
-                            AudioPreviewPlayer.shared.stop()
+                            player.stop()
                         } else {
-                            AudioPreviewPlayer.shared.play(key: v.key)
+                            player.play(key: v.key)
                         }
                     }
                 }
@@ -929,6 +937,33 @@ struct VoiceStudioView: View {
             return false
         }
         return true
+    }
+}
+
+// MARK: - 音色行的播放态订阅
+
+/// 把"这个音色现在是不是在放"的订阅关在这一层
+///
+/// 工作台本体用非观察的方式持有播放器，播放时 10Hz 的 progress / currentTime
+/// 更新只会让这一个小小的行视图重绘，不会牵动整页（含 NSTextView 编辑器）。
+/// 与 `AudioPlayerDetailView` 的注释里那条约定是同一件事。
+private struct VoiceRowPlayback: View {
+
+    let voice: Voice
+    let isSelected: Bool
+    var onTap: () -> Void
+    var onPreview: () -> Void
+
+    @ObservedObject private var player = AudioPreviewPlayer.shared
+
+    var body: some View {
+        VoiceRow(
+            voice: voice,
+            isSelected: isSelected,
+            isPlaying: player.isPlaying(key: voice.key),
+            action: onTap,
+            onPreview: onPreview
+        )
     }
 }
 

@@ -4,52 +4,37 @@
 //
 //  Created by young on 2026/9/20.
 //
+//  视觉与交互严格对齐 UI/audio-streaming-modal.html：
+//  - 状态一「接收中」：波形呼吸 + 不确定进度条 + 持续累积的字节数 / 数据块 / 用时 / 码率 + 数据块日志
+//  - 状态二「完成」：完成条幅 + 可重命名 + 四宫格元信息 + 音色卡 + 波形播放器 + 消耗积分 + 导出/完成
+//  - 两种状态都可关闭，关闭只收起界面，不打断仍在进行的接收
+//
 
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 import AppKit
 
-// MARK: - 音频数据累积动画
+// MARK: - 格式化
 
-/// 累积进度的填充曲线
-///
-/// 流式返回时拿不到音频总大小，所以画不出真实百分比，需要一条经验曲线。
-/// 这里刻意做成「前慢后快」并额外叠加一道保底闸门：
-///
-/// 1. **对数 + 幂**：先 `log10` 把字节数压到 0~1，再取 `>1` 次幂。
-///    幂次会把曲线的前段整体压低 —— 刚开几句时进度几乎不动，
-///    数据堆起来之后才明显变快，避免"一上来就冲到很满、后面还有大量数据在收却看不出变化"。
-/// 2. **与时间轴进度取小值**：ViewModel 里 `generationProgress` 是按"已耗时 / 预期时长"估算的完成度，
-///    它跟音频实际体量无关。两者谁保守听谁的，保证进度条永远不会跑在真实完成度前面
-///    （wav/48kHz 下一段十几秒的音频就有近 1MB，只靠字节曲线会过早触顶）。
-///
-/// 想让曲线回到纯字节驱动，把 `fill(bytes:timeProgress:)` 里的 `min` 去掉即可。
-enum AccumulationCurve {
-    /// 参考上限（KB）：数据达到这个量级时，字节曲线饱和
-    static let referenceKB: Double = 1024
-    /// 幂次：1 为纯对数；越大前段越慢（后置越明显）
-    static let exponent: Double = 1.35
-    /// 最高占比，剩下的留给收尾落盘
-    static let ceiling: Double = 0.94
+/// 千分位 + 两位小数的 KB 数值（用于「已接收」大数字）
+private let kbNumberFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .decimal
+    f.usesGroupingSeparator = true
+    f.groupingSeparator = ","
+    f.minimumFractionDigits = 2
+    f.maximumFractionDigits = 2
+    return f
+}()
 
-    /// 仅由字节数决定的填充比例（0 ~ ceiling）
-    static func byteFill(bytes: Double) -> Double {
-        guard bytes > 0 else { return 0 }
-        let kb = bytes / 1000.0
-        let normalized = min(1, log10(1 + kb) / log10(1 + referenceKB))
-        return ceiling * pow(normalized, exponent)
-    }
-
-    /// 最终填充比例：字节曲线与时间轴进度取小值
-    /// - parameter timeProgress: ViewModel 中基于预期时长算出的进度（0~1）
-    static func fill(bytes: Double, timeProgress: Double) -> Double {
-        let timeCeiling = min(ceiling, max(0, timeProgress))
-        return min(byteFill(bytes: bytes), timeCeiling)
-    }
+/// 已接收字节数 → "2,180.00"（单位 KB，见界面上的「KB 已接收」）
+private func formatKB(_ bytes: Int) -> String {
+    let kb = Double(max(0, bytes)) / 1000.0
+    return kbNumberFormatter.string(from: NSNumber(value: kb)) ?? String(format: "%.2f", kb)
 }
 
-/// 字节数格式化（与 App 内其它位置口径一致，使用 1000 进制）
+/// 文件大小（1000 进制，与 App 内其它位置口径一致）
 private func formatDataSize(_ bytes: Int) -> String {
     let value = max(0, bytes)
     if value < 1000 {
@@ -61,463 +46,479 @@ private func formatDataSize(_ bytes: Int) -> String {
     }
 }
 
-/// 速率格式化（字节/秒）
-private func formatDataSpeed(_ bytesPerSecond: Double) -> String {
-    guard bytesPerSecond > 0 else { return "等待数据" }
-    if bytesPerSecond < 1000 {
-        return String(format: "%.0f B/s", bytesPerSecond)
-    } else if bytesPerSecond < 1000 * 1000 {
-        return String(format: "%.1f KB/s", bytesPerSecond / 1000.0)
-    } else {
-        return String(format: "%.2f MB/s", bytesPerSecond / (1000.0 * 1000.0))
-    }
+/// 秒 → mm:ss
+private func formatClock(_ seconds: TimeInterval) -> String {
+    let total = max(0, Int(seconds.rounded(.down)))
+    return String(format: "%02d:%02d", total / 60, total % 60)
 }
 
-/// 一滴水：由一批到达的数据触发
-struct WaterDrop: Identifiable {
+/// 采样率：24000 → "24 kHz"
+private func formatSampleRate(_ rate: Int) -> String {
+    rate >= 1000 ? "\(rate / 1000) kHz" : "\(rate) Hz"
+}
+
+// MARK: - 接收中：波形动画
+
+/// 数据块到达日志的一行
+private struct ChunkLine: Identifiable {
     let id = UUID()
-    /// 归一化横向位置 0~1
-    let x: CGFloat
-    /// 生成时刻，后续所有运动都由这个时间戳推导，无需逐帧保存中间状态
-    let birth: Date
+    let index: Int
+    let size: Int
 }
 
-enum WaterFieldMetrics {
-    /// 水滴从生成到触及水面的时长
-    static let fallDuration: Double = 0.5
-    /// 入水水花从溅起到落回的时长（短促，不留尾）
-    static let splashDuration: Double = 0.34
-    /// 一滴水的完整生命周期（超过就回收）
-    static var lifetime: Double { fallDuration + splashDuration }
-    /// 同时存在的水滴上限
-    static let maxActiveDrops = 14
-}
+/// 持续流动的波形条
+///
+/// 流式返回拿不到总大小，所以这里不表达"还差多少"，只表达"还在往里堆"。
+///
+/// 两条实现要点：
+/// 1. 条数按容器宽度自适应铺满整条（早期是写死 26 根、居中摆放，看起来像只占中间一小撮）。
+/// 2. 不用 TimelineView 每秒 30 次重算 body，而是给每根条挂一条
+///    `repeatForever` 的缩放动画（时长/延迟错开，等价于 CSS 的 delay+duration），
+///    动画完全跑在渲染服务端，SwiftUI 一次都不用重绘。
+private struct StreamingWaveView: View {
 
-/// 水滴累积池
-///
-/// 刻意放弃「从左到右填充」的横向形态 —— 那种形态天然有个 100% 的尽头，
-/// 而流式返回的音频根本无从得知什么时候结束。
-///
-/// 改用「水池」的隐喻，一切都在表达"还在往里堆"而不是"还差多少"：
-/// - 每收到一批数据就滴下一滴水，触面后只溅起一小朵水花、随即落回水面消失；
-///   刻意不画向外扩散的同心波纹 —— 那种一圈圈荡开的形态会让人去数圈、找边界，
-///   反而把注意力从"还在累积"拉回到"发生了几次"上；
-/// - 水面持续做微波起落，即便数据暂时断流也始终是活的；
-/// - 池底水位随累积总量缓慢抬高，并且永远留有余量，不会给出"快满了"的暗示；
-/// - 没有终点线、没有刻度：看不到尽头。
-struct WaterDropField: View {
-    /// 水位，从池底算起 0~1
-    var level: Double
-    var drops: [WaterDrop]
-    var isRaining: Bool
+    @State private var animating = false
+
+    private static let barWidth: CGFloat = 6
+    private static let spacing: CGFloat = 6
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
-            Canvas { context, size in
-                render(context: &context, size: size, now: timeline.date)
+        GeometryReader { geo in
+            let w = geo.size.width
+            let count = max(12, min(56, Int((w + Self.spacing) / (Self.barWidth + Self.spacing))))
+            let totalBarWidth = CGFloat(count) * Self.barWidth + CGFloat(count - 1) * Self.spacing
+            let barStartX = (w - totalBarWidth) / 2
+            let sweepWidth = max(60, w * 0.45)
+
+            ZStack(alignment: .leading) {
+                // 波形条：每根独立错相呼吸
+                HStack(spacing: Self.spacing) {
+                    ForEach(0..<count, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppColor.accentGlow, AppColor.accentSecondary],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: Self.barWidth, height: Self.barHeight(index: i))
+                            .scaleEffect(x: 1, y: animating ? 1 : 0.28, anchor: .center)
+                            .animation(
+                                Animation.easeInOut(duration: 0.9 + Double(i % 5) * 0.11)
+                                    .repeatForever(autoreverses: true)
+                                    .delay(Double(i) * 0.055),
+                                value: animating
+                            )
+                    }
+                }
+                .frame(width: totalBarWidth)
+                .offset(x: barStartX)
+
+                // 扫光：一遍遍从左扫到右
+                LinearGradient(
+                    colors: [Color.clear, AppColor.accentPrimary.opacity(0.13), Color.clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: sweepWidth)
+                .offset(x: animating ? w : -sweepWidth)
+                .animation(
+                    Animation.linear(duration: 1.9).repeatForever(autoreverses: false),
+                    value: animating
+                )
             }
         }
-    }
-
-    private func render(context: inout GraphicsContext, size: CGSize, now: Date) {
-        let clampedLevel = min(max(level, 0), 1)
-        // 有数据在收时水面起伏更大，断流时收敛但依然是活的
-        let amplitude: CGFloat = isRaining ? 2.6 : 1.4
-        let baseY = size.height * CGFloat(1 - clampedLevel)
-        let t = CGFloat(now.timeIntervalSinceReferenceDate)
-
-        // 两道不同波长、反向流动的正弦叠加，看不出明显周期
-        func surfaceY(atX x: CGFloat, phase: CGFloat) -> CGFloat {
-            let w1 = sin(x / 150.0 + t * 1.1 + phase) * amplitude
-            let w2 = sin(x / 82.0 - t * 0.8 + phase) * amplitude * 0.55
-            return baseY + w1 + w2
-        }
-
-        // 1) 水体：水面以下一整块，竖向渐变
-        let waterPath = Path { path in
-            path.move(to: CGPoint(x: 0, y: size.height))
-            let steps = 28
-            for i in 0...steps {
-                let x = size.width * CGFloat(i) / CGFloat(steps)
-                path.addLine(to: CGPoint(x: x, y: surfaceY(atX: x, phase: 0)))
-            }
-            path.addLine(to: CGPoint(x: size.width, y: size.height))
-            path.closeSubpath()
-        }
-        let waterGradient = Gradient(colors: [
-            AppColor.accentPrimary.opacity(0.55),
-            AppColor.accentSecondary.opacity(0.18)
-        ])
-        context.fill(
-            waterPath,
-            with: .linearGradient(
-                waterGradient,
-                startPoint: CGPoint(x: 0, y: baseY),
-                endPoint: CGPoint(x: 0, y: size.height)
-        )
-        )
-
-        // 2) 水面：主线 + 错开相位的淡影，做出厚度
-        let mainLine = Path { path in
-            let steps = 56
-            for i in 0...steps {
-                let x = size.width * CGFloat(i) / CGFloat(steps)
-                let y = surfaceY(atX: x, phase: 0)
-                if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
-                else { path.addLine(to: CGPoint(x: x, y: y)) }
-            }
-        }
-        context.stroke(mainLine, with: .color(AppColor.accentGlow.opacity(0.9)), lineWidth: 1.4)
-
-        let echoLine = Path { path in
-            let steps = 56
-            for i in 0...steps {
-                let x = size.width * CGFloat(i) / CGFloat(steps)
-                let y = surfaceY(atX: x, phase: 1.8)
-                if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
-                else { path.addLine(to: CGPoint(x: x, y: y)) }
-            }
-        }
-        context.stroke(echoLine, with: .color(AppColor.accentPrimary.opacity(0.22)), lineWidth: 1)
-
-        // 3) 水滴：下落中 / 入水水花
-        for drop in drops {
-            let age = now.timeIntervalSince(drop.birth)
-            guard age >= 0, age < WaterFieldMetrics.lifetime else { continue }
-
-            let cx = drop.x * size.width
-            let surfaceAtX = surfaceY(atX: cx, phase: 0)
-
-            if age < WaterFieldMetrics.fallDuration {
-                drawFallingDrop(context: &context,
-                                x: cx,
-                                surfaceY: surfaceAtX,
-                                progress: age / WaterFieldMetrics.fallDuration)
-            } else {
-                let cycle = (age - WaterFieldMetrics.fallDuration) / WaterFieldMetrics.splashDuration
-                guard cycle < 1 else { continue }
-                drawSplash(context: &context, x: cx, surfaceY: surfaceAtX, cycle: cycle)
-            }
-        }
-    }
-
-    /// 下落中的水滴：越接近水面越快（二次方加速），拖尾随速度拉长
-    private func drawFallingDrop(context: inout GraphicsContext,
-                                 x: CGFloat,
-                                 surfaceY: CGFloat,
-                                 progress: Double) {
-        let p = min(max(progress, 0), 1)
-        let eased = p * p
-        let y = surfaceY * CGFloat(eased)
-
-        let length: CGFloat = 6 + 10 * CGFloat(p)
-        let width: CGFloat = 2.2
-        let rect = CGRect(x: x - width / 2, y: y - length, width: width, height: length)
-        let gradient = Gradient(colors: [
-            AppColor.accentGlow.opacity(0.15),
-            AppColor.accentGlow.opacity(0.95)
-        ])
-        context.fill(
-            Path(roundedRect: rect, cornerRadius: width / 2),
-            with: .linearGradient(
-                gradient,
-                startPoint: CGPoint(x: x, y: y - length),
-                endPoint: CGPoint(x: x, y: y)
+        .frame(height: 92)
+        .background(
+            LinearGradient(
+                colors: [AppColor.accentPrimary.opacity(0.05), AppColor.accentPrimary.opacity(0.01)],
+                startPoint: .top,
+                endPoint: .bottom
             )
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .stroke(AppColor.accentPrimary.opacity(0.14), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+        .onAppear { animating = true }
     }
 
-    /// 入水：只在入水点原地溅起一小朵水花随即落回，刻意不画向外扩散的圈
-    private func drawSplash(context: inout GraphicsContext,
-                            x: CGFloat,
-                            surfaceY: CGFloat,
-                            cycle: Double) {
-        let c = min(max(cycle, 0), 1)
-        let fade = pow(1 - c, 1.6)
-
-        // 摊开的水花
-        let radius: CGFloat = 2.0 + 3.6 * CGFloat(c)
-        let height = radius * 0.62
-        let splash = CGRect(x: x - radius, y: surfaceY - height / 2,
-                            width: radius * 2, height: height)
-        context.fill(
-            Path(ellipseIn: splash),
-            with: .color(AppColor.accentGlow.opacity(fade * 0.85))
-        )
-
-        // 向上溅起又落回的细水柱（只占前 60% 时长）
-        guard c < 0.6 else { return }
-        let jet = c / 0.6
-        let jetHeight: CGFloat = 8.0 * CGFloat(sin(jet * .pi))
-        let jetWidth: CGFloat = 1.4
-        let jetRect = CGRect(x: x - jetWidth / 2, y: surfaceY - jetHeight,
-                             width: jetWidth, height: jetHeight)
-        context.fill(
-            Path(roundedRect: jetRect, cornerRadius: jetWidth / 2),
-            with: .color(AppColor.accentGlow.opacity((1 - jet) * 0.7))
-        )
+    private static func barHeight(index i: Int) -> CGFloat {
+        16 + abs(sin(Double(i) * 0.9)) * 44
     }
 }
 
-/// 音频数据累积监视器
+/// 不确定进度条：没有百分比，只有一段来回滑动的高光
+private struct IndeterminateProgressBar: View {
+
+    @State private var animating = false
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(AppColor.bgTertiary)
+                LinearGradient(
+                    colors: [
+                        AppColor.accentPrimary.opacity(0),
+                        AppColor.accentPrimary,
+                        AppColor.accentPrimary.opacity(0)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: w * 0.38)
+                .clipShape(Capsule())
+                .offset(x: animating ? w * 1.02 : -w * 0.4)
+            }
+        }
+        .frame(height: 6)
+        .onAppear {
+            animating = false
+            withAnimation(.linear(duration: 1.35).repeatForever(autoreverses: false)) {
+                animating = true
+            }
+        }
+    }
+}
+
+/// 统计小格（数据块 / 已用时 / 当前码率，或 大小 / 采样率 / 格式 / 时长）
+private struct StatCell: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 10.5))
+                .foregroundStyle(AppColor.textTertiary)
+            Text(value)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(AppColor.textPrimary)
+                .fontDesign(.monospaced)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(AppColor.bgTertiary)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+    }
+}
+
+// MARK: - 完成态：波形播放器
+
+/// 接收中的统计心跳
 ///
-/// 用「水池」表达"还在持续累积"：每收到一批数据就滴下一滴水，
-/// 触面后原地溅起一小朵水花随即落回；水位随累积量缓慢抬高且永远留有余量。
-struct AudioAccumulationMonitor: View {
-    let bytes: Int
-    let progress: Double
-    let isActive: Bool
+/// 不能用 `let ticker = Timer.publish(...).autoconnect()`：接收过程中
+/// `receivedBytes` 每来一块就变一次，弹窗被反复重建，Combine 的订阅会被
+/// 取消再重连，计时器永远走不满一个周期，`onReceive` 一次都不触发
+/// （表现就是字节数和速率一直停在 0）。这里改成由对象持有的真实 Timer。
+private final class StatsTicker: ObservableObject {
+    @Published var now: Date = Date()
 
-    /// 水位上限：永远不满，不给"快好了"的暗示
-    private static let poolCeiling: Double = 0.82
-    /// 目标滴速（滴/秒）：据此把实时速率折算成「一滴代表多少字节」
-    private static let targetDropsPerSecond: Double = 8
-    /// 两滴之间的最小间隔
-    private static let minDropInterval: Double = 0.07
-    /// 欠账上限：避免长时间无数据后一次性补一大串
-    private static let maxDropBudget: Double = 6
+    private var timer: Timer?
 
-    /// 平滑显示的字节数（追赶真实值，形成滚动累加的观感）
-    @State private var displayBytes: Double = 0
-    /// 实时接收速率（字节/秒，EMA 平滑）
-    @State private var speed: Double = 0
-    @State private var sampleBytes: Int = 0
-    @State private var sampleDate: Date = Date()
-    /// 正在下落 / 溅起的水滴
-    @State private var drops: [WaterDrop] = []
-    /// 累积的"欠账"：本帧应收到的水滴数（可能是小数）
-    @State private var dropBudget: Double = 0
-    @State private var lastDropDate: Date = Date()
+    func start() {
+        guard timer == nil else { return }
+        // 注意：这个 block 的参数是 Timer 本身，不是触发时刻
+        let t = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.now = Date()
+        }
+        timer = t
+        RunLoop.main.add(t, forMode: .common)
+    }
 
-    private let ticker = Timer.publish(every: 1.0 / 24.0, on: .main, in: .common).autoconnect()
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
 
-    private var level: Double {
-        AccumulationCurve.fill(bytes: displayBytes, timeProgress: progress) * Self.poolCeiling
+/// 波形绘制：单图层 Canvas，所有柱子合成 2 条 Path，各 fill 一次
+///
+/// 对齐 `PlayerWaveformView` 的画法。之前的版本是逐条 fill（60 条 × 渐变），
+/// 播放时每 0.1s 就要建 60 次渐变并填充 60 次；现在整帧只有两次 fill。
+private struct ModalWaveCanvas: View {
+
+    var progress: Double
+    var isHovered: Bool
+
+    private static let gap: CGFloat = 2
+    private static let barCount = 60
+    fileprivate static let heights: [CGFloat] = (0..<60).map { i in
+        let v = sin(Double(i) * 0.55) * 0.35
+            + sin(Double(i) * 0.21 + 1.3) * 0.4
+            + sin(Double(i) * 1.7) * 0.15
+        return max(0.18, min(1, 0.55 + v * 0.42)) * 40
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            // 水滴累积池
-            WaterDropField(level: level, drops: drops, isRaining: isActive)
-                .frame(height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        Canvas { ctx, size in
+            let n = Self.barCount
+            let gap = Self.gap
+            let barW = max(1.5, (size.width - gap * CGFloat(n - 1)) / CGFloat(n))
+            let cut = size.width * CGFloat(min(max(progress, 0), 1))
 
-            // 数值 + 速率
-            HStack(spacing: 6) {
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColor.accentPrimary)
+            var background = Path()
+            var played = Path()
+            var x: CGFloat = 0
 
-                Text("已接收: %@".localized(formatDataSize(Int(displayBytes))))
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(AppColor.textPrimary)
+            for i in 0..<n {
+                let h = Self.heights[i]
+                let bar = Path(
+                    roundedRect: CGRect(x: x, y: (size.height - h) / 2, width: barW, height: h),
+                    cornerRadius: 2
+                )
+                background.addPath(bar)
+                // 只有中心线越过播放头的柱子才算"已播放"
+                if x + barW * 0.5 <= cut {
+                    played.addPath(bar)
+                }
+                x += barW + gap
+            }
+
+            ctx.fill(background, with: .color(Color.white.opacity(isHovered ? 0.20 : 0.13)))
+
+            if !played.isEmpty {
+                ctx.fill(
+                    played,
+                    with: .linearGradient(
+                        Gradient(colors: [AppColor.accentGlow, AppColor.accentSecondary]),
+                        startPoint: .zero,
+                        endPoint: CGPoint(x: 0, y: size.height)
+                    )
+                )
+            }
+        }
+    }
+}
+
+/// 生成弹窗里的播放器（播放按钮 + 时间 + 波形进度）
+///
+/// 性能约定，与 `AudioPlayerDetailView` 一致：
+/// **只有这个子视图订阅 `AudioPreviewPlayer`**。播放进度以 10Hz 刷新，
+/// 订阅范围一旦上移到弹窗，四宫格、音色卡、积分行这些都会跟着重算 ——
+/// 这就是之前"播放时十分卡顿"的原因。弹窗外层用 `let` 传入 URL 和时长，
+/// 播放期间一次都不参与重绘。
+private struct ModalAudioPlayer: View {
+
+    let audioURL: URL
+    let duration: TimeInterval
+
+    @ObservedObject private var player = AudioPreviewPlayer.shared
+
+    @State private var isScrubbing = false
+    @State private var scrubProgress: Double = 0
+    @State private var isHovering = false
+    @State private var hoverRatio: CGFloat = 0
+
+    private var isPlaying: Bool { player.isPlaying(url: audioURL) }
+    private var displayProgress: Double { isScrubbing ? scrubProgress : player.progress }
+    private var displayTime: Double { isScrubbing ? scrubProgress * duration : player.currentTime }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button { togglePlayback() } label: {
+                    ZStack {
+                        Circle()
+                            .fill(AppColor.accentPrimary)
+                            .frame(width: 40, height: 40)
+                            .shadow(color: AppColor.accentPrimary.opacity(0.25), radius: 8, y: 3)
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(AppColor.bgPrimary)
+                            .offset(x: isPlaying ? 0 : 1.5)
+                    }
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(formatClock(displayTime))
+                        .font(.system(size: 13, weight: .semibold))
+                        .fontDesign(.monospaced)
+                        .foregroundStyle(AppColor.textPrimary)
+                    Text("/ \(formatClock(duration))")
+                        .font(.system(size: 11.5))
+                        .fontDesign(.monospaced)
+                        .foregroundStyle(AppColor.textTertiary)
+                }
 
                 Spacer()
 
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Circle()
-                        .fill(speed > 0 ? AppColor.statusSuccess : AppColor.textTertiary)
+                        .fill(isPlaying ? AppColor.statusSuccess : AppColor.textTertiary)
                         .frame(width: 6, height: 6)
-                    Text(formatDataSpeed(speed))
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(AppColor.textTertiary)
+                    Text(isPlaying ? "正在播放".localized() : "已暂停".localized())
+                        .font(.system(size: 11))
+                        .foregroundStyle(isPlaying ? AppColor.statusSuccess : AppColor.textTertiary)
                 }
-                .opacity(isActive ? 1 : 0.6)
             }
+
+            waveRow
+                .padding(.top, 22)
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
         .background(AppColor.bgTertiary)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(AppColor.borderSubtle, lineWidth: 1)
         )
-        .onReceive(ticker) { now in
-            tick(now)
-        }
-        .onChange(of: isActive) { _, active in
-            if !active {
-                // 停止接收：清掉在途水滴，让水面回归平静
-                drops.removeAll()
-                dropBudget = 0
-                speed = 0
-            } else {
-                sampleBytes = bytes
-                sampleDate = Date()
-            }
-        }
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
     }
 
-    /// 每帧：平滑追赶字节数、按实时吞吐折算水滴；每 0.5 秒重算一次速率
-    private func tick(_ now: Date) {
-        let target = Double(bytes)
-        let delta = target - displayBytes
-        if delta > 0 {
-            displayBytes = min(target, displayBytes + max(delta * 0.22, 8))
-        } else {
-            displayBytes = target
-        }
+    // MARK: 波形进度条（点击定位 + 拖动擦洗 + 悬停气泡）
 
-        let elapsed = now.timeIntervalSince(sampleDate)
-        if elapsed >= 0.5 {
-            let instant = max(0, Double(bytes - sampleBytes)) / elapsed
-            speed = speed * 0.4 + instant * 0.6
-            sampleBytes = bytes
-            sampleDate = now
-        }
+    private var waveRow: some View {
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
 
-        guard isActive else { return }
+            ZStack(alignment: .leading) {
+                ModalWaveCanvas(
+                    progress: displayProgress,
+                    isHovered: isHovering || isScrubbing
+                )
+                .frame(width: width, height: 46)
 
-        // 回收过期的水滴
-        if let oldest = drops.first, now.timeIntervalSince(oldest.birth) > WaterFieldMetrics.lifetime {
-            drops.removeFirst()
-        }
+                // 播放头
+                Capsule()
+                    .fill(AppColor.accentPrimary)
+                    .frame(width: 2, height: 34)
+                    .offset(x: width * CGFloat(displayProgress) - 1)
 
-        // 按当前速率往预算里加，攒够一滴就落一滴
-        let bytesPerDrop = max(1, speed / Self.targetDropsPerSecond)
-        dropBudget = min(dropBudget + delta / bytesPerDrop, Self.maxDropBudget)
-        while dropBudget >= 1 && drops.count < WaterFieldMetrics.maxActiveDrops {
-            guard now.timeIntervalSince(lastDropDate) >= Self.minDropInterval else { break }
-            drops.append(WaterDrop(x: CGFloat.random(in: 0.06...0.94), birth: now))
-            dropBudget -= 1
-            lastDropDate = now
-        }
-    }
-}
-
-// MARK: - 通用图标按钮
-
-/// 通用的图标按钮组件，可复用
-/// - Parameters:
-///   - icon: SF Symbol 图标名
-///   - title: 按钮文字
-///   - isLoading: 是否显示加载状态
-///   - action: 点击回调
-struct ActionIconButton: View {
-    let icon: String
-    let title: String
-    var isLoading: Bool = false
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                VStack(spacing: 4) {
-                    Image(systemName: icon)
-                        .font(.system(size: 14))
-                    Text(title)
-                        .font(.system(size: 10))
+                if isHovering || isScrubbing {
+                    Text(formatClock(hoverRatio * duration))
+                        .font(.system(size: 10.5))
+                        .fontDesign(.monospaced)
+                        .foregroundStyle(AppColor.textPrimary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(AppColor.bgElevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(AppColor.borderMedium, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .offset(x: min(max(width * hoverRatio - 18, 0), max(width - 36, 0)))
+                        .offset(y: -26)
+                        .allowsHitTesting(false)
                 }
-                .foregroundStyle(AppColor.textSecondary)
-                .opacity(isLoading ? 0 : 1)
-                
-                if isLoading {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.6)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let p = min(max(value.location.x / width, 0), 1)
+                        isScrubbing = true
+                        hoverRatio = p
+                        scrubProgress = p
+                        player.seek(to: p * duration)
+                    }
+                    .onEnded { _ in
+                        isScrubbing = false
+                    }
+            )
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let point):
+                    hoverRatio = min(max(point.x / width, 0), 1)
+                    isHovering = true
+                case .ended:
+                    isHovering = false
                 }
             }
         }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-        .disabled(isLoading)
-    }
-}
-
-// MARK: - 预览
-
-/// 模拟 wav/48kHz 下约 90KB/s 的持续到达，并配一条 11 秒的时间轴，
-/// 用来反复观察"数据一直往里堆"的观感（可在 Xcode Canvas 里直接调参）
-private struct AccumulationAnimationPreview: View {
-    @State private var bytes: Int = 0
-    @State private var startedAt: Date = Date()
-
-    private static let expectedDuration: TimeInterval = 11
-    private static let bytesPerSecond: Double = 90_000
-
-    private let ticker = Timer.publish(every: 1.0 / 12.0, on: .main, in: .common).autoconnect()
-
-    private var progress: Double {
-        min(0.95, 0.05 + 0.90 * (Date().timeIntervalSince(startedAt) / Self.expectedDuration))
+        .frame(height: 46)
     }
 
-    var body: some View {
-        VStack(spacing: 18) {
-            AudioAccumulationMonitor(bytes: bytes, progress: progress, isActive: true)
+    // MARK: 播放控制
 
-            HStack(spacing: 12) {
-                Button("模拟一批数据") { bytes += Int.random(in: 4_000...16_000) }
-                Button("重置") {
-                    bytes = 0
-                    startedAt = Date()
-                }
-            }
-            .buttonStyle(.bordered)
+    private func togglePlayback() {
+        if player.isPlaying(url: audioURL) {
+            player.stop()
+            return
         }
-        .frame(width: 480)
-        .padding(40)
-        .background(AppColor.bgSecondary)
-        .onReceive(ticker) { _ in
-            let chunk = Int(Self.bytesPerSecond / 12.0)
-            bytes += max(1, chunk + Int.random(in: -800...800))
+        // 暂停中且还是同一个文件 → 继续播
+        if player.isPaused && player.playingKey == audioURL.path {
+            player.resume()
+            return
+        }
+
+        player.stop()
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            Log(message: "AudioGenerationModal: 音频文件不存在")
+            return
+        }
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: audioURL.path),
+           let size = attrs[.size] as? Int64,
+           size < 1000 {
+            Log(message: "AudioGenerationModal: 音频文件过小，可能不完整")
+            return
+        }
+        if !player.play(url: audioURL, identifier: audioURL.path) {
+            Log(message: "AudioGenerationModal: 播放失败")
         }
     }
-}
-
-#Preview("音频数据累积动画") { AccumulationAnimationPreview() }
-
-// MARK: - 高度测量
-
-/// 把标注过的子视图实际高度向上冒泡，弹窗据此把内容区收到贴合高度
-private struct MeasuredHeight: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-private struct MeasureHeight: ViewModifier {
-    func body(content: Content) -> some View {
-        content.background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: MeasuredHeight.self, value: proxy.size.height)
-            }
-        )
-    }
-}
-
-private extension View {
-    func measureHeight() -> some View { modifier(MeasureHeight()) }
 }
 
 // MARK: - 音频生成弹窗
 
 struct AudioGenerationModal: View {
+
     @ObservedObject var vm: VoiceStudioViewModel
     @Binding var isPresented: Bool
 
-    /// 完成态内容区最大高度：再长就改为内部滚动，避免把弹窗顶出屏幕
-    private static let completedContentMaxHeight: CGFloat = 460
+    /// 接收统计单独订阅：高频更新只影响弹窗，不牵连工作台
+    @ObservedObject private var stats = VoiceStudioViewModel.shared.stats
 
+    /// 弹窗宽度（对齐设计稿 max-width: 560）
+    private static let modalWidth: CGFloat = 560
+
+    /// 接收中的统计心跳（对象持有，避免弹窗重建时计时器被重置）
+    @StateObject private var ticker = StatsTicker()
+
+    // 状态
     @State private var isCompleted: Bool = false
     @State private var audioName: String = ""
-    @State private var isEditingName: Bool = false
-    @State private var isPlaying: Bool = false
-    @State private var playbackProgress: Double = 0.0
-    @State private var playbackTimer: Timer? = nil
-    @State private var showDownloadOverlay: Bool = false
+    @State private var audioDuration: TimeInterval = 0
     @State private var isExporting: Bool = false
     @State private var exportSuccess: Bool = false
-    @State private var isSeeking: Bool = false  // 是否正在拖动滑块
-    @State private var playerIsPlaying: Bool = false  // 播放器实际播放状态
-    
-    // 使用真实的音频时长（生成完成后从 ViewModel 获取）
-    @State private var audioDuration: TimeInterval = 0
-    // 记录播放开始时的系统时间，用于精确计算进度
-    @State private var playbackStartTime: Date?
 
-    /// 完成态内容区的实测高度（初值取经验值；只在拿到有效测量后才更新）
-    @State private var completedContentHeight: CGFloat = 450
+    /// 完成瞬间冻结下来的展示数据。
+    /// 这些值如果留在 body 里现算（读文件属性 / 跑 TextSplitter），
+    /// 播放期间每次重绘都会重来一遍，纯属浪费。
+    @State private var fileSizeText: String = "—"
+    @State private var consumedPoints: Double = 0
+
+    // 接收中的实时统计
+    @State private var startedAt: Date = Date()
+    @State private var elapsed: TimeInterval = 0
+    @State private var displayBytes: Double = 0
+    @State private var speed: Double = 0
+    @State private var sampleBytes: Int = 0
+    @State private var sampleDate: Date = Date()
+    @State private var chunkLog: [ChunkLine] = []
+    /// 完成瞬间冻结下来的统计（供完成条幅使用）
+    @State private var finishedElapsed: TimeInterval = 0
+    @State private var finishedChunkCount: Int = 0
+
+    /// 日志节流：距上一行不足 200ms 时，把新数据块的大小并入该行
+    /// （数据仍是真实到达量，只是不让它把弹窗刷爆）
+    @State private var lastLogDate: Date = .distantPast
+
+    @State private var remainingCredits: Int = 0
+    /// 提示圆点的闪烁开关
+    @State private var blink: Bool = false
 
     var body: some View {
         ZStack {
@@ -525,707 +526,584 @@ struct AudioGenerationModal: View {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    if !isGenerating { isPresented = false }
+                    // 接收中不允许点遮罩关闭，避免误触打断观感（关闭按钮仍可用）
+                    if isCompleted { dismiss() }
                 }
-            
+
             // 弹窗主体
             VStack(spacing: 0) {
-                // 头部
                 header
-                
-                // 内容
+
                 if isGenerating {
                     generatingContent
                 } else {
                     completedContent
                 }
-                
-                // 底部
+
                 footer
             }
-            .frame(width: 520)
+            .frame(width: Self.modalWidth)
             .background(AppColor.bgSecondary)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
-            .shadow(color: .black.opacity(0.6), radius: 40, x: 0, y: 12)
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.large)
                     .stroke(AppColor.borderSubtle, lineWidth: 1)
             )
+            .overlay(alignment: .top) {
+                // 顶部一道强调高光（对应设计稿 modal::before）
+                LinearGradient(
+                    colors: [Color.clear, AppColor.accentPrimary.opacity(0.55), Color.clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 1)
+            }
+            .shadow(color: .black.opacity(0.6), radius: 40, x: 0, y: 12)
         }
         .animation(.easeInOut(duration: 0.35), value: isGenerating)
         .animation(.easeInOut(duration: 0.35), value: isCompleted)
         // 弹窗与工作台的 NSTextView 共处同一窗口，鼠标从文本域移上来时光标可能还停留在 I-beam。
         // 这里在弹窗出现的当下先复位成箭头，之后由各控件的 hover 接管。
-        .onAppear { NSCursor.arrow.set() }
-        .onPreferenceChange(MeasuredHeight.self) { height in
-            // 完成态分支不在层级里时会回落成 0，这里忽略无效值，避免卡片被压扁
-            if height > 0 { completedContentHeight = height }
-        }
-        // 弹窗改由整窗 overlay 承载后不再有 sheet 自带的 Esc 关闭，这里补回来
-        .onExitCommand {
-            if !isGenerating { isPresented = false }
-        }
-        .onChange(of: vm.generationProgress) { _, newProgress in
-            if newProgress >= 1.0 {
-                withAnimation {
-                    isCompleted = true
-                }
+        .onAppear {
+            NSCursor.arrow.set()
+            // 焦点若还停在工作台的 NSTextView 上，先交还给窗口：
+            // 否则弹窗期间键盘事件会被下层文本域吃掉，鼠标光标也可能被它带成 I-beam
+            if let window = NSApp.keyWindow ?? NSApp.mainWindow,
+               window.firstResponder is NSTextView {
+                window.makeFirstResponder(nil)
             }
         }
-        .onChange(of: vm.generatedAudioDuration) { _, newDuration in
-            // 文件保存成功后立即更新时长
-            if newDuration > 0 {
-                audioDuration = newDuration
-            }
-        }
+        .onExitCommand { dismiss() }
         .onAppear {
             audioName = generateDefaultAudioName()
-
-            // 观察播放器实际播放状态
-            observePlayerState()
+            startedAt = Date()
+            sampleBytes = stats.receivedBytes
+            sampleDate = Date()
+            refreshCredits()
+            refreshCompletedInfo()
+            blink = true
+            ticker.start()
         }
         .onDisappear {
-            playbackTimer?.invalidate()
+            ticker.stop()
             AudioPreviewPlayer.shared.stop()
         }
-        .onChange(of: AudioPreviewPlayer.shared.isPlaying) { _, newValue in
-            playerIsPlaying = newValue
-            // 外部停止（如系统控制中心）时同步状态
-            if !newValue && isPlaying {
-                isPlaying = false
-                playbackTimer?.invalidate()
-            }
+        .onReceive(ticker.$now) { now in
+            guard isGenerating else { return }
+            tick(now)
+        }
+        .onChange(of: stats.receivedBytes) { oldValue, newValue in
+            let delta = newValue - oldValue
+            guard delta > 0 else { return }
+            // 段号取真实段数（与 WebSocket 每次 onAudio 一一对应）
+            appendChunkLog(chunkIndex: stats.receivedChunks, size: delta, at: Date())
+        }
+        .onChange(of: stats.progress) { _, newProgress in
+            guard newProgress >= 1.0 else { return }
+            finishedElapsed = elapsed
+            finishedChunkCount = stats.receivedChunks
+            ticker.stop()
+            refreshCompletedInfo()
+            withAnimation { isCompleted = true }
+        }
+        .onChange(of: vm.generatedAudioDuration) { _, newDuration in
+            if newDuration > 0 { audioDuration = newDuration }
         }
     }
-    
-    /// 观察播放器状态
-    private func observePlayerState() {
-        Task { @MainActor in
-            playerIsPlaying = AudioPreviewPlayer.shared.isPlaying
-        }
-    }
-    
+
     // MARK: - 计算属性
-    
-    private var isGenerating: Bool {
-        vm.isGenerating && !isCompleted
+
+    private var isGenerating: Bool { vm.isGenerating && !isCompleted }
+
+    private var currentVoice: Voice? { vm.voice }
+
+    /// 实时码率（kbps），还没有数据时显示占位
+    private var bitrateText: String {
+        guard speed > 0 else { return "— kbps" }
+        return "%d kbps".localized(max(1, Int(speed * 8 / 1000)))
     }
 
-    /// 完成态内容区高度：贴合内容，超过上限则改为内部滚动
-    private var completedScrollHeight: CGFloat {
-        min(max(completedContentHeight, 0), Self.completedContentMaxHeight)
-    }
-
-    private var currentVoice: Voice? {
-        vm.voice
-    }
-    
-    private var estimatedRemainingTime: Int {
-        let remaining = 1.0 - vm.generationProgress
-        return max(1, Int(remaining * 10))
-    }
-    
-    /// 格式化文件大小
-    private var formattedFileSize: String {
-        let bytes = vm.receivedBytes
-        if bytes < 1000 {
-            return "\(bytes) B"
-        } else if bytes < 1000 * 1000 {
-            return String(format: "%.1f KB", Double(bytes) / 1000.0)
-        } else {
-            return String(format: "%.2f MB", Double(bytes) / (1000.0 * 1000.0))
-        }
-    }
-    
-    private var formattedDuration: String {
-        let duration = audioDuration > 0 ? audioDuration : 0
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-    
-    private var formattedCurrentTime: String {
-        let duration = audioDuration > 0 ? audioDuration : 1
-        let current = duration * playbackProgress
-        let minutes = Int(current) / 60
-        let seconds = Int(current) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    /// 时长格式化 HH:mm:ss
-    private var formattedDurationHHMMSS: String {
-        let duration = audioDuration > 0 ? audioDuration : 0
-        let hours = Int(duration) / 3600
-        let minutes = (Int(duration) % 3600) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-    }
-
-    /// 格式化采样率
-    private func formatSampleRate(_ rate: Int) -> String {
-        if rate >= 1000 {
-            return "\(rate / 1000) kHz"
-        } else {
-            return "\(rate) Hz"
-        }
-    }
-    
     // MARK: - 头部
-    
+
     private var header: some View {
         HStack(spacing: 10) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(
-                        LinearGradient(
-                            colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        isCompleted
+                        ? AppColor.statusSuccess.opacity(0.12)
+                        : AppColor.accentPrimary.opacity(0.12)
                     )
                     .frame(width: 28, height: 28)
-                Text("🎵")
-                    .font(.system(size: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                isCompleted
+                                ? AppColor.statusSuccess.opacity(0.28)
+                                : AppColor.accentPrimary.opacity(0.25),
+                                lineWidth: 1
+                            )
+                    )
+                Text(isCompleted ? "✓" : "🎵")
+                    .font(.system(size: isCompleted ? 15 : 14, weight: isCompleted ? .bold : .regular))
+                    .foregroundStyle(isCompleted ? AppColor.statusSuccess : AppColor.textPrimary)
             }
+
             
-            Text(isCompleted ? "生成完成" : "音频生成")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppColor.textPrimary)
-            
+            Text(isCompleted ? "音频生成完成".localized() : "正在接收音频数据".localized())
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppColor.textPrimary)
+                
             Spacer()
+
+            // 关闭：只收起弹窗，接收任务仍在 ViewModel 里跑
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppColor.textTertiary)
+                    .frame(width: 26, height: 26)
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .help("关闭（后台继续接收）".localized())
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(Color.clear)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 15)
+        .background(AppColor.bgTertiary.opacity(0.45))
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(AppColor.borderSubtle)
                 .frame(height: 0.5)
         }
     }
-    
-    // MARK: - 生成中内容
-    
+
+    // MARK: - 状态一：接收中
+
     private var generatingContent: some View {
-        // 生成中内容是定高的短块，不需要 ScrollView ——
-        // ScrollView 会吃掉容器全部剩余高度，导致卡片被撑满、底部留出大片空白
-        VStack(spacing: 20) {
-            // 静态图标（无旋转动画）
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                AppColor.accentPrimary.opacity(0.15),
-                                AppColor.accentPrimary.opacity(0.05)
-                    ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 72, height: 72)
-                    .overlay(
-                        Circle()
-                            .stroke(AppColor.accentPrimary.opacity(0.25), lineWidth: 1)
-                    )
+        VStack(alignment: .leading, spacing: 0) {
+            StreamingWaveView()
 
-                Text("⚡")
-                    .font(.system(size: 28))
-            }
-            .frame(width: 80, height: 80)
+            IndeterminateProgressBar()
+                .padding(.top, 16)
 
-            // 标题
-            Text("正在合成音频")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(AppColor.textPrimary)
-
-            // 副标题
-            Text(voiceInfoSubtitle)
-                .font(.system(size: 13))
-                .foregroundStyle(AppColor.textTertiary)
-
-            // 已接收数据大小（持续累积动画）
-            AudioAccumulationMonitor(
-                bytes: vm.receivedBytes,
-                progress: vm.generationProgress,
-                isActive: isGenerating
-            )
-        }
-        .padding(20)
-    }
-    
-    // MARK: - 完成内容
-    
-    private var completedContent: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // 音频信息
-                    audioInfoCard
-
-                    // 音频播放器
-                    audioPlayerCard
-
-                    // 音色信息
-                    voiceInfoRow
-
-                    // 标签
-                    tagsSection
-
-                    // 消耗积分
-                    costInfo
-                }
-                .padding(20)
-                // 上报实际内容高度，弹窗据此把内容区收到贴合高度
-                .measureHeight()
-            }
-            // 内容短则收缩、超长则内部滚动，卡片不会被撑满
-            .frame(height: completedScrollHeight)
-        }
-    }
-    
-    // MARK: - 音频信息卡片
-    
-    private var audioInfoCard: some View {
-        HStack(spacing: 16) {
-            // 头像
-            ZStack(alignment: .topTrailing) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 52, height: 52)
-                    
-                    Text("🎵")
-                        .font(.system(size: 18, weight: .bold))
-                }
-                
-                // 成功徽章
-                if isCompleted {
-                    ZStack {
-                        Circle()
-                            .fill(AppColor.statusSuccess)
-                            .frame(width: 20, height: 20)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .shadow(color: AppColor.statusSuccess.opacity(0.4), radius: 4)
-                    .offset(x: 4, y: -4)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    if isEditingName {
-                        TextField("音频名称", text: $audioName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(AppColor.textPrimary)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(AppColor.bgElevated)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(AppColor.borderMedium, lineWidth: 1)
-                            )
-                            .onSubmit {
-                                isEditingName = false
-                            }
-                    } else {
-                        Text(audioName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(AppColor.textPrimary)
-                    }
-                    
-                    Button {
-                        isEditingName.toggle()
-                        if !isEditingName && audioName.isEmpty {
-                            audioName = generateDefaultAudioName()
-                        }
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppColor.textTertiary)
-                            .frame(width: 22, height: 22)
-                            .background(Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
-                }
-                
-                HStack(spacing: 12) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "doc")
-                            .font(.system(size: 10))
-                        Text(formattedFileSize)
-                    }
-
-                    Text("·")
-
-                    Text(formatSampleRate(vm.sampleRate))
-
-                    Text("·")
-
-                    Text(vm.selectedFormat.uppercased())
-
-                    Text("·")
-
-                    Text(formattedDurationHHMMSS)
-                }
-                .font(.system(size: 12))
-                .foregroundStyle(AppColor.textTertiary)
-            }
-            
-            Spacer()
-        }
-        .padding(16)
-        .background(AppColor.bgTertiary)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-    }
-    
-    // MARK: - 音频播放器
-    
-    private var audioPlayerCard: some View {
-        VStack(spacing: 12) {
-            // 播放按钮 + 波形条撑满整行
-            GeometryReader { geometry in
-                HStack(spacing: 16) {
-                    // 播放按钮
-                    Button {
-                        togglePlayback()
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 48, height: 48)
-                                .shadow(color: AppColor.accentPrimary.opacity(0.3), radius: 8, y: 4)
-
-                            if isPlaying {
-                                // 暂停图标
-                                HStack(spacing: 3) {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(AppColor.bgPrimary)
-                                        .frame(width: 4, height: 16)
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(AppColor.bgPrimary)
-                                        .frame(width: 4, height: 16)
-                                }
-                            } else {
-                                // 播放图标
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(AppColor.bgPrimary)
-                                    .offset(x: 2)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .pointingHandCursor()
-
-                    // 波形条撑满剩余空间
-                    let barCount = max(20, Int(geometry.size.width / 5))
-                    HStack(spacing: 2) {
-                        ForEach(0..<barCount, id: \.self) { i in
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(i < Int(Double(barCount) * playbackProgress) ? AppColor.accentPrimary : AppColor.bgElevated)
-                                .frame(width: 3, height: CGFloat.random(in: 8...40))
-                        }
-                    }
-                    .frame(height: 50)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .frame(height: 50)
-
-            // 进度条
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(AppColor.bgElevated)
-                        .frame(height: 4)
-
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(
-                            LinearGradient(
-                                colors: [AppColor.accentPrimary, AppColor.accentGlow],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * playbackProgress, height: 4)
-                }
-                .frame(height: 4)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            isSeeking = true
-                            let progress = max(0, min(1, value.location.x / geometry.size.width))
-                            playbackProgress = progress
-                        }
-                        .onEnded { value in
-                            isSeeking = false
-                            let progress = max(0, min(1, value.location.x / geometry.size.width))
-                            playbackProgress = progress
-                            // 同步到播放器实际时间
-                            let seekTime = audioDuration * progress
-                            AudioPreviewPlayer.shared.seek(to: seekTime)
-                        }
-                )
-            }
-            .frame(height: 4)
-            .pointingHandCursor()
-
-            // 底部时间：左 = 当前进度，右 = 总时长
-            HStack {
-                Text(formattedCurrentTime)
-                    .font(.system(size: 12, design: .monospaced))
+            // 累积字节数 + 速率
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(formatKB(Int(displayBytes)))
+                    .font(.system(size: 26, weight: .semibold))
+                    .fontDesign(.monospaced)
+                    .foregroundStyle(AppColor.textPrimary)
+                Text("KB 已接收".localized())
+                    .font(.system(size: 13))
                     .foregroundStyle(AppColor.textSecondary)
                 Spacer()
-                Text(formattedDuration)
-                    .font(.system(size: 12, design: .monospaced))
+                Text("↑ \(Int(speed / 1000)) KB/s")
+                    .font(.system(size: 11))
+                    .fontDesign(.monospaced)
+                    .foregroundStyle(AppColor.accentPrimary)
+            }
+            .padding(.top, 16)
+
+            // 提示
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(AppColor.accentPrimary)
+                    .frame(width: 5, height: 5)
+                    .opacity(blink ? 1 : 0.25)
+                    .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: blink)
+                Text("音频数据持续累积中，接收完成后可立即试听".localized())
+                    .font(.system(size: 11.5))
                     .foregroundStyle(AppColor.textTertiary)
             }
-        }
-        .padding(20)
-        .background(AppColor.bgTertiary)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-    }
-    
-    // MARK: - 音色信息
-    
-    private var voiceInfoRow: some View {
-        HStack(spacing: 12) {
-            if let voice = currentVoice {
-                AvatarView(text: voice.localizedAvatar, size: 32)
+            .padding(.top, 8)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(voice.isPremium
-                         ? "%@ · 旗舰音色".localized(voice.localizedName)
-                         : voice.localizedName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AppColor.textPrimary)
+            // 三项统计
+            HStack(spacing: 10) {
+                StatCell(title: "数据块".localized(), value: "%d 段".localized(stats.receivedChunks))
+                StatCell(title: "已用时".localized(), value: formatClock(elapsed))
+                StatCell(title: "当前码率".localized(), value: bitrateText)
+            }
+            .padding(.top, 16)
 
-                    HStack(spacing: 4) {
-                        if !voice.localizedGender.isEmpty {
-                            Text(voice.localizedGender)
-                        }
-                        if let age = voice.age {
-                            Text("%d 岁".localized(age))
-                        }
-                        Text("· \(voice.lang.displayName)")
+            // 数据块到达日志（只保留最近 4 条）
+            VStack(alignment: .leading, spacing: 4) {
+                Spacer(minLength: 0)
+                ForEach(chunkLog) { line in
+                    HStack(spacing: 5) {
+                        Text("#\(String(format: "%03d", line.index))")
+                            .foregroundStyle(AppColor.textSecondary)
+                        Text("· +\(formatDataSize(line.size))")
+                        Text("✓ 已写入缓冲区".localized())
+                            .foregroundStyle(AppColor.statusSuccess)
                     }
                     .font(.system(size: 11))
+                    .fontDesign(.monospaced)
+                    .foregroundStyle(AppColor.textTertiary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 74)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.black.opacity(0.22))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.small)
+                    .stroke(AppColor.borderSubtle, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+            .padding(.top, 14)
+        }
+        .padding(EdgeInsets(top: 22, leading: 20, bottom: 20, trailing: 20))
+    }
+
+    // MARK: - 状态二：完成
+
+    private var completedContent: some View {
+        VStack(spacing: 14) {
+            nameRow
+            metaGrid
+            voiceCard
+            // 播放器独立成订阅播放器的子视图：10Hz 的进度刷新只重绘它自己，
+            // 不会带着四宫格 / 音色卡 / 积分行一起重算
+            if let url = vm.generatedAudioURL {
+                ModalAudioPlayer(audioURL: url, duration: audioDuration)
+            }
+            costRow
+        }
+        .padding(20)
+    }
+
+    private var nameRow: some View {
+        HStack(spacing: 8) {
+            TextField("", text: $audioName)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColor.textPrimary)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 9)
+                .background(AppColor.bgTertiary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                        .stroke(AppColor.borderSubtle, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+
+            Text(vm.selectedFormat.uppercased())
+                .font(.system(size: 11))
+                .fontDesign(.monospaced)
+                .foregroundStyle(AppColor.accentPrimary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(AppColor.accentPrimary.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(AppColor.accentPrimary.opacity(0.22), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+        }
+    }
+
+    private var metaGrid: some View {
+        HStack(spacing: 10) {
+            StatCell(title: "大小".localized(), value: fileSizeText)
+            StatCell(title: "采样率".localized(), value: formatSampleRate(vm.sampleRate))
+            StatCell(title: "格式".localized(), value: vm.selectedFormat.uppercased())
+            StatCell(title: "时长".localized(), value: formatClock(audioDuration))
+        }
+    }
+
+    private var voiceCard: some View {
+        HStack(spacing: 11) {
+            if let voice = currentVoice {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 11)
+                        .fill(AppColor.accentPrimary.opacity(0.16))
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11)
+                                .stroke(AppColor.accentPrimary.opacity(0.3), lineWidth: 1)
+                        )
+                    Text(voice.localizedAvatar)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppColor.accentGlow)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(voice.localizedName)
+                            .font(.system(size: 13.5, weight: .semibold))
+                            .foregroundStyle(AppColor.textPrimary)
+                        if voice.isPremium {
+                            Text("⭐ 旗舰".localized())
+                                .font(.system(size: 10))
+                                .foregroundStyle(AppColor.accentPrimary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(AppColor.accentPrimary.opacity(0.14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(AppColor.accentPrimary.opacity(0.25), lineWidth: 1)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                    }
+
+                    if !voice.localizedDesc.isEmpty {
+                        Text(voice.localizedDesc)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(AppColor.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    HStack(spacing: 4) {
+                        Text("适用场景".localized())
+                        Text(voice.localizedScene)
+                            .foregroundStyle(AppColor.textSecondary)
+                        Text("· \(voice.lang.displayName)")
+                        if !voice.localizedGender.isEmpty {
+                            Text("· \(voice.localizedGender)")
+                        }
+                        if let age = voice.age {
+                            Text("· " + "%d 岁".localized(age))
+                        }
+                    }
+                    .font(.system(size: 10.5))
                     .foregroundStyle(AppColor.textTertiary)
                 }
 
                 Spacer()
             }
-        }
-        .padding(12)
-        .background(AppColor.bgTertiary)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-    }
-    
-    // MARK: - 标签
-    
-    private var tagsSection: some View {
-        HStack(spacing: 6) {
-            if let voice = currentVoice {
-                tagView(voice.scene.displayName, isAccent: true)
-                if !voice.localizedDesc.isEmpty {
-                    tagView(voice.localizedDesc, isAccent: false)
-                }
-            }
-        }
-    }
-    
-    private func tagView(_ text: String, isAccent: Bool) -> some View {
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(isAccent ? AppColor.accentGlow : AppColor.textSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(isAccent ? AppColor.accentPrimary.opacity(0.12) : AppColor.bgTertiary)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        isAccent ? AppColor.accentPrimary.opacity(0.25) : AppColor.borderSubtle,
-                        lineWidth: 1
-                    )
-            )
-    }
-    
-    // MARK: - 消耗积分
-    
-    private var costInfo: some View {
-        HStack {
-            HStack(spacing: 6) {
-                Text("💎")
-                    .font(.system(size: 14))
-                Text("消耗积分")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            
-            Spacer()
-            
-            Text(formatCredits(vm.estimatedPoints))
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(AppColor.accentPrimary)
         }
         .padding(12)
         .background(
             LinearGradient(
-                colors: [
-                    AppColor.accentPrimary.opacity(0.08),
-                    AppColor.accentPrimary.opacity(0.02)
-                ],
+                colors: [AppColor.accentPrimary.opacity(0.09), AppColor.accentPrimary.opacity(0.02)],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(AppColor.accentPrimary.opacity(0.15), lineWidth: 1)
+                .stroke(AppColor.accentPrimary.opacity(0.22), lineWidth: 1)
         )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
     }
-    
-    // MARK: - 底部
-    
-    private var footer: some View {
-        HStack(spacing: 12) {
-            if isCompleted {
-                // 小尺寸的操作按钮 - 统一样式
-                HStack(spacing: 16) {
-                    // 导出按钮
-                    exportButton
-                }
+
+    private var costRow: some View {
+        HStack(spacing: 10) {
+            Text("💎")
+                .font(.system(size: 13))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("本次消耗积分".localized())
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(AppColor.textTertiary)
+                Text("−\(formatCredits(consumedPoints))")
+                    .font(.system(size: 15, weight: .semibold))
+                    .fontDesign(.monospaced)
+                    .foregroundStyle(AppColor.accentPrimary)
             }
-            
             Spacer()
-            
-            Button {
-                if isCompleted {
+            Text("剩余 %d 积分".localized(remainingCredits))
+                .font(.system(size: 11))
+                .fontDesign(.monospaced)
+                .foregroundStyle(AppColor.textTertiary)
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .background(Color.white.opacity(0.025))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+    }
+
+    // MARK: - 底部
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            if isGenerating {
+                Text("关闭窗口不会中断，音频将在后台继续接收".localized())
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColor.textTertiary)
+                Spacer()
+            } else {
+                Spacer()
+                Button { exportAudio() } label: {
+                    Text(exportTitle)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppColor.textPrimary)
+                        .frame(height: 36)
+                        .padding(.horizontal, 16)
+                        .background(AppColor.bgElevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppRadius.small)
+                                .stroke(AppColor.borderMedium, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .disabled(isExporting)
+
+                Button {
                     saveAudioNameIfNeeded()
-                    isPresented = false
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("完成")
+                    dismiss()
+                } label: {
+                    Text("完成".localized())
                         .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppColor.bgPrimary)
+                        .frame(height: 36)
+                        .padding(.horizontal, 16)
+                        .background(AppColor.accentPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+                        .contentShape(Rectangle())
                 }
-                .foregroundStyle(AppColor.bgPrimary)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-                .shadow(color: AppColor.accentPrimary.opacity(0.25), radius: 8, y: 4)
+                .buttonStyle(.plain)
+                .pointingHandCursor()
             }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-            .opacity(isCompleted ? 1 : 0)
-            .disabled(!isCompleted)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            Color.clear
-                .background(AppColor.bgSecondary.opacity(0.4))
-        )
+        .padding(.vertical, 14)
+        .background(AppColor.bgTertiary.opacity(0.4))
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(AppColor.borderSubtle)
                 .frame(height: 0.5)
         }
-        .opacity(isCompleted ? 1 : 0)
-        .disabled(!isCompleted)
     }
-    
-    private var downloadOverlaySmall: some View {
-        Text("导出中...")
-            .font(.system(size: 10))
-            .foregroundStyle(AppColor.textPrimary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(AppColor.bgPrimary)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+
+    private var exportTitle: String {
+        if isExporting { return "导出中…".localized() }
+        if exportSuccess { return "✓ 已导出".localized() }
+        return "⬇ 导出音频".localized()
     }
-    
-    // MARK: - 导出和分享按钮
-    
-    /// 导出按钮
-    private var exportButton: some View {
-        ActionIconButton(icon: "arrow.down.doc", title: "导出", isLoading: isExporting) {
-            exportAudio()
+
+    // MARK: - 行为
+
+    /// 关闭弹窗：只收起界面，ViewModel 里的生成任务继续跑
+    private func dismiss() {
+        isPresented = false
+    }
+
+    /// 每 0.25s：平滑追赶字节数；每 0.5s 重算一次速率
+    private func tick(_ now: Date) {
+        elapsed = now.timeIntervalSince(startedAt)
+
+        let target = Double(stats.receivedBytes)
+        let delta = target - displayBytes
+        if delta > 0 {
+            displayBytes = min(target, displayBytes + max(delta * 0.35, 8))
+        } else {
+            displayBytes = target
+        }
+
+        let interval = now.timeIntervalSince(sampleDate)
+        guard interval >= 0.5 else { return }
+        let instant = max(0, Double(stats.receivedBytes - sampleBytes)) / interval
+        // 首次取样区间可能很短，直接采用瞬时值，之后做指数平滑
+        speed = speed <= 0 ? instant : speed * 0.4 + instant * 0.6
+        sampleBytes = stats.receivedBytes
+        sampleDate = now
+    }
+
+    /// 追加一条数据块日志。
+    ///
+    /// 数据来源是 `stats.receivedBytes`，即 BailianTTSService 每次
+    /// `onAudio(binaryData)` 回调里 `audioChunk.count` 的真实累加值，
+    /// 不是模拟出来的。这里只做一件事：200ms 内到达的多块合并成一行
+    /// （WebSocket 一秒可能来几十上百块，逐块刷会把界面刷爆）；
+    /// 段号用 `stats.receivedChunks`，是真实段数，不受合并影响。
+    private func appendChunkLog(chunkIndex: Int, size: Int, at date: Date) {
+        guard size > 0 else { return }
+
+        if date.timeIntervalSince(lastLogDate) >= 0.2 {
+            chunkLog.append(ChunkLine(index: chunkIndex, size: size))
+            if chunkLog.count > 4 { chunkLog.removeFirst() }
+            lastLogDate = date
+        } else if let last = chunkLog.indices.last {
+            let merged = chunkLog[last].size + size
+            chunkLog[last] = ChunkLine(index: chunkIndex, size: merged)
         }
     }
-    
-    // MARK: - 导出功能
-    
+
+    private func refreshCredits() {
+        Task { @MainActor in
+            remainingCredits = CreditsService.shared.balance
+        }
+    }
+
+    /// 生成完成后一次性算出展示用的静态数据。
+    ///
+    /// 文件大小要读磁盘属性、积分要跑一遍字数统计，放在 body 里现算的话
+    /// 播放期间每 0.1s 就要重来一次，白烧 CPU。
+    private func refreshCompletedInfo() {
+        refreshCredits()
+        consumedPoints = vm.estimatedPoints
+        if let url = vm.generatedAudioURL,
+           let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let size = attrs[.size] as? Int64 {
+            fileSizeText = formatDataSize(Int(size))
+        } else {
+            fileSizeText = formatDataSize(stats.receivedBytes)
+        }
+    }
+
+    private func generateDefaultAudioName() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM-dd HH:mm"
+        return "音频_\(formatter.string(from: Date()))"
+    }
+
+    /// 保存编辑后的音频名称
+    private func saveAudioNameIfNeeded() {
+        guard let audioId = vm.generatedAudioId else { return }
+        let nameToSave = audioName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !nameToSave.isEmpty {
+            ProjectService.shared.renameAudio(id: audioId, displayName: nameToSave)
+        }
+    }
+
+    // MARK: - 导出
+
     /// 导出音频到用户选择的位置
     private func exportAudio() {
         guard let sourceURL = vm.generatedAudioURL else {
             Log(message: "AudioGenerationModal: 无音频文件可导出")
             return
         }
-        
+
         isExporting = true
-        
-        // 确定默认文件名
+
         let defaultFileName = "\(audioName).\(sourceURL.pathExtension)"
-        
-        // 创建保存面板
+
         let savePanel = NSSavePanel()
         savePanel.title = "导出音频".localized()
         savePanel.message = "选择保存位置".localized()
         savePanel.nameFieldStringValue = defaultFileName
         savePanel.canCreateDirectories = true
         savePanel.allowedContentTypes = [.audio]
-        
-        // 显示面板
+
         savePanel.begin { [self] response in
             if response == .OK, let destinationURL = savePanel.url {
-                // 复制文件到目标位置
                 do {
-                    // 如果目标文件已存在，先删除
                     if FileManager.default.fileExists(atPath: destinationURL.path) {
                         try FileManager.default.removeItem(at: destinationURL)
                     }
                     try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-                    
+
                     Log(message: "AudioGenerationModal: 导出成功 - \(destinationURL.path)")
-                    
-                    // 打开包含导出文件的文件夹
-                    NSWorkspace.shared.selectFile(destinationURL.path, inFileViewerRootedAtPath: destinationURL.deletingLastPathComponent().path)
-                    
-                    // 显示成功提示
+                    NSWorkspace.shared.selectFile(
+                        destinationURL.path,
+                        inFileViewerRootedAtPath: destinationURL.deletingLastPathComponent().path
+                    )
+
                     DispatchQueue.main.async {
                         isExporting = false
                         exportSuccess = true
-                        // 2秒后自动隐藏成功提示
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             exportSuccess = false
                         }
@@ -1236,120 +1114,6 @@ struct AudioGenerationModal: View {
                 }
             } else {
                 isExporting = false
-            }
-        }
-    }
-    
-    // MARK: - 辅助方法
-    
-    private var voiceInfoSubtitle: String {
-        guard let voice = currentVoice else { return "" }
-        return "%@ · %@ · 情感标签".localized(voice.localizedName, voice.localizedDesc)
-    }
-    
-    private func generateDefaultAudioName() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM-dd HH:mm"
-        return "音频_\(formatter.string(from: Date()))"
-    }
-    
-    /// 保存编辑后的音频名称
-    private func saveAudioNameIfNeeded() {
-        guard let audioId = vm.generatedAudioId else { return }
-        
-        let nameToSave = audioName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !nameToSave.isEmpty && nameToSave != generateDefaultAudioName() {
-            ProjectService.shared.renameAudio(id: audioId, displayName: nameToSave)
-        }
-    }
-    
-    private func togglePlayback() {
-        // 确保有生成的音频 URL
-        guard let audioURL = vm.generatedAudioURL else {
-            Log(message: "AudioGenerationModal: 无音频文件可播放")
-            return
-        }
-        
-        Task { @MainActor in
-            let player = AudioPreviewPlayer.shared
-            
-            if player.isPlaying(url: audioURL) {
-                // 正在播放同一文件 → 暂停
-                player.stop()
-                isPlaying = false
-                playbackTimer?.invalidate()
-            } else {
-                // 停止之前的播放
-                player.stop()
-                playbackProgress = 0
-                
-                // 播放前验证文件有效性
-                guard FileManager.default.fileExists(atPath: audioURL.path) else {
-                    Log(message: "AudioGenerationModal: 音频文件不存在")
-                    isPlaying = false
-                    return
-                }
-                
-                // 检查文件大小（过小的文件可能不完整）
-                do {
-                    let attributes = try FileManager.default.attributesOfItem(atPath: audioURL.path)
-                    if let fileSize = attributes[.size] as? Int64, fileSize < 1000 {
-                        Log(message: "AudioGenerationModal: 音频文件过小，可能不完整")
-                        isPlaying = false
-                        return
-                    }
-                } catch {
-                    Log(message: "AudioGenerationModal: 无法读取文件属性: \(error)")
-                }
-                
-                // 开始播放
-                if player.play(url: audioURL, identifier: audioURL.path) {
-                    isPlaying = true
-                    // 从 ViewModel 获取真实时长
-                    audioDuration = vm.generatedAudioDuration
-                    startPlaybackTimer()
-                } else {
-                    Log(message: "AudioGenerationModal: 播放失败")
-                    isPlaying = false
-                }
-            }
-        }
-    }
-    
-    private func startPlaybackTimer() {
-        playbackTimer?.invalidate()
-        let duration = audioDuration > 0 ? audioDuration : 1.0
-        
-        // 记录播放开始时间，用于精确计算进度
-        playbackStartTime = Date()
-        
-        // 延迟启动定时器，等待播放器状态稳定
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                Task { @MainActor in
-                    let player = AudioPreviewPlayer.shared
-                    guard let url = self.vm.generatedAudioURL else { return }
-                    
-                    // 如果正在拖动滑块，跳过进度更新
-                    if self.isSeeking {
-                        return
-                    }
-                    
-                    if player.isPlaying(url: url) {
-                        // 使用播放器实际时间计算进度
-                        let currentTime = player.currentTime
-                        if duration > 0 {
-                            self.playbackProgress = min(1.0, currentTime / duration)
-                        }
-                    } else {
-                        // 播放结束或停止
-                        if self.isPlaying {
-                            self.isPlaying = false
-                            self.playbackProgress = 0
-                        }
-                        self.playbackTimer?.invalidate()
-                    }
-                }
             }
         }
     }

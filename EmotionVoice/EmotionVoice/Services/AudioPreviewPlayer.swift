@@ -33,6 +33,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     @Published private(set) var isPlaying: Bool = false
     /// 是否处于暂停状态（保持播放器，可恢复播放）
     @Published private(set) var isPaused: Bool = false
+    /// 是否已播放到结尾（用于状态栏区分"已就绪"和"播放结束"）
+    @Published private(set) var isFinished: Bool = false
     /// 当前播放进度（0.0 - 1.0）
     @Published private(set) var progress: Double = 0.0
     /// 当前播放时间（秒）
@@ -175,6 +177,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             self.duration = p.duration
             self.playingKey = key
             self.isPlaying = true
+            self.isFinished = false
             self.startProgressTimer()
             Log(message: "AudioPreviewPlayer: started playing \(url.lastPathComponent), duration=\(p.duration)")
             return true
@@ -214,6 +217,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
                 case .readyToPlay:
                     self?.duration = item.duration.seconds.isNaN ? 0 : item.duration.seconds
                     self?.isPlaying = true
+                    self?.isFinished = false
                     newPlayer.play()
                     self?.startProgressTimer()
                     Log(message: "AudioPreviewPlayer: AVPlayer ready and playing \(url.lastPathComponent)")
@@ -238,6 +242,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             Task { @MainActor in
                 self?.isPlaying = false
                 self?.isPaused = false
+                self?.isFinished = true
                 self?.playingKey = nil
                 self?.stopProgressTimer()
             }
@@ -265,14 +270,19 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             isPlaying = false
         }
         isPaused = false
+        isFinished = false
         playingKey = nil
     }
 
     /// 暂停播放（保持当前状态，波形图不消失）
+    ///
+    /// 这里必须同时停掉进度定时器：旧实现只置 `isPlaying = false`，
+    /// 定时器还在按 10Hz 空转并持续 publish，界面照旧每 0.1s 重绘一次。
     func pause() {
         player?.pause()
         avPlayer?.pause()
         isPaused = true
+        stopProgressTimer()
         if isPlaying {
             isPlaying = false
         }
@@ -282,6 +292,7 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     func resume() {
         guard isPaused, playingKey != nil else { return }
         
+        isFinished = false
         if let p = player {
             p.play()
             isPlaying = true
@@ -312,7 +323,28 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         } else if let av = avPlayer {
             av.seek(to: CMTime(seconds: time, preferredTimescale: 600))
         }
+        // 手动跳转说明用户在操作，清掉"播放结束"标记（结束后再拖进度条应回到正常态）
+        isFinished = false
         updateProgress()
+    }
+
+    /// 相对当前时间快进/快退（秒），自动夹在 0...duration
+    func skip(by seconds: Double) {
+        seek(to: max(0, min(duration, currentTime + seconds)))
+    }
+
+    /// 播放 / 暂停 切换
+    ///
+    /// - Parameter url: 既未播放也未暂停时，从这个 URL 重新开始播放
+    /// 抽到播放器里是为了让走带按钮和键盘快捷键共用同一套状态判断。
+    func togglePlayback(url: URL) {
+        if isPlaying {
+            pause()
+        } else if isPaused {
+            resume()
+        } else {
+            play(url: url)
+        }
     }
 
     /// 设置倍速播放
@@ -328,13 +360,19 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     // MARK: - 进度更新
 
     /// 启动进度更新定时器
+    ///
+    /// 显式挂到 `.common` 模式：`Timer.scheduledTimer` 只加在 `.default` 模式下，
+    /// 一旦进入滚动 / 拖动 / 菜单跟踪这些 event-tracking 循环，定时器就会被挂起，
+    /// 表现就是"拖动波形或滚动列表时进度卡住不动"。
     private func startProgressTimer() {
         stopProgressTimer()
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.updateProgress()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        progressTimer = timer
     }
 
     /// 停止进度更新定时器
@@ -344,21 +382,38 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     }
 
     /// 更新当前进度
+    ///
+    /// 只在值真的变了才写 @Published：`duration` 在整个播放过程中几乎不变，
+    /// 每 0.1s 重新赋一次会让所有订阅视图（工作台、音色库…）跟着重绘，
+    /// 播放长音频时这是主线程被打满的主要原因之一。
     private func updateProgress() {
+        var newTime: TimeInterval = 0
+        var newDuration: TimeInterval = 0
+
         if let p = player {
-            currentTime = p.currentTime
-            duration = p.duration
+            newTime = p.currentTime
+            newDuration = p.duration
         } else if let av = avPlayer {
-            currentTime = av.currentTime().seconds
+            newTime = av.currentTime().seconds
             if let item = av.currentItem {
                 let d = item.duration.seconds
-                duration = d.isNaN ? 0 : d
+                newDuration = d.isNaN ? 0 : d
             }
         }
 
+        if abs(newTime - currentTime) >= 0.01 {
+            currentTime = newTime
+        }
+        if abs(newDuration - duration) >= 0.01 {
+            duration = newDuration
+        }
+
         if duration > 0 {
-            progress = currentTime / duration
-        } else {
+            let newProgress = currentTime / duration
+            if abs(newProgress - progress) >= 0.0005 {
+                progress = newProgress
+            }
+        } else if progress != 0 {
             progress = 0
         }
     }
@@ -399,6 +454,7 @@ extension AudioPreviewPlayer: AVAudioPlayerDelegate {
         Task { @MainActor in
             self.isPlaying = false
             self.isPaused = false
+            self.isFinished = true
             self.playingKey = nil
             self.stopProgressTimer()
             self.progress = 0

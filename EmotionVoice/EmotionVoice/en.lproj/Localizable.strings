@@ -298,3 +298,24 @@
 "%d 岁" = "%d yrs";
 "%@ · 旗舰音色" = "%@ · Premium";
 "%@ · %@ · 情感标签" = "%@ · %@ · Emotion Tags";
+
+// 音频生成弹窗（接收中 / 完成）
+"正在接收音频数据" = "Receiving audio data";
+"音频生成完成" = "Audio generation complete";
+"关闭（后台继续接收）" = "Close (receiving continues in background)";
+"KB 已接收" = "KB received";
+"音频数据持续累积中，接收完成后可立即试听" = "Audio data keeps accumulating — you can preview it once it finishes";
+"数据块" = "Chunks";
+"已用时" = "Elapsed";
+"当前码率" = "Bitrate";
+"%d 段" = "%d";
+"✓ 已写入缓冲区" = "✓ buffered";
+"音频接收完成" = "Audio received";
+"大小" = "Size";
+"本次消耗积分" = "Credits used";
+"剩余 %d 积分" = "%d credits left";
+"关闭窗口不会中断，音频将在后台继续接收" = "Closing won't interrupt it — audio keeps downloading in the background";
+"⬇ 导出音频" = "⬇ Export audio";
+"导出中…" = "Exporting…";
+"✓ 已导出" = "✓ Exported";
+"导出音频" = "Export audio";

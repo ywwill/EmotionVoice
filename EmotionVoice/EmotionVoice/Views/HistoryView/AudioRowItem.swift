@@ -123,10 +123,7 @@ struct AudioRowItem: View {
             color: isPlaying ? AppColor.accentPrimary.opacity(0.4) : .clear,
             radius: isPlaying ? 8 : 0
         )
-        .animation(
-            isPlaying ? Animation.easeInOut(duration: 2).repeatForever(autoreverses: true) : .default,
-            value: isPlaying
-        )
+        .animation(.easeOut(duration: 0.2), value: isPlaying)
     }
 
     private var moreButton: some View {
@@ -235,10 +232,11 @@ struct AudioRowItem: View {
 
     // MARK: - 计算属性
 
+    /// 走 VoiceService 的 key 缓存查询。
+    /// 旧实现这里调 `fetchAll()` 全表扫描，而且 `voiceName` / `avatarChar` 各调一次，
+    /// 一屏 20 行就是 40 次全表查询。
     private var voiceName: String? {
-        guard !audio.voice.isEmpty else { return nil }
-        return VoiceService.shared.fetchAll()
-            .first(where: { $0.key == audio.voice })?.name
+        VoiceService.shared.displayName(forKey: audio.voice)
     }
 
     private var avatarChar: String {

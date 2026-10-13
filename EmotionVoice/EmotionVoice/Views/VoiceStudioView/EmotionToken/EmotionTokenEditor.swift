@@ -38,6 +38,13 @@ struct EmotionTokenEditor: NSViewRepresentable {
     /// 用于保持 VoiceStudioViewModel.text 与编辑器内容一致。
     var textBinding: Binding<String>?
 
+    /// 是否可交互。
+    ///
+    /// 传 false 时（例如生成弹窗覆盖在工作台上）文本域会变成不可编辑、不可选中：
+    /// 不会被抢走 first responder，也不会注册 I-beam 光标区，
+    /// 鼠标在它上方移动时不会把光标改成文本光标。
+    var isInteractive: Bool = true
+
     /// 暴露给 SwiftUI 的初始化
     init(items: Binding<[TTSContentItem]>,
          insertTrigger: Int = 0,
@@ -45,7 +52,8 @@ struct EmotionTokenEditor: NSViewRepresentable {
          insertEmoji: String = "",
          insertTokenEnglishTag: String = "",
          clearTrigger: Int = 0,
-         textBinding: Binding<String>? = nil) {
+         textBinding: Binding<String>? = nil,
+         isInteractive: Bool = true) {
         self._items = items
         self.insertTrigger = insertTrigger
         self.insertLabel = insertLabel
@@ -53,6 +61,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
         self.insertTokenEnglishTag = insertTokenEnglishTag
         self.clearTrigger = clearTrigger
         self.textBinding = textBinding
+        self.isInteractive = isInteractive
     }
 
     func makeCoordinator() -> Coordinator {
@@ -116,6 +125,8 @@ struct EmotionTokenEditor: NSViewRepresentable {
 
         // SwiftUI 嵌入 NSTextView 时默认不会让它自动获得 first responder。
         // 在下一个主循环强制把 NSTextView 设为 first responder，确保用户点击编辑区后立即可输入。
+        // 被覆盖层挡住时（isInteractive == false）不要抢焦点，否则会把弹窗的键盘操作吃掉。
+        guard isInteractive else { return scrollView }
         DispatchQueue.main.async { [weak tokenView] in
             guard let tokenView, let window = tokenView.window else { return }
             if window.firstResponder !== tokenView {
@@ -151,10 +162,29 @@ struct EmotionTokenEditor: NSViewRepresentable {
             }
         }
 
-        // 3. 触发清空
-        if clearTrigger > coord.lastClearTrigger {
-            coord.lastClearTrigger = clearTrigger
-            tokenView.clearAllTokens()
+        // 4. 覆盖层期间把文本域变成不可编辑 / 不可选中。
+        //    这样它既不会被 makeFirstResponder 抢走焦点，也不会注册 I-beam 的 cursor rect，
+        //    鼠标划过上方时不会把光标变成文本光标（SwiftUI 自绘内容不参与 AppKit 的
+        //    cursor rect 判定，只靠窗口级 disableCursorRects 有时压不住）。
+        if tokenView.isEditable != isInteractive || tokenView.isSelectable != isInteractive {
+            tokenView.isEditable = isInteractive
+            tokenView.isSelectable = isInteractive
+            tokenView.window?.invalidateCursorRects(for: tokenView)
+
+            if isInteractive {
+                // 恢复可编辑后把焦点还回编辑区，保持弹窗出现前的输入状态
+                DispatchQueue.main.async { [weak tokenView] in
+                    guard let tokenView, let window = tokenView.window else { return }
+                    if window.firstResponder !== tokenView {
+                        window.makeFirstResponder(tokenView)
+                    }
+                }
+            }
+        }
+
+        // 不可交互时，如果焦点还留在文本域里就交出去
+        if !isInteractive, let window = nsView.window, window.firstResponder === tokenView {
+            window.makeFirstResponder(nil)
         }
     }
 

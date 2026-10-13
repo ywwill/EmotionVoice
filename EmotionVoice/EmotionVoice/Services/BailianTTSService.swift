@@ -230,6 +230,9 @@ final class BailianTTSService {
 
         // 接收音频流
         var isTaskFinished = false
+        // 每次收到二进制帧的序号与累计字节（用于观察流式到达节奏）
+        var chunkIndex = 0
+        var totalReceivedBytes = 0
 
         while !isTaskFinished {
             do {
@@ -302,7 +305,9 @@ final class BailianTTSService {
                     }
                 } else if let binaryData = message.binaryData {
                     // 打印收到的二进制数据大小
-//                    Log(message: "[WS RECV] binary data: \(binaryData.count) bytes")
+                    chunkIndex += 1
+                    totalReceivedBytes += binaryData.count
+                    Log(message: "[WS RECV] #\(chunkIndex) 本次 \(binaryData.count) B (\(Self.debugKB(binaryData.count)) KB) · 累计 \(totalReceivedBytes) B (\(Self.debugKB(totalReceivedBytes)) KB)")
                     // 二进制音频数据
                     if !binaryData.isEmpty {
                         completeAudioData.append(binaryData)
@@ -343,6 +348,11 @@ final class BailianTTSService {
     private struct ReceivedMessage {
         var text: String?
         var binaryData: Data?
+    }
+
+    /// 日志用：字节 → KB（两位小数）
+    private static func debugKB(_ bytes: Int) -> String {
+        String(format: "%.2f", Double(bytes) / 1000.0)
     }
 
     // MARK: - 文本处理

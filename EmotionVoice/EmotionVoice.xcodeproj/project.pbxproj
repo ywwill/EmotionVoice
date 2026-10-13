@@ -21,7 +21,6 @@
 		6F209391303EC80500A770BB /* Func.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090EF303EC80500A770BB /* Func.swift */; };
 		6F209392303EC80500A770BB /* AudioItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090F1303EC80500A770BB /* AudioItem.swift */; };
 		6F209393303EC80500A770BB /* BasicVoiceTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090F2303EC80500A770BB /* BasicVoiceTemplate.swift */; };
-		D25E3AEE86086A6B2E6754C8 /* VoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354B0D1FFDB031C321103309 /* VoiceCatalog.swift */; };
 		6F209394303EC80500A770BB /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090F3303EC80500A770BB /* Constants.swift */; };
 		6F209396303EC80500A770BB /* Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090F5303EC80500A770BB /* Voice.swift */; };
 		6F209397303EC80500A770BB /* AudioPreviewPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209353303EC80500A770BB /* AudioPreviewPlayer.swift */; };
@@ -55,7 +54,6 @@
 		6F2093BC303EC80500A770BB /* EmotionVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209383303EC80500A770BB /* EmotionVoiceApp.swift */; };
 		6F209615303EC80500A770BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F209381303EC80500A770BB /* Assets.xcassets */; };
 		6F209616303EC80500A770BB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F209386303EC80500A770BB /* Localizable.strings */; };
-		A1B2C3D4E5F60718293A4B5F /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
 		6F209788303EC80500A770BB /* CreditsPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209789303EC80500A770BB /* CreditsPurchaseView.swift */; };
 		6F209D21303EC88F00A770BB /* longxuanzhufeng.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C86303EC88F00A770BB /* longxuanzhufeng.m4a */; };
 		6F209D22303EC88F00A770BB /* longxiaqueshan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C56303EC88F00A770BB /* longxiaqueshan.m4a */; };
@@ -678,7 +676,17 @@
 		6FCA9D8A3060F34D0005713F /* DeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D883060F34D0005713F /* DeviceInfo.swift */; };
 		6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D893060F34D0005713F /* UserCreditsModel.swift */; };
 		6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
+		6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */; };
+		6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001000 /* PlayerTextMetrics.swift */; };
+		6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001001 /* PlayerMetaStrip.swift */; };
+		6FB000000000000000001002 /* PlayerTransportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001002 /* PlayerTransportView.swift */; };
+		6FB000000000000000001003 /* PlayerUtilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001003 /* PlayerUtilityView.swift */; };
+		6FB000000000000000001004 /* PlayerTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001004 /* PlayerTranscriptView.swift */; };
+		6FB000000000000000001005 /* PlaybackStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001005 /* PlaybackStatusBar.swift */; };
+		6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
+		A1B2C3D4E5F60718293A4B5F /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
+		D25E3AEE86086A6B2E6754C8 /* VoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354B0D1FFDB031C321103309 /* VoiceCatalog.swift */; };
 		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
 		E001000331010101AABBCCDD /* EmotionTokenAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */; };
 		E001000531010101AABBCCDD /* EmotionTokenStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000631010101AABBCCDD /* EmotionTokenStyle.swift */; };
@@ -688,6 +696,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		354B0D1FFDB031C321103309 /* VoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCatalog.swift; sourceTree = "<group>"; };
 		4A1B2C3D4E5F6A7B8C9D0E2F /* ConsumptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsumptionRecord.swift; sourceTree = "<group>"; };
 		5B2C3D4E5F6A7B8C9D0E1F3A /* PurchaseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseRecord.swift; sourceTree = "<group>"; };
 		6F2090E3303EC80500A770BB /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
@@ -702,7 +711,6 @@
 		6F2090EF303EC80500A770BB /* Func.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Func.swift; sourceTree = "<group>"; };
 		6F2090F1303EC80500A770BB /* AudioItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioItem.swift; sourceTree = "<group>"; };
 		6F2090F2303EC80500A770BB /* BasicVoiceTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicVoiceTemplate.swift; sourceTree = "<group>"; };
-		354B0D1FFDB031C321103309 /* VoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCatalog.swift; sourceTree = "<group>"; };
 		6F2090F3303EC80500A770BB /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		6F2090F5303EC80500A770BB /* Voice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice.swift; sourceTree = "<group>"; };
 		6F209353303EC80500A770BB /* AudioPreviewPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreviewPlayer.swift; sourceTree = "<group>"; };
@@ -737,8 +745,6 @@
 		6F209383303EC80500A770BB /* EmotionVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionVoiceApp.swift; sourceTree = "<group>"; };
 		6F209384303EC80500A770BB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6F209385303EC80500A770BB /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
 		6F209789303EC80500A770BB /* CreditsPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsPurchaseView.swift; sourceTree = "<group>"; };
 		6F209AC8303EC88F00A770BB /* basic_voices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = basic_voices.json; sourceTree = "<group>"; };
 		6F209AC9303EC88F00A770BB /* longanlingxin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = longanlingxin.m4a; sourceTree = "<group>"; };
@@ -1354,7 +1360,17 @@
 		6FCA9D883060F34D0005713F /* DeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfo.swift; sourceTree = "<group>"; };
 		6FCA9D893060F34D0005713F /* UserCreditsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCreditsModel.swift; sourceTree = "<group>"; };
 		6FCA9D8E3060F6D80005713F /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
+		6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerWaveformView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
+		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
+		6FA000000000000000001002 /* PlayerTransportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTransportView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001003 /* PlayerUtilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerUtilityView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001004 /* PlayerTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTranscriptView.swift; sourceTree = "<group>"; };
+		6FA000000000000000001005 /* PlaybackStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusBar.swift; sourceTree = "<group>"; };
+		6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60718293A4B5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
 		E001000231010101AABBCCDD /* TTSContentItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSContentItem.swift; sourceTree = "<group>"; };
 		E001000431010101AABBCCDD /* EmotionTokenAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenAttachment.swift; sourceTree = "<group>"; };
 		E001000631010101AABBCCDD /* EmotionTokenStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionTokenStyle.swift; sourceTree = "<group>"; };
@@ -2163,6 +2179,14 @@
 			children = (
 				6F2DAF8630624B920086FD6F /* HistoryView.swift */,
 				6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */,
+				6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */,
+				6FA000000000000000001000 /* PlayerTextMetrics.swift */,
+				6FA000000000000000001001 /* PlayerMetaStrip.swift */,
+				6FA000000000000000001002 /* PlayerTransportView.swift */,
+				6FA000000000000000001003 /* PlayerUtilityView.swift */,
+				6FA000000000000000001004 /* PlayerTranscriptView.swift */,
+				6FA000000000000000001005 /* PlaybackStatusBar.swift */,
+				6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */,
 				6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */,
 				6F2DAF8730624B920086FD6F /* SummaryCard.swift */,
 			);
@@ -2973,6 +2997,14 @@
 				6F2093B4303EC80500A770BB /* VoiceLibrarySheet.swift in Sources */,
 				6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */,
 				6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */,
+				6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */,
+				6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */,
+				6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */,
+				6FB000000000000000001002 /* PlayerTransportView.swift in Sources */,
+				6FB000000000000000001003 /* PlayerUtilityView.swift in Sources */,
+				6FB000000000000000001004 /* PlayerTranscriptView.swift in Sources */,
+				6FB000000000000000001005 /* PlaybackStatusBar.swift in Sources */,
+				6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */,
 				6F2093B7303EC80500A770BB /* Components.swift in Sources */,
 				6F2DAF8C30624B920086FD6F /* SettingsView.swift in Sources */,
 				6F2DAF8D30624B920086FD6F /* HistoryView.swift in Sources */,

@@ -18,6 +18,26 @@ final class VoiceService {
 
     private let db = DatabaseManager.shared
 
+    /// key -> 展示名 的缓存。列表行与播放详情过去是 `fetchAll().first(where:)`，
+    /// 每次 body 求值都做一次全表扫描 + 全量排序；播放详情 10Hz 重绘时这会把主线程打满。
+    private let nameCache = NSCache<NSString, NSString>()
+
+    // MARK: - 按 key 取展示名（带缓存）
+
+    /// 取单个音色的展示名。
+    /// - Parameter key: 音色 key（AudioItem.voice 存的就是它）
+    /// - Returns: 当前语言的展示名；key 为空或查不到时返回 nil
+    func displayName(forKey key: String) -> String? {
+        guard !key.isEmpty else { return nil }
+        let cacheKey = key as NSString
+        if let cached = nameCache.object(forKey: cacheKey) {
+            return cached as String
+        }
+        guard let voice = fetchByKeys([key]).first else { return nil }
+        nameCache.setObject(voice.name as NSString, forKey: cacheKey)
+        return voice.name
+    }
+
     // MARK: - 全量
 
     /// 获取所有音色（按当前语言的展示名排序）

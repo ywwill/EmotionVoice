@@ -10,6 +10,87 @@ import SwiftUI
 import Combine
 import AppKit
 
+// MARK: - 生成过程的实时接收统计
+
+/// 一次生成过程里不断变化的接收数据：字节数、段数、进度
+///
+/// 存在的意义只有一个：**把它和 VoiceStudioViewModel 分开**。
+/// `ObservableObject` 的失效是粗粒度的 —— 对象里任何一个 @Published 被写，
+/// 所有订阅它的视图都会重算 body。工作台（VoiceStudioView）订阅的是 VM，
+/// 里面还挂着一个 NSTextView 编辑器，重算代价不小；而 WebSocket 的 onAudio
+/// 回调一秒能来几十上百次。把这些高频字段挪进来、只让生成弹窗订阅它，
+/// 接收期间工作台一次都不会被惊动。
+///
+/// 发布节流见 `receive(bytes:estimatedProgress:)`：约 10Hz 落一次；
+/// 段数是真实累加的（与每次 onAudio 一一对应），只是批量发布。
+@MainActor
+final class GenerationStats: ObservableObject {
+
+    /// 已接收的音频数据字节数
+    @Published private(set) var receivedBytes: Int = 0
+    /// 已收到的数据块数量（真实段数）
+    @Published private(set) var receivedChunks: Int = 0
+    /// 生成进度（0~1）
+    @Published private(set) var progress: Double = 0
+
+    // MARK: 节流缓冲
+
+    private var pendingBytes: Int = 0
+    private var pendingChunks: Int = 0
+    private var pendingProgress: Double = 0
+    private var lastFlushDate: Date = .distantPast
+
+    /// 发布节流间隔：每个数据块都发会把订阅视图刷爆
+    private static let flushInterval: TimeInterval = 0.1
+
+    /// 归零，准备下一次生成
+    func reset() {
+        receivedBytes = 0
+        receivedChunks = 0
+        progress = 0
+        pendingBytes = 0
+        pendingChunks = 0
+        pendingProgress = 0
+        lastFlushDate = .distantPast
+    }
+
+    /// 记下一块到达的真实数据（字节数 + 段数 + 基于时间的估算进度）
+    func receive(bytes: Int, estimatedProgress: Double) {
+        pendingBytes += bytes
+        pendingChunks += 1
+        pendingProgress = max(pendingProgress, estimatedProgress)
+
+        let now = Date()
+        if now.timeIntervalSince(lastFlushDate) >= Self.flushInterval {
+            flush(now: now)
+        }
+    }
+
+    /// 把缓冲里的数据一次性发布出去
+    func flush(now: Date = Date()) {
+        if pendingBytes > 0 {
+            receivedBytes += pendingBytes
+            pendingBytes = 0
+        }
+        if pendingChunks > 0 {
+            receivedChunks += pendingChunks
+            pendingChunks = 0
+        }
+        if pendingProgress > progress {
+            progress = pendingProgress
+        }
+        pendingProgress = 0
+        lastFlushDate = now
+    }
+
+    /// 直接推进进度（落盘、入库等阶段用，只增不减）
+    func markProgress(_ value: Double) {
+        pendingProgress = 0
+        if value > progress { progress = value }
+        lastFlushDate = Date()
+    }
+}
+
 /// 语音合成工作台视图模型
 ///
 /// 使用 shared 单例保证 VoiceStudioView 在多次进出（切换侧边栏）
@@ -104,8 +185,14 @@ final class VoiceStudioViewModel: ObservableObject {
     @Published var generatedAudioURL: URL? = nil
     @Published var generatedAudioId: Int64? = nil  // 用于保存编辑的名称
     @Published var generatedAudioDuration: TimeInterval = 0  // 生成的音频时长
-    @Published var generationProgress: Double = 0.0
-    @Published var receivedBytes: Int = 0  // 已接收的音频数据字节数
+    /// 生成过程的实时接收统计（字节数 / 段数 / 进度）
+    ///
+    /// 刻意单独成一个 ObservableObject，只有生成弹窗观察它 ——
+    /// `ObservableObject` 的失效是粗粒度的：对象里任何一个 @Published 被写，
+    /// 所有订阅它的视图都会重算 body。如果这些高频字段留在 VM 上，
+    /// 每 100ms 一次更新就会把整个 VoiceStudioView（内含 NSTextView 编辑器）
+    /// 一起拖下水。放到独立对象里之后，接收期间工作台一次都不重绘。
+    let stats = GenerationStats()
 
     // TTS 服务
     private let ttsService = BailianTTSService.shared
@@ -155,7 +242,7 @@ final class VoiceStudioViewModel: ObservableObject {
         clearTokensTrigger &+= 1
         alertItem = nil
         generatedAudioURL = nil
-        generationProgress = 0.0
+        stats.reset()
     }
 
     /// 从纯文本中解析 `[标签]` 并转换为 [TTSContentItem]。
@@ -226,8 +313,7 @@ final class VoiceStudioViewModel: ObservableObject {
 
         isGenerating = true
         alertItem = nil
-        generationProgress = 0.0
-        receivedBytes = 0  // 重置已接收字节数
+        stats.reset()
         generatedAudioURL = nil
         generatedAudioId = nil  // 重置音频 ID
 
@@ -253,8 +339,8 @@ final class VoiceStudioViewModel: ObservableObject {
                     // 0.05 (已建连) -> 0.95 (接近完成)；剩余 5% 留给落盘 + 入库
                     let p = min(0.95, 0.05 + 0.90 * (elapsed / approxDuration))
                     Task { @MainActor in
-                        self.generationProgress = max(self.generationProgress, p)
-                        self.receivedBytes += audioChunk.count  // 累计已接收字节数
+                        // 只写 stats（独立 ObservableObject），不会惊动订阅 VM 的工作台
+                        self.stats.receive(bytes: audioChunk.count, estimatedProgress: p)
                     }
                 }
 
@@ -278,13 +364,16 @@ final class VoiceStudioViewModel: ObservableObject {
                     )
                 }
 
-                generationProgress = 0.95
+                // 收尾：把最后一段不足 100ms 的到达量补发，保证总数准确
+                await MainActor.run { self.stats.flush() }
+
+                stats.markProgress(0.95)
 
                 // 写入磁盘（先用临时 wav 文件名）
                 try audioData.write(to: tempAudioURL)
                 Log(message: "音频已保存到: \(tempAudioURL.path)")
 
-                generationProgress = 0.98
+                stats.markProgress(0.98)
                 
                 // 检测 TTS 返回的实际音频格式
                 let actualFormat = detectAudioFormat(from: audioData)
@@ -321,7 +410,7 @@ final class VoiceStudioViewModel: ObservableObject {
                         self.alertItem = AlertItem(title: "保存失败".localized(),
                                                     message: "无法写入音频条目，请稍后重试".localized())
                         self.isGenerating = false
-                        self.generationProgress = 0.0
+                        self.stats.reset()
                         completion(false)
                         return
                     }
@@ -343,7 +432,7 @@ final class VoiceStudioViewModel: ObservableObject {
 
                     self.generatedAudioURL = finalAudioURL
                     self.generatedAudioDuration = duration  // 保存音频时长供播放使用
-                    self.generationProgress = 1.0
+                    self.stats.markProgress(1.0)
                     self.isGenerating = false
                     // 注意：不要清空 text — 需求 1 要求保留输入
                     completion(true)
@@ -352,7 +441,7 @@ final class VoiceStudioViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isGenerating = false
-                    self.generationProgress = 0.0
+                    self.stats.reset()
                     self.alertItem = AlertItem(
                         title: "生成失败".localized(),
                         message: error.localizedDescription
@@ -390,7 +479,7 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 取消生成
     func cancelGeneration() {
         isGenerating = false
-        generationProgress = 0.0
+        stats.reset()
         BailianTTSService.shared.closeConnection()
     }
 

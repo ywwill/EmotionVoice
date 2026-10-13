@@ -260,42 +260,60 @@ struct HistoryView: View {
     private var playerDetailPanel: some View {
         VStack(spacing: 0) {
             // 工具栏
-            HStack {
-                Spacer()
-
+            HStack(spacing: 12) {
                 // 导出按钮
                 if viewModel.selectedAudio != nil && !isSelectionMode {
                     Button {
                         viewModel.exportAudio(viewModel.selectedAudio!)
                     } label: {
-                        if isExporting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppColor.textTertiary))
-                                .scaleEffect(0.7)
-                        } else {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppColor.textPrimary)
+                        HStack(spacing: 6) {
+                            if isExporting {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: AppColor.textTertiary))
+                                    .scaleEffect(0.6)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 13))
+                                Text("导出")
+                                    .font(.system(size: 12))
+                            }
                         }
+                        .foregroundStyle(AppColor.textSecondary)
+                        .padding(.horizontal, 12)
+                        .frame(height: 30)
+                        .background(AppColor.bgTertiary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AppColor.borderSubtle, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    .frame(width: 32, height: 32)
+                    .buttonStyle(.plain)
                     .disabled(isExporting)
+                    .pointingHandCursor()
                     .help("导出音频")
                 }
+
+                Spacer()
             }
-            .padding(.horizontal, 20)
-            .frame(height: 40)
+            .padding(.horizontal, 22)
+            .frame(height: 48)
             .background(Color(hex: 0x15171B).opacity(0.5))
             .overlay(alignment: .bottom) {
                 Divider().background(AppColor.borderSubtle)
             }
 
             if let audio = viewModel.selectedAudio {
-                // 有选中音频 - 显示播放详情
+                // 有选中音频 - 显示播放详情 + 底部状态栏
                 AudioPlayerDetailView(
                     audio: audio,
                     player: viewModel.player
                 )
+                // 面板可见期间接管播放快捷键（空格 / ←→ / ⇧←→ / Home / End）
+                .playbackKeyboardShortcuts(player: viewModel.player, audio: audio)
+
+                PlaybackStatusBar(player: viewModel.player)
             } else {
                 // 空状态
                 VStack(spacing: 16) {

@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音频播放 - EmotionVoice</title>
+<style>
+    :root {
+        --bg-primary: #0E0F12;
+        --bg-secondary: #15171B;
+        --bg-tertiary: #1C1F24;
+        --bg-elevated: #22262D;
+        --bg-hover: rgba(255, 255, 255, 0.06);
+
+        --accent-primary: #E8A968;
+        --accent-secondary: #D49B5B;
+        --accent-glow: #F2C088;
+        --accent-dim: rgba(232, 169, 104, 0.14);
+        --accent-line: rgba(232, 169, 104, 0.34);
+
+        --text-primary: #F5F5F7;
+        --text-secondary: #A8ABB4;
+        --text-tertiary: #6B6E76;
+
+        --border-subtle: rgba(255, 255, 255, 0.08);
+        --border-medium: rgba(255, 255, 255, 0.16);
+
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-xl: 16px;
+        --radius-pill: 999px;
+
+        --titlebar-height: 52px;
+
+        --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+        --font-mono: ui-monospace, 'SF Mono', 'Menlo', 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+        font-family: var(--font-sans);
+        background: #08090B;
+        color: var(--text-primary);
+        font-size: 13px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    /* ============ Window ============ */
+    .macos-window {
+        width: 100%;
+        max-width: 880px;
+        height: 880px;
+        max-height: calc(100vh - 48px);
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.62);
+    }
+
+    /* ============ Title Bar ============ */
+    .titlebar {
+        height: var(--titlebar-height);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        background: linear-gradient(180deg, rgba(32, 34, 40, 0.96), rgba(20, 22, 26, 0.92));
+        border-bottom: 1px solid var(--border-subtle);
+        position: relative;
+    }
+
+    .traffic-lights { display: flex; gap: 8px; z-index: 1; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; }
+    .traffic-light.close { background: #FF453A; }
+    .traffic-light.minimize { background: #FFD60A; }
+    .traffic-light.zoom { background: #30D158; }
+
+    .titlebar-title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+    }
+
+    /* ============ Body ============ */
+    .app-body { flex: 1; display: flex; overflow: hidden; }
+
+    /* ============ Main ============ */
+    .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background:
+            radial-gradient(760px 340px at 50% -8%, rgba(232, 169, 104, 0.07), transparent 70%),
+            var(--bg-primary);
+    }
+
+    .content-toolbar {
+        height: 48px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+    .toolbar-actions { margin-left: auto; display: flex; gap: 8px; }
+
+    .ghost-btn {
+        height: 30px;
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: var(--radius-md);
+        font-size: 12px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .ghost-btn:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-medium); }
+    .ghost-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    .player-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 26px 22px 30px;
+    }
+    .player-scroll::-webkit-scrollbar { width: 10px; }
+    .player-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+
+    .player-inner { max-width: 760px; margin: 0 auto; }
+
+    /* ============ Meta strip ============ */
+    .meta-strip {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .meta-cell {
+        flex: 1;
+        min-width: 132px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 11px 14px;
+    }
+    .meta-cell.accent {
+        background: linear-gradient(180deg, rgba(232, 169, 104, 0.14), rgba(232, 169, 104, 0.05));
+        border-color: var(--accent-line);
+    }
+    .meta-key {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .meta-key svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .meta-val {
+        font-family: var(--font-mono);
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+        margin-top: 3px;
+    }
+    .meta-cell.accent .meta-val { color: var(--accent-glow); }
+    .meta-val .unit { font-size: 11px; font-weight: 400; color: var(--text-tertiary); margin-left: 3px; font-family: var(--font-sans); }
+    .meta-sub { font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; font-family: var(--font-mono); }
+
+    /* ============ Waveform ============ */
+    .wave-section { margin-top: 22px; }
+
+    .wave-hit {
+        position: relative;
+        padding: 14px 0 10px;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+    }
+
+    .waveform {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        height: 84px;
+    }
+    .wave-bar {
+        flex: 1;
+        min-width: 2px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.13);
+        transition: background-color 0.12s linear, transform 0.12s ease;
+    }
+    .wave-bar.played { background: linear-gradient(180deg, var(--accent-glow), var(--accent-secondary)); }
+    .wave-hit:hover .wave-bar { background: rgba(255, 255, 255, 0.2); }
+    .wave-hit:hover .wave-bar.played { background: linear-gradient(180deg, var(--accent-glow), var(--accent-secondary)); }
+
+    .playhead {
+        position: absolute;
+        top: 8px;
+        bottom: 4px;
+        width: 2px;
+        margin-left: -1px;
+        background: var(--accent-primary);
+        border-radius: 2px;
+        pointer-events: none;
+        box-shadow: 0 0 10px rgba(232, 169, 104, 0.55);
+    }
+    .playhead::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(232, 169, 104, 0.18);
+    }
+
+    .hover-bubble {
+        position: absolute;
+        top: -8px;
+        transform: translateX(-50%);
+        padding: 3px 7px;
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-medium);
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.12s ease;
+        white-space: nowrap;
+    }
+    .wave-hit:hover .hover-bubble { opacity: 1; }
+
+    .time-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-tertiary);
+    }
+    .time-row .cur { color: var(--text-secondary); }
+    .time-total {
+        background: none;
+        border: none;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-tertiary);
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+    }
+    .time-total:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+    /* ============ Transport ============ */
+    .transport {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .skip-btn {
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-pill);
+        transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+    }
+    .skip-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .skip-btn:active { transform: scale(0.94); }
+    .skip-btn.lg { width: 52px; height: 52px; }
+    .skip-btn.lg svg { width: 34px; height: 34px; }
+    .skip-btn.sm { width: 40px; height: 40px; }
+    .skip-btn.sm svg { width: 24px; height: 24px; }
+    .skip-btn svg { display: block; }
+
+    .play-btn {
+        width: 62px;
+        height: 62px;
+        border: none;
+        border-radius: var(--radius-pill);
+        background: linear-gradient(160deg, var(--accent-glow), var(--accent-secondary));
+        color: #241505;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 8px 22px rgba(232, 169, 104, 0.28);
+        transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .play-btn:hover { transform: scale(1.04); box-shadow: 0 10px 28px rgba(232, 169, 104, 0.38); }
+    .play-btn:active { transform: scale(0.97); }
+    .play-btn svg { width: 26px; height: 26px; }
+    .play-btn .icon-play { fill: currentColor; }
+    .play-btn .icon-pause { fill: currentColor; display: none; }
+    .play-btn.playing .icon-play { display: none; }
+    .play-btn.playing .icon-pause { display: block; }
+
+    /* ============ Utility row ============ */
+    .utility-row {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .speed-menu { position: relative; }
+
+    .speed-trigger {
+        height: 32px;
+        padding: 0 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .speed-trigger:hover { background: var(--bg-elevated); border-color: var(--border-medium); }
+    .speed-trigger .val { font-family: var(--font-mono); font-weight: 600; color: var(--accent-primary); }
+    .speed-trigger .chev { width: 9px; height: 9px; fill: none; stroke: var(--text-tertiary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.16s ease; }
+    .speed-menu.open .speed-trigger { border-color: var(--accent-line); background: var(--accent-dim); }
+    .speed-menu.open .speed-trigger .chev { transform: rotate(180deg); }
+
+    .speed-dropdown {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        min-width: 150px;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-medium);
+        border-radius: var(--radius-lg);
+        padding: 6px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+        pointer-events: none;
+        transition: opacity 0.16s ease, transform 0.16s ease;
+        z-index: 20;
+    }
+    .speed-menu.open .speed-dropdown { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+
+    .speed-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 30px;
+        padding: 0 9px;
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .speed-option:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .speed-option .sp-val { font-family: var(--font-mono); width: 38px; }
+    .speed-option .sp-hint { color: var(--text-tertiary); font-size: 11px; }
+    .speed-option .check { margin-left: auto; width: 13px; height: 13px; fill: none; stroke: var(--accent-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+    .speed-option.selected { color: var(--accent-glow); background: var(--accent-dim); }
+    .speed-option.selected .check { opacity: 1; }
+
+    .utility-spacer { flex: 1; }
+
+    /* ============ Transcript ============ */
+    .transcript { margin-top: 24px; }
+
+    .section-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .section-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .section-meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
+    .section-head .ghost-btn { margin-left: auto; height: 26px; padding: 0 9px; font-size: 11px; }
+
+    .transcript-body {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        max-height: 268px;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+    }
+    .transcript-body::-webkit-scrollbar { width: 8px; }
+    .transcript-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+
+    .transcript-body p {
+        font-size: 14.5px;
+        line-height: 2.05;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+    }
+    .transcript-body p + p { margin-top: 16px; }
+
+    /* ============ Status bar ============ */
+    .statusbar {
+        height: 34px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 18px;
+        background: rgba(12, 13, 16, 0.7);
+        border-top: 1px solid var(--border-subtle);
+        font-size: 11px;
+        color: var(--text-tertiary);
+    }
+    .status-state { display: flex; align-items: center; gap: 7px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
+    .status-dot.live { background: #6BB87A; box-shadow: 0 0 8px rgba(107, 184, 122, 0.7); }
+    .status-dot.paused { background: var(--accent-primary); }
+    .status-hints { margin-left: auto; display: flex; gap: 14px; }
+    .hint { display: inline-flex; align-items: center; gap: 5px; }
+    kbd {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+    }
+
+    .toast {
+        position: fixed;
+        bottom: 74px;
+        left: 50%;
+        transform: translateX(-50%) translateY(8px);
+        padding: 8px 16px;
+        border-radius: var(--radius-pill);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-medium);
+        color: var(--text-primary);
+        font-size: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 60;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="macos-window">
+
+    <!-- Title Bar -->
+    <div class="titlebar">
+        <div class="traffic-lights">
+            <div class="traffic-light close"></div>
+            <div class="traffic-light minimize"></div>
+            <div class="traffic-light zoom"></div>
+        </div>
+        <div class="titlebar-title">音频播放</div>
+    </div>
+
+    <div class="app-body">
+
+        <!-- Main -->
+        <main class="main">
+
+            <div class="content-toolbar">
+                <div class="toolbar-actions" style="margin-left:0;">
+                    <button class="ghost-btn" id="exportBtn">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        导出
+                    </button>
+                </div>
+            </div>
+
+            <div class="player-scroll">
+                <div class="player-inner">
+
+                    <!-- Meta: 时长 / 字符 / 积分 -->
+                    <section class="meta-strip">
+                        <div class="meta-cell">
+                            <div class="meta-key">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                                音频时长
+                            </div>
+                            <div class="meta-val" id="metaDuration">02:17</div>
+                            <div class="meta-sub" id="metaDurationSub">137.0s</div>
+                        </div>
+                        <div class="meta-cell">
+                            <div class="meta-key">
+                                <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                                文本字数
+                            </div>
+                            <div class="meta-val" id="metaChars">558<span class="unit">字</span></div>
+                            <div class="meta-sub">22 个语句</div>
+                        </div>
+                        <div class="meta-cell accent">
+                            <div class="meta-key">
+                                <svg viewBox="0 0 24 24"><path d="M12 3 14.6 8.5 20.5 9.3 16.2 13.2 17.3 19 12 16.1 6.7 19 7.8 13.2 3.5 9.3 9.4 8.5z"/></svg>
+                                消耗积分
+                            </div>
+                            <div class="meta-val" id="metaCredits">45<span class="unit">分</span></div>
+                            <div class="meta-sub">558 字 × 0.08</div>
+                        </div>
+                    </section>
+
+                    <!-- Waveform -->
+                    <section class="wave-section">
+                        <div class="wave-hit" id="waveHit">
+                            <div class="waveform" id="waveform"></div>
+                            <div class="hover-bubble" id="hoverBubble">00:00</div>
+                            <div class="playhead" id="playhead" style="left: 0%;"></div>
+                        </div>
+                        <div class="time-row">
+                            <span class="cur" id="curTime">00:00</span>
+                            <button class="time-total" id="totalTime" title="点击切换剩余时间">02:17</button>
+                        </div>
+                    </section>
+
+                    <!-- Transport -->
+                    <section class="transport">
+                        <button class="skip-btn lg" id="back15" title="后退 15 秒">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/>
+                                <text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text>
+                            </svg>
+                        </button>
+                        <button class="skip-btn sm" id="back5" title="后退 5 秒">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/>
+                                <text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text>
+                            </svg>
+                        </button>
+
+                        <button class="play-btn" id="playBtn" title="播放 / 暂停">
+                            <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.53.85l10.2-6.8a1 1 0 0 0 0-1.7L9.53 4.35A1 1 0 0 0 8 5.2z"/></svg>
+                            <svg class="icon-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.2"/></svg>
+                        </button>
+
+                        <button class="skip-btn sm" id="fwd5" title="前进 5 秒">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/>
+                                <text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text>
+                            </svg>
+                        </button>
+                        <button class="skip-btn lg" id="fwd15" title="前进 15 秒">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/>
+                                <text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text>
+                            </svg>
+                        </button>
+                    </section>
+
+                    <!-- Utility -->
+                    <section class="utility-row">
+                        <div class="speed-menu" id="speedMenu">
+                            <button class="speed-trigger" id="speedTrigger">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 6 12 12 4 18 4 6"/><line x1="14" y1="6" x2="20" y2="6"/><line x1="14" y1="12" x2="20" y2="12"/><line x1="14" y1="18" x2="20" y2="18"/></svg>
+                                <span class="val" id="speedVal">1.0×</span>
+                                <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="speed-dropdown" id="speedDropdown"></div>
+                        </div>
+                        <span style="font-size:11px;color:var(--text-tertiary);" id="speedHint">剩余约 02:17</span>
+                        <div class="utility-spacer"></div>
+                        <button class="ghost-btn" id="rewindBtn">
+                            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                            从头播放
+                        </button>
+                    </section>
+
+                    <!-- Transcript -->
+                    <section class="transcript">
+                        <div class="section-head">
+                            <h2 class="section-title">音频文本</h2>
+                            <span class="section-meta">558 字 · 3 段</span>
+                            <button class="ghost-btn" id="copyTextBtn">
+                                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
+                                复制
+                            </button>
+                        </div>
+                        <div class="transcript-body" id="transcriptBody">
+                            <div id="transcriptText"></div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+
+            <!-- Status bar -->
+            <div class="statusbar">
+                <div class="status-state">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">已就绪</span>
+                </div>
+                <span style="color:var(--text-tertiary);">演示数据 · 模拟播放</span>
+                <div class="status-hints">
+                    <span class="hint"><kbd>空格</kbd> 播放 / 暂停</span>
+                    <span class="hint"><kbd>←</kbd><kbd>→</kbd> 5 秒</span>
+                    <span class="hint"><kbd>⇧</kbd><kbd>←</kbd><kbd>→</kbd> 15 秒</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+    'use strict';
+
+    /* ------------------------------------------------------------------
+     * 演示数据
+     * ---------------------------------------------------------------- */
+    const SENTENCES = [
+        '潮水退去的那一刻，整座城市露出了它真正的轮廓。',
+        '石板路上的水痕还没有干，倒映着天边最后一点橘红色的光。',
+        '阿阮提着灯，沿着海岸线慢慢往前走，脚下的碎石发出细碎的声响。',
+        '她已经在这条路上走了七天，鞋底磨破了两双，干粮也只剩最后一块。',
+        '传说中，潮汐之城每三十年浮出海面一次，停留的时间从不超过十天。',
+        '而这一次，它浮上来已经七天了。',
+        '如果她没能在潮水回来之前找到那座钟楼，这趟旅程就再也没有意义了。',
+        '风从北面吹过来，带着咸涩的味道，把她的衣角掀了起来。',
+        '远处的灯塔亮了一下，又暗了下去，像是在提醒她什么。',
+        '她停下脚步，从怀里取出那张已经泛黄的地图。',
+        '地图的边角被海水泡得发软，上面的墨迹却依然清晰。',
+        '正中央画着一座钟楼，旁边只有一行小字。',
+        '上面写着：当潮水退尽，钟声会自己响起来。',
+        '阿阮抬起头，看着眼前这座沉默了三十年的城市。',
+        '街道两旁的店铺还保持着最后的模样，门半开着，像是主人刚刚离开。',
+        '她深吸了一口气，握紧手里的灯，朝着城市中心快步走去。',
+        '越往里走，街道越窄，两边的墙壁上爬满了深绿色的海藻。',
+        '有一扇窗里还亮着灯，那是这座城市里唯一活着的光。',
+        '她放慢脚步，把灯举高了一些，让自己的影子短一点。',
+        '钟楼应该就在这条街的尽头，可她眼前出现了三岔路口。',
+        '左边的路通向码头，右边的路没入雾里，中间那条被一堵墙封住了。',
+        '阿阮闭上眼睛，把耳朵贴在墙上，安静地等着下一次潮声。'
+    ];
+
+    const CHARS_PER_SEC = 4.4;        // 中文朗读速度
+    const PAUSE_PER_SENTENCE = 0.45;  // 句间停顿
+    const CREDIT_PER_CHAR = 0.08;     // 旗舰音色单价
+
+    const SPEEDS = [
+        { v: 0.5,  hint: '精听' },
+        { v: 0.75, hint: '慢速' },
+        { v: 1.0,  hint: '正常' },
+        { v: 1.25, hint: '略快' },
+        { v: 1.5,  hint: '快速' },
+        { v: 2.0,  hint: '极速' }
+    ];
+
+    /* ------------------------------------------------------------------
+     * 由文本推导时长与积分，保证界面数字自洽
+     * ---------------------------------------------------------------- */
+    const CHAR_COUNT = SENTENCES.join('').length;
+    const DURATION = Math.round(CHAR_COUNT / CHARS_PER_SEC + SENTENCES.length * PAUSE_PER_SENTENCE);
+    const CREDITS = Math.ceil(CHAR_COUNT * CREDIT_PER_CHAR);
+
+    /* ------------------------------------------------------------------
+     * 状态
+     * ---------------------------------------------------------------- */
+    const state = {
+        time: 0,
+        playing: false,
+        rate: 1.0,
+        showRemaining: false,
+        scrubbing: false,
+        playedBars: -1
+    };
+
+    /* ------------------------------------------------------------------
+     * DOM
+     * ---------------------------------------------------------------- */
+    const $ = id => document.getElementById(id);
+    const el = {
+        waveform: $('waveform'),
+        waveHit: $('waveHit'),
+        playhead: $('playhead'),
+        hoverBubble: $('hoverBubble'),
+        curTime: $('curTime'),
+        totalTime: $('totalTime'),
+        playBtn: $('playBtn'),
+        back15: $('back15'), back5: $('back5'), fwd5: $('fwd5'), fwd15: $('fwd15'),
+        speedMenu: $('speedMenu'),
+        speedTrigger: $('speedTrigger'),
+        speedDropdown: $('speedDropdown'),
+        speedVal: $('speedVal'),
+        speedHint: $('speedHint'),
+        transcriptText: $('transcriptText'),
+        statusDot: $('statusDot'),
+        statusText: $('statusText'),
+        copyTextBtn: $('copyTextBtn'),
+        rewindBtn: $('rewindBtn'),
+        exportBtn: $('exportBtn'),
+        toast: $('toast')
+    };
+
+    /* ------------------------------------------------------------------
+     * 工具
+     * ---------------------------------------------------------------- */
+    function fmt(sec) {
+        sec = Math.max(0, Math.floor(sec));
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+    function fmtSec(sec) { return sec.toFixed(1) + 's'; }
+    function fmtRate(v) { return v.toFixed(2).replace(/0$/, ''); }
+    function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+
+    let toastTimer = null;
+    function toast(msg) {
+        el.toast.textContent = msg;
+        el.toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.toast.classList.remove('show'), 1400);
+    }
+
+    /* ------------------------------------------------------------------
+     * 初始化：波形 / 倍速菜单 / 文本
+     * ---------------------------------------------------------------- */
+    const BAR_COUNT = 118;
+    const bars = [];
+    (function buildWaveform() {
+        let seed = 20260826;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < BAR_COUNT; i++) {
+            const t = i / (BAR_COUNT - 1);
+            // 用两段正弦叠加出不规则的语音包络
+            const env = 0.42 + 0.34 * Math.sin(t * 11.3) + 0.16 * Math.sin(t * 29.7 + 1.4);
+            const h = clamp((env * 0.72 + rnd() * 0.34) * 84, 8, 84);
+            const bar = document.createElement('div');
+            bar.className = 'wave-bar';
+            bar.style.height = h.toFixed(1) + 'px';
+            frag.appendChild(bar);
+            bars.push(bar);
+        }
+        el.waveform.appendChild(frag);
+    })();
+
+    (function buildSpeedMenu() {
+        SPEEDS.forEach(s => {
+            const opt = document.createElement('div');
+            opt.className = 'speed-option' + (s.v === 1.0 ? ' selected' : '');
+            opt.dataset.speed = s.v;
+            opt.innerHTML =
+                '<span class="sp-val">' + fmtRate(s.v) + '×</span>' +
+                '<span class="sp-hint">' + s.hint + '</span>' +
+                '<svg class="check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+            opt.addEventListener('click', () => setRate(s.v));
+            el.speedDropdown.appendChild(opt);
+        });
+    })();
+
+    // 文本只做静态展示：音频没有时间戳对齐，故不做逐句高亮 / 点击跳转
+    (function buildTranscript() {
+        const PARAGRAPHS = [8, 7, 7];
+        const frag = document.createDocumentFragment();
+        let cursor = 0;
+        PARAGRAPHS.forEach(n => {
+            const p = document.createElement('p');
+            p.textContent = SENTENCES.slice(cursor, cursor + n).join('');
+            cursor += n;
+            frag.appendChild(p);
+        });
+        el.transcriptText.appendChild(frag);
+    })();
+
+    /* ------------------------------------------------------------------
+     * 播放引擎（模拟）
+     * 接真实音频时把 tick / seek / rate 换成 <audio> 的对应调用即可
+     * ---------------------------------------------------------------- */
+    let lastFrame = 0;
+    function frame(now) {
+        if (!state.playing) return;
+        if (!lastFrame) lastFrame = now;
+        const dt = (now - lastFrame) / 1000;
+        lastFrame = now;
+
+        state.time += dt * state.rate;
+        if (state.time >= DURATION) {
+            state.time = DURATION;
+            pause();
+            setStatus('播放结束');
+            render();
+            return;
+        }
+        render();
+        requestAnimationFrame(frame);
+    }
+
+    function play() {
+        if (state.playing) return;
+        if (state.time >= DURATION) state.time = 0;
+        state.playing = true;
+        lastFrame = 0;
+        el.playBtn.classList.add('playing');
+        setStatus('正在播放 · ' + fmtRate(state.rate) + '×');
+        requestAnimationFrame(frame);
+    }
+
+    function pause() {
+        if (!state.playing) return;
+        state.playing = false;
+        el.playBtn.classList.remove('playing');
+        setStatus('已暂停 · ' + fmt(state.time));
+    }
+
+    function toggle() { state.playing ? pause() : play(); }
+
+    function seek(sec) {
+        state.time = clamp(sec, 0, DURATION);
+        render();
+        if (state.playing) setStatus('正在播放 · ' + fmtRate(state.rate) + '×');
+        else setStatus('已暂停 · ' + fmt(state.time));
+    }
+
+    function skip(delta) {
+        seek(state.time + delta);
+        toast((delta > 0 ? '前进 ' : '后退 ') + Math.abs(delta) + ' 秒 · ' + fmt(state.time));
+    }
+
+    function setRate(v) {
+        state.rate = v;
+        el.speedVal.textContent = fmtRate(v) + '×';
+        Array.prototype.forEach.call(el.speedDropdown.children, o => {
+            o.classList.toggle('selected', parseFloat(o.dataset.speed) === v);
+        });
+        el.speedMenu.classList.remove('open');
+        const saved = (DURATION - state.time) / v;
+        el.speedHint.textContent = '剩余约 ' + fmt(saved) + ' · 已完成 ' +
+            Math.round(state.time / DURATION * 100) + '%';
+        if (state.playing) setStatus('正在播放 · ' + fmtRate(v) + '×');
+        toast('播放速度 ' + fmtRate(v) + '×');
+    }
+
+    function setStatus(text) {
+        el.statusText.textContent = text;
+        el.statusDot.className = 'status-dot' + (state.playing ? ' live' : (state.time > 0 ? ' paused' : ''));
+    }
+
+    /* ------------------------------------------------------------------
+     * 渲染
+     * ---------------------------------------------------------------- */
+    function render() {
+        const pct = state.time / DURATION * 100;
+
+        // 进度头
+        el.playhead.style.left = pct.toFixed(3) + '%';
+
+        // 波形着色（只更新变化区间）
+        const played = Math.round(pct / 100 * BAR_COUNT);
+        if (played !== state.playedBars) {
+            const from = Math.min(played, state.playedBars + 1);
+            const to = Math.max(played, state.playedBars + 1);
+            for (let i = Math.max(0, from); i < Math.min(BAR_COUNT, to + 1); i++) {
+                const isPlayed = i < played;
+                bars[i].classList.toggle('played', isPlayed);
+            }
+            state.playedBars = played;
+        }
+
+        // 时间
+        el.curTime.textContent = fmt(state.time);
+        el.totalTime.textContent = state.showRemaining
+            ? '-' + fmt(DURATION - state.time)
+            : fmt(DURATION);
+        el.speedHint.textContent = state.playing
+            ? '剩余约 ' + fmt((DURATION - state.time) / state.rate)
+            : '剩余约 ' + fmt((DURATION - state.time) / state.rate) + ' · 已完成 ' +
+              Math.round(state.time / DURATION * 100) + '%';
+    }
+
+    /* ------------------------------------------------------------------
+     * 波形交互：点击定位 + 拖动擦洗
+     * ---------------------------------------------------------------- */
+    function timeAtX(clientX) {
+        const rect = el.waveform.getBoundingClientRect();
+        const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+        return { t: ratio * DURATION, ratio: ratio };
+    }
+
+    el.waveHit.addEventListener('pointerdown', e => {
+        state.scrubbing = true;
+        el.waveHit.setPointerCapture(e.pointerId);
+        const r = timeAtX(e.clientX);
+        seek(r.t);
+        if (!state.playing) setStatus('已暂停 · ' + fmt(state.time));
+    });
+
+    el.waveHit.addEventListener('pointermove', e => {
+        const r = timeAtX(e.clientX);
+        el.hoverBubble.textContent = fmt(r.t);
+        el.hoverBubble.style.left = (r.ratio * 100).toFixed(2) + '%';
+        if (state.scrubbing) seek(r.t);
+    });
+
+    el.waveHit.addEventListener('pointerup', () => { state.scrubbing = false; });
+    el.waveHit.addEventListener('pointercancel', () => { state.scrubbing = false; });
+
+    /* ------------------------------------------------------------------
+     * 控件绑定
+     * ---------------------------------------------------------------- */
+    el.playBtn.addEventListener('click', toggle);
+    el.back15.addEventListener('click', () => skip(-15));
+    el.back5.addEventListener('click', () => skip(-5));
+    el.fwd5.addEventListener('click', () => skip(5));
+    el.fwd15.addEventListener('click', () => skip(15));
+
+    el.speedTrigger.addEventListener('click', e => {
+        e.stopPropagation();
+        el.speedMenu.classList.toggle('open');
+    });
+    document.addEventListener('click', () => el.speedMenu.classList.remove('open'));
+    el.speedDropdown.addEventListener('click', e => e.stopPropagation());
+
+    el.totalTime.addEventListener('click', () => {
+        state.showRemaining = !state.showRemaining;
+        render();
+        toast(state.showRemaining ? '显示剩余时间' : '显示总时长');
+    });
+
+    el.rewindBtn.addEventListener('click', () => { seek(0); toast('已回到开头'); });
+
+    el.exportBtn.addEventListener('click', () => toast('已导出 音频.m4a'));
+
+    el.copyTextBtn.addEventListener('click', () => {
+        const text = SENTENCES.join('\n');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => toast('文本已复制'), () => toast('复制失败'));
+        } else {
+            toast('当前环境不支持剪贴板');
+        }
+    });
+
+    /* ------------------------------------------------------------------
+     * 键盘快捷键
+     * ---------------------------------------------------------------- */
+    document.addEventListener('keydown', e => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea') return;
+
+        if (e.code === 'Space') {
+            e.preventDefault(); toggle(); return;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault(); skip(e.shiftKey ? -15 : -5); return;
+        }
+        if (e.key === 'ArrowRight') {
+            e.preventDefault(); skip(e.shiftKey ? 15 : 5); return;
+        }
+        if (e.key === 'Home') { e.preventDefault(); seek(0); }
+        if (e.key === 'End') { e.preventDefault(); seek(DURATION); }
+    });
+
+    /* ------------------------------------------------------------------
+     * 静态信息填充
+     * ---------------------------------------------------------------- */
+    $('metaDuration').textContent = fmt(DURATION);
+    $('metaDurationSub').textContent = fmtSec(DURATION);
+    $('metaChars').innerHTML = CHAR_COUNT + '<span class="unit">字</span>';
+    $('metaCredits').innerHTML = CREDITS + '<span class="unit">分</span>';
+    Array.prototype.forEach.call(document.querySelectorAll('.meta-sub'), n => {
+        if (n.textContent.indexOf('字 ×') >= 0) n.textContent = CHAR_COUNT + ' 字 × ' + CREDIT_PER_CHAR;
+    });
+    render();
+})();
+</script>
+</body>
+</html>
