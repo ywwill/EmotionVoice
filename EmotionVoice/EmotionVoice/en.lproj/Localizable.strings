@@ -268,3 +268,34 @@
 "马来西亚语" = "Malay";
 "菲律宾语" = "Filipino";
 "阿拉伯语" = "Arabic";
+
+/* Voice catalog — tier / language / gender / scene / age */
+"旗舰" = "Premium";
+"基础" = "Basic";
+"女" = "Female";
+"男" = "Male";
+"日常对话" = "Daily Chat";
+"情感陪伴" = "Companionship";
+"有声阅读" = "Audiobook Reading";
+"客服" = "Customer Service";
+"社交互动" = "Social";
+"动漫配音" = "Anime Dubbing";
+"电商直播" = "Live Commerce";
+"古风有声书" = "Classic Audiobook";
+"体育解说" = "Sports Commentary";
+"有声书配音" = "Audiobook";
+"深夜电台" = "Late-Night Radio";
+"知识分享" = "Knowledge Sharing";
+"娱乐搞笑" = "Comedy";
+"商务汇报" = "Business Report";
+"智能助手" = "Smart Assistant";
+"演讲朗诵" = "Speech & Recital";
+"动漫角色" = "Anime Role";
+"直播角色" = "Streamer Role";
+"古风角色" = "Classic Role";
+"电台角色" = "Radio Role";
+"语言" = "Language";
+"年龄阶段" = "Age Group";
+"%d 岁" = "%d yrs";
+"%@ · 旗舰音色" = "%@ · Premium";
+"%@ · %@ · 情感标签" = "%@ · %@ · Emotion Tags";

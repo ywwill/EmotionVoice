@@ -9,19 +9,22 @@ import Foundation
 import SQLite
 
 /// 音色数据服务
+///
+/// 筛选一律基于语义 code 列（tier / lang_code / scene_key / age / gender_code），
+/// 与界面语言无关；搜索则同时覆盖中英文字段，保证两种语言下都能搜到。
 final class VoiceService {
 
     static let shared = VoiceService()
 
     private let db = DatabaseManager.shared
 
-    // MARK: - 全量（保留旧接口供其他模块使用）
+    // MARK: - 全量
 
-    /// 获取所有音色
+    /// 获取所有音色（按当前语言的展示名排序）
     func fetchAll() -> [Voice] {
         do {
-            return try db.db.prepare(db.voices.order(db.voiceCategory.asc, db.voiceName.asc))
-                .map { Self.rowToVoice($0, db: db) }
+            let rows = try db.db.prepare(db.voices).map { Self.rowToVoice($0, db: db) }
+            return Self.sorted(rows)
         } catch {
             Log(message: "VoiceService.fetchAll error: \(error)")
             return []
@@ -30,157 +33,88 @@ final class VoiceService {
 
     /// 按分类获取
     func fetch(by category: VoiceCategory) -> [Voice] {
-        fetchAll().filter { $0.category == category }
+        fetchAll().filter { category.matches($0) }
     }
 
-    // MARK: - SQL 分页查询（按分类 + 搜索文本）
+    // MARK: - 分页查询（按分类 + 搜索文本）
 
-    /// 按分类+搜索文本查询总数（轻量）
+    /// 按分类+搜索文本查询总数
     func count(category: VoiceCategory?, searchText: String) -> Int {
         do {
             var query = db.voices
-            if let pred = predicate(category: category, searchText: searchText) {
+            if let pred = predicate(category: category) {
                 query = query.filter(pred)
             }
-            return try db.db.scalar(query.count)
+            let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
+            return all.filter { Self.matchesSearch($0, searchText) }.count
         } catch {
             Log(message: "VoiceService.count error: \(error)")
             return 0
         }
     }
 
-    /// 按分类+搜索文本分页查询（limit + offset）
-    /// - Parameter orderByPremiumFirst: 若为 true 且 category == nil，则优先按 premium 排序（旗舰音色始终在前）
-    func fetch(category: VoiceCategory?, searchText: String, limit: Int, offset: Int, orderByPremiumFirst: Bool = false) -> [Voice] {
+    /// 返回「过滤 + 排序」后的完整有序数组（不做 LIMIT/OFFSET 切片）。
+    ///
+    /// 排序规则统一为「旗舰优先，其次按当前语言的展示名」：
+    /// SQLite 无法按「当前语言的展示名」排序，因此先取命中集合、内存排序后一次性返回。
+    /// 分页 VM 会缓存此结果，翻页时只做切片，避免每次翻页都全表重查 + 全量排序
+    /// （快速连点翻页时这正是 CPU / 内存飙升的根因）。
+    func orderedVoices(showingFavorites: Bool, category: VoiceCategory?, searchText: String) -> [Voice] {
         do {
-            // 搜索过滤
-            let needle = searchText.trimmingCharacters(in: .whitespaces)
-            var predicateExpr: SQLite.Expression<Bool>?
-            if !needle.isEmpty {
-                let like = "%\(needle)%"
-                predicateExpr = (db.voiceName.like(like) ||
-                                 db.voiceDesc.like(like) ||
-                                 db.voiceScene.like(like) ||
-                                 db.voiceLang.like(like))
+            let query: SQLite.QueryType
+            if showingFavorites {
+                query = db.voices.filter(db.voiceIsFavorite == true)
+            } else if let pred = predicate(category: category) {
+                query = db.voices.filter(pred)
+            } else {
+                query = db.voices
             }
 
-            if orderByPremiumFirst && category == nil {
-                // "全部"分类：按 dimension（premium > language > scene > role > age）排序，
-                // 旗舰维度优先，再按 premium 字段，最后按名称。该排序无法在 SQL 端精确表达，
-                // 因此拉全表后在内存中排序，再按 offset/limit 切片。
-                var query = db.voices
-                if let p = predicateExpr {
-                    query = query.filter(p)
-                }
-                let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
-                let sorted = Self.sortForAllCategory(all)
-                let start = min(offset, sorted.count)
-                let end = min(offset + limit, sorted.count)
-                return Array(sorted[start..<end])
-            }
-
-            // 其他场景：SQL 端按 category + name 排序 + limit/offset
-            var query = db.voices.order(db.voiceCategory.asc, db.voiceName.asc)
-            if let cat = category, let p = categoryPredicate(cat) {
-                if let extra = predicateExpr {
-                    query = query.filter(p && extra)
-                } else {
-                    query = query.filter(p)
-                }
-            } else if let extra = predicateExpr {
-                query = query.filter(extra)
-            }
-
-            return try db.db.prepare(query.limit(limit, offset: offset)).map { Self.rowToVoice($0, db: db) }
+            let rows = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
+            let filtered = rows.filter { Self.matchesSearch($0, searchText) }
+            return Self.sorted(filtered)
         } catch {
-            Log(message: "VoiceService.fetch(paged) error: \(error)")
+            Log(message: "VoiceService.orderedVoices error: \(error)")
             return []
         }
     }
 
-    /// "全部"分类下的展示顺序：
-    /// 1) dimension 优先级：premium > language > scene > role > age
-    /// 2) 同维度内：premium 类目排前
-    /// 3) 同类目下：按 name 字典序
-    private static func sortForAllCategory(_ voices: [Voice]) -> [Voice] {
+    /// 仅按 key 列表取对应的 Voice 对象，并**严格保持传入 keys 的顺序**。
+    /// 用于分页：翻页只取当前这一窗（pageSize 个）的对象，上一页的对象不被保留，内存稳定。
+    func fetchByKeys(_ keys: [String]) -> [Voice] {
+        guard !keys.isEmpty else { return [] }
+        do {
+            let rows = try db.db.prepare(db.voices.filter(keys.contains(db.voiceKey)))
+                .map { Self.rowToVoice($0, db: db) }
+            let dict = Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
+            return keys.compactMap { dict[$0] }
+        } catch {
+            Log(message: "VoiceService.fetchByKeys error: \(error)")
+            return []
+        }
+    }
+
+    /// 展示顺序：旗舰音色优先，其余按当前语言的展示名字典序
+    private static func sorted(_ voices: [Voice]) -> [Voice] {
         voices.sorted { a, b in
-            let da = dimensionRank(a.category.dimension)
-            let db_ = dimensionRank(b.category.dimension)
-            if da != db_ { return da < db_ }
-
-            let aIsPremium = a.category == .premium
-            let bIsPremium = b.category == .premium
-            if aIsPremium != bIsPremium { return aIsPremium }
-
-            return a.name < b.name
+            if a.isPremium != b.isPremium { return a.isPremium }
+            return a.sortKey.localizedStandardCompare(b.sortKey) == .orderedAscending
         }
     }
 
-    private static func dimensionRank(_ dim: VoiceCategoryDimension) -> Int {
-        switch dim {
-        case .premium:  return 0
-        case .language: return 1
-        case .scene:    return 2
-        case .role:     return 3
-        case .age:      return 4
-        }
-    }
+    // MARK: - 收藏
 
     /// 收藏总数
     func countFavorites() -> Int {
-        do {
-            return try db.db.scalar(db.voices.filter(db.voiceIsFavorite == true).count)
-        } catch {
-            return 0
-        }
-    }
-
-    /// 按收藏+搜索文本分页查询
-    func fetchFavorites(searchText: String, limit: Int, offset: Int) -> [Voice] {
-        do {
-            var query = db.voices.filter(db.voiceIsFavorite == true)
-
-            // 搜索过滤
-            let needle = searchText.trimmingCharacters(in: .whitespaces)
-            if !needle.isEmpty {
-                let like = "%\(needle)%"
-                query = query.filter(
-                    db.voiceName.like(like) ||
-                    db.voiceDesc.like(like) ||
-                    db.voiceScene.like(like) ||
-                    db.voiceLang.like(like)
-                )
-            }
-
-            // 收藏页同样按 dimension 排序（旗舰在前），SQL 端无法精确表达，使用内存排序 + 分片
-            let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
-            let sorted = Self.sortForAllCategory(all)
-            let start = min(offset, sorted.count)
-            let end = min(offset + limit, sorted.count)
-            return Array(sorted[start..<end])
-        } catch {
-            Log(message: "VoiceService.fetchFavorites error: \(error)")
-            return []
-        }
+        countFavorites(searchText: "")
     }
 
     /// 按收藏+搜索文本查询总数
     func countFavorites(searchText: String) -> Int {
         do {
-            var query = db.voices.filter(db.voiceIsFavorite == true)
-
-            let needle = searchText.trimmingCharacters(in: .whitespaces)
-            if !needle.isEmpty {
-                let like = "%\(needle)%"
-                query = query.filter(
-                    db.voiceName.like(like) ||
-                    db.voiceDesc.like(like) ||
-                    db.voiceScene.like(like) ||
-                    db.voiceLang.like(like)
-                )
-            }
-
-            return try db.db.scalar(query.count)
+            let query = db.voices.filter(db.voiceIsFavorite == true)
+            let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
+            return all.filter { Self.matchesSearch($0, searchText) }.count
         } catch {
             Log(message: "VoiceService.countFavorites error: \(error)")
             return 0
@@ -189,74 +123,67 @@ final class VoiceService {
 
     // MARK: - WHERE 子句构造
 
-    /// 构造分类+搜索的 WHERE 子句
+    /// 构造分类的 WHERE 子句（仅语义 code，与语言无关）
     /// - Returns: nil 表示无过滤条件；Expression<Bool>(value: false) 表示永远无匹配
-    private func predicate(category: VoiceCategory?, searchText: String) -> SQLite.Expression<Bool>? {
-        var conditions: [SQLite.Expression<Bool>] = []
-
-        // 分类过滤
-        if let category = category {
-            guard let pred = categoryPredicate(category) else {
-                return SQLite.Expression<Bool>(value: false)
-            }
-            conditions.append(pred)
+    ///
+    /// 注：搜索不再下推到 SQL —— 文案列已从库里移除，搜索在内存中对本地化后的
+    /// 名 / 特质 / 场景 / 语种做匹配（见 matchesSearch），这样还能顺手支持拼音搜索。
+    private func predicate(category: VoiceCategory?) -> SQLite.Expression<Bool>? {
+        guard let category = category else { return nil }
+        guard let pred = categoryPredicate(category) else {
+            return SQLite.Expression<Bool>(value: false)
         }
-
-        // 搜索过滤
-        let needle = searchText.trimmingCharacters(in: .whitespaces)
-        if !needle.isEmpty {
-            let like = "%\(needle)%"
-            // 多字段 OR 实现 name/desc/scene/lang 任一匹配
-            conditions.append(
-                db.voiceName.like(like) ||
-                db.voiceDesc.like(like) ||
-                db.voiceScene.like(like) ||
-                db.voiceLang.like(like)
-            )
-        }
-
-        if conditions.isEmpty { return nil }
-        if conditions.count == 1 { return conditions[0] }
-        return conditions.dropFirst().reduce(conditions[0]) { $0 && $1 }
+        return pred
     }
 
-    /// 将 VoiceCategory 翻译为 SQL 谓词
-    /// 与 VoiceCategory.matches(_:) 行为对齐
+    /// 内存搜索：命中当前语言的名 / 特质，或场景 / 语种的中文名
+    private static func matchesSearch(_ v: Voice, _ searchText: String) -> Bool {
+        let needle = searchText.trimmingCharacters(in: .whitespaces)
+        guard !needle.isEmpty else { return true }
+        if v.localizedName.localizedCaseInsensitiveContains(needle) { return true }
+        if v.localizedDesc.localizedCaseInsensitiveContains(needle) { return true }
+        if v.scene.displayName.localizedCaseInsensitiveContains(needle) { return true }
+        if v.lang.displayName.localizedCaseInsensitiveContains(needle) { return true }
+        return false
+    }
+
+    /// 将 VoiceCategory 翻译为 SQL 谓词（与 VoiceCategory.matches(_:) 行为对齐）
     private func categoryPredicate(_ category: VoiceCategory) -> SQLite.Expression<Bool>? {
         switch category {
         case .premium:
-            return db.voiceCategory == VoiceCategory.premium.rawValue
+            return db.voiceTier == VoiceTier.premium.rawValue
 
         case .chinese:
-            return db.voiceLang.like("%中文%")
+            return db.voiceLangCode == VoiceLangCode.zh.rawValue
         case .english:
-            return db.voiceLang.like("%英文%")
+            return db.voiceLangCode == VoiceLangCode.en.rawValue
 
-        case .sceneDaily:      return db.voiceScene == "日常对话"
-        case .sceneCompanion:  return db.voiceScene == "情感陪伴"
-        case .sceneCustomer:   return db.voiceScene == "客服"
-        case .sceneReading:    return db.voiceScene == "有声阅读"
-        case .sceneSocial:     return db.voiceScene == "社交互动"
-        case .sceneAnime:      return db.voiceScene == "动漫配音"
-        case .sceneNews:       return db.voiceScene == "新闻播报"
-        case .sceneLive:       return db.voiceScene == "电商直播"
-        case .sceneClassic:    return db.voiceScene == "古风有声书"
-        case .sceneSports:     return db.voiceScene == "体育解说"
-        case .sceneAudiobook:  return db.voiceScene == "有声书配音"
-        case .sceneRadio:      return db.voiceScene == "深夜电台"
-        case .sceneKnowledge:  return db.voiceScene == "知识分享"
-        case .sceneComedy:     return db.voiceScene == "娱乐搞笑"
-        case .sceneBusiness:   return db.voiceScene == "商务汇报"
-        case .sceneAssistant:  return db.voiceScene == "智能助手"
-        case .sceneSpeech:     return db.voiceScene == "演讲朗诵"
+        // 场景：直接比 code
+        case .sceneDaily:      return db.voiceSceneKey == VoiceSceneCode.daily.rawValue
+        case .sceneCompanion:  return db.voiceSceneKey == VoiceSceneCode.companion.rawValue
+        case .sceneReading:    return db.voiceSceneKey == VoiceSceneCode.reading.rawValue
+        case .sceneCustomer:   return db.voiceSceneKey == VoiceSceneCode.customerService.rawValue
+        case .sceneSocial:     return db.voiceSceneKey == VoiceSceneCode.social.rawValue
+        case .sceneAnime:      return db.voiceSceneKey == VoiceSceneCode.anime.rawValue
+        case .sceneNews:       return db.voiceSceneKey == VoiceSceneCode.news.rawValue
+        case .sceneLive:       return db.voiceSceneKey == VoiceSceneCode.liveStream.rawValue
+        case .sceneClassic:    return db.voiceSceneKey == VoiceSceneCode.classicAudiobook.rawValue
+        case .sceneSports:     return db.voiceSceneKey == VoiceSceneCode.sports.rawValue
+        case .sceneAudiobook:  return db.voiceSceneKey == VoiceSceneCode.audiobook.rawValue
+        case .sceneRadio:      return db.voiceSceneKey == VoiceSceneCode.radio.rawValue
+        case .sceneKnowledge:  return db.voiceSceneKey == VoiceSceneCode.knowledge.rawValue
+        case .sceneComedy:     return db.voiceSceneKey == VoiceSceneCode.comedy.rawValue
+        case .sceneBusiness:   return db.voiceSceneKey == VoiceSceneCode.business.rawValue
+        case .sceneAssistant:  return db.voiceSceneKey == VoiceSceneCode.assistant.rawValue
+        case .sceneSpeech:     return db.voiceSceneKey == VoiceSceneCode.speech.rawValue
 
-        // 角色：使用 scene 子串匹配（与 matches 中 contains 一致）
-        case .roleAnime:    return db.voiceScene.like("%动漫配音%")
-        case .roleLive:    return db.voiceScene.like("%电商直播%")
-        case .roleClassic: return db.voiceScene.like("%古风有声书%")
-        case .roleRadio:   return db.voiceScene.like("%深夜电台%")
+        // 角色：由场景 code 派生
+        case .roleAnime:   return db.voiceSceneKey == VoiceSceneCode.anime.rawValue
+        case .roleLive:    return db.voiceSceneKey == VoiceSceneCode.liveStream.rawValue
+        case .roleClassic: return db.voiceSceneKey == VoiceSceneCode.classicAudiobook.rawValue
+        case .roleRadio:   return db.voiceSceneKey == VoiceSceneCode.radio.rawValue
 
-        // 年龄：age 区间
+        // 年龄区间
         case .ageChild:  return db.voiceAge < 13
         case .ageTeen:   return db.voiceAge >= 13 && db.voiceAge < 18
         case .ageYoung:  return db.voiceAge >= 18 && db.voiceAge < 36
@@ -265,46 +192,40 @@ final class VoiceService {
         }
     }
 
+    // MARK: - Row 映射
+
     /// 将 SQLite Row 转为 Voice
+    ///
+    /// 文案（名 / 特质）已从库里移除，这里按 audio 文件名的 stem 从 VoiceCatalog.strings
+    /// 分别读取中英文，烘焙进 Voice —— 因为项目约定跟随系统语言、无 App 内切换，
+    /// 启动时读一次即可，切换语言需重启。
     private static func rowToVoice(_ row: Row, db: DatabaseManager) -> Voice {
-        Voice(
+        let rawAge = row[db.voiceAge]
+        let audio = row[db.voiceAudio]
+        let stem = (audio as NSString).deletingPathExtension
+
+        let nameZh = VoiceCatalog.localizedVoiceName(stem: stem, language: .zh)
+        let nameEn = VoiceCatalog.localizedVoiceName(stem: stem, language: .en)
+        let featZhRaw = VoiceCatalog.localizedVoiceFeature(stem: stem, language: .zh)
+        let featEnRaw = VoiceCatalog.localizedVoiceFeature(stem: stem, language: .en)
+        // 中文特质去掉冗余的"音"字
+        let featZh = featZhRaw.hasSuffix("音") ? String(featZhRaw.dropLast()) : featZhRaw
+
+        return Voice(
             key: row[db.voiceKey],
-            name: row[db.voiceName],
-            desc: row[db.voiceDesc],
-            avatar: row[db.voiceAvatar],
-            category: VoiceCategory(rawValue: row[db.voiceCategory]) ?? .chinese,
+            name: nameZh,
+            nameEn: nameEn,
+            desc: featZh,
+            descEn: featEnRaw,
+            tier: VoiceTier(code: row[db.voiceTier]),
             isFavorite: row[db.voiceIsFavorite],
-            scene: row[db.voiceScene],
-            age: row[db.voiceAge],
-            gender: row[db.voiceGender],
-            audio: row[db.voiceAudio],
-            lang: row[db.voiceLang]
+            scene: VoiceSceneCode(code: row[db.voiceSceneKey]),
+            age: rawAge > 0 ? rawAge : nil,
+            gender: VoiceGenderCode(code: row[db.voiceGenderCode]),
+            audio: audio,
+            lang: VoiceLangCode(code: row[db.voiceLangCode])
         )
     }
-
-    // MARK: - 初始化默认收藏
-
-    /// 确保默认收藏两个旗舰音色（仅在首次安装时调用）
-    func ensureDefaultFavorites() {
-        // 两个旗舰音色的 key
-        let flagshipKeys = ["longanlingxin", "longanlufeng"]
-
-        for key in flagshipKeys {
-            do {
-                let row = try db.db.pluck(db.voices.filter(db.voiceKey == key))
-                guard let existing = row else { continue }
-                // 如果未收藏，则设为收藏
-                if !existing[db.voiceIsFavorite] {
-                    try db.db.run(db.voices.filter(db.voiceKey == key).update(db.voiceIsFavorite <- true))
-                    Log(message: "VoiceService: 默认收藏音色 \(key)")
-                }
-            } catch {
-                Log(message: "VoiceService.ensureDefaultFavorites error for \(key): \(error)")
-            }
-        }
-    }
-
-    // MARK: - 切换收藏
 
     /// 切换收藏
     @discardableResult

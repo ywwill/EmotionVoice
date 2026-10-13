@@ -4,69 +4,72 @@
 //
 //  Created by young on 2026/8/9.
 //
+//  对应 basic_voices.json（v4 schema）。
+//  只含语言无关的语义数据与稳定 key，不含任何文案 —— 文案在 VoiceCatalog.strings 中按 stem 取。
+//  stem = 从 key 去掉模型前缀 qwen-audio-3.0-tts-plus- 得到（与 audio 文件名去扩展名一致）。
+//
 
 import Foundation
 
-struct BasicVoiceTemplate: Codable, Hashable {
-    /// 序号
-    let idx: String
-    /// 名称（如 龙璨竹月）
-    let name: String
-    /// voice 参数 key（去除模型前缀）
+/// JSON 文件根节点
+struct VoiceCatalogFile: Decodable {
+    let version: Int
+    let voices: [BasicVoiceTemplate]
+}
+
+/// 音色模板（JSON 中的一条）
+struct BasicVoiceTemplate: Hashable {
+
+    // MARK: - 逻辑字段（语言无关）
+
+    /// 便捷整数 id（旗舰 1/2，基础 3 起）；同时作为数据库主键
+    let idx: Int
+    /// voice 参数 key（基础音色带模型前缀，旗舰为裸 key）
     let key: String
-    /// 性别（男 / 女）
-    let gender: String
+    /// 层级：旗舰 / 基础
+    let tier: VoiceTier
+    /// 语种
+    let lang: VoiceLangCode
+    /// 性别
+    let gender: VoiceGenderCode
     /// 年龄
     let age: Int
-    /// 特质（如 平实质朴音）
-    let feature: String
-    /// 适用场景（如 日常对话）
-    let scene: String
-    /// 语种（中文 / 英文）
-    let lang: String
+    /// 适用场景
+    let scene: VoiceSceneCode
     /// 预览音频文件名
     let audio: String
 
-    // MARK: - Codable
+    // MARK: - 本地化 key
 
-    enum CodingKeys: String, CodingKey {
-        case idx, name, key, gender, age, feature, scene, lang, audio
+    /// 短标识：剥掉模型前缀（与 audio 文件名去扩展名一致），用于 VoiceCatalog.strings 取文案
+    var stem: String {
+        let prefix = "qwen-audio-3.0-tts-plus-"
+        return key.hasPrefix(prefix) ? String(key.dropFirst(prefix.count)) : key
+    }
+}
+
+// MARK: - Decodable
+
+extension BasicVoiceTemplate: Decodable {
+
+    private enum CodingKeys: String, CodingKey {
+        case idx, key, tier, lang, gender, age, scene, audio
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        idx = try c.decode(String.self, forKey: .idx)
-        name = try c.decode(String.self, forKey: .name)
+
         key = try c.decode(String.self, forKey: .key)
-        gender = try c.decode(String.self, forKey: .gender)
-        // JSON 中 age 为字符串，内部转 Int
-        let ageStr = try c.decode(String.self, forKey: .age)
-        age = Int(ageStr) ?? 0
-        feature = try c.decode(String.self, forKey: .feature)
-        scene = try c.decode(String.self, forKey: .scene)
-        lang = try c.decode(String.self, forKey: .lang)
         audio = try c.decode(String.self, forKey: .audio)
-    }
 
-    /// 自动归类：默认按语言分类（旗舰音色由调用方注入 .premium 覆盖）
-    var category: VoiceCategory {
-        if lang.contains("英文") {
-            return .english
-        }
-        return .chinese
-    }
+        // 数值字段容错：缺失时给安全默认值，避免整表解析失败
+        idx = (try? c.decode(Int.self, forKey: .idx)) ?? 0
+        age = (try? c.decode(Int.self, forKey: .age)) ?? 0
 
-    /// 展示用的描述（仅 feature）
-    var displayDesc: String {
-        // 简洁形式：去除冗余的"音"字
-        let shortFeature = feature.hasSuffix("音") ? String(feature.dropLast()) : feature
-        return shortFeature
-    }
-
-    /// 单字头像
-    var avatar: String {
-        // 中文名取最后一字
-        if let lastChar = name.last { return String(lastChar) }
-        return String(name.prefix(1))
+        // 枚举字段一律走容错构造：未知 code 落到安全默认值
+        tier = VoiceTier(code: (try? c.decode(String.self, forKey: .tier)) ?? "basic")
+        lang = VoiceLangCode(code: (try? c.decode(String.self, forKey: .lang)) ?? "zh")
+        gender = VoiceGenderCode(code: (try? c.decode(String.self, forKey: .gender)) ?? "unknown")
+        scene = VoiceSceneCode(code: (try? c.decode(String.self, forKey: .scene)) ?? "daily")
     }
 }

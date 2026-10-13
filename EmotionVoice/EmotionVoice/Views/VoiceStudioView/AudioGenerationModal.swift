@@ -1011,28 +1011,28 @@ struct AudioGenerationModal: View {
     private var voiceInfoRow: some View {
         HStack(spacing: 12) {
             if let voice = currentVoice {
-                AvatarView(text: String(voice.name.prefix(1)), size: 32)
-                
+                AvatarView(text: voice.localizedAvatar, size: 32)
+
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(voice.isPremium ? "\(voice.name) · 旗舰音色" : voice.name)
+                    Text(voice.isPremium
+                         ? "%@ · 旗舰音色".localized(voice.localizedName)
+                         : voice.localizedName)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppColor.textPrimary)
-                    
+
                     HStack(spacing: 4) {
-                        if !voice.gender.isEmpty {
-                            Text(voice.gender)
+                        if !voice.localizedGender.isEmpty {
+                            Text(voice.localizedGender)
                         }
                         if let age = voice.age {
-                            Text("\(age)岁")
+                            Text("%d 岁".localized(age))
                         }
-                        if !voice.lang.isEmpty {
-                            Text("· \(voice.lang)")
-                        }
+                        Text("· \(voice.lang.displayName)")
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(AppColor.textTertiary)
                 }
-                
+
                 Spacer()
             }
         }
@@ -1046,11 +1046,9 @@ struct AudioGenerationModal: View {
     private var tagsSection: some View {
         HStack(spacing: 6) {
             if let voice = currentVoice {
-                if !voice.scene.isEmpty {
-                    tagView(voice.scene, isAccent: true)
-                }
-                if !voice.desc.isEmpty {
-                    tagView(voice.desc, isAccent: false)
+                tagView(voice.scene.displayName, isAccent: true)
+                if !voice.localizedDesc.isEmpty {
+                    tagView(voice.localizedDesc, isAccent: false)
                 }
             }
         }
@@ -1246,7 +1244,7 @@ struct AudioGenerationModal: View {
     
     private var voiceInfoSubtitle: String {
         guard let voice = currentVoice else { return "" }
-        return "\(voice.name) · \(voice.desc) · 情感标签"
+        return "%@ · %@ · 情感标签".localized(voice.localizedName, voice.localizedDesc)
     }
     
     private func generateDefaultAudioName() -> String {

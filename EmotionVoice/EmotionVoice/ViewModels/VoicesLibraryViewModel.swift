@@ -39,6 +39,8 @@ final class VoicesLibraryViewModel: ObservableObject {
     @Published private(set) var displayedVoices: [Voice] = []
     /// 当前结果是否为空（不区分页码）
     @Published private(set) var isEmpty: Bool = true
+    /// sheet 进入并成功定位到选中音色后，发出待滚动到的音色 key（视图据此 scrollTo）
+    @Published private(set) var scrollTargetVoiceKey: String? = nil
 
     // MARK: - Chip 计数（按 searchText 缓存）
 
@@ -56,6 +58,16 @@ final class VoicesLibraryViewModel: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     /// 上次查询的签名（用于判断是否需要重新计算 totalCount）
     private var lastQueryKey: String = ""
+    /// 缓存：当前查询签名下「过滤 + 排序」后的完整**有序 key 列表**（仅 [String]，几十 KB）。
+    /// 仅在签名变化（切分类 / 搜索 / 切收藏）时重算；纯翻页只对其切片，再按 key 取当前这一窗的 Voice 对象。
+    /// 这样上一页的 Voice 对象不保留，内存稳定，也不会连点翻页时反复全表重查 + 全量排序。
+    private var cachedOrderedKeys: [String] = []
+
+    /// 待定位音色 key（sheet 进入时，需翻到「当前选中音色」所在页）。
+    /// 实际翻页要等视图测出最终 pageSize 后再执行（见 commitPageSize / finalizePendingJump）。
+    private var pendingJumpToVoiceKey: String?
+    /// pageSize 是否已由视图几何确定（只有确定后才能正确计算目标页码）
+    private var pageSizeFinalized: Bool = false
 
     /// "全部"chip 的特殊 key
     private static let allKey = "__all__"
@@ -115,9 +127,50 @@ final class VoicesLibraryViewModel: ObservableObject {
         reloadCurrentPage()
     }
 
+    /// 由视图在测得**最终** pageSize 后调用：设定 pageSize，并在有待定位音色时翻到对应页。
+    /// （几何 onAppear / 宽度变化都会触发，保证定位只发生在 pageSize 确定之后）
+    func commitPageSize(_ size: Int) {
+        setPageSize(size)
+        pageSizeFinalized = true
+        finalizePendingJump()
+    }
+
+    /// sheet 进入：重置筛选为「全部」（保证选中音色一定在结果集内），
+    /// 先填充有序列表，再等 pageSize 确定后翻到该音色所在页。
+    func jumpToVoice(key: String?) {
+        pendingJumpToVoiceKey = key
+        selectedCategory = nil
+        searchText = ""
+        showFavoritesOnly = false
+        currentPage = 1
+        lastQueryKey = ""   // 强制重算有序列表（全部、无筛选）
+        reloadCurrentPage() // 填充 cachedOrderedKeys
+        finalizePendingJump() // 若 pageSize 已确定则立即定位；否则等 commitPageSize
+    }
+
+    /// 在有序列表中定位待定位音色并翻页（仅当 pageSize 已确定且存在待定位项时生效）
+    private func finalizePendingJump() {
+        guard pageSizeFinalized else { return }
+        guard let key = pendingJumpToVoiceKey, !key.isEmpty else {
+            pendingJumpToVoiceKey = nil
+            return
+        }
+        if let index = cachedOrderedKeys.firstIndex(of: key) {
+            currentPage = index / pageSize + 1
+            pendingJumpToVoiceKey = nil
+            reloadCurrentPage()
+            scrollTargetVoiceKey = key // 通知视图滚动到该卡片
+        } else {
+            // 理论上重置为「全部」后该音色必然在集内；若不在则停留在第一页
+            pendingJumpToVoiceKey = nil
+        }
+    }
+
     // MARK: - 数据加载
 
-    /// 重新加载当前页：刷新总数（如签名变化）+ 重新拉取当前页数据
+    /// 重新加载当前页：
+    /// - 查询签名（分类 / 搜索 / 收藏）变化时才重查「完整有序结果 + 总数 + chip 计数」并缓存
+    /// - 纯翻页（签名不变）直接对缓存结果切片，不再全表重查 + 全量排序（避免连点翻页 CPU / 内存飙升）
     /// 注意：搜索时忽略分类，在全部数据中搜索
     func reloadCurrentPage() {
         let needle = searchText.trimmingCharacters(in: .whitespaces)
@@ -127,38 +180,27 @@ final class VoicesLibraryViewModel: ObservableObject {
         let showingFavorites = showFavoritesOnly
         let key = "\(showingFavorites ? "__fav__" : (category?.rawValue ?? Self.allKey))|\(needle)"
 
-        // 查询签名变化 → 重新查询总数与 chip 计数
+        // 查询签名变化 → 重新计算有序 key 列表、总数与 chip 计数
         if key != lastQueryKey {
-            if showingFavorites {
-                totalCount = VoiceService.shared.countFavorites(searchText: needle)
-            } else {
-                totalCount = VoiceService.shared.count(category: category, searchText: needle)
-            }
+            // 只取「过滤 + 排序」后的有序 key 列表（轻量），Voice 对象按需按页取
+            cachedOrderedKeys = VoiceService.shared.orderedVoices(
+                showingFavorites: showingFavorites,
+                category: category,
+                searchText: needle
+            ).map(\.key)
+            totalCount = cachedOrderedKeys.count
             totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
             if currentPage > totalPages { currentPage = totalPages }
             reloadChipCounts(searchText: needle)
             lastQueryKey = key
         }
 
-        // 拉取当前页数据（limit + offset）
-        let offset = (currentPage - 1) * pageSize
-        let limit = pageSize
-
-        let voices: [Voice]
-        if showingFavorites {
-            voices = VoiceService.shared.fetchFavorites(searchText: needle, limit: limit, offset: offset)
-        } else {
-            // "全部"分类：旗舰音色始终排在最前面
-            voices = VoiceService.shared.fetch(
-                category: category,
-                searchText: needle,
-                limit: limit,
-                offset: offset,
-                orderByPremiumFirst: (category == nil)
-            )
-        }
-
-        displayedVoices = voices
+        // 翻页：对有序 key 列表按 offset 切片，再只取当前这一窗的 Voice 对象
+        // （上一页的 Voice 对象随 displayedVoices 被替换而释放，不保留）
+        let start = min(max(0, (currentPage - 1) * pageSize), cachedOrderedKeys.count)
+        let end = min(start + pageSize, cachedOrderedKeys.count)
+        let windowKeys = Array(cachedOrderedKeys[start..<end])
+        displayedVoices = VoiceService.shared.fetchByKeys(windowKeys)
         isEmpty = (totalCount == 0)
     }
 
@@ -192,10 +234,18 @@ final class VoicesLibraryViewModel: ObservableObject {
 
     // MARK: - 收藏
 
-    /// 切换收藏：更新数据库，刷新当前页，更新收藏数
+    /// 切换收藏：更新数据库，刷新当前页与收藏数。
+    /// 缓存只存 key：非收藏视图下该项仍属原分类，无需改缓存；
+    /// 「仅收藏」视图下取消收藏时，从有序 key 列表移除该项并重算总数 / 页数。
     func toggleFavorite(key: String) {
-        _ = VoiceService.shared.toggleFavorite(key: key)
-        // 当前页需要重取以反映 isFavorite 变化
+        let newState = VoiceService.shared.toggleFavorite(key: key)
+        if showFavoritesOnly, newState == false {
+            // 「仅收藏」视图下取消收藏：该项不再满足过滤条件
+            cachedOrderedKeys.removeAll { $0 == key }
+            totalCount = cachedOrderedKeys.count
+            totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
+            if currentPage > totalPages { currentPage = totalPages }
+        }
         reloadCurrentPage()
         // 收藏数同步刷新（搜索状态无关）
         favoriteCount = VoiceService.shared.countFavorites()

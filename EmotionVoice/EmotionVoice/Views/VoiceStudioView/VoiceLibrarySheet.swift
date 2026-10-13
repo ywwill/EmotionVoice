@@ -16,7 +16,7 @@ struct VoiceLibrarySheet: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        VoicesLibraryView()
+        VoicesLibraryView(entry: .sheet)
             .environment(\.voiceLibraryUseHandler, VoiceLibraryUseHandler { voice in
                 appState.selectedVoice = voice
                 dismiss()

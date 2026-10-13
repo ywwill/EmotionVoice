@@ -382,14 +382,14 @@ struct VoiceStudioView: View {
             // 当前音色
             if let voice = vm.voice {
                 HStack(spacing: 10) {
-                    AvatarView(text: voice.avatar, size: 40)
+                    AvatarView(text: voice.localizedAvatar, size: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
-                            Text(voice.name)
+                            Text(voice.localizedName)
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.white)
                             if voice.isPremium {
-                                Text("⭐ 旗舰")
+                                Text("⭐ 旗舰".localized())
                                     .font(AppFont.monoSmall)
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 6)
@@ -398,8 +398,8 @@ struct VoiceStudioView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 3))
                             }
                         }
-                        if !voice.desc.isEmpty {
-                            Text(voice.desc)
+                        if !voice.localizedDesc.isEmpty {
+                            Text(voice.localizedDesc)
                                 .font(AppFont.caption)
                                 .foregroundStyle(.white)
                                 .lineLimit(1)

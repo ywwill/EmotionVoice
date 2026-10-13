@@ -95,65 +95,30 @@ final class CreditsService {
     }
 
     /// 当前余额（使用 CreditManager 的云端同步数据）
+    /// CreditManager 是 @MainActor，读写余额必须在主线程
+    @MainActor
     var balance: Int {
         creditManager.balance
     }
 
     /// 消耗积分（生成成功后调用）
+    @MainActor
     func consume(_ points: Int) {
         creditManager.deduct(for: .createVoice)
     }
 
     /// 检查是否可以消耗积分
+    @MainActor
     func canConsume(_ points: Int) -> Bool {
         return creditManager.balance >= points
     }
 
     /// 充值
+    @MainActor
     func purchase(_ points: Int) {
         creditManager.addCredits(points)
     }
 
-    // MARK: - 交易记录
-
-    /// 获取所有交易记录
-    func fetchTransactions() -> [TransactionRecord] {
-        do {
-            return try db.db.prepare(db.transactions.order(db.txCreatedAt.desc))
-                .map { row in
-                    TransactionRecord(
-                        id: row[db.txId],
-                        type: TransactionType(rawValue: row[db.txType]) ?? .consume,
-                        title: row[db.txTitle],
-                        amount: row[db.txAmount],
-                        meta: row[db.txMeta],
-                        createdAt: row[db.txCreatedAt]
-                    )
-                }
-        } catch {
-            Log(message: "CreditsService.fetchTransactions error: \(error)")
-            return []
-        }
-    }
-
-    /// 添加交易记录
-    @discardableResult
-    func addTransaction(_ record: TransactionRecord) -> Bool {
-        do {
-            try db.db.run(db.transactions.insert(
-                db.txType <- record.type.rawValue,
-                db.txTitle <- record.title,
-                db.txAmount <- record.amount,
-                db.txMeta <- record.meta,
-                db.txCreatedAt <- record.createdAt
-            ))
-            return true
-        } catch {
-            Log(message: "CreditsService.addTransaction error: \(error)")
-            return false
-        }
-    }
-    
     // MARK: - 消耗记录
     
     /// 添加消耗记录

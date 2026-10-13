@@ -16,6 +16,14 @@
 
 import SwiftUI
 
+/// 音色库入口来源：
+/// - `.menu` 左侧菜单进入：恢复上次筛选状态，但始终从第一页开始
+/// - `.sheet` 更换音色 sheet 进入：重置为「全部」，并定位到当前选中音色所在页
+enum VoiceLibraryEntry {
+    case menu
+    case sheet
+}
+
 /// 音色库
 struct VoicesLibraryView: View {
 
@@ -26,8 +34,8 @@ struct VoicesLibraryView: View {
     @StateObject private var vm: VoicesLibraryViewModel
     @ObservedObject private var previewPlayer = AudioPreviewPlayer.shared
 
-    // 滚动定位
-    @State private var didInitialScroll: Bool = false
+    // 入口来源
+    private let entry: VoiceLibraryEntry
 
     // 网格实际可用宽度（用于计算列数 → pageSize）
     @State private var gridAvailableWidth: CGFloat = 0
@@ -47,8 +55,10 @@ struct VoicesLibraryView: View {
 
     // MARK: - 初始化
 
-    init() {
-        // 初始占位值，会在 onAppear 中用 AppState 的真实值替换
+    /// 默认按左侧菜单入口（恢复筛选、显示第一页）
+    init(entry: VoiceLibraryEntry = .menu) {
+        self.entry = entry
+        // 初始占位值，会在 onAppear 中按入口来源刷新
         _vm = StateObject(wrappedValue: VoicesLibraryViewModel(
             selectedCategory: nil,
             searchText: "",
@@ -65,13 +75,19 @@ struct VoicesLibraryView: View {
             content
         }
         .onAppear {
-            // 从 AppState 同步筛选状态（视图重新出现时保持之前的选择）
-            vm.syncFromAppState(
-                selectedCategory: appState.voiceLibrarySelectedCategory,
-                searchText: appState.voiceLibrarySearchText,
-                showFavoritesOnly: appState.voiceLibraryShowFavoritesOnly,
-                currentPage: appState.voiceLibraryCurrentPage
-            )
+            switch entry {
+            case .menu:
+                // 左侧菜单：恢复上次筛选状态，但页码强制为第一页
+                vm.syncFromAppState(
+                    selectedCategory: appState.voiceLibrarySelectedCategory,
+                    searchText: appState.voiceLibrarySearchText,
+                    showFavoritesOnly: appState.voiceLibraryShowFavoritesOnly,
+                    currentPage: 1
+                )
+            case .sheet:
+                // 更换音色 sheet：重置为「全部」并定位到当前选中音色所在页
+                vm.jumpToVoice(key: appState.selectedVoice?.key)
+            }
             syncPageInput()
             // 触发音色列表入场动画
             withAnimation(.easeOut(duration: 0.4)) {
@@ -83,11 +99,14 @@ struct VoicesLibraryView: View {
             vm.reloadCurrentPage()
         }
         .onDisappear {
-            // 离开视图时保存当前状态到 AppState
-            appState.voiceLibrarySelectedCategory = vm.selectedCategory
-            appState.voiceLibrarySearchText = vm.searchText
-            appState.voiceLibraryShowFavoritesOnly = vm.showFavoritesOnly
-            appState.voiceLibraryCurrentPage = vm.currentPage
+            // 仅左侧菜单入口才把筛选 / 页码写回 AppState；
+            // sheet 入口只做临时「更换音色」，不应改写库的持久筛选状态
+            if entry == .menu {
+                appState.voiceLibrarySelectedCategory = vm.selectedCategory
+                appState.voiceLibrarySearchText = vm.searchText
+                appState.voiceLibraryShowFavoritesOnly = vm.showFavoritesOnly
+                appState.voiceLibraryCurrentPage = vm.currentPage
+            }
             // 取消搜索防抖任务
             searchDebounceTask?.cancel()
             AudioPreviewPlayer.shared.stop()
@@ -138,15 +157,16 @@ struct VoicesLibraryView: View {
                             proxy.scrollTo("library-top", anchor: .top)
                         }
                     }
-                    .onAppear {
-                        syncPageInput()
-                        guard !didInitialScroll else { return }
-                        didInitialScroll = true
-                        if let key = appState.selectedVoice?.key {
+                    .onChange(of: vm.scrollTargetVoiceKey) { _, key in
+                        // sheet 进入定位到选中音色所在页后，将该卡片滚动到可视区域中央
+                        if let key = key {
                             DispatchQueue.main.async {
                                 proxy.scrollTo("voice-\(key)", anchor: .center)
                             }
                         }
+                    }
+                    .onAppear {
+                        syncPageInput()
                     }
                 }
 
@@ -168,12 +188,11 @@ struct VoicesLibraryView: View {
                 ],
                 spacing: Self.gridSpacing
             ) {
-                ForEach(Array(voices.enumerated()), id: \.element.key) { index, voice in
+                ForEach(Array(voices.enumerated()), id: \.element.key) { _, voice in
                     VoiceCard(
                         item: VoiceCardItem(voice: voice),
                         isSelected: appState.selectedVoice?.key == voice.key,
-                        isPlaying: previewPlayer.playingKey == voice.key,
-                        isFeatured: voice.isPremium
+                        isPlaying: previewPlayer.playingKey == voice.key
                     ) {
                         toggleFavorite(key: voice.key)
                     } onPreview: {
@@ -182,20 +201,10 @@ struct VoicesLibraryView: View {
                         use(voice: voice)
                     }
                     .id("voice-\(voice.key)")
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity
-                                .combined(with: .offset(y: 14))
-                                .combined(with: .scale(scale: 0.98)),
-                            removal: .opacity
-                        )
-                    )
-                    // 交错上滑：按当前页内的列优先顺序递增延迟
-                    .animation(
-                        .easeOut(duration: 0.35)
-                            .delay(Double(index) * 0.03),
-                        value: voice.key
-                    )
+                    // 翻页只做轻量淡入；移除设为 .identity 立即消失，
+                    // 避免快速连点时旧卡片的淡出动画层层堆叠吃掉 CPU / 内存
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
+                    .animation(.easeOut(duration: 0.2), value: voice.key)
                 }
             }
             .background(
@@ -207,8 +216,6 @@ struct VoicesLibraryView: View {
                         }
                 }
             )
-            // 整组淡入淡出作为兜底，确保 key 变化时所有 transition 都生效
-            .animation(.easeOut(duration: 0.35), value: voices.map(\.key))
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
@@ -338,13 +345,14 @@ struct VoicesLibraryView: View {
         max(1, min(page, max(1, vm.totalPages)))
     }
 
-    /// 根据实际可用宽度计算列数，更新 pageSize = columns × rows
+    /// 根据实际可用宽度计算列数，更新 pageSize = columns × rows，
+    /// 并在 sheet 入口下于 pageSize 确定后定位到选中音色所在页
     private func updatePageSize(availableWidth: CGFloat) {
         guard availableWidth > 0 else { return }
         gridAvailableWidth = availableWidth
         // columns = floor((width + spacing) / (cardMinWidth + spacing))
         let columns = max(1, Int((availableWidth + Self.gridSpacing) / (Self.cardMinWidth + Self.gridSpacing)))
-        vm.setPageSize(columns * Self.rowsPerPage)
+        vm.commitPageSize(columns * Self.rowsPerPage)
     }
 
     // MARK: - 工具栏

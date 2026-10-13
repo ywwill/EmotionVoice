@@ -90,11 +90,7 @@ final class AppState: ObservableObject {
     init() {
         self.creditsBalance = CreditsService.shared.balance
         self.monthlyUsed = CreditsService.shared.monthlyUsed
-        self.voices = VoiceService.shared.fetchAll()
-
-        // 初始化默认收藏（首次安装时自动收藏两个旗舰音色）
-        VoiceService.shared.ensureDefaultFavorites()
-        // 重新加载以反映收藏状态变化
+        // 旗舰音色的默认收藏由 DatabaseManager 在音色同步时统一处理
         self.voices = VoiceService.shared.fetchAll()
 
         // 加载保存的设置，没有则使用默认值

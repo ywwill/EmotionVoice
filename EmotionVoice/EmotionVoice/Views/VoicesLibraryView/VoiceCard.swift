@@ -12,23 +12,28 @@ import SwiftUI
 
 struct VoiceCardItem: Identifiable, Equatable {
     let id: String           // voice.key
+    /// 当前语言下的音色名
     let name: String
+    /// 当前语言下的特质描述
     let desc: String
+    /// 当前语言下的头像字
     let avatar: String
-    let scene: String
+    /// 场景（展示时取 scene.displayName）
+    let scene: VoiceSceneCode
     let age: Int?
+    /// 当前语言下的性别
     let gender: String
     let isFavorite: Bool
     let isPremium: Bool
 
     init(voice: Voice) {
         self.id = voice.key
-        self.name = voice.name
-        self.desc = voice.desc
-        self.avatar = voice.avatar
+        self.name = voice.localizedName
+        self.desc = voice.localizedDesc
+        self.avatar = voice.localizedAvatar
         self.scene = voice.scene
         self.age = voice.age
-        self.gender = voice.gender
+        self.gender = voice.localizedGender
         self.isFavorite = voice.isFavorite
         self.isPremium = voice.isPremium
     }
@@ -41,7 +46,6 @@ struct VoiceCard: View {
     let item: VoiceCardItem
     let isSelected: Bool
     let isPlaying: Bool
-    var isFeatured: Bool = false
     let onFavorite: () -> Void
     let onPreview: () -> Void
     let onUse: () -> Void
@@ -53,14 +57,12 @@ struct VoiceCard: View {
         lhs.item == rhs.item
             && lhs.isSelected == rhs.isSelected
             && lhs.isPlaying == rhs.isPlaying
-            && lhs.isFeatured == rhs.isFeatured
     }
 
     var body: some View {
         cardContent
             .padding(14)
             .background(cardBackground)
-            .overlay(cardBorder)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
             .shadow(
                 color: isSelected ? AppColor.accentPrimary.opacity(0.2) : Color.black.opacity(0.05),
@@ -111,41 +113,19 @@ struct VoiceCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // 背景层：仅在该层做动画，不传播到卡片内容（避免滚动时 hover 抖动重绘文字）
+    // 背景层：所有卡片（普通 / 旗舰）统一采用琥珀色微渐变，
+    // 仅在该层做动画，不传播到卡片内容（避免滚动时 hover 抖动重绘文字）
     private var cardBackground: some View {
-        Group {
-            if isFeatured {
-                // 旗舰音色采用琥珀色微渐变，呼应 voices.html 的 .voice-card.featured
-                LinearGradient(
-                    colors: [
-                        AppColor.bgSecondary,
-                        AppColor.accentPrimary.opacity(isSelected || isHovered ? 0.08 : 0.04)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            } else if isSelected || isHovered {
-                AppColor.bgTertiary
-            } else {
-                AppColor.bgSecondary
-            }
-        }
+        LinearGradient(
+            colors: [
+                AppColor.bgSecondary,
+                AppColor.accentPrimary.opacity(isSelected || isHovered ? 0.08 : 0.04)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .animation(.easeInOut(duration: 0.15), value: isSelected)
-    }
-
-    // 边框层：同上，动画只作用于描边
-    private var cardBorder: some View {
-        RoundedRectangle(cornerRadius: AppRadius.medium)
-            .stroke(
-                isSelected ? AppColor.accentPrimary
-                          : (isHovered ? AppColor.borderMedium
-                                       : (isFeatured ? AppColor.accentPrimary.opacity(0.3)
-                                                     : AppColor.borderSubtle)),
-                lineWidth: isSelected ? 2 : 1
-            )
-            .animation(.easeInOut(duration: 0.15), value: isHovered)
-            .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 
     // MARK: - 子视图（轻量化）
@@ -153,19 +133,18 @@ struct VoiceCard: View {
     private var header: some View {
         HStack(alignment: .top) {
             AvatarView(text: item.avatar, size: 40)
+            if item.isPremium {
+                Text("⭐ 旗舰".localized())
+                    .font(AppFont.monoSmall)
+                    .foregroundStyle(AppColor.accentGlow)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(AppColor.accentPrimary.opacity(0.15))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
             Spacer()
             VStack(alignment: .trailing) {
-                if item.isPremium {
-                    Text("⭐ 旗舰".localized())
-                        .font(AppFont.monoSmall)
-                        .foregroundStyle(AppColor.accentGlow)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppColor.accentPrimary.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-                
-                if !item.scene.isEmpty || item.age != nil || !item.gender.isEmpty {
+                if item.age != nil || !item.gender.isEmpty {
                     metaTags
                 }
                 
@@ -182,8 +161,8 @@ struct VoiceCard: View {
             
             Spacer()
             
-            if item.age != nil && !item.desc.contains("岁") {
-                Text("\(item.age!) 岁")
+            if let age = item.age {
+                Text("%d 岁".localized(age))
                     .font(AppFont.monoSmall)
                     .foregroundStyle(AppColor.textTertiary)
                     .padding(.horizontal, 6)
@@ -296,11 +275,11 @@ struct VoiceCard: View {
             .frame(height: 18)
     }
 
-    private func sceneTag(_ scene: String) -> some View {
+    private func sceneTag(_ scene: VoiceSceneCode) -> some View {
         HStack(spacing: 3) {
             Image(systemName: "tag.fill")
                 .font(.system(size: 8, weight: .semibold))
-            Text(scene)
+            Text(scene.displayName)
                 .font(.system(size: 10, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.tail)

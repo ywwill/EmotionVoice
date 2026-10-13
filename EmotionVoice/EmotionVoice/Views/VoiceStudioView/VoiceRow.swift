@@ -19,12 +19,12 @@ struct VoiceRow: View {
     var body: some View {
         HStack(spacing: 10) {
             // 头像
-            AvatarView(text: voice.avatar, size: 28)
+            AvatarView(text: voice.localizedAvatar, size: 28)
 
             // 名称 / 描述
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
-                    Text(voice.name)
+                    Text(voice.localizedName)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(AppColor.textPrimary)
                         .lineLimit(1)
@@ -33,8 +33,8 @@ struct VoiceRow: View {
                             .font(.system(size: 9))
                     }
                 }
-                if !voice.desc.isEmpty {
-                    Text(voice.desc)
+                if !voice.localizedDesc.isEmpty {
+                    Text(voice.localizedDesc)
                         .font(AppFont.monoSmall)
                         .foregroundStyle(AppColor.textTertiary)
                         .lineLimit(1)
