@@ -212,6 +212,15 @@ final class VoiceStudioViewModel: ObservableObject {
             .count
     }
 
+    /// 不含任何情感 / 拟声标签的纯文本（入库、展示原文用）
+    ///
+    /// `text` 是把每个 token 的中文 label 直接拼进去的结果（"...笑声..."），
+    /// 那些字是编辑器里的 UI 装饰，不是用户输入的台词，
+    /// 落进 `audio_items.text` 会把历史「原文」污染掉（展示 / 复制 / 再编辑都会看到）。
+    var plainText: String {
+        ttsItems.toPlainText()
+    }
+
     /// 预估积分消耗（使用 CreditManager 计算真实的积分消耗，最多保留 2 位小数）
     var estimatedPoints: Double {
         let charCount = TextSplitter.calculateCharCount(text)
@@ -402,9 +411,11 @@ final class VoiceStudioViewModel: ObservableObject {
 
                 await MainActor.run {
                     // 直接创建音频条目
+                    // 入库只存纯台词：情感 / 拟声 token 是编辑器里的装饰，
+                    // 它们的 label（如「笑声」）不落库（历史原文、复制、再编辑都用它）
                     let createdAudio = ProjectService.shared.createAudio(
                         fileName: finalFileName,
-                        text: self.text,
+                        text: self.plainText,
                         voice: voice.key,
                         format: actualFormat,
                         sampleRate: self.sampleRate,

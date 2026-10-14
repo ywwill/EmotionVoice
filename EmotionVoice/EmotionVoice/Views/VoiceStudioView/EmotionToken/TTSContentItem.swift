@@ -174,6 +174,25 @@ extension Array where Element == TTSContentItem {
         return out
     }
 
+    /// 去掉所有情感 / 拟声标签后的纯文本：**只保留 `.text` 片段**。
+    ///
+    /// 用于入库、复制原文、展示「原文」等场景 —— 标签只是编辑器里的 UI 装饰，
+    /// 它的中文 label（如「笑声」「开心」）不是用户输入的台词，
+    /// 落库会污染历史原文（也会被当成正文计费、展示、复制出去）。
+    ///
+    /// 例如：
+    ///   [.text("你好"), .emotion(.init(label: "笑声", emoji: "😆", englishTag: "laughing")), .text("世界")]
+    ///   → "你好世界"
+    func toPlainText() -> String {
+        var out = ""
+        for item in self {
+            if case .text(let s) = item {
+                out.append(s)
+            }
+        }
+        return out
+    }
+
     /// 「人类可读」的字符串：用于显示 / 调试
     /// 例如：
     ///   → "你好 [😊 开心] 世界"
