@@ -655,6 +655,7 @@
 		6F209F76303EC88F00A770BB /* longxiaoyuque.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209C53303EC88F00A770BB /* longxiaoyuque.m4a */; };
 		6F209F77303EC88F00A770BB /* longdiechuanling.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AF1303EC88F00A770BB /* longdiechuanling.m4a */; };
 		6F209F78303EC88F00A770BB /* longcheyanxuan.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 6F209AE9303EC88F00A770BB /* longcheyanxuan.m4a */; };
+		6F2A63C301B8C3DC2448B1B4 /* HistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */; };
 		6F2DAF8C30624B920086FD6F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8930624B920086FD6F /* SettingsView.swift */; };
 		6F2DAF8D30624B920086FD6F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8630624B920086FD6F /* HistoryView.swift */; };
 		6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8730624B920086FD6F /* SummaryCard.swift */; };
@@ -1353,6 +1354,7 @@
 		6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerDetailView.swift; sourceTree = "<group>"; };
 		6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRowItem.swift; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
+		6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
 		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
 		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
 		6FA000000000000000001002 /* PlayerTransportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTransportView.swift; sourceTree = "<group>"; };
@@ -1473,6 +1475,7 @@
 				6F20935B303EC80500A770BB /* AppState.swift */,
 				6F20935C303EC80500A770BB /* VoicesLibraryViewModel.swift */,
 				6F20935D303EC80500A770BB /* VoiceStudioViewModel.swift */,
+				6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -2976,6 +2979,7 @@
 				6F20939C303EC80500A770BB /* RegionConfig.swift in Sources */,
 				6F20939D303EC80500A770BB /* VoiceService.swift in Sources */,
 				6F20939E303EC80500A770BB /* AppState.swift in Sources */,
+				6F2A63C301B8C3DC2448B1B4 /* HistoryViewModel.swift in Sources */,
 				6F20939F303EC80500A770BB /* VoicesLibraryViewModel.swift in Sources */,
 				6F2093A0303EC80500A770BB /* VoiceStudioViewModel.swift in Sources */,
 				6FCA9D873060F3340005713F /* SupabaseManager.swift in Sources */,

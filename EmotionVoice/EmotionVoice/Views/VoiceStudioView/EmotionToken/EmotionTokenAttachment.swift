@@ -73,6 +73,7 @@ final class EmotionTokenAttachment: NSTextAttachment {
         let cell = EmotionTokenAttachmentCell()
         cell.tokenLabel = token.label
         cell.tokenEmoji = token.emoji
+        cell.tokenCategory = token.category
 
         let attachment = EmotionTokenAttachment()
         attachment.attachmentCell = cell

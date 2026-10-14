@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>元信息展示位置 - 三版方案</title>
+<style>
+    :root {
+        --bg-primary: #0E0F12;
+        --bg-secondary: #15171B;
+        --bg-tertiary: #1C1F24;
+        --bg-elevated: #22262D;
+        --accent-primary: #E8A968;
+        --accent-glow: #F2C088;
+        --accent-dim: rgba(232, 169, 104, 0.14);
+        --accent-line: rgba(232, 169, 104, 0.34);
+        --text-primary: #F5F5F7;
+        --text-secondary: #A8ABB4;
+        --text-tertiary: #6B6E76;
+        --border-subtle: rgba(255, 255, 255, 0.08);
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-pill: 999px;
+        --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+        --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: var(--font-sans);
+        background: #08090B;
+        color: var(--text-primary);
+        font-size: 13px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        padding: 28px 24px 60px;
+    }
+    .page { max-width: 860px; margin: 0 auto; }
+    .page-head { margin-bottom: 26px; }
+    .page-head h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.01em; }
+    .page-head p { margin-top: 6px; font-size: 12.5px; color: var(--text-secondary); }
+
+    .variant { margin-bottom: 34px; }
+    .variant-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+    .tag {
+        font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+        padding: 2px 8px; border-radius: var(--radius-pill);
+        background: var(--accent-dim); color: var(--accent-glow);
+        border: 1px solid var(--accent-line);
+    }
+    .variant-title { font-size: 14px; font-weight: 600; }
+    .variant-note { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
+
+    .panel {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 20px 22px 22px;
+    }
+
+    /* toolbar */
+    .toolbar { display: flex; align-items: center; height: 30px; margin-bottom: 6px; }
+    .ghost-btn {
+        height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    }
+    .ghost-btn svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* waveform */
+    .wave { height: 64px; display: flex; align-items: flex-end; gap: 2px; margin-top: 14px; }
+    .wave i { flex: 1; border-radius: 2px; background: #34383F; display: block; }
+    .wave i.done { background: var(--accent-primary); }
+    .time-row {
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 8px;
+    }
+    .time-row .cur { color: var(--text-secondary); }
+
+    /* transport */
+    .transport { display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 18px; }
+    .skip { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--text-secondary); }
+    .skip.lg { width: 52px; height: 52px; }
+    .skip svg { width: 100%; height: 100%; }
+    .play {
+        width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center;
+        background: linear-gradient(135deg, var(--accent-glow), #D49B5B);
+        box-shadow: 0 8px 22px rgba(232, 169, 104, 0.28);
+    }
+    .play svg { width: 24px; height: 24px; fill: #241505; }
+
+    /* utility row */
+    .utility {
+        display: flex; align-items: center; gap: 8px; margin-top: 20px;
+        padding-top: 18px; border-top: 1px solid var(--border-subtle);
+    }
+    .pill {
+        height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px;
+        font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    }
+    .pill svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .pill .val { font-family: var(--font-mono); font-weight: 600; color: var(--accent-glow); }
+    .hint { font-size: 11px; color: var(--text-tertiary); }
+    .spacer { flex: 1; }
+
+    /* card shell */
+    .card {
+        background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg); padding: 16px 18px; margin-top: 18px;
+    }
+    .card-head { display: flex; align-items: center; gap: 10px; }
+    .card-head .meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
+    .card-body { font-size: 14px; line-height: 2; color: var(--text-secondary); margin-top: 10px; max-height: 84px; overflow: hidden; }
+
+    /* ---------- A: 轻量规格行 ---------- */
+    .spec-line {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        font-size: 11.5px; color: var(--text-tertiary);
+    }
+    .spec-line .item { display: inline-flex; align-items: center; gap: 5px; }
+    .spec-line svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .spec-line .v { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .spec-line .sep { width: 1px; height: 11px; background: var(--border-subtle); }
+
+    /* ---------- B: 属性卡片 ---------- */
+    .props { display: flex; }
+    .prop { flex: 1; padding: 0 14px; border-left: 1px solid var(--border-subtle); }
+    .prop:first-child { padding-left: 0; border-left: none; }
+    .prop:last-child { padding-right: 0; }
+    .prop .k { font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 5px; }
+    .prop .k svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .prop .v { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 4px; }
+    .prop .v .u { font-size: 11px; font-weight: 400; color: var(--text-tertiary); margin-left: 3px; font-family: var(--font-sans); }
+
+    /* ---------- C: 无底色规格网格 ---------- */
+    .spec-grid {
+        display: flex; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-subtle);
+    }
+    .spec-grid .cell { flex: 1; padding: 0 14px; border-left: 1px solid var(--border-subtle); }
+    .spec-grid .cell:first-child { padding-left: 0; border-left: none; }
+    .spec-grid .k { font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 5px; }
+    .spec-grid .k svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .spec-grid .v { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 2px; }
+    .spec-grid .v .u { font-size: 11px; font-weight: 400; color: var(--text-tertiary); margin-left: 2px; font-family: var(--font-sans); }
+
+    .pros { margin-top: 9px; font-size: 11.5px; color: var(--text-tertiary); }
+    .pros b { color: var(--text-secondary); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="page">
+
+    <div class="page-head">
+        <h1>元信息（时长 / 格式 / 积分 / 音色）展示方案</h1>
+        <p>数据为真实值：02:17 · WAV · 45 分 · 龙安灵欣。三版只改「元信息」的形态与位置，播放器其余部分保持一致。</p>
+    </div>
+
+    <!-- ============ A ============ -->
+    <div class="variant">
+        <div class="variant-head">
+            <span class="tag">A</span>
+            <span class="variant-title">波形上方 · 轻量规格行</span>
+            <span class="variant-note">无底色、无边框，一行小字</span>
+        </div>
+        <div class="panel">
+            <div class="toolbar">
+                <div class="spacer"></div>
+                <button class="ghost-btn">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出
+                </button>
+            </div>
+
+            <div class="spec-line">
+                <span class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>时长 <span class="v">02:17</span></span>
+                <span class="sep"></span>
+                <span class="item"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>格式 <span class="v">WAV</span></span>
+                <span class="sep"></span>
+                <span class="item"><svg viewBox="0 0 24 24"><path d="M12 3 14.6 8.5 20.5 9.3 16.2 13.2 17.3 19 12 16.1 6.7 19 7.8 13.2 3.5 9.3 9.4 8.5z"/></svg>积分 <span class="v">45</span></span>
+                <span class="sep"></span>
+                <span class="item"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.6 3.6-5.5 8-5.5s8 1.9 8 5.5"/><path d="M18 8.5a2.5 2.5 0 0 1 0 5"/></svg>音色 <span class="v">龙安灵欣</span></span>
+            </div>
+
+            <div class="wave" data-wave></div>
+            <div class="time-row"><span class="cur">00:41</span><span>02:17</span></div>
+
+            <div class="transport">
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="play"><svg viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.53.85l10.2-6.8a1 1 0 0 0 0-1.7L9.53 4.35A1 1 0 0 0 8 5.2z"/></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+            </div>
+
+            <div class="utility">
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="4 6 12 12 4 18 4 6"/><line x1="14" y1="6" x2="20" y2="6"/><line x1="14" y1="12" x2="20" y2="12"/><line x1="14" y1="18" x2="20" y2="18"/></svg><span class="val">1.0×</span></span>
+                <span class="hint">剩余约 01:36</span>
+                <span class="spacer"></span>
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>从头播放</span>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="meta">558 字 · 22 句</span><span class="spacer"></span><span class="pill" style="height:26px;padding:0 9px;font-size:11px">复制</span></div>
+                <div class="card-body">这是一段用于试听的音频原文，展示排版时的行高与段落间距效果。</div>
+            </div>
+        </div>
+        <p class="pros"><b>优点</b>：零视觉负担，不打断「波形—走带」的播放主线；信息在视线落点最上方。　<b>顾虑</b>：四项挤成一行偏碎，且「时长」与波形右端的总时长重复。</p>
+    </div>
+
+    <!-- ============ B ============ -->
+    <div class="variant">
+        <div class="variant-head">
+            <span class="tag">B</span>
+            <span class="variant-title">原文卡片上方 · 独立「音频属性」卡片</span>
+            <span class="variant-note">与原文卡片同款容器，四列等分</span>
+        </div>
+        <div class="panel">
+            <div class="toolbar">
+                <div class="spacer"></div>
+                <button class="ghost-btn">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出
+                </button>
+            </div>
+
+            <div class="wave" data-wave></div>
+            <div class="time-row"><span class="cur">00:41</span><span>02:17</span></div>
+
+            <div class="transport">
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="play"><svg viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.53.85l10.2-6.8a1 1 0 0 0 0-1.7L9.53 4.35A1 1 0 0 0 8 5.2z"/></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+            </div>
+
+            <div class="utility">
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="4 6 12 12 4 18 4 6"/><line x1="14" y1="6" x2="20" y2="6"/><line x1="14" y1="12" x2="20" y2="12"/><line x1="14" y1="18" x2="20" y2="18"/></svg><span class="val">1.0×</span></span>
+                <span class="hint">剩余约 01:36</span>
+                <span class="spacer"></span>
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>从头播放</span>
+            </div>
+
+            <div class="card">
+                <div class="props">
+                    <div class="prop">
+                        <div class="k"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>时长</div>
+                        <div class="v">02:17</div>
+                    </div>
+                    <div class="prop">
+                        <div class="k"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>格式</div>
+                        <div class="v">WAV</div>
+                    </div>
+                    <div class="prop">
+                        <div class="k"><svg viewBox="0 0 24 24"><path d="M12 3 14.6 8.5 20.5 9.3 16.2 13.2 17.3 19 12 16.1 6.7 19 7.8 13.2 3.5 9.3 9.4 8.5z"/></svg>积分</div>
+                        <div class="v">45<span class="u">分</span></div>
+                    </div>
+                    <div class="prop">
+                        <div class="k"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.6 3.6-5.5 8-5.5s8 1.9 8 5.5"/><path d="M18 8.5a2.5 2.5 0 0 1 0 5"/></svg>音色</div>
+                        <div class="v">龙安灵欣</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="meta">558 字 · 22 句</span><span class="spacer"></span><span class="pill" style="height:26px;padding:0 9px;font-size:11px">复制</span></div>
+                <div class="card-body">这是一段用于试听的音频原文，展示排版时的行高与段落间距效果。</div>
+            </div>
+        </div>
+        <p class="pros"><b>优点</b>：播放区在上、信息区（属性 + 原文）在下，职责分明；两张同款卡片成组，版面最稳。　<b>顾虑</b>：多一张卡，纵向更长，需要滚动才能同时看到。</p>
+    </div>
+
+    <!-- ============ C ============ -->
+    <div class="variant">
+        <div class="variant-head">
+            <span class="tag">C</span>
+            <span class="variant-title">留在走带下方 · 改成无底色规格网格</span>
+            <span class="variant-note">去掉胶囊，改用竖向分隔线分列</span>
+        </div>
+        <div class="panel">
+            <div class="toolbar">
+                <div class="spacer"></div>
+                <button class="ghost-btn">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出
+                </button>
+            </div>
+
+            <div class="wave" data-wave></div>
+            <div class="time-row"><span class="cur">00:41</span><span>02:17</span></div>
+
+            <div class="transport">
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 0 3.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3.5 15.2 L0.3 10.6 L6.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="play"><svg viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.53.85l10.2-6.8a1 1 0 0 0 0-1.7L9.53 4.35A1 1 0 0 0 8 5.2z"/></svg></span>
+                <span class="skip"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">5</text></svg></span>
+                <span class="skip lg"><svg viewBox="0 0 24 24"><path d="M12 20.5 A 8.5 8.5 0 1 1 20.5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 15.2 L17.3 10.6 L23.7 10.6 Z" fill="currentColor"/><text x="12" y="14.6" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="7.6" font-weight="700" fill="currentColor">15</text></svg></span>
+            </div>
+
+            <div class="spec-grid">
+                <div class="cell">
+                    <div class="k"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>时长</div>
+                    <div class="v">02:17</div>
+                </div>
+                <div class="cell">
+                    <div class="k"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>格式</div>
+                    <div class="v">WAV</div>
+                </div>
+                <div class="cell">
+                    <div class="k"><svg viewBox="0 0 24 24"><path d="M12 3 14.6 8.5 20.5 9.3 16.2 13.2 17.3 19 12 16.1 6.7 19 7.8 13.2 3.5 9.3 9.4 8.5z"/></svg>积分</div>
+                    <div class="v">45<span class="u">分</span></div>
+                </div>
+                <div class="cell">
+                    <div class="k"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.6 3.6-5.5 8-5.5s8 1.9 8 5.5"/><path d="M18 8.5a2.5 2.5 0 0 1 0 5"/></svg>音色</div>
+                    <div class="v">龙安灵欣</div>
+                </div>
+            </div>
+
+            <div class="utility" style="border-top:none;padding-top:16px;margin-top:14px">
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="4 6 12 12 4 18 4 6"/><line x1="14" y1="6" x2="20" y2="6"/><line x1="14" y1="12" x2="20" y2="12"/><line x1="14" y1="18" x2="20" y2="18"/></svg><span class="val">1.0×</span></span>
+                <span class="hint">剩余约 01:36</span>
+                <span class="spacer"></span>
+                <span class="pill"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>从头播放</span>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="meta">558 字 · 22 句</span><span class="spacer"></span><span class="pill" style="height:26px;padding:0 9px;font-size:11px">复制</span></div>
+                <div class="card-body">这是一段用于试听的音频原文，展示排版时的行高与段落间距效果。</div>
+            </div>
+        </div>
+        <p class="pros"><b>优点</b>：位置不变但去掉胶囊感，属性与下方控制行不再「胶囊撞胶囊」，信息读起来像规格表。　<b>顾虑</b>：属性与操作仍在同一区块内，交界处需要靠分隔线分层。</p>
+    </div>
+
+</div>
+
+<script>
+    const H = [18,32,26,44,38,52,30,46,24,36,50,28,40,34,56,42,26,38,30,48,36,22,44,32,28,50,38,24,42,34,46,30,26,40,36,52,28,44,32,24,38,48,34,28,42,36,30,46,26,40,32,22,36,28,44,30,38,24,34,20];
+    document.querySelectorAll('[data-wave]').forEach(function (el) {
+        const total = 60;
+        const played = 18;
+        for (let i = 0; i < total; i++) {
+            const bar = document.createElement('i');
+            bar.style.height = H[i % H.length] + '%';
+            if (i < played) bar.className = 'done';
+            el.appendChild(bar);
+        }
+    });
+</script>
+</body>
+</html>

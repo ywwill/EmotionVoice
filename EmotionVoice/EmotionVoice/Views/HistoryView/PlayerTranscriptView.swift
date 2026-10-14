@@ -42,7 +42,7 @@ struct PlayerTranscriptView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("\(charCount) 字 · \(sentenceCount) 句")
+            Text("%d 字 · %d 句".localized(charCount, sentenceCount))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(AppColor.textTertiary)
 
@@ -57,7 +57,7 @@ struct PlayerTranscriptView: View {
             copyText()
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: didCopy ? "checkmark" : "doc.on.doc")
+                Image(systemName: didCopy ? "checkmark" : "square.on.square")
                     .font(.system(size: 11))
                 Text(didCopy ? "已复制" : "复制")
                     .font(.system(size: 11))

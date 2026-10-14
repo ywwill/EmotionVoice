@@ -18,6 +18,7 @@ struct AudioRowItem: View {
     let onToggleSelection: () -> Void
     let onRename: () -> Void
     let onExport: () -> Void
+    let onCopy: () -> Void
     let onDelete: () -> Void
     let onBatchSelect: () -> Void
 
@@ -191,6 +192,16 @@ struct AudioRowItem: View {
             ) {
                 isMenuOpen = false
                 onExport()
+            }
+
+            // 复制（复制音频文件 + 记录）
+            moreMenuItem(
+                icon: "square.on.square",
+                title: "复制".localized(),
+                isDestructive: false
+            ) {
+                isMenuOpen = false
+                onCopy()
             }
 
             Divider().background(AppColor.borderSubtle)

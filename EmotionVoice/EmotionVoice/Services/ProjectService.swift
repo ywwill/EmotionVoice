@@ -141,6 +141,60 @@ final class ProjectService {
         }
     }
 
+    /// 复制音频条目：在磁盘上复制音频文件，并在库内新建一条相同元数据的记录。
+    /// 新记录显示名为原显示名 + " 副本"（原无自定义显示名则沿用新的时间戳文件名）。
+    /// - Parameter source: 要复制的音频
+    /// - Returns: 新建的音频条目；源文件不存在或复制/入库失败时返回 nil
+    func duplicateAudio(_ source: AudioItem) -> AudioItem? {
+        let sourceURL = source.absoluteURL
+        guard source.isOnDisk else {
+            Log(message: "ProjectService.duplicateAudio: 源文件不存在 - \(sourceURL.path)")
+            return nil
+        }
+
+        // 新文件名：沿用时间戳命名约定 + 原扩展名，并避免同名冲突
+        let ext = source.fileExtension
+        let baseName = Date().filenameTimestamp
+        let dir = generatedAudioDirectoryURL()
+        var attempt = 0
+        var newFileName: String
+        var newURL: URL
+        repeat {
+            newFileName = ext.isEmpty
+                ? "\(baseName)\(attempt == 0 ? "" : "-\(attempt)")"
+                : "\(baseName)\(attempt == 0 ? "" : "-\(attempt)").\(ext)"
+            newURL = dir.appendingPathComponent(newFileName)
+            attempt += 1
+        } while FileManager.default.fileExists(atPath: newURL.path)
+
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: newURL)
+        } catch {
+            Log(message: "ProjectService.duplicateAudio: 复制文件失败 - \(error.localizedDescription)")
+            return nil
+        }
+
+        // 新显示名：仅当原记录有自定义显示名时追加"副本"
+        let newDisplayName: String?
+        if let name = source.displayName, !name.isEmpty {
+            newDisplayName = "\(name) " + "副本".localized()
+        } else {
+            newDisplayName = nil
+        }
+
+        return createAudio(
+            fileName: newFileName,
+            text: source.text,
+            voice: source.voice,
+            format: source.format,
+            sampleRate: source.sampleRate,
+            pointsCost: source.pointsCost,
+            status: .completed,
+            displayName: newDisplayName,
+            duration: source.duration
+        )
+    }
+
     /// 删除单个音频条目及其磁盘文件
     func deleteAudio(id: Int64) {
         var fileNameToRemove: String? = nil

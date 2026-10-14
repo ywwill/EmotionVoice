@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EmotionTokenEditor · 两类标签（语气 + 拟声）v3</title>
+<style>
+  :root {
+    /* v5 色板：30 个标签两两 Lab ΔE 校验过，暗色最小 ΔE≈13.7 / 亮色≈9，
+       同色系之间再用明度拉开（惊叹=亮紫 vs 共情=草绿，不再撞色） */
+    --c-amazed:      192,126,231;
+    --c-empathetic:  100,199,96;
+    --c-excited:     242,204,54;
+    --c-laughing:    243,158,73;
+    --c-sad:         102,151,214;
+    --c-serious:     201,204,207;
+    --c-cough:       162,121,103;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background:#0E0F12; color:#F5F5F7;
+         padding:44px 24px 72px; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  header h1 { font-size:22px; font-weight:700; }
+  header .sub { display:inline-block; margin-left:8px; font-size:11px; font-weight:600;
+    padding:2px 8px; border-radius:999px; background:rgba(123,182,160,.16);
+    color:#7BB6A0; border:1px solid rgba(123,182,160,.42); vertical-align:2px; }
+  header p { margin-top:10px; font-size:13px; color:#A8ABB4; line-height:1.7; max-width:800px; }
+
+  .legend { display:flex; gap:22px; flex-wrap:wrap; margin:16px 0 4px; font-size:12.5px; color:#A8ABB4; }
+  .legend .row { display:flex; align-items:center; gap:8px; }
+  .lg-tone { width:30px; height:0; border-bottom:2.5px solid rgb(var(--c-sad)); }
+  .lg-snd { display:inline-flex; align-items:center; gap:4px; border-radius:8px; padding:2px 8px;
+    font-size:12px; font-weight:600; background:rgba(var(--c-laughing),.12);
+    border:1px dashed rgba(var(--c-laughing),.6); color:rgb(var(--c-laughing)); }
+  .lg-snd i { display:none; }   /* v5：拟声去掉播放图标（点击并不真的播放） */
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:18px; }
+  @media (max-width:880px){ .grid { grid-template-columns:1fr; } }
+  .panel { border-radius:16px; padding:18px; border:1px solid rgba(255,255,255,.08); }
+  .panel.dark { background:#15171B; }
+  .panel.light { background:#F4F5F7; color:#1d1f24; border-color:rgba(0,0,0,.08); }
+  .panel .ttl { font-size:12px; font-weight:600; opacity:.7; margin-bottom:12px;
+    display:flex; justify-content:space-between; }
+
+  .editor { border-radius:14px; padding:16px 17px; min-height:170px; font-size:15px;
+    line-height:2.4; letter-spacing:.1px; transition: box-shadow .18s; }
+  .dark  .editor { background:#0E0F12; color:#F5F5F7; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+  .light .editor { background:#FFFFFF; color:#1d1f24; box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }
+  .editor .meta { display:flex; justify-content:space-between; font-size:12px; opacity:.5; margin-top:16px; }
+  .editor .meta kbd { font-family:var(--font); font-size:11px; font-weight:600; padding:1px 6px;
+    border-radius:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); }
+  .light .editor .meta kbd { background:rgba(0,0,0,.06); border-color:rgba(0,0,0,.1); }
+
+  /* ===== 语气标签：下划线 + 下方标注 ===== */
+  .seg { display:inline-block; vertical-align:top; cursor:pointer; user-select:none; }
+  /* v4：下划线加粗到 2.5px，并与正文留出 3px 间距；标注随之下移，避免与下划线叠在一起 */
+  .seg .txt { border-bottom:2.5px solid rgb(var(--sc)); padding-bottom:3px; }
+  /* v5：两个语气标签「接缝处」各让出 6px —— 只缩短线，正文位置不变 */
+  .seg:has(+ .seg) .txt { padding-right:6px; }
+  .seg + .seg .txt { padding-left:6px; }
+  /* 被拟声标记断开、但属于同一个语气作用域的后半段：不再重复画标注 */
+  .seg.cont .gloss { display:none; }
+  .seg .gloss { display:block; font-size:10.5px; line-height:1.25; font-weight:600;
+    color: rgb(var(--sc)); margin-top:5px; white-space:nowrap; }
+  .seg .gloss .x { font-size:11px; font-weight:700; opacity:0; margin-left:3px;
+    width:13px; height:13px; line-height:13px; text-align:center; border-radius:999px; }
+  .seg:hover .gloss .x { opacity:.6; } .seg .gloss .x:hover { opacity:1; }
+  .seg.sel .txt { background: rgba(255,255,255,.1); border-radius:4px; }
+  .seg.sel .gloss { text-decoration: underline; text-underline-offset:2px; }
+  .seg[data-c="amazed"]     { --sc: var(--c-amazed); }
+  .seg[data-c="sad"]        { --sc: var(--c-sad); }
+  .seg[data-c="serious"]    { --sc: var(--c-serious); }
+  .seg[data-c="empathetic"] { --sc: var(--c-empathetic); }
+  .light .seg[data-c="amazed"]     { --sc: 115,76,139; }
+  .light .seg[data-c="sad"]        { --sc: 61,91,128; }
+  .light .seg[data-c="serious"]    { --sc: 121,122,124; }
+  .light .seg[data-c="empathetic"] { --sc: 60,119,58; }
+  .light .seg.sel .txt { background: rgba(0,0,0,.06); }
+
+  /* ===== 拟声效果：点插入的声音标记（内联，不占文本）===== */
+  .snd { position:relative; display:inline-flex; align-items:center; gap:5px; border-radius:8px;
+    padding:2px 9px; margin:0 4px; font-size:13px; font-weight:600; line-height:1;
+    transform:translateY(2px); cursor:pointer; user-select:none;
+    background: rgba(var(--sc),.12); border:1px dashed rgba(var(--sc),.6); color: rgb(var(--sc));
+    transition: background .15s, box-shadow .15s; }
+  .snd .play { display:none; }   /* v5：去掉播放图标 */
+  /* v9：× 移到整个标签的**正中间**，直接叠在名称上（点目标最大、最不容易误触） */
+  .snd .x { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:16px; height:16px; line-height:16px; text-align:center; border-radius:999px;
+    font-size:12px; font-weight:800; background:#2A2D33; color:#F5F5F7;
+    border:1px solid rgba(255,255,255,.18); opacity:0; z-index:2;
+    transition: opacity .15s, background .15s; cursor:pointer; }
+  .snd:hover .x { opacity:1; }
+  .snd .x:hover { background:#454A52; }
+  .snd.sel { box-shadow:0 0 0 2px rgb(var(--sc)); }
+  .snd[data-c="laughing"] { --sc: var(--c-laughing); }
+  .snd[data-c="cough"]    { --sc: var(--c-cough); }
+  .light .snd[data-c="laughing"] { color:#846334; background:rgba(var(--c-laughing),.1); border-color:rgba(var(--c-laughing),.45); }
+  .light .snd[data-c="cough"]    { color:#5C5861; background:rgba(var(--c-cough),.1);   border-color:rgba(var(--c-cough),.45); }
+  .light .snd .x { background:#FFFFFF; color:#1d1f24; border:1px solid rgba(0,0,0,.18); }
+  .light .snd .x:hover { background:#ECEDEF; }
+
+  .states { margin-top:26px; }
+  .states .strip { display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;
+    padding:18px; border-radius:12px; margin-top:10px; border:1px solid rgba(255,255,255,.08); background:#15171B; }
+  .states .cap { font-size:12px; color:#A8ABB4; align-self:center; }
+  .note { margin-top:26px; font-size:12.5px; color:#9A9DA6; line-height:1.85;
+    border-left:2px solid rgba(123,182,160,.5); padding:4px 0 4px 14px; }
+  .note b { color:#C9CCD3; }
+  .note code { background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>EmotionTokenEditor · 两类标签 <span class="sub">v5</span></h1>
+    <p>两类标签语义不同，采用两种视觉语言：<b>语气标签</b>作用域是后续文本（下划线 + 下方标注）；
+       <b>拟声效果</b>是在当前位置插入的声音事件（不代表文本），用内联「声音标记」呈现。</p>
+  </header>
+
+  <div class="legend">
+    <div class="row"><span class="lg-tone"></span> 语气标签：下划线 + 下方标注（文本按此语气转换）</div>
+    <div class="row"><span class="lg-snd"><i></i>大笑</span> 拟声效果：点插入的声音标记（无播放图标，虚线边框，× 悬停才出现）</div>
+    <div class="row"><span class="lg-tone" style="border-color:rgb(var(--c-empathetic))"></span> 共情（与惊叹的紫色已拉开）</div>
+  </div>
+
+  <div class="grid">
+    <!-- 暗 -->
+    <div class="panel dark">
+      <div class="ttl"><span>两类标签混排 · 暗色</span><span>156 字</span></div>
+      <div class="editor">
+        今天的会议
+        <span class="seg" data-c="amazed"><span class="txt">太顺利了，大家</span><span class="gloss">😮 惊叹<span class="x">×</span></span></span>
+        <span class="snd" data-c="laughing">大笑<span class="x">×</span></span>
+        <span class="seg cont" data-c="amazed"><span class="txt">兴奋得想继续，不过</span><span class="gloss">😮 惊叹<span class="x">×</span></span></span>
+        <span class="seg" data-c="sad"><span class="txt">排期还是延期了，</span><span class="gloss">😢 悲伤<span class="x">×</span></span></span>
+        <span class="snd" data-c="cough">咳嗽<span class="x">×</span></span>
+        <span class="seg cont" data-c="sad"><span class="txt">只能下次再赶。</span><span class="gloss">😢 悲伤<span class="x">×</span></span></span>
+        <span class="seg" data-c="empathetic"><span class="txt">辛苦大家了。</span><span class="gloss">💚 共情<span class="x">×</span></span></span>
+        <div class="meta"><span>语气=下划线标注 · 拟声=声音标记 · 悬停 × / <kbd>⌫</kbd> 删除</span><span>156 / 500</span></div>
+      </div>
+    </div>
+
+    <!-- 亮 -->
+    <div class="panel light">
+      <div class="ttl"><span>两类标签混排 · 亮色</span><span>156 字</span></div>
+      <div class="editor">
+        今天的会议
+        <span class="seg" data-c="amazed"><span class="txt">太顺利了，大家</span><span class="gloss">😮 惊叹<span class="x">×</span></span></span>
+        <span class="snd" data-c="laughing">大笑<span class="x">×</span></span>
+        <span class="seg cont" data-c="amazed"><span class="txt">兴奋得想继续，不过</span><span class="gloss">😮 惊叹<span class="x">×</span></span></span>
+        <span class="seg" data-c="sad"><span class="txt">排期还是延期了，</span><span class="gloss">😢 悲伤<span class="x">×</span></span></span>
+        <span class="snd" data-c="cough">咳嗽<span class="x">×</span></span>
+        <span class="seg cont" data-c="sad"><span class="txt">只能下次再赶。</span><span class="gloss">😢 悲伤<span class="x">×</span></span></span>
+        <span class="seg" data-c="empathetic"><span class="txt">辛苦大家了。</span><span class="gloss">💚 共情<span class="x">×</span></span></span>
+        <div class="meta"><span>语气=下划线标注 · 拟声=声音标记 · 悬停 × / <kbd>⌫</kbd> 删除</span><span>156 / 500</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="states">
+    <div class="ttl" style="font-size:12px;font-weight:600;opacity:.7;">状态检视（暗色）</div>
+    <div class="strip">
+      <span class="cap">语气·常态</span>
+      <span class="editor" style="min-height:auto;box-shadow:none;background:transparent;padding:0;">
+        <span class="seg" data-c="amazed"><span class="txt">太顺利了</span><span class="gloss">😮 惊叹<span class="x">×</span></span></span>
+      </span>
+      <span class="cap">语气·选中</span>
+      <span class="editor" style="min-height:auto;box-shadow:none;background:transparent;padding:0;">
+        <span class="seg sel" data-c="sad"><span class="txt">悲伤的是</span><span class="gloss">😢 悲伤<span class="x">×</span></span></span>
+      </span>
+      <span class="cap">拟声·常态</span>
+      <span class="editor" style="min-height:auto;box-shadow:none;background:transparent;padding:0;">
+        <span class="snd" data-c="laughing">大笑<span class="x">×</span></span>
+      </span>
+      <span class="cap">拟声·选中</span>
+      <span class="editor" style="min-height:auto;box-shadow:none;background:transparent;padding:0;">
+        <span class="snd sel" data-c="cough">咳嗽<span class="x">×</span></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>两类标签的视觉区分</b><br>
+    ① <b>语气标签（tone）</b>：彩色下划线标出作用域，emoji + 文字标注在<strong>下划线正下方</strong>；
+       表示「这段文本按此语气转换」。删除：悬停下方 × 或选中 + <code>⌫</code>。<br>
+    ② <b>拟声效果（sound）</b>：在当前位置<strong>点插入</strong>一个声音标记——只有名称（大笑/咳嗽），
+       虚线边框（呼应「拟声=虚线」家族约定），<strong>不代表任何文本</strong>；
+       <strong>去掉了 ▶ 播放图标</strong>（点了并不能真播放，图标会误导），× 圆钮只在<strong>悬停</strong>时浮现。<br>
+    ③ 两者都不用胶囊、不把文字标签前置到正文前；语气作用于后续文本，拟声只占据一个插入点。<br>
+    ④ <b>拟声不再打断语气作用域</b>：插入拟声后继续输入的文本，仍属于前面的语气标签（下划线跨过拟声标记继续延伸，
+       但不在拟声胶囊本身下面画线）。<br>
+    ⑤ <b>接缝留白</b>：相邻两个语气标签之间，前一个作用域的尾端与后一个的首端各内缩 6px，下划线不会连成一条。<br>
+    ⑥ <b>悬停判定区 = 标签本体 ∪ 外置 ×</b>（v6）：× 画在胶囊/标注之外，若只按标签本体判定悬停，
+       鼠标移向 × 的那一刻 hover 就断了、× 随之消失，永远点不到。现在两者算作同一个悬停区，
+       并额外给 0.35s 的离开宽限，指针在途经空隙时按钮不会闪没。<br>
+    ⑦ <b>拟声的 × 移到标签正中间</b>（v9）：圆钮直接叠在名称文字上（不透明底 + 描边保证清晰），
+       点击目标最大，也不会再发生「× 悬在行外被上一行/下一行遮挡」的问题。
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.editor').forEach(function(ed){
+    ed.addEventListener('click', function(e){
+      var x = e.target.closest('.x');
+      if (x) {
+        var t = x.closest('.seg, .snd'); if (t) t.remove();
+        e.stopPropagation(); return;
+      }
+      var t = e.target.closest('.seg, .snd');
+      if (t) {
+        var sel = t.classList.contains('sel');
+        ed.querySelectorAll('.sel').forEach(function(s){ s.classList.remove('sel'); });
+        if (!sel) t.classList.add('sel');
+      }
+    });
+  });
+</script>
+</body>
+</html>

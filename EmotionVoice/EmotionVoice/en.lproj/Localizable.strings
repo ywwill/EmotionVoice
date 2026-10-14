@@ -56,8 +56,23 @@
 "仅支持中文和英文输入" = "Only Chinese and English input is supported.";
 "🌐 语言" = "🌐 Language";
 "从列表中选择要播放的音频" = "Select the audio to play from the list.";
+"从头播放" = "Play from Beginning";
+"空格" = "Space";
+"播放 / 暂停" = "Play / Pause";
+"5 秒" = "5 Seconds";
+"15 秒" = "15 Seconds";
+"正在播放" = "Playing";
+"已暂停" = "Paused";
+"播放结束" = "Playback Finished";
+"已就绪" = "Ready";
+"复制" = "Copy";
+"已复制" = "Copied";
+"剩余约" = "Approximately Remaining";
+"%d 字 · %d 句" = "%d Characters · %d Sentences";
+"暂无原文内容" = "No Original Text";
 
 // 音色
+"音色" = "Voice";
 "旗舰音色" = "Flagship Voice";
 "全部" = "All";
 "筛选" = "Filter";

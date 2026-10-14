@@ -7,13 +7,14 @@
 //  Emotion Token 的视觉样式。从原来的 EmotionHighlightedTextEditor 抽出，
 //  适配 AppColor / DesignSystem 风格。
 //
-//  设计要点：
+//  设计要点（v3 · 两类标签）：
 //   * 每个 token 的「身份」(EmotionTokenIdentity) 只描述 基础色 + 家族，
 //     真正的颜色在 *绘制时* 结合当前外观（明 / 暗）实时解析。
-//     这样切换系统外观时 token 配色会自动跟随，无需手动切换 darkStyle()。
-//   * 几何参数（字体 / 内边距 / 删除按钮）集中放在 `.default`，
-//     绘制用的 `resolved(...)` 会沿用这些几何值，只覆盖颜色与家族相关标记，
-//     保证 cellSize() 计算出的尺寸与 drawPill() 实际布局完全一致。
+//   * 两种家族两种视觉语言：
+//       - .emotion      （语气）：后续文本段加彩色下划线，标记位置下方画 emoji+文字标注。
+//       - .richLanguage （拟声）：在当前位置点插入一个声音标记（虚线框 + 播放三角 + 名称 + 右上角外置 ×）。
+//   * 几何参数集中放在 `.default`，绘制用的 `resolved(...)` 沿用几何，只覆盖颜色与家族相关标记，
+//     保证 cellSize() 计算出的尺寸与绘制布局一致。
 //
 
 import AppKit
@@ -25,32 +26,25 @@ struct EmotionTokenIdentity: Equatable, Hashable {
     let category: EmotionCategory
 }
 
-/// Emotion Tag 胶囊的视觉样式
+/// Emotion Tag 的视觉样式
 struct EmotionTokenStyle {
 
     // MARK: - 字体
+
+    /// 正文字号：cell 尺寸、body 属性、下划线基准线计算共用，改一处即可。
+    static let bodyFontSize: CGFloat = 14
+    /// 正文字体
+    static var bodyFont: NSFont { NSFont.systemFont(ofSize: bodyFontSize) }
 
     /// Tag 文本字体
     var font: NSFont = NSFont.systemFont(ofSize: 13, weight: .medium)
     /// Emoji 字体（一般保持 system）
     var emojiFont: NSFont = NSFont.systemFont(ofSize: 13)
 
-    // MARK: - 内边距
+    // MARK: - 内边距 / 间距
 
     var horizontalPadding: CGFloat = 8
-    var verticalPadding: CGFloat = 2
-
-    /// Emoji 与情绪色点之间的间距
-    var emojiToDotSpacing: CGFloat = 5
-
-    /// 情绪色点（8px）与 label 之间的间距
-    var dotToLabelSpacing: CGFloat = 6
-
-    /// 是否显示前置的「情绪色点」（极简色点标签的核心元素）
-    var showColorDot: Bool = true
-
-    /// 情绪色点直径
-    var colorDotDiameter: CGFloat = 8
+    var verticalPadding: CGFloat = 3
 
     /// 删除按钮宽度
     var deleteButtonWidth: CGFloat = 14
@@ -58,27 +52,59 @@ struct EmotionTokenStyle {
     /// label 跟 × 之间的间隙
     var labelToDeleteGap: CGFloat = 2
 
-    /// 是否显示右上角的 × 删除按钮
+    /// 是否显示删除按钮
     var showsDeleteButton: Bool = true
 
-    // MARK: - 颜色（绘制时由 identity + appearance 解析覆盖；这里只作兜底）
-    //
-    // 这些兜底值为中性灰（极简色点风格），仅在 identity 缺失时生效，
-    // 不影响正常路径（正常路径走 `resolved(for:dark:)`，其中只把情绪色落在 dotColor 上）。
+    // MARK: - 语气标签（下划线 + 下方标注）
 
-    /// 填充色（背景）—— 兜底用中性深灰，真实路径由 resolved 按外观覆盖
+    /// 下划线粗细（v4 加粗：由 2 → 2.5，接近设计稿的强调感）
+    var underlineThickness: CGFloat = 2.5
+    /// 下划线与正文之间的间距：以「正文字体的降部底线」为基准再往下留出的空隙。
+    /// AppKit 内置 underline 属性无法控制这个间距，因此下划线改为自绘。
+    var underlineGap: CGFloat = 2
+    /// 两个语气作用域「接缝处」额外让出的间距。
+    /// 相邻两个语气标签只隔着一个 1pt 宽的标记，下划线几乎会连成一条；
+    /// 在接缝的上一作用域尾端与下一作用域首端各内缩这么多，视觉上才分得开。
+    var underlineJointGap: CGFloat = 3
+    /// 下方标注字号
+    var annotationFontSize: CGFloat = 10.5
+    /// 下方标注与正文降部底线之间的间距。
+    ///
+    /// 注意与自绘下划线的关系：标注顶端 = 基线 + |descender| + annotationGap，
+    /// 下划线占据基线 + |descender| + underlineGap 起、厚 underlineThickness。
+    /// 下划线加粗并留间距后底部到了基线 +7.45，因此这里取 7（标注顶端 ≈ 基线 +9.95），
+    /// 给下划线留出约 2.5pt 的净空，避免两者叠在一起。
+    var annotationGap: CGFloat = 7
+    /// 下方标注中 emoji 与文字之间的间距
+    var annotationEmojiToLabel: CGFloat = 3
+
+    // MARK: - 拟声效果（点插入声音标记）
+
+    /// 声音标记圆角
+    var soundCornerRadius: CGFloat = 8
+    /// 声音标记内边距
+    var soundHorizontalPadding: CGFloat = 9
+    var soundVerticalPadding: CGFloat = 3
+    /// 声音标记名称字号
+    var soundFontSize: CGFloat = 13
+    /// 右上角外置 × 圆钮直径
+    var soundDeleteButtonDiameter: CGFloat = 16
+
+    // MARK: - 颜色（绘制时由 identity + appearance 解析覆盖；这里只作兜底）
+
+    /// 填充色（背景）
     var fillColor: NSColor = NSColor(white: 1.0, alpha: 0.05)
-    /// 描边色 —— 中性
+    /// 描边色
     var strokeColor: NSColor = NSColor(white: 1.0, alpha: 0.10)
-    /// 文本颜色 —— 中性（低彩噪：颜色只交给情绪色点）
+    /// 文本颜色
     var textColor: NSColor = NSColor(white: 0.92, alpha: 1.0)
 
     /// hover / 选中时的高亮填充色
     var fillColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.09)
     var strokeColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.16)
 
-    /// 情绪色点颜色（极简色点标签的核心著色处）。默认沿用琥珀金兜底，真实路径由 resolved 按外观覆盖。
-    var dotColor: NSColor = fallbackBaseColor
+    /// 下划线颜色（语气标签作用域）
+    var underlineColor: NSColor = fallbackBaseColor
 
     // MARK: - 几何
 
@@ -99,41 +125,45 @@ struct EmotionTokenStyle {
 
     // MARK: - 基础色板
 
-    /// 英文 tag → 基础色。覆盖 App 中常见的语气 / 拟声标签；
-    /// 未命中的 tag 走「确定性色相回退」，保证多样性且不过于刺眼。
+    /// 英文 tag → 基础色。覆盖 Constants.emotions + Constants.richLanguageTags 全部 30 个标签。
+    ///
+    /// v5 重排：旧色板里多个 tag 共用一个色值（sad/crying/very slowly 同蓝，amazed/like dracula 同紫），
+    /// 且 empathetic 没收录、落到哈希兜底，导致「惊叹」和「共情」撞在同一段紫色里难以分辨。
+    /// 现在每个标签单独配色：色相铺满色环，同色系之间再用明度 / 饱和度拉开。
+    /// 生成时用 CIE Lab ΔE 校验过两两距离：暗色模式最小 ΔE ≈ 13.7、亮色（压暗 40%）≈ 9。
     private static let colorMap: [String: NSColor] = [
         // 语气 / 情感控制类
-        "sad":                    NSColorFromHex(0x6B8BC9),
-        "crying":                 NSColorFromHex(0x6B8BC9),
-        "trembling":              NSColorFromHex(0x8A6BC9),
-        "panicked":               NSColorFromHex(0xD96D6D),
-        "angry":                  NSColorFromHex(0xD96D6D),
-        "scornful":               NSColorFromHex(0xC97B5B),
-        "reluctantly":            NSColorFromHex(0xA8A0B0),
-        "excited":                NSColorFromHex(0xE89E5F),
-        "amazed":                 NSColorFromHex(0x9B7BD9),
-        "curious":                NSColorFromHex(0x7BB6A0),
-        "calm":                   NSColorFromHex(0x8AA5A0),
-        "like dracula":           NSColorFromHex(0x9B7BD9),
-        "bored":                  NSColorFromHex(0x9AA0AB),
-        "tired":                  NSColorFromHex(0x7E8AA0),
-        "serious":                NSColorFromHex(0x9AA0AB),
-        "very fast":              NSColorFromHex(0xE8705F),
-        "very slowly":            NSColorFromHex(0x6B8BC9),
-        "mischievously":          NSColorFromHex(0xB07BD9),
-        "sarcastic":              NSColorFromHex(0xD9B36B),
-        "whispers":               NSColorFromHex(0x8FA3C0),
+        "sad":                    NSColorFromHex(0x6697D6),
+        "amazed":                 NSColorFromHex(0xC07EE7),
+        "deep and loud shouting": NSColorFromHex(0xE0493E),
+        "trembling":              NSColorFromHex(0x51C0D6),
+        "angry":                  NSColorFromHex(0xEB7633),
+        "excited":                NSColorFromHex(0xF2CC36),
+        "sarcastic":              NSColorFromHex(0x8EB238),
+        "curious":                NSColorFromHex(0x45C485),
+        "like dracula":           NSColorFromHex(0x9F4197),
+        "bored":                  NSColorFromHex(0x7889A1),
+        "tired":                  NSColorFromHex(0x4F8492),
+        "scornful":               NSColorFromHex(0xAE6C3D),
+        "shouting":               NSColorFromHex(0xE65673),
+        "asmr":                   NSColorFromHex(0xDF86C1),
+        "panicked":               NSColorFromHex(0xD83177),
+        "mischievously":          NSColorFromHex(0x31B99E),
+        "empathetic":             NSColorFromHex(0x64C760),
+        "whispers":               NSColorFromHex(0x9A9ED6),
+        "reluctantly":            NSColorFromHex(0x8978B0),
+        "crying":                 NSColorFromHex(0x98CAEB),
+        "serious":                NSColorFromHex(0xC9CCCF),
+        "very slowly":            NSColorFromHex(0x8C79D8),
+        "very fast":              NSColorFromHex(0xF6EF28),
         // 富语言 / 拟声类
-        "asmr":                   NSColorFromHex(0xD98FB0),
-        "shouting":               NSColorFromHex(0xE8705F),
-        "deep and loud shouting": NSColorFromHex(0xE8705F),
-        "laughing":               NSColorFromHex(0xF0B45F),
-        "giggles":                NSColorFromHex(0xF0B45F),
-        "sighing":                NSColorFromHex(0x8FA3C0),
-        "gasp":                   NSColorFromHex(0x8FA3C0),
-        "clears throat":          NSColorFromHex(0xA8A0B0),
-        "cough":                  NSColorFromHex(0xA8A0B0),
-        "snorts":                 NSColorFromHex(0xC97B5B)
+        "laughing":               NSColorFromHex(0xF39E49),
+        "giggles":                NSColorFromHex(0xE694A8),
+        "sighing":                NSColorFromHex(0xC9A9D1),
+        "gasp":                   NSColorFromHex(0x8ED7D1),
+        "clears throat":          NSColorFromHex(0xC6BA8B),
+        "cough":                  NSColorFromHex(0xA27967),
+        "snorts":                 NSColorFromHex(0xAE4329)
     ]
 
     /// 根据英文 tag（无则中文 label）取基础色。
@@ -156,27 +186,27 @@ struct EmotionTokenStyle {
 
     /// 由 identity + 当前外观解析出最终样式。
     /// 几何沿用 `.default`，仅覆盖颜色与家族相关标记，确保与 cellSize() 一致。
+    /// v3：语气 / 拟声都走情绪色（暗 = 原色；亮 = 压暗约 40% 保可读）。
     static func resolved(for identity: EmotionTokenIdentity, dark: Bool) -> EmotionTokenStyle {
         var s = EmotionTokenStyle.default
         let base = identity.baseColor
         s.dashedBorder = (identity.category == .richLanguage)
 
         if dark {
-            // 极简色点（低彩噪）：胶囊本体走中性灰，颜色只落在 8px 情绪色点上。
-            s.textColor = NSColor(white: 0.92, alpha: 1.0)
-            s.fillColor = NSColor(white: 1.0, alpha: 0.05)
-            s.strokeColor = NSColor(white: 1.0, alpha: 0.10)
-            s.fillColorHovered = NSColor(white: 1.0, alpha: 0.09)
-            s.strokeColorHovered = NSColor(white: 1.0, alpha: 0.16)
-            s.dotColor = base
+            s.textColor = base
+            s.fillColor = base.withAlphaComponent(0.12)
+            s.strokeColor = base.withAlphaComponent(0.60)
+            s.fillColorHovered = base.withAlphaComponent(0.22)
+            s.strokeColorHovered = base.withAlphaComponent(0.90)
+            s.underlineColor = base
         } else {
-            // 亮色背景：中性深灰胶囊 + 略压暗的情绪色点，保证可读性。
-            s.textColor = NSColor(white: 0.18, alpha: 1.0)
-            s.fillColor = NSColor(white: 0.0, alpha: 0.04)
-            s.strokeColor = NSColor(white: 0.0, alpha: 0.10)
-            s.fillColorHovered = NSColor(white: 0.0, alpha: 0.07)
-            s.strokeColorHovered = NSColor(white: 0.0, alpha: 0.16)
-            s.dotColor = base.darkened(by: 0.12)
+            let t = base.darkened(by: 0.40)
+            s.textColor = t
+            s.fillColor = base.withAlphaComponent(0.10)
+            s.strokeColor = base.withAlphaComponent(0.45)
+            s.fillColorHovered = base.withAlphaComponent(0.20)
+            s.strokeColorHovered = base.withAlphaComponent(0.80)
+            s.underlineColor = t
         }
         return s
     }
@@ -187,7 +217,7 @@ struct EmotionTokenStyle {
     }
 }
 
-/// 在 frame 内计算「× close 按钮」的命中区域
+/// 在 frame 内计算「× close 按钮」的命中区域（旧胶囊内删除，保留以兼容）
 func emotionTokenDeleteHitRect(for frame: NSRect, style: EmotionTokenStyle) -> NSRect {
     guard style.showsDeleteButton else { return .zero }
     return NSRect(
@@ -198,8 +228,75 @@ func emotionTokenDeleteHitRect(for frame: NSRect, style: EmotionTokenStyle) -> N
     )
 }
 
-/// 把 0xRRGGBB 转成 sRGB 的 NSColor（alpha 默认 1）。
+/// 拟声声音标记：外置 × 圆钮的命中区域。
+/// v9：位置改为**整个标签的正中间**（叠在名称文字上也可以），点击目标最大、最难误触到别的元素。
+func soundDeleteHitRect(for frame: NSRect, style: EmotionTokenStyle) -> NSRect {
+    let cx = frame.midX
+    let cy = frame.midY
+    let r = style.soundDeleteButtonDiameter + 6
+    return NSRect(x: cx - r / 2, y: cy - r / 2, width: r, height: r)
+}
 
+/// 语气标签下方标注的布局结果（绘制与命中测试共用同一份，避免两边错位）。
+struct ToneAnnotationLayout {
+    /// 标注文字（emoji + 名称）的绘制原点
+    let textOrigin: NSPoint
+    /// 标注的悬停命中区（含留白）
+    let textRect: NSRect
+    /// 右侧 × 的命中区
+    let closeRect: NSRect
+}
+
+/// 语气标签：下方标注的整体布局。
+/// 标注画在 glyph 矩形之外（一行里属于它的只有 1px 宽的标记），不并入命中区的话，
+/// 鼠标移到看得见的「😮 惊叹」上根本不会触发 hover，× 也就不会出现。
+///
+/// `maxX` 是文本容器的右边界：**标签插在行尾时，标注会画到容器外面被裁掉**，
+/// 这时把整个标注（连同它的 ×）一起左移，保证完整可见。
+/// 留白给得比字号多一点：标注是 10.5pt 的小字，紧贴边缘很难瞄。
+func toneAnnotationLayout(for frame: NSRect,
+                          label: String,
+                          emoji: String,
+                          style: EmotionTokenStyle,
+                          maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> ToneAnnotationLayout? {
+    let s = (emoji.isEmpty ? "" : emoji + " ") + label
+    if s.isEmpty { return nil }
+    let f = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
+    let size = (s as NSString).size(withAttributes: [.font: f])
+    guard size.width > 0 else { return nil }
+
+    let h = ceil(f.ascender - f.descender)
+    let y = frame.maxY - h - 1
+    let padX: CGFloat = 4
+    let padY: CGFloat = 3
+    let closeW: CGFloat = 18
+    // 标注 + × 一起占据的总宽度
+    let total = padX + size.width + 2 + closeW + padX
+
+    var x = frame.minX - padX
+    if maxX.isFinite, x + total > maxX { x = maxX - total }
+    if x < 0 { x = 0 }
+
+    return ToneAnnotationLayout(
+        textOrigin: NSPoint(x: x + padX, y: y),
+        textRect: NSRect(x: x, y: y - padY, width: size.width + padX * 2, height: h + padY * 2),
+        closeRect: NSRect(x: x + padX + size.width + 1, y: y - 3, width: closeW, height: h + 6)
+    )
+}
+
+/// 语气标签：下方标注的悬停命中区（container 坐标）
+func toneAnnotationRect(for frame: NSRect, label: String, emoji: String, style: EmotionTokenStyle,
+                        maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> NSRect? {
+    toneAnnotationLayout(for: frame, label: label, emoji: emoji, style: style, maxX: maxX)?.textRect
+}
+
+/// 语气标签：下方标注里 × 的命中区域（× 绘制在 glyph 矩形之外，需由文本视图层命中）
+func toneAnnotationCloseRect(for frame: NSRect, label: String, emoji: String, style: EmotionTokenStyle,
+                             maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> NSRect? {
+    toneAnnotationLayout(for: frame, label: label, emoji: emoji, style: style, maxX: maxX)?.closeRect
+}
+
+/// 把 0xRRGGBB 转成 sRGB 的 NSColor（alpha 默认 1）。
 private func NSColorFromHex(_ hex: UInt32) -> NSColor {
     let r = CGFloat((hex >> 16) & 0xFF) / 255.0
     let g = CGFloat((hex >> 8) & 0xFF) / 255.0

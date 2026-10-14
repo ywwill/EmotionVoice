@@ -42,8 +42,18 @@ enum PlayerTextMetrics {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
-    /// 倍速 "1×" / "1.5×"
+    /// 倍速 "1x" / "1.25x" / "1.5x"
+    ///
+    /// 优先复用 `AudioPreviewPlayer.playbackRateOptions` 里的标签，让倍速按钮、
+    /// 菜单项、状态栏三处显示完全一致。
+    ///
+    /// 不要改用 `%.2g`：它是「保留 2 位有效数字」，会把 1.25 截成 "1.2"。
+    /// 兜底用 `%g`（默认 6 位有效数字 + 去掉尾随 0），既不会截断，
+    /// 也能把 1.0 / 2.0 显示成 "1x" / "2x"。
     static func formatRate(_ rate: Float) -> String {
-        String(format: "%.2g×", rate)
+        if let label = AudioPreviewPlayer.playbackRateOptions.first(where: { $0.rate == rate })?.label {
+            return label
+        }
+        return String(format: "%gx", rate)
     }
 }

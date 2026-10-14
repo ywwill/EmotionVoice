@@ -104,6 +104,6 @@ struct PlayerUtilityView: View {
     private var remainingHint: String {
         let rate = max(Double(player.playbackRate), 0.01)
         let left = max(0, player.duration - player.currentTime) / rate
-        return "剩余约 " + PlayerTextMetrics.formatTime(left)
+        return "剩余约".localized() + " " + PlayerTextMetrics.formatTime(left)
     }
 }

@@ -125,6 +125,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
 
         // 初始化内容
         tokenView.setContent(items)
+        context.coordinator.lastExportedFromView = items
 
         // SwiftUI 嵌入 NSTextView 时默认不会让它自动获得 first responder。
         // 在下一个主循环强制把 NSTextView 设为 first responder，确保用户点击编辑区后立即可输入。
@@ -145,10 +146,20 @@ struct EmotionTokenEditor: NSViewRepresentable {
         let coord = context.coordinator
 
         // 1. 外部 items 变化 → setContent（仅当内容不一致时）
+        //
+        //    这里原本每次 SwiftUI 刷新都会先 `exportItems()` 全量扫一遍再比对；
+        //    VoiceStudioView 每次按键都会重算 body（VM 是 ObservableObject），
+        //    于是「每次按键 = 一次全文档 export」。改为用 Coordinator 缓存的上一次
+        //    导出结果先做一次廉价比对，命中就直接跳过。
         if !coord.isUpdatingFromEditor {
-            let current = tokenView.exportItems()
-            if current != items {
-                tokenView.setContent(items)
+            if let cached = coord.lastExportedFromView, cached == items {
+                // 视图内容与 binding 已一致，无需导出也无需 setContent
+            } else {
+                let current = tokenView.exportItems()
+                if current != items {
+                    tokenView.setContent(items)
+                }
+                coord.lastExportedFromView = items
             }
         }
 
@@ -204,6 +215,10 @@ struct EmotionTokenEditor: NSViewRepresentable {
         /// 当 SwiftUI binding 由内部 NSTextView 触发时为 true；外部 set 才 false。
         var isUpdatingFromEditor: Bool = false
 
+        /// 最近一次「视图 → 外部」导出的结果缓存。
+        /// 有了它，updateNSView 不必每次都调 `exportItems()` 全量扫描。
+        var lastExportedFromView: [TTSContentItem]?
+
         /// 可选：纯文本 binding，编辑器内容变化时同步更新。
         var textBinding: Binding<String>?
 
@@ -231,6 +246,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
         func handleContentChange() {
             guard let tv = tokenView else { return }
             let exported = tv.exportItems()
+            lastExportedFromView = exported
             if itemsBinding.wrappedValue != exported {
                 isUpdatingFromEditor = true
                 itemsBinding.wrappedValue = exported
