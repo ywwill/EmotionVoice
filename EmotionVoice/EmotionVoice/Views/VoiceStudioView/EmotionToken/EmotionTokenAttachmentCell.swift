@@ -34,12 +34,11 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
     nonisolated override func cellSize() -> NSSize {
         let style = EmotionTokenStyle.default
         let labelString = tokenLabel as NSString
-        let emojiText = tokenEmoji.isEmpty ? "" : "\(tokenEmoji) "
-        let emojiString = emojiText as NSString
+        let emojiWidth: CGFloat = tokenEmoji.isEmpty
+            ? 0
+            : (tokenEmoji as NSString).size(withAttributes: [.font: style.emojiFont]).width
 
         let labelSize = labelString.size(withAttributes: [.font: style.font])
-        let emojiSize = emojiString.size(withAttributes: [.font: style.emojiFont])
-        let emojiWidth = emojiText.isEmpty ? 0 : emojiSize.width
 
         let deleteExtra: CGFloat = style.showsDeleteButton
             ? (style.labelToDeleteGap + style.deleteButtonWidth)
@@ -47,9 +46,13 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
 
         // 用 ascender-descender 决定高度，避免 NSString.size 引入行间距破坏 lineHeight。
         let emHeight = ceil(style.font.ascender - style.font.descender)
-        let emojiLabelGap: CGFloat = emojiWidth > 0 ? style.emojiToLabelSpacing : 0
+        let emojiGap: CGFloat = emojiWidth > 0 ? style.emojiToDotSpacing : 0
+        let dotExtra: CGFloat = style.showColorDot
+            ? (style.colorDotDiameter + style.dotToLabelSpacing)
+            : 0
         let innerWidth = emojiWidth
-            + emojiLabelGap
+            + emojiGap
+            + dotExtra
             + labelSize.width
             + deleteExtra
         let width = ceil(style.horizontalPadding * 2 + innerWidth)
@@ -82,7 +85,6 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         let isSelected = (attachment.flatMap { kEmotionAttachmentSelectionStates[ObjectIdentifier($0)] } ?? false)
 
         let fill = (isDeleteHovered || isSelected) ? style.fillColorHovered : style.fillColor
-        let stroke = (isDeleteHovered || isSelected) ? style.strokeColorHovered : style.strokeColor
 
         // 圆形胶囊
         let radius = style.cornerRadius > 0 ? style.cornerRadius : frame.height / 2
@@ -91,8 +93,30 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
                                 yRadius: radius)
         fill.setFill()
         path.fill()
-        stroke.setStroke()
-        path.lineWidth = isSelected ? 1.5 : 1.0
+
+        // 选中态：用情绪色描边 + 外圈 2px 彩环（对应设计稿 box-shadow 0 0 0 2px）；
+        // 其余状态为中性描边，emoji / 文字保持中性，整体维持「低彩噪」。
+        let mainStroke: NSColor
+        let mainLineWidth: CGFloat
+        if isSelected {
+            mainStroke = style.dotColor
+            mainLineWidth = 1.5
+        } else {
+            mainStroke = isDeleteHovered ? style.strokeColorHovered : style.strokeColor
+            mainLineWidth = 1.0
+        }
+
+        if isSelected {
+            let halo = NSBezierPath(roundedRect: frame.insetBy(dx: -1.5, dy: -1.5),
+                                    xRadius: radius + 1.5,
+                                    yRadius: radius + 1.5)
+            style.dotColor.withAlphaComponent(0.9).setStroke()
+            halo.lineWidth = 2.0
+            halo.stroke()
+        }
+
+        mainStroke.setStroke()
+        path.lineWidth = mainLineWidth
         if style.dashedBorder {
             // 拟声类（富语言）：虚线描边，和「语气」类的实线区分开
             path.setLineDash([3, 2.5], count: 2, phase: 0)
@@ -105,7 +129,7 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         // 计算 label 区域
         let emojiWidth: CGFloat = tokenEmoji.isEmpty
             ? 0
-            : (("\(tokenEmoji) " as NSString).size(withAttributes: [.font: style.emojiFont]).width)
+            : ((tokenEmoji as NSString).size(withAttributes: [.font: style.emojiFont]).width)
 
         let contentRect = NSRect(
             x: frame.minX + style.horizontalPadding,
@@ -116,10 +140,10 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
             height: frame.height
         )
 
-        // 绘制 emoji
+        // 绘制 emoji（中性色，情绪色交给下方色点）
         var cursorX = contentRect.minX
         if !tokenEmoji.isEmpty {
-            let emojiString = "\(tokenEmoji) " as NSString
+            let emojiString = tokenEmoji as NSString
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: style.emojiFont,
                 .foregroundColor: style.textColor
@@ -131,7 +155,19 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
                 width: size.width,
                 height: size.height
             ), withAttributes: attrs)
-            cursorX += emojiWidth + (emojiWidth > 0 ? style.emojiToLabelSpacing - 3 : 0)
+            cursorX += emojiWidth + (emojiWidth > 0 ? style.emojiToDotSpacing : 0)
+        }
+
+        // 绘制情绪色点（极简色点标签的核心：仅 8px 圆点承载情绪色，界面保持低彩噪）
+        if style.showColorDot {
+            let dotSize = style.colorDotDiameter
+            let dotRect = NSRect(x: cursorX,
+                                 y: frame.minY + (frame.height - dotSize) / 2,
+                                 width: dotSize,
+                                 height: dotSize)
+            style.dotColor.setFill()
+            NSBezierPath(ovalIn: dotRect).fill()
+            cursorX += dotSize + style.dotToLabelSpacing
         }
 
         // 绘制 label

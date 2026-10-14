@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EmotionTokenEditor · 替代方案对比</title>
+<style>
+  :root {
+    --c-amazed:   155,123,217;
+    --c-excited:  232,158,95;
+    --c-laughing: 240,180,95;
+    --c-sad:      107,139,201;
+    --c-serious:  154,160,171;
+    --c-sighing:  143,163,192;
+    --c-fast:     232,112,95;
+    --c-calm:     138,165,160;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background:#0E0F12; color:#F5F5F7;
+         padding:44px 24px 72px; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  header h1 { font-size:22px; font-weight:700; }
+  header .sub { display:inline-block; margin-left:8px; font-size:11px; font-weight:600;
+    padding:2px 8px; border-radius:999px; background:rgba(123,182,160,.16);
+    color:#7BB6A0; border:1px solid rgba(123,182,160,.42); vertical-align:2px; }
+  header p { margin-top:10px; font-size:13px; color:#A8ABB4; line-height:1.7; max-width:760px; }
+
+  .card { margin-top:24px; border-radius:16px; padding:18px 18px 16px;
+          border:1px solid rgba(255,255,255,.08); background:#15171B; }
+  .card .head { display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+  .card .head .n { font-size:12px; font-weight:700; color:#7BB6A0;
+    border:1px solid rgba(123,182,160,.4); border-radius:999px; padding:1px 8px; }
+  .card .head h2 { font-size:15px; font-weight:650; }
+  .card .tagline { font-size:12.5px; color:#A8ABB4; margin:4px 0 14px; line-height:1.6; }
+
+  .editor { border-radius:14px; padding:15px 16px; min-height:120px; font-size:15px;
+    line-height:1.95; background:#0E0F12; color:#F5F5F7;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+  .editor .meta { display:flex; justify-content:space-between; font-size:12px;
+    opacity:.5; margin-top:12px; }
+  .editor .meta kbd { font-family:var(--font); font-size:11px; font-weight:600;
+    padding:1px 6px; border-radius:6px; background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12); }
+
+  /* ===== 方案 A：情绪下划线（无胶囊框）===== */
+  .seg { cursor:pointer; user-select:none; }
+  .seg .badge { font-size:12px; margin-right:2px; opacity:.9; vertical-align:1px; }
+  .seg .txt { border-bottom:2px solid currentColor; padding-bottom:1px; }
+  .seg[data-c="amazed"]  { color: rgb(var(--c-amazed)); }
+  .seg[data-c="excited"] { color: rgb(var(--c-excited)); }
+  .seg[data-c="sad"]     { color: rgb(var(--c-sad)); }
+  .seg[data-c="serious"] { color: rgb(var(--c-serious)); }
+  .seg[data-c="laughing"]{ color: rgb(var(--c-laughing)); }
+  .seg[data-c="sighing"] { color: rgb(var(--c-sighing)); }
+  .seg .x { font-size:12px; font-weight:700; opacity:0; margin-left:2px;
+    border-radius:999px; width:14px; height:14px; line-height:14px; text-align:center; }
+  .seg:hover .x { opacity:.6; } .seg .x:hover { opacity:1; }
+  .seg.sel .txt { background: rgba(255,255,255,.1); border-radius:4px; }
+
+  /* ===== 方案 B：极简色点标签（低彩噪）===== */
+  .dot { display:inline-flex; align-items:center; gap:6px; border-radius:999px;
+    padding:3px 9px 3px 8px; font-size:13px; font-weight:500; line-height:1;
+    margin:0 1px; transform:translateY(1px); cursor:pointer; user-select:none;
+    background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+    color:#E8EAF0; transition: background .15s, box-shadow .15s; }
+  .dot i { width:8px; height:8px; border-radius:999px; display:inline-block;
+    background: rgb(var(--cc)); }
+  .dot[data-c="amazed"]  { --cc: var(--c-amazed); }
+  .dot[data-c="excited"] { --cc: var(--c-excited); }
+  .dot[data-c="sad"]     { --cc: var(--c-sad); }
+  .dot[data-c="serious"] { --cc: var(--c-serious); }
+  .dot[data-c="laughing"]{ --cc: var(--c-laughing); }
+  .dot[data-c="sighing"] { --cc: var(--c-sighing); }
+  .dot .x { font-size:12px; font-weight:700; opacity:0; margin-left:1px;
+    width:14px; height:14px; line-height:14px; text-align:center; }
+  .dot:hover { background: rgba(255,255,255,.09); } .dot:hover .x { opacity:.55; }
+  .dot .x:hover { opacity:1; }
+  .dot.sel { box-shadow:0 0 0 2px rgb(var(--cc)); border-color: rgb(var(--cc)); }
+
+  /* ===== 方案 C：纯文本 + 下方情绪时间轴 ===== */
+  .ribbon { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;
+    padding-top:14px; border-top:1px solid rgba(255,255,255,.08); }
+  .ribbon .rl { font-size:11px; color:#7C7F88; align-self:center; margin-right:4px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; border-radius:10px;
+    padding:5px 10px; font-size:12.5px; font-weight:500; cursor:pointer;
+    background: rgba(var(--rc),.14); border:1px solid rgba(var(--rc),.45);
+    color: rgb(var(--rc)); position:relative; }
+  .chip .ord { font-size:10px; opacity:.6; font-weight:700; }
+  .chip[data-c="amazed"]  { --rc: var(--c-amazed); }
+  .chip[data-c="excited"] { --rc: var(--c-excited); }
+  .chip[data-c="sad"]     { --rc: var(--c-sad); }
+  .chip[data-c="serious"] { --rc: var(--c-serious); }
+  .chip[data-c="laughing"]{ --rc: var(--c-laughing); }
+  .chip[data-c="sighing"] { --rc: var(--c-sighing); }
+  .chip .x { font-size:11px; font-weight:700; opacity:0; margin-left:1px;
+    width:14px; height:14px; line-height:14px; text-align:center; }
+  .chip:hover .x { opacity:.6; } .chip .x:hover { opacity:1; }
+  .chip.sel { box-shadow:0 0 0 2px rgb(var(--rc)); }
+
+  .note { margin-top:26px; font-size:12.5px; color:#9A9DA6; line-height:1.8;
+    border-left:2px solid rgba(123,182,160,.5); padding:4px 0 4px 14px; }
+  .note b { color:#C9CCD3; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>EmotionTokenEditor · 替代方案对比 <span class="sub">3 个方向</span></h1>
+    <p>第一版（内联彩色胶囊）是最直接的方案。下面是 3 个<strong>结构不同</strong>的替代方向，
+       同样遵循 Apple HIG + 真实情绪色板 + 明暗自适应。每个都可交互试用，挑一个我们落地。</p>
+  </header>
+
+  <!-- 方案 A -->
+  <div class="card">
+    <div class="head"><span class="n">A</span><h2>情绪下划线（无胶囊框）</h2></div>
+    <div class="tagline">文本保持自然流式，情绪以「彩色下划线 + 行内 emoji 标记」呈现，不破坏阅读节奏。最干净的「一般」感。</div>
+    <div class="editor">
+      今天的会议<span class="seg" data-c="amazed">😮<span class="txt">太顺利了，大家</span><span class="x">×</span></span>
+      <span class="seg" data-c="excited">⚡<span class="txt">兴奋得想</span><span class="x">×</span></span>
+      <span class="seg" data-c="laughing">😆<span class="txt">大笑，不过</span><span class="x">×</span></span>
+      <span class="seg" data-c="sad">😢<span class="txt">悲伤的是排期延期，</span><span class="x">×</span></span>
+      <span class="seg" data-c="serious">😐<span class="txt">严肃复盘一下。</span><span class="x">×</span></span>
+      <div class="meta"><span>点击片段选中 · 悬停 × 删除 · <kbd>⌫</kbd> 删除选中</span><span>142 字</span></div>
+    </div>
+  </div>
+
+  <!-- 方案 B -->
+  <div class="card">
+    <div class="head"><span class="n">B</span><h2>极简色点标签（低彩噪）</h2></div>
+    <div class="tagline">保留内联标签，但去掉整片彩色填充——只用一个 8px 情绪色点 + 中性文字。颜色降到「提示级」，界面最安静。</div>
+    <div class="editor">
+      今天的会议<span class="dot" data-c="amazed">😮<i></i>惊叹<span class="x">×</span></span>太顺利了，
+      大家<span class="dot" data-c="excited">⚡<i></i>兴奋<span class="x">×</span></span>得想
+      <span class="dot" data-c="laughing">😆<i></i>大笑<span class="x">×</span></span>，
+      不过<span class="dot" data-c="sad">😢<i></i>悲伤<span class="x">×</span></span>的是排期延期，
+      <span class="dot" data-c="serious">😐<i></i>严肃<span class="x">×</span></span>复盘一下。
+      <div class="meta"><span>点击标签选中 · 悬停 × 删除 · <kbd>⌫</kbd> 删除选中</span><span>142 字</span></div>
+    </div>
+  </div>
+
+  <!-- 方案 C -->
+  <div class="card">
+    <div class="head"><span class="n">C</span><h2>纯文本 + 下方情绪时间轴</h2></div>
+    <div class="tagline">上方是纯净文本域（情绪仅以细微 emoji 标记），下方一条「情绪时间轴」按出现顺序展示所有标签，便于总览 / 重排 / 删除。</div>
+    <div class="editor">
+      今天的会议😮太顺利了，大家⚡兴奋得想😆大笑，不过😢悲伤的是排期延期，😐严肃复盘一下。
+      <div class="meta"><span>纯文本输入 · 标签同步到下方时间轴</span><span>142 字</span></div>
+    </div>
+    <div class="ribbon">
+      <span class="rl">情绪序列</span>
+      <span class="chip" data-c="amazed"><span class="ord">1</span>😮 惊叹<span class="x">×</span></span>
+      <span class="chip" data-c="excited"><span class="ord">2</span>⚡ 兴奋<span class="x">×</span></span>
+      <span class="chip" data-c="laughing"><span class="ord">3</span>😆 大笑<span class="x">×</span></span>
+      <span class="chip" data-c="sad"><span class="ord">4</span>😢 悲伤<span class="x">×</span></span>
+      <span class="chip" data-c="serious"><span class="ord">5</span>😐 严肃<span class="x">×</span></span>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>怎么选</b><br>
+    · 想要<strong>最干净、阅读优先</strong> → <b>A 情绪下划线</b>（文本不被方框打断）。<br>
+    · 想要<strong>界面最安静、颜色仅作提示</strong> → <b>B 极简色点</b>。<br>
+    · 想要<strong>总览 + 易重排/删除</strong> → <b>C 情绪时间轴</b>（占空间，但结构最清晰）。<br>
+    · 若仍偏好<strong>最直接、情绪最强</strong> → 回到第一版内联彩色胶囊。<br>
+    三者删除交互一致：悬停 × 或选中 + <kbd>⌫</kbd>。确认后我再落地 SwiftUI。
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.editor, .ribbon').forEach(function(scope){
+    scope.addEventListener('click', function(e){
+      var x = e.target.closest('.x');
+      if (x) { var t = x.closest('[data-c],.seg,.dot,.chip'); if (t) t.remove(); e.stopPropagation(); return; }
+      var t = e.target.closest('.seg, .dot, .chip');
+      if (t) {
+        var sel = t.classList.contains('sel');
+        scope.querySelectorAll('.sel').forEach(function(s){ s.classList.remove('sel'); });
+        if (!sel) t.classList.add('sel');
+      }
+    });
+  });
+</script>
+</body>
+</html>

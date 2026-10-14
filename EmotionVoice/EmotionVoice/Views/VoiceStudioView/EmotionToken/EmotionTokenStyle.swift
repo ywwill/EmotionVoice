@@ -40,8 +40,17 @@ struct EmotionTokenStyle {
     var horizontalPadding: CGFloat = 8
     var verticalPadding: CGFloat = 2
 
-    /// Emoji 与 label 之间的间距
-    var emojiToLabelSpacing: CGFloat = 4
+    /// Emoji 与情绪色点之间的间距
+    var emojiToDotSpacing: CGFloat = 5
+
+    /// 情绪色点（8px）与 label 之间的间距
+    var dotToLabelSpacing: CGFloat = 6
+
+    /// 是否显示前置的「情绪色点」（极简色点标签的核心元素）
+    var showColorDot: Bool = true
+
+    /// 情绪色点直径
+    var colorDotDiameter: CGFloat = 8
 
     /// 删除按钮宽度
     var deleteButtonWidth: CGFloat = 14
@@ -54,19 +63,22 @@ struct EmotionTokenStyle {
 
     // MARK: - 颜色（绘制时由 identity + appearance 解析覆盖；这里只作兜底）
     //
-    // 这些兜底值沿用原有琥珀色，仅在 identity 缺失时生效，
-    // 不影响正常路径（正常路径走 `resolved(for:dark:)`）。
+    // 这些兜底值为中性灰（极简色点风格），仅在 identity 缺失时生效，
+    // 不影响正常路径（正常路径走 `resolved(for:dark:)`，其中只把情绪色落在 dotColor 上）。
 
-    /// 填充色（背景）
-    var fillColor: NSColor = NSColor(red: 0.95, green: 0.75, blue: 0.53, alpha: 0.18)
-    /// 描边色
-    var strokeColor: NSColor = NSColor(red: 0.95, green: 0.75, blue: 0.53, alpha: 0.55)
-    /// 文本颜色
-    var textColor: NSColor = NSColor(red: 0.95, green: 0.75, blue: 0.53, alpha: 1.0)
+    /// 填充色（背景）—— 兜底用中性深灰，真实路径由 resolved 按外观覆盖
+    var fillColor: NSColor = NSColor(white: 1.0, alpha: 0.05)
+    /// 描边色 —— 中性
+    var strokeColor: NSColor = NSColor(white: 1.0, alpha: 0.10)
+    /// 文本颜色 —— 中性（低彩噪：颜色只交给情绪色点）
+    var textColor: NSColor = NSColor(white: 0.92, alpha: 1.0)
 
     /// hover / 选中时的高亮填充色
-    var fillColorHovered: NSColor = NSColor(red: 0.95, green: 0.75, blue: 0.53, alpha: 0.28)
-    var strokeColorHovered: NSColor = NSColor(red: 0.95, green: 0.75, blue: 0.53, alpha: 0.85)
+    var fillColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.09)
+    var strokeColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.16)
+
+    /// 情绪色点颜色（极简色点标签的核心著色处）。默认沿用琥珀金兜底，真实路径由 resolved 按外观覆盖。
+    var dotColor: NSColor = fallbackBaseColor
 
     // MARK: - 几何
 
@@ -150,20 +162,21 @@ struct EmotionTokenStyle {
         s.dashedBorder = (identity.category == .richLanguage)
 
         if dark {
-            // 暗色背景：基础色本身已足够亮，直接做文本色，填充 / 描边用其低透明度版本。
-            s.textColor = base
-            s.fillColor = base.withAlphaComponent(0.18)
-            s.strokeColor = base.withAlphaComponent(0.55)
-            s.fillColorHovered = base.withAlphaComponent(0.30)
-            s.strokeColorHovered = base.withAlphaComponent(0.90)
+            // 极简色点（低彩噪）：胶囊本体走中性灰，颜色只落在 8px 情绪色点上。
+            s.textColor = NSColor(white: 0.92, alpha: 1.0)
+            s.fillColor = NSColor(white: 1.0, alpha: 0.05)
+            s.strokeColor = NSColor(white: 1.0, alpha: 0.10)
+            s.fillColorHovered = NSColor(white: 1.0, alpha: 0.09)
+            s.strokeColorHovered = NSColor(white: 1.0, alpha: 0.16)
+            s.dotColor = base
         } else {
-            // 亮色背景：把基础色压暗约 45% 作为文本色以保证可读性；
-            // 填充更通透，描边略淡。
-            s.textColor = base.darkened(by: 0.45)
-            s.fillColor = base.withAlphaComponent(0.14)
-            s.strokeColor = base.withAlphaComponent(0.42)
-            s.fillColorHovered = base.withAlphaComponent(0.24)
-            s.strokeColorHovered = base.withAlphaComponent(0.75)
+            // 亮色背景：中性深灰胶囊 + 略压暗的情绪色点，保证可读性。
+            s.textColor = NSColor(white: 0.18, alpha: 1.0)
+            s.fillColor = NSColor(white: 0.0, alpha: 0.04)
+            s.strokeColor = NSColor(white: 0.0, alpha: 0.10)
+            s.fillColorHovered = NSColor(white: 0.0, alpha: 0.07)
+            s.strokeColorHovered = NSColor(white: 0.0, alpha: 0.16)
+            s.dotColor = base.darkened(by: 0.12)
         }
         return s
     }
