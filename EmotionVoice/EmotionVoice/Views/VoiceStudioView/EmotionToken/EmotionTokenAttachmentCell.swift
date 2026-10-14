@@ -187,12 +187,13 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
             ), withAttributes: labelAttrs)
         }
 
-        // 删除按钮：仅在可编辑时显示；悬停 / 选中时高亮，否则淡显作弱提示
+        // 删除按钮：仅在可编辑时绘制。默认即清晰可见（不再依赖悬停才出现），
+        // 悬停 / 选中时再提亮为满色。
         let editable = (controlView as? NSTextView)?.isEditable ?? false
         if style.showsDeleteButton && editable {
             let deleteColor: NSColor = (isDeleteHovered || isSelected)
                 ? style.textColor
-                : style.textColor.withAlphaComponent(0.35)
+                : style.textColor.withAlphaComponent(0.55)
 
             let deleteAttrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 11, weight: .bold),
@@ -228,7 +229,7 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
                              in cellFrame: NSRect,
                              of controlView: NSView?,
                              untilMouseUp flag: Bool) -> Bool {
-        guard let view = controlView as? NSTextView,
+        guard let view = controlView as? EmotionTokenTextView,
               let storage = view.textStorage else {
             return false
         }
@@ -250,12 +251,8 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         if style.showsDeleteButton {
             let deleteRect = emotionTokenDeleteHitRect(for: cellFrame, style: style)
             if deleteRect.contains(locationInView) {
-                // 删整个 attachment
-                if view.shouldChangeText(in: range, replacementString: "") {
-                    storage.deleteCharacters(in: range)
-                    view.setSelectedRange(NSRange(location: range.location, length: 0))
-                    view.didChangeText()
-                }
+                // 删整个 attachment（连同前面的分隔空格，避免遗留 orphan / 双空格）
+                _ = view.removeToken(at: range)
                 return true
             }
         }

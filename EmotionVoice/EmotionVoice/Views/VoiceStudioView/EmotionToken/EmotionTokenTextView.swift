@@ -96,9 +96,9 @@ final class EmotionTokenTextView: NSTextView {
 
     // MARK: - Insert Token
 
-    /// 在当前光标位置插入一个 emotion token。
-    ///   * 如果光标前不是空白/换行/Token，自动补一个空格。
-    ///   * 如果有选中文本，把选中片段替换为 token。
+    /// 在当前光标位置插入一个 emotion token（不自动补前缀空格，
+    /// 是否留间隔完全由用户在普通文本里自行决定）。
+    /// 如果有选中文本，把选中片段替换为 token。
     @discardableResult
     func insertToken(_ token: EmotionToken) -> Bool {
         let attachment = EmotionTokenAttachment.makeAttachment(for: token)
@@ -119,32 +119,9 @@ final class EmotionTokenTextView: NSTextView {
         let range = selectedRange()
         let storage = textStorage
 
-        // 是否需要补前缀空格
-        var prefix = ""
-        let nsString = (storage?.string ?? "") as NSString
-        if range.length == 0 && range.location > 0 && range.location <= nsString.length {
-            let prevIndex = range.location - 1
-            let prev = nsString.substring(with: NSRange(location: prevIndex, length: 1))
-            // token 是 attachment，所以 storage[prevIndex] 一定是普通字符
-            if !prev.isEmpty && ![" ", "\n", "\t"].contains(prev) {
-                prefix = " "
-            }
-        }
-
-        let prefixAttr: NSAttributedString
-        if prefix.isEmpty {
-            prefixAttr = NSAttributedString()
-        } else {
-            prefixAttr = NSAttributedString(string: prefix, attributes: bodyAttrs)
-        }
-
-        let combined = NSMutableAttributedString()
-        combined.append(prefixAttr)
-        combined.append(attr)
-
-        guard shouldChangeText(in: range, replacementString: combined.string) else { return false }
-        storage?.replaceCharacters(in: range, with: combined)
-        let newLocation = range.location + combined.length
+        guard shouldChangeText(in: range, replacementString: attr.string) else { return false }
+        storage?.replaceCharacters(in: range, with: attr)
+        let newLocation = range.location + attr.length
         setSelectedRange(NSRange(location: newLocation, length: 0))
         typingAttributes = bodyAttrs
         didChangeText()
@@ -249,6 +226,21 @@ final class EmotionTokenTextView: NSTextView {
         didChangeText()
     }
 
+    // MARK: - 删除单个 token（统一入口）
+
+    /// 删除一个 emotion token 本身（不再吞前缀空格：
+    /// 因为 `insertToken` 已不再自动补空格，用户手动输入的空格应保留）。
+    /// 返回是否真正执行了删除。
+    @discardableResult
+    func removeToken(at range: NSRange) -> Bool {
+        guard let storage = textStorage else { return false }
+        guard shouldChangeText(in: range, replacementString: "") else { return false }
+        storage.deleteCharacters(in: range)
+        setSelectedRange(NSRange(location: range.location, length: 0))
+        didChangeText()
+        return true
+    }
+
     // MARK: - 删除逻辑（最关键的代码）
 
     /// 找到 attachment 在 storage 中的精确 range（length == 1）
@@ -313,10 +305,7 @@ final class EmotionTokenTextView: NSTextView {
            r.location < storage.length,
            let attrs = storage.attributes(at: r.location, effectiveRange: nil)[.attachment] as? NSTextAttachment,
            EmotionTokenAttachment.isEmotionToken(attrs) {
-            guard shouldChangeText(in: r, replacementString: "") else { return }
-            storage.deleteCharacters(in: r)
-            setSelectedRange(NSRange(location: r.location, length: 0))
-            didChangeText()
+            _ = removeToken(at: r)
             return
         }
 
@@ -334,10 +323,7 @@ final class EmotionTokenTextView: NSTextView {
 
         // 情况 4：cursor 之前那个字符是 attachment → 整体删除
         if let prevAttachmentRange = attachmentRange(at: r.location - 1) {
-            guard shouldChangeText(in: prevAttachmentRange, replacementString: "") else { return }
-            textStorage?.deleteCharacters(in: prevAttachmentRange)
-            setSelectedRange(NSRange(location: prevAttachmentRange.location, length: 0))
-            didChangeText()
+            _ = removeToken(at: prevAttachmentRange)
             return
         }
 
@@ -345,11 +331,7 @@ final class EmotionTokenTextView: NSTextView {
         if !strictAtomicDelete, let nearest = nearestTokenIndex(around: r.location, lookingBackward: true) {
             // 只在「最近 token 距离 ≤ 2」时吸附，避免误删（保险起见设为 1 即可：必须紧邻）
             if r.location - nearest == 1 {
-                let attachRange = NSRange(location: nearest, length: 1)
-                guard shouldChangeText(in: attachRange, replacementString: "") else { return }
-                textStorage?.deleteCharacters(in: attachRange)
-                setSelectedRange(NSRange(location: nearest, length: 0))
-                didChangeText()
+                _ = removeToken(at: NSRange(location: nearest, length: 1))
                 return
             }
         }
@@ -366,10 +348,7 @@ final class EmotionTokenTextView: NSTextView {
            r.location < storage.length,
            let attrs = storage.attributes(at: r.location, effectiveRange: nil)[.attachment] as? NSTextAttachment,
            EmotionTokenAttachment.isEmotionToken(attrs) {
-            guard shouldChangeText(in: r, replacementString: "") else { return }
-            storage.deleteCharacters(in: r)
-            setSelectedRange(NSRange(location: r.location, length: 0))
-            didChangeText()
+            _ = removeToken(at: r)
             return
         }
 
@@ -381,20 +360,13 @@ final class EmotionTokenTextView: NSTextView {
 
         // 情况 3：cursor 之后那个字符是 attachment → 整体删除
         if let nextAttachmentRange = attachmentRange(at: r.location) {
-            guard shouldChangeText(in: nextAttachmentRange, replacementString: "") else { return }
-            textStorage?.deleteCharacters(in: nextAttachmentRange)
-            setSelectedRange(NSRange(location: r.location, length: 0))
-            didChangeText()
+            _ = removeToken(at: nextAttachmentRange)
             return
         }
 
         if !strictAtomicDelete, let nearest = nearestTokenIndex(around: r.location, lookingBackward: false) {
             if nearest - r.location == 1 {
-                let attachRange = NSRange(location: nearest, length: 1)
-                guard shouldChangeText(in: attachRange, replacementString: "") else { return }
-                textStorage?.deleteCharacters(in: attachRange)
-                setSelectedRange(NSRange(location: r.location, length: 0))
-                didChangeText()
+                _ = removeToken(at: NSRange(location: nearest, length: 1))
                 return
             }
         }
