@@ -131,6 +131,7 @@ struct VoiceStudioView: View {
                 insertLabel: vm.insertTokenLabel,
                 insertEmoji: vm.insertTokenEmoji,
                 insertTokenEnglishTag: vm.insertTokenEnglishTag,
+                insertTokenCategory: vm.insertTokenCategory,
                 clearTrigger: vm.clearTokensTrigger,
                 textBinding: $vm.text,
                 // 生成弹窗期间让文本域彻底不可交互：不抢焦点、不注册 I-beam 光标区

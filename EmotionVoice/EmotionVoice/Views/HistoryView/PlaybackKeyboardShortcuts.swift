@@ -5,7 +5,7 @@
 //  播放快捷键（基于 sindresorhus/KeyboardShortcuts）
 //    空格          播放 / 暂停
 //    ← →          ∓ 5 秒
-//    ⇧← ⇧→        ∓ 15 秒
+//    ⌘← ⌘→        ∓ 15 秒
 //    Home / End   跳到开头 / 结尾
 //
 //  为什么换成 KeyboardShortcuts：
@@ -18,6 +18,10 @@
 //    · 输入框开始编辑 → 整体 disable，让空格 / 方向键回到文本控件
 //    · 编辑结束       → 再 enable 回来
 //  同理，没在播放时把 ←→ 也 disable，把方向键还给左侧列表做滚动 / 行导航。
+//
+//  另一层开关：热键是**全局**注册的，App 失活后照样会截走按键（包 README 写的就是 global），
+//  所以还要监听 NSApplication 激活 / 失活，失活时整体 disable，按键才不会泄漏到别的应用。
+//  换句话说：本 App 内任何焦点都能用，出了这个 App 一律不生效。
 //
 
 import SwiftUI
@@ -35,9 +39,9 @@ extension KeyboardShortcuts.Name {
     /// 前进 5 秒
     static let playbackForward5 = Self("playbackForward5", initial: Shortcut(.rightArrow))
     /// 后退 15 秒
-    static let playbackBackward15 = Self("playbackBackward15", initial: Shortcut(.leftArrow, modifiers: [.shift]))
+    static let playbackBackward15 = Self("playbackBackward15", initial: Shortcut(.leftArrow, modifiers: [.command]))
     /// 前进 15 秒
-    static let playbackForward15 = Self("playbackForward15", initial: Shortcut(.rightArrow, modifiers: [.shift]))
+    static let playbackForward15 = Self("playbackForward15", initial: Shortcut(.rightArrow, modifiers: [.command]))
     /// 跳到开头
     static let playbackToStart = Self("playbackToStart", initial: Shortcut(.home))
     /// 跳到结尾
@@ -82,12 +86,19 @@ final class PlaybackShortcutsController {
     private var hasActiveItem = false
     /// 焦点是否在可编辑文本里（搜索框、重命名…）
     private var isEditingText = false
+    /// App 是否在前台
+    ///
+    /// 这一层是**必须的**：Carbon 热键是全局注册的（包 README 也明确写了 global），
+    /// `GetEventDispatcherTarget()` 只决定"事件路由给谁"，并不会随 App 失活而取消注册。
+    /// 所以切到别的应用后按键照样被我们截走，会直接影响人家打字。
+    private var isAppActive: Bool = NSApp.isActive
 
     private var playingKeySink: AnyCancellable?
 
     private init() {
         registerHandlers()
         observeTextEditing()
+        observeAppActivation()
         // 面板还没出来，先别吞键盘；等 setActive 再按状态开
         KeyboardShortcuts.disable(PlaybackShortcut.all)
     }
@@ -130,6 +141,12 @@ final class PlaybackShortcutsController {
     // MARK: - 开关
 
     private func applyShortcutState() {
+        // App 不在前台：整体 disable，热键直接注销，按键还给别的应用
+        guard isAppActive else {
+            KeyboardShortcuts.disable(PlaybackShortcut.all)
+            return
+        }
+
         guard !isEditingText else {
             // 输入框里一律放行，让空格 / 方向键回到文本控件
             KeyboardShortcuts.disable(PlaybackShortcut.all)
@@ -199,6 +216,34 @@ final class PlaybackShortcutsController {
         }
     }
 
+    /// App 激活 / 失活 → 整体开关
+    ///
+    /// Carbon 热键不会因为 App 失活而停止，必须自己注销；
+    /// 否则切到别的应用时空格 / 方向键仍被截走，直接影响别的应用输入。
+    private func observeAppActivation() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isAppActive = true
+                self?.applyShortcutState()
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isAppActive = false
+                self?.applyShortcutState()
+            }
+        }
+    }
+
     // MARK: - 动作
 
     private func handleToggle() {
@@ -247,7 +292,7 @@ private struct PlaybackShortcutInstaller: ViewModifier {
 }
 
 extension View {
-    /// 播放面板可见期间把播放快捷键指向这里（空格 / ←→ / ⇧←→ / Home / End）
+    /// 播放面板可见期间把播放快捷键指向这里（空格 / ←→ / ⌘←→ / Home / End）
     func playbackKeyboardShortcuts(player: AudioPreviewPlayer, audio: AudioItem) -> some View {
         modifier(PlaybackShortcutInstaller(player: player, audio: audio))
     }

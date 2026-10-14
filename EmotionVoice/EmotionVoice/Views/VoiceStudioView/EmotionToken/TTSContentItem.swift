@@ -31,6 +31,7 @@ enum TTSContentItem: Codable, Equatable, Hashable {
         case content
         case emoji
         case englishTag
+        case category
     }
 
     enum ItemType: String, Codable {
@@ -49,7 +50,8 @@ enum TTSContentItem: Codable, Equatable, Hashable {
             let content = try container.decode(String.self, forKey: .content)
             let emoji = try container.decodeIfPresent(String.self, forKey: .emoji) ?? ""
             let englishTag = try container.decodeIfPresent(String.self, forKey: .englishTag) ?? content
-            self = .emotion(EmotionToken(label: content, emoji: emoji, englishTag: englishTag))
+            let category = try container.decodeIfPresent(EmotionCategory.self, forKey: .category) ?? .emotion
+            self = .emotion(EmotionToken(label: content, emoji: emoji, englishTag: englishTag, category: category))
         }
     }
 
@@ -64,6 +66,7 @@ enum TTSContentItem: Codable, Equatable, Hashable {
             try container.encode(token.label, forKey: .content)
             try container.encode(token.emoji, forKey: .emoji)
             try container.encode(token.englishTag, forKey: .englishTag)
+            try container.encode(token.category, forKey: .category)
         }
     }
 
@@ -93,6 +96,14 @@ enum TTSContentItem: Codable, Equatable, Hashable {
     var length: Int { (content as NSString).length }
 }
 
+/// 标签家族：决定 token 在编辑器里的视觉风格。
+///   - `.emotion`       语气 / 情感控制类（如 `[sad]` `[excited]`）— 实线描边
+///   - `.richLanguage`  富语言 / 拟声类（如 `[laughing]` `[sighing]`）— 虚线描边
+enum EmotionCategory: String, Codable, Equatable, Hashable {
+    case emotion
+    case richLanguage
+}
+
 /// 情感 Tag 的展示 + API 数据
 struct EmotionToken: Codable, Equatable, Hashable {
     /// 中文 label（显示用）
@@ -101,6 +112,18 @@ struct EmotionToken: Codable, Equatable, Hashable {
     let emoji: String
     /// 英文 tag（最终交给 TTS API）
     let englishTag: String
+    /// 标签家族（语气 / 拟声），驱动编辑器内的视觉风格
+    let category: EmotionCategory
+
+    init(label: String,
+         emoji: String = "",
+         englishTag: String? = nil,
+         category: EmotionCategory = .emotion) {
+        self.label = label
+        self.emoji = emoji
+        self.englishTag = englishTag ?? label
+        self.category = category
+    }
 
     /// 把内部的 `String` 形式包装为 token
     static func wrap(label: String, emoji: String = "", englishTag: String? = nil) -> EmotionToken {

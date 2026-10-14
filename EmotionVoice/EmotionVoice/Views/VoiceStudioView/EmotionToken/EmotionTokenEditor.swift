@@ -32,6 +32,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
     let insertLabel: String
     let insertEmoji: String
     let insertTokenEnglishTag: String
+    let insertTokenCategory: EmotionCategory
     let clearTrigger: Int
 
     /// 可选：纯文本 binding，编辑器内容变化时会同步更新。
@@ -51,6 +52,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
          insertLabel: String = "",
          insertEmoji: String = "",
          insertTokenEnglishTag: String = "",
+         insertTokenCategory: EmotionCategory = .emotion,
          clearTrigger: Int = 0,
          textBinding: Binding<String>? = nil,
          isInteractive: Bool = true) {
@@ -59,6 +61,7 @@ struct EmotionTokenEditor: NSViewRepresentable {
         self.insertLabel = insertLabel
         self.insertEmoji = insertEmoji
         self.insertTokenEnglishTag = insertTokenEnglishTag
+        self.insertTokenCategory = insertTokenCategory
         self.clearTrigger = clearTrigger
         self.textBinding = textBinding
         self.isInteractive = isInteractive
@@ -157,7 +160,8 @@ struct EmotionTokenEditor: NSViewRepresentable {
                 nsView.window?.makeFirstResponder(tokenView)
                 let token = EmotionToken(label: insertLabel,
                                          emoji: insertEmoji,
-                                         englishTag: insertTokenEnglishTag.isEmpty ? insertLabel : insertTokenEnglishTag)
+                                         englishTag: insertTokenEnglishTag.isEmpty ? insertLabel : insertTokenEnglishTag,
+                                         category: insertTokenCategory)
                 tokenView.insertToken(token)
             }
         }

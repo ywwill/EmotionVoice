@@ -64,3 +64,20 @@
 - 改代码前先对 HEAD 跑一次同样命令拿基线，再对比，避免被既有报错干扰
 - 已知既有问题：`CreditsService.swift` 有 4 条 Swift6 actor 隔离报错；
   `PackageCardView.swift` 是未加入 target 的孤儿文件，`CreditsPackage` 类型不存在
+
+## EmotionTokenEditor 标签 UI（2026-10-14 优化）
+- 插入的标签（EmotionToken）**按情感着色**：基础色来自 `EmotionTokenStyle.colorMap`
+  （英文 tag → NSColor，对齐 Constants 的 emotions/richLanguageTags 与 AppColor 情感色）；
+  未命中的 tag 走「确定性色相回退」`NSColor(hue:saturation:brightness:)`，色相由字符串哈希算出，**进程稳定**（不用 Swift 随机化 hash）。
+- **标签家族** `EmotionCategory`（emotion / richLanguage）贯穿：
+  `EmotionToken.category` → `EmotionTokenEditor.insertTokenCategory` → `EmotionTokenTextView`。
+  `richLanguage`（拟声类）用**虚线描边**与「语气类」实线区分。
+- **外观感知配色**：文件级 `nonisolated(unsafe) var kEmotionAttachmentIdentity`（基础色+家族），
+  绘制时由 `EmotionTokenStyle.resolved(for:dark:)` 结合 `controlView.effectiveAppearance`
+  实时解析出暗/亮两套配色，**解决了 README 里 light mode 待改进**（不再写死单一琥珀色）。
+- `EmotionTokenStyle.default` 只描述**几何**，绘制用 `resolved` 沿用其几何只覆盖颜色——保证 `cellSize()` 与 `drawPill()` 尺寸一致。
+- **× 删除按钮交互（第二波优化，已接入 hover tracking）**：
+  - 文件级 `nonisolated(unsafe) var kEmotionAttachmentHovered: NSTextAttachment?`（单例悬停指针，替代原未生效的 `kEmotionAttachmentDeleteHoverStates` 字典）。
+  - `EmotionTokenTextView` 在 `isEditable` 时加 `NSTrackingArea(.mouseMoved, .activeInActiveApp, .inVisibleRect)`，override `mouseMoved/mouseExited` 做命中测试（`textContainerOrigin` 修正坐标）+ 设 `kEmotionAttachmentHovered` + 指针手型光标（悬停 tag 用 pointingHand，否则 iBeam）。
+  - cell 行为：`×` **仅在可编辑时绘制**；悬停/选中时实心高亮，空闲时 alpha 0.35 弱提示；pill 在悬停/选中时抬升填充；选中态描边加粗到 1.5。只读（预览）场景不加追踪区、不画 ×，标签完全静止。
+- `EmotionTokenPayload` 已含 `category` 字段（Codable 默认 .emotion，向后兼容旧附件）。

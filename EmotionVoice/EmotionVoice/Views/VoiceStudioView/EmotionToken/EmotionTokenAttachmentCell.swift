@@ -69,16 +69,16 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
     // MARK: - 绘制
 
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
-        drawPill(in: cellFrame)
+        drawPill(in: cellFrame, controlView: controlView)
     }
 
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView?, characterIndex charIndex: Int) {
-        drawPill(in: cellFrame)
+        drawPill(in: cellFrame, controlView: controlView)
     }
 
-    private func drawPill(in frame: NSRect) {
-        let style = resolvedStyle
-        let isDeleteHovered = (attachment.flatMap { kEmotionAttachmentDeleteHoverStates[ObjectIdentifier($0)] } ?? false)
+    private func drawPill(in frame: NSRect, controlView: NSView?) {
+        let style = resolvedStyle(for: controlView)
+        let isDeleteHovered = (attachment.map { $0 === kEmotionAttachmentHovered } ?? false)
         let isSelected = (attachment.flatMap { kEmotionAttachmentSelectionStates[ObjectIdentifier($0)] } ?? false)
 
         let fill = (isDeleteHovered || isSelected) ? style.fillColorHovered : style.fillColor
@@ -92,8 +92,15 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         fill.setFill()
         path.fill()
         stroke.setStroke()
-        path.lineWidth = 0.5
-        path.stroke()
+        path.lineWidth = isSelected ? 1.5 : 1.0
+        if style.dashedBorder {
+            // 拟声类（富语言）：虚线描边，和「语气」类的实线区分开
+            path.setLineDash([3, 2.5], count: 2, phase: 0)
+            path.stroke()
+            path.setLineDash([], count: 0, phase: 0)
+        } else {
+            path.stroke()
+        }
 
         // 计算 label 区域
         let emojiWidth: CGFloat = tokenEmoji.isEmpty
@@ -144,12 +151,12 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
             ), withAttributes: labelAttrs)
         }
 
-        // 绘制 × 删除按钮（始终绘制，不依赖 hover）
-        if style.showsDeleteButton {
-            let isHovered = (attachment.flatMap { kEmotionAttachmentDeleteHoverStates[ObjectIdentifier($0)] } ?? false)
-            let deleteColor: NSColor = isHovered
+        // 删除按钮：仅在可编辑时显示；悬停 / 选中时高亮，否则淡显作弱提示
+        let editable = (controlView as? NSTextView)?.isEditable ?? false
+        if style.showsDeleteButton && editable {
+            let deleteColor: NSColor = (isDeleteHovered || isSelected)
                 ? style.textColor
-                : style.textColor.withAlphaComponent(0.7)
+                : style.textColor.withAlphaComponent(0.35)
 
             let deleteAttrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 11, weight: .bold),
@@ -167,9 +174,14 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         }
     }
 
-    private var resolvedStyle: EmotionTokenStyle {
+    /// 由 attachment 的身份 + 当前外观解析最终样式（几何沿用 .default）。
+    private func resolvedStyle(for view: NSView?) -> EmotionTokenStyle {
         guard let att = attachment else { return .default }
-        return kEmotionAttachmentStyles[ObjectIdentifier(att)] ?? .default
+        let identity = kEmotionAttachmentIdentity[ObjectIdentifier(att)]
+            ?? EmotionTokenIdentity(baseColor: EmotionTokenStyle.fallbackBaseColor, category: .emotion)
+        let appearance = view?.effectiveAppearance ?? NSApp.effectiveAppearance
+        return EmotionTokenStyle.resolved(for: identity,
+                                         dark: EmotionTokenStyle.isDarkAppearance(appearance))
     }
 
     // MARK: - Mouse tracking（让 × 按钮可点击）
@@ -185,7 +197,7 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
             return false
         }
         let locationInView = view.convert(event.locationInWindow, from: nil)
-        let style = resolvedStyle
+        let style = resolvedStyle(for: controlView)
 
         guard let target = self.attachment else { return false }
 

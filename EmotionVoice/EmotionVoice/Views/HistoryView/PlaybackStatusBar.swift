@@ -32,7 +32,7 @@ struct PlaybackStatusBar: View {
             HStack(spacing: 14) {
                 hint(caps: ["空格"], text: "播放 / 暂停")
                 hint(caps: ["←", "→"], text: "5 秒")
-                hint(caps: ["⇧", "←", "→"], text: "15 秒")
+                hint(caps: ["⌘", "←", "→"], text: "15 秒")
             }
         }
         .padding(.horizontal, 18)
@@ -57,15 +57,15 @@ struct PlaybackStatusBar: View {
 
     private var statusText: String {
         if player.isPlaying {
-            return "正在播放 · " + PlayerTextMetrics.formatRate(player.playbackRate)
+            return "正在播放".localized() + " · " + PlayerTextMetrics.formatRate(player.playbackRate)
         }
         if player.isPaused {
-            return "已暂停 · " + PlayerTextMetrics.formatTime(player.currentTime)
+            return "已暂停".localized() + " · " +  PlayerTextMetrics.formatTime(player.currentTime)
         }
         if player.isFinished {
-            return "播放结束"
+            return "播放结束".localized()
         }
-        return "已就绪"
+        return "已就绪".localized()
     }
 
     // MARK: - 快捷键提示
@@ -75,14 +75,14 @@ struct PlaybackStatusBar: View {
             HStack(spacing: 3) {
                 ForEach(caps, id: \.self) { keyCap($0) }
             }
-            Text(text)
+            Text(text.localized())
         }
         .font(.system(size: 11))
         .foregroundStyle(AppColor.textTertiary)
     }
 
     private func keyCap(_ label: String) -> some View {
-        Text(label)
+        Text(label.localized())
             .font(.system(size: 10, design: .monospaced))
             .foregroundStyle(AppColor.textSecondary)
             .padding(.horizontal, 5)

@@ -31,9 +31,6 @@ final class EmotionTokenTextView: NSTextView {
     ///   false = 宽松模式（默认）：自动把光标吸附到最近的 token 边界。
     var strictAtomicDelete: Bool = false
 
-    /// 当前 Token 样式。改样式后需要重绘所有 token。
-    var tokenStyle: EmotionTokenStyle = .default
-
     /// 当前可插入的 token 集合（用于点击 event 时识别「这种 token 是否合法」）。
     /// 不影响 export，导出时所有解析成功的 token 都会进入 TTSContentItem。
     var recognizedTokens: [EmotionToken] = []
@@ -84,6 +81,17 @@ final class EmotionTokenTextView: NSTextView {
         backgroundColor = .clear
         drawsBackground = false
         usesFindBar = true
+
+        // 悬停检测：仅在可编辑时开启，让 × 在鼠标移入 tag 时才高亮、并保持指针手型光标。
+        // 只读（预览）场景不加追踪区，tag 保持完全静止、不出现 ×。
+        // .inVisibleRect 让追踪区自动跟随滚动后的可见区域。
+        if isEditable {
+            let trackingArea = NSTrackingArea(rect: .zero,
+                                              options: [.mouseMoved, .activeInActiveApp, .inVisibleRect],
+                                              owner: self,
+                                              userInfo: nil)
+            addTrackingArea(trackingArea)
+        }
     }
 
     // MARK: - Insert Token
@@ -93,7 +101,7 @@ final class EmotionTokenTextView: NSTextView {
     ///   * 如果有选中文本，把选中片段替换为 token。
     @discardableResult
     func insertToken(_ token: EmotionToken) -> Bool {
-        let attachment = EmotionTokenAttachment.makeAttachment(for: token, style: tokenStyle)
+        let attachment = EmotionTokenAttachment.makeAttachment(for: token)
         // 标记位置（包括 attachment 自身）使用普通 body 风格属性，
         // 这样在 token 之后输入的字符仍是普通白色文字，而不是 pill 颜色。
         var bodyAttrs = typingAttributes
@@ -220,7 +228,7 @@ final class EmotionTokenTextView: NSTextView {
                     result.append(NSAttributedString(string: s, attributes: bodyAttrs))
                 }
             case .emotion(let token):
-                let attachment = EmotionTokenAttachment.makeAttachment(for: token, style: tokenStyle)
+                let attachment = EmotionTokenAttachment.makeAttachment(for: token)
                 let attr = NSMutableAttributedString(attachment: attachment)
                 attr.addAttributes(bodyAttrs, range: NSRange(location: 0, length: attr.length))
                 result.append(attr)
@@ -410,7 +418,7 @@ final class EmotionTokenTextView: NSTextView {
 
     private func refreshSelectionStates() {
         guard let storage = textStorage else { return }
-        let allAtt = Array(kEmotionAttachmentStyles.keys)
+        let allAtt = Array(kEmotionAttachmentIdentity.keys)
         // 重置所有 token 的选中态
         for id in allAtt {
             kEmotionAttachmentSelectionStates[id] = false
@@ -469,12 +477,17 @@ final class EmotionTokenTextView: NSTextView {
 
             if !(att.attachmentCell is EmotionTokenAttachmentCell) {
                 let cell = EmotionTokenAttachmentCell()
+                var identity: EmotionTokenIdentity?
                 if let token = EmotionTokenAttachment.parse(from: att) {
                     cell.tokenLabel = token.label
                     cell.tokenEmoji = token.emoji
+                    let base = EmotionTokenStyle.baseColor(for: token.englishTag.isEmpty ? token.label : token.englishTag)
+                    identity = EmotionTokenIdentity(baseColor: base, category: token.category)
                 }
                 att.attachmentCell = cell
-                kEmotionAttachmentStyles[ObjectIdentifier(att)] = tokenStyle
+                if let identity {
+                    kEmotionAttachmentIdentity[ObjectIdentifier(att)] = identity
+                }
                 didFix = true
             }
         }
@@ -484,5 +497,56 @@ final class EmotionTokenTextView: NSTextView {
             lm.invalidateDisplay(forCharacterRange: full)
             _ = tc
         }
+    }
+
+    // MARK: - 悬停 / 光标
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        let point = convert(event.locationInWindow, from: nil)
+        let target = attachment(at: point)
+        updateHover(to: target)
+        if target != nil {
+            NSCursor.pointingHand.set()
+        } else {
+            NSCursor.iBeam.set()
+        }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        updateHover(to: nil)
+        NSCursor.iBeam.set()
+    }
+
+    /// 悬停的 tag 变化时整视图重绘（与 selection 高亮共用 needsDisplay 机制，已验证可用）。
+    private func updateHover(to target: NSTextAttachment?) {
+        if target === kEmotionAttachmentHovered { return }
+        kEmotionAttachmentHovered = target
+        needsDisplay = true
+    }
+
+    /// 命中测试：返回 point 之下、且属于本编辑器的 emotion token attachment（没有则 nil）。
+    private func attachment(at point: NSPoint) -> NSTextAttachment? {
+        guard let storage = textStorage,
+              let lm = layoutManager,
+              let tc = textContainer else { return nil }
+        // 视图坐标 → text container 坐标（扣除 textContainerOrigin，与滚动无关）
+        let containerPoint = NSPoint(x: point.x - textContainerOrigin.x,
+                                    y: point.y - textContainerOrigin.y)
+        var found: NSTextAttachment?
+        storage.enumerateAttribute(.attachment,
+                                   in: NSRange(location: 0, length: storage.length),
+                                   options: []) { value, range, stop in
+            guard let att = value as? NSTextAttachment,
+                  EmotionTokenAttachment.isEmotionToken(att) else { return }
+            let glyphRange = lm.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            let rect = lm.boundingRect(forGlyphRange: glyphRange, in: tc)
+            if rect.contains(containerPoint) {
+                found = att
+                stop.pointee = true
+            }
+        }
+        return found
     }
 }

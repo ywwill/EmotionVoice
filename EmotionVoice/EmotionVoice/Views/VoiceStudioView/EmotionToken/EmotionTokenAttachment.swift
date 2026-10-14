@@ -25,11 +25,13 @@ private let kEmotionSentinelFilename = "emotionvoice.token"
 // 调用绘制 override。所有「cell 在绘制时需要的运行时状态」必须放在文件级，并用
 // nonisolated(unsafe) 修饰 —— 不能放在 cell 的 stored property 里。
 
-/// 每个 attachment 对应的样式（按对象身份 key）
-nonisolated(unsafe) var kEmotionAttachmentStyles: [ObjectIdentifier: EmotionTokenStyle] = [:]
+/// 每个 attachment 对应的「身份」（基础色 + 家族，按对象身份 key）。
+/// 真正的颜色在绘制时由 EmotionTokenStyle.resolved(for:dark:) 结合外观解析，
+/// 因此这里只存与外观无关的身份信息。
+nonisolated(unsafe) var kEmotionAttachmentIdentity: [ObjectIdentifier: EmotionTokenIdentity] = [:]
 
-/// 删除按钮 hover 状态（按对象身份 key）
-nonisolated(unsafe) var kEmotionAttachmentDeleteHoverStates: [ObjectIdentifier: Bool] = [:]
+/// 当前被指针悬停的 attachment（同一时刻最多一个）。cell 据此决定 × 是否高亮、pill 是否抬升。
+nonisolated(unsafe) var kEmotionAttachmentHovered: NSTextAttachment?
 
 /// 命中测试时是否处于 token 选中态（用于高亮）
 nonisolated(unsafe) var kEmotionAttachmentSelectionStates: [ObjectIdentifier: Bool] = [:]
@@ -52,7 +54,8 @@ final class EmotionTokenAttachment: NSTextAttachment {
         }
         return EmotionToken(label: payload.label,
                             emoji: payload.emoji,
-                            englishTag: payload.englishTag)
+                            englishTag: payload.englishTag,
+                            category: payload.category)
     }
 
     /// 判断某个 attachment 是不是 emotion token
@@ -63,9 +66,10 @@ final class EmotionTokenAttachment: NSTextAttachment {
             || fw.filename == kEmotionSentinelFilename
     }
 
-    /// 工厂方法：根据一个 EmotionToken + 样式，构造一个可以被插入 NSTextStorage 的 attachment
+    /// 工厂方法：根据一个 EmotionToken 构造可被插入 NSTextStorage 的 attachment。
+    /// 样式不在构造时写死，而是存「身份」（基础色 + 家族），绘制时结合外观实时解析。
     @MainActor
-    static func makeAttachment(for token: EmotionToken, style: EmotionTokenStyle = .default) -> NSTextAttachment {
+    static func makeAttachment(for token: EmotionToken) -> NSTextAttachment {
         let cell = EmotionTokenAttachmentCell()
         cell.tokenLabel = token.label
         cell.tokenEmoji = token.emoji
@@ -76,15 +80,18 @@ final class EmotionTokenAttachment: NSTextAttachment {
         // 把 token payload 写到 FileWrapper，sentinel 作 filename
         let payload = EmotionTokenPayload(label: token.label,
                                           emoji: token.emoji,
-                                          englishTag: token.englishTag)
+                                          englishTag: token.englishTag,
+                                          category: token.category)
         if let data = try? JSONEncoder().encode(payload) {
             let wrapper = FileWrapper(regularFileWithContents: data)
             wrapper.preferredFilename = kEmotionSentinelFilename
             attachment.fileWrapper = wrapper
         }
 
-        // 保存样式到文件级字典
-        kEmotionAttachmentStyles[ObjectIdentifier(attachment)] = style
+        // 保存身份到文件级字典（绘制时据此 + 外观解析颜色）
+        let base = EmotionTokenStyle.baseColor(for: token.englishTag.isEmpty ? token.label : token.englishTag)
+        kEmotionAttachmentIdentity[ObjectIdentifier(attachment)] =
+            EmotionTokenIdentity(baseColor: base, category: token.category)
         return attachment
     }
 }
@@ -95,4 +102,24 @@ private struct EmotionTokenPayload: Codable {
     let label: String
     let emoji: String
     let englishTag: String
+    let category: EmotionCategory
+
+    init(label: String, emoji: String, englishTag: String, category: EmotionCategory) {
+        self.label = label
+        self.emoji = emoji
+        self.englishTag = englishTag
+        self.category = category
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case label, emoji, englishTag, category
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        label = try c.decode(String.self, forKey: .label)
+        emoji = try c.decodeIfPresent(String.self, forKey: .emoji) ?? ""
+        englishTag = try c.decodeIfPresent(String.self, forKey: .englishTag) ?? label
+        category = try c.decodeIfPresent(EmotionCategory.self, forKey: .category) ?? .emotion
+    }
 }

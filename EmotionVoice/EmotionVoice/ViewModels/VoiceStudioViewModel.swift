@@ -119,6 +119,8 @@ final class VoiceStudioViewModel: ObservableObject {
     @Published var insertTokenLabel: String = ""
     @Published var insertTokenEmoji: String = ""
     @Published var insertTokenEnglishTag: String = ""
+    /// 本次插入 token 的家族（语气 / 拟声），供编辑器区分视觉风格
+    @Published var insertTokenCategory: EmotionCategory = .emotion
 
     /// 触发 EmotionTokenEditor 清空所有 token
     @Published var clearTokensTrigger: Int = 0
@@ -226,11 +228,13 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 在 EmotionTokenEditor 的光标位置插入情感标签。
     /// 触发 EmotionTokenEditor.updateNSView → insertToken(token)
     func insertEmotion(tag: String) {
-        let combined = Constants.emotions + Constants.richLanguageTags
-        guard let item = combined.first(where: { $0.tag == tag }) else { return }
+        let emotions = Constants.emotions
+        let rich = Constants.richLanguageTags
+        guard let item = (emotions + rich).first(where: { $0.tag == tag }) else { return }
         insertTokenLabel = item.label.localized()
         insertTokenEmoji = item.emoji
         insertTokenEnglishTag = item.tag
+        insertTokenCategory = rich.contains(where: { $0.tag == tag }) ? .richLanguage : .emotion
         insertTokenTrigger &+= 1
     }
 
@@ -272,9 +276,11 @@ final class VoiceStudioViewModel: ObservableObject {
 
             if let emotionItem = (Constants.emotions + Constants.richLanguageTags)
                 .first(where: { $0.label == label || $0.tag == label }) {
+                let isRich = Constants.richLanguageTags.contains(where: { $0.label == label || $0.tag == label })
                 let token = EmotionToken(label: emotionItem.label,
                                         emoji: emotionItem.emoji,
-                                        englishTag: emotionItem.tag)
+                                        englishTag: emotionItem.tag,
+                                        category: isRich ? .richLanguage : .emotion)
                 items.append(.emotion(token))
             } else {
                 // 未识别的标签，保留为普通文本

@@ -20,6 +20,9 @@ struct HistoryView: View {
     @State private var isSelectionMode: Bool = false
     @State private var selectedAudioIds: Set<Int64> = []
 
+    /// 左右两栏头部统一高度
+    private let panelHeaderHeight: CGFloat = 40
+
     var body: some View {
         HStack(spacing: 0) {
             // 左侧音频列表
@@ -80,7 +83,7 @@ struct HistoryView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
-            .frame(height: 40)
+            .frame(height: panelHeaderHeight)
             .padding(.horizontal, 20)
             .overlay(alignment: .bottom) {
                 Divider().background(AppColor.borderSubtle)
@@ -261,6 +264,8 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             // 工具栏
             HStack(spacing: 12) {
+                Spacer()
+                
                 // 导出按钮
                 if viewModel.selectedAudio != nil && !isSelectionMode {
                     Button {
@@ -294,11 +299,9 @@ struct HistoryView: View {
                     .pointingHandCursor()
                     .help("导出音频")
                 }
-
-                Spacer()
             }
             .padding(.horizontal, 22)
-            .frame(height: 48)
+            .frame(height: panelHeaderHeight)
             .background(Color(hex: 0x15171B).opacity(0.5))
             .overlay(alignment: .bottom) {
                 Divider().background(AppColor.borderSubtle)
