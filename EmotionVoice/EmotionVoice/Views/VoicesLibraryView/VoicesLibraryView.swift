@@ -46,9 +46,13 @@ struct VoicesLibraryView: View {
     @State private var lastSearchText: String = ""
     // 音色列表入场动画状态
     @State private var voicesAppear: Bool = false
+    /// 首屏异步加载任务（视图消失时取消，避免回调到已销毁的 VM）
+    @State private var loadTask: Task<Void, Never>?
 
     // 每行 3 个音色的目标行数
     private static let rowsPerPage: Int = 4
+    /// 骨架屏占位卡片数：4 行 × 5 列 = 20（与首屏 pageSize 形状一致）
+    private static let skeletonCount: Int = rowsPerPage * 5
     // 卡片最小宽度 + 间距（与下方 GridItem 保持一致）
     private static let cardMinWidth: CGFloat = 220
     private static let gridSpacing: CGFloat = 14
@@ -93,12 +97,26 @@ struct VoicesLibraryView: View {
             withAnimation(.easeOut(duration: 0.4)) {
                 voicesAppear = true
             }
+            // 先让骨架屏（isLoading）随首帧绘制上屏，再异步发起真实数据加载，
+            // 避免一次性同步查询（全表 + 逐分类 count）阻塞首帧导致卡顿。
+            // 同时消除了 init 与 onAppear 各加载一次的重复开销。
+            loadTask?.cancel()
+            loadTask = Task { @MainActor in
+                // 关键：先让出主线程，确保「骨架屏」这一帧已被 Core Animation 提交到屏幕。
+                // 否则 load() 的同步重查询会在同一 runloop 迭代内把 isLoading 置回 false，
+                // 骨架屏在绘制上屏前就被真实网格覆盖，用户完全看不到骨架。
+                await Task.yield()
+                vm.load()
+            }
         }
         .onChange(of: appState.voices) { _, _ in
             // 收藏等操作触发 appState.voices 变化时，仅刷新当前页
             vm.reloadCurrentPage()
         }
         .onDisappear {
+            // 取消尚未完成的首屏加载任务，避免回调到已释放的 VM
+            loadTask?.cancel()
+            loadTask = nil
             // 仅左侧菜单入口才把筛选 / 页码写回 AppState；
             // sheet 入口只做临时「更换音色」，不应改写库的持久筛选状态
             if entry == .menu {
@@ -119,7 +137,18 @@ struct VoicesLibraryView: View {
 
     @ViewBuilder
     private var content: some View {
-        if vm.isEmpty {
+        if vm.isLoading {
+            // 骨架屏：先上屏，等 load() 完成（isLoading = false）再切换到真实网格
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .id("library-top")
+
+                    skeletonGrid
+                }
+            }
+        } else if vm.isEmpty {
             ScrollView {
                 emptyState.padding(20)
             }
@@ -207,18 +236,36 @@ struct VoicesLibraryView: View {
                     .animation(.easeOut(duration: 0.2), value: voice.key)
                 }
             }
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear { updatePageSize(availableWidth: geo.size.width) }
-                        .onChange(of: geo.size.width) { _, newWidth in
-                            updatePageSize(availableWidth: newWidth)
-                        }
-                }
-            )
+            .background(gridWidthTracker)
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
+    }
+
+    /// 骨架屏网格：与真实网格同形状（4 行 × 5 列自适应），先占位再被真实数据替换。
+    private var skeletonGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.adaptive(minimum: Self.cardMinWidth, maximum: 320), spacing: Self.gridSpacing)
+            ],
+            spacing: Self.gridSpacing
+        ) {
+            ForEach(0..<Self.skeletonCount, id: \.self) { _ in
+                VoiceCardSkeleton()
+            }
+        }
+        .background(gridWidthTracker)
+    }
+
+    /// 网格可用宽度测量（骨架与真实网格共用），用于确定列数 → pageSize。
+    private var gridWidthTracker: some View {
+        GeometryReader { geo in
+            Color.clear
+                .onAppear { updatePageSize(availableWidth: geo.size.width) }
+                .onChange(of: geo.size.width) { _, newWidth in
+                    updatePageSize(availableWidth: newWidth)
+                }
+        }
     }
 
     // MARK: - 分页栏

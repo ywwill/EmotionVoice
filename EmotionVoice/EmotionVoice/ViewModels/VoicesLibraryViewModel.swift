@@ -39,6 +39,9 @@ final class VoicesLibraryViewModel: ObservableObject {
     @Published private(set) var displayedVoices: [Voice] = []
     /// 当前结果是否为空（不区分页码）
     @Published private(set) var isEmpty: Bool = true
+    /// 首屏是否仍在加载：用于驱动骨架屏。初始为 true，
+    /// 视图 onAppear 后再异步发起 load()，确保骨架先上屏、避免一次性同步查询阻塞首帧。
+    @Published private(set) var isLoading: Bool = true
     /// sheet 进入并成功定位到选中音色后，发出待滚动到的音色 key（视图据此 scrollTo）
     @Published private(set) var scrollTargetVoiceKey: String? = nil
 
@@ -85,8 +88,10 @@ final class VoicesLibraryViewModel: ObservableObject {
         self.showFavoritesOnly = showFavoritesOnly
         self.currentPage = currentPage
 
-        // 首次加载
-        reloadCurrentPage()
+        // 不在 init 里同步加载：全表过滤 + 排序 + 逐分类 count（约 17 次查询）
+        // 会阻塞主线程导致首屏卡顿。改为由视图 onAppear 后的 load() 异步触发，
+        // 期间 isLoading 为 true，视图先绘制骨架屏。
+        isLoading = true
     }
 
     /// 从 AppState 同步最新状态（当视图重新出现时调用）
@@ -100,7 +105,7 @@ final class VoicesLibraryViewModel: ObservableObject {
         self.searchText = searchText
         self.showFavoritesOnly = showFavoritesOnly
         self.currentPage = currentPage
-        reloadCurrentPage()
+        // 仅设置参数，不在此加载；实际加载统一交给 load()
     }
 
     // MARK: - 分页操作
@@ -124,7 +129,11 @@ final class VoicesLibraryViewModel: ObservableObject {
         pageSize = new
         totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
         if currentPage > totalPages { currentPage = totalPages }
-        reloadCurrentPage()
+        // 首屏骨架阶段（isLoading）只确定列数，不做实际查询；
+        // 真正的取数统一在 load() 里完成，避免骨架期间被提前/重复触发。
+        if !isLoading {
+            reloadCurrentPage()
+        }
     }
 
     /// 由视图在测得**最终** pageSize 后调用：设定 pageSize，并在有待定位音色时翻到对应页。
@@ -132,7 +141,10 @@ final class VoicesLibraryViewModel: ObservableObject {
     func commitPageSize(_ size: Int) {
         setPageSize(size)
         pageSizeFinalized = true
-        finalizePendingJump()
+        // 骨架阶段尚未取数，跳过定位；load() 完成后再做 finalizePendingJump
+        if !isLoading {
+            finalizePendingJump()
+        }
     }
 
     /// sheet 进入：重置筛选为「全部」（保证选中音色一定在结果集内），
@@ -144,8 +156,7 @@ final class VoicesLibraryViewModel: ObservableObject {
         showFavoritesOnly = false
         currentPage = 1
         lastQueryKey = ""   // 强制重算有序列表（全部、无筛选）
-        reloadCurrentPage() // 填充 cachedOrderedKeys
-        finalizePendingJump() // 若 pageSize 已确定则立即定位；否则等 commitPageSize
+        // 不在此加载；填充 cachedOrderedKeys 与定位交由 load() 完成
     }
 
     /// 在有序列表中定位待定位音色并翻页（仅当 pageSize 已确定且存在待定位项时生效）
@@ -167,6 +178,15 @@ final class VoicesLibraryViewModel: ObservableObject {
     }
 
     // MARK: - 数据加载
+
+    /// 首屏加载入口：在视图 onAppear 后**异步**调用（通过 Task 让骨架屏先绘制）。
+    /// 统一完成「填充有序 key 列表 + chip 计数 + 取当前页」，
+    /// 随后置 isLoading = false 由视图切到真实网格，避免重复加载与首帧阻塞。
+    func load() {
+        reloadCurrentPage()
+        finalizePendingJump()
+        isLoading = false
+    }
 
     /// 重新加载当前页：
     /// - 查询签名（分类 / 搜索 / 收藏）变化时才重查「完整有序结果 + 总数 + chip 计数」并缓存

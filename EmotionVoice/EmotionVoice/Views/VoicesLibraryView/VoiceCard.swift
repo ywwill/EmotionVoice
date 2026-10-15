@@ -335,3 +335,107 @@ private struct PlayingWaveBar: View {
             }
     }
 }
+
+// MARK: - 骨架屏卡片
+
+/// 单块占位（灰底圆角矩形）；宽度传 nil 时按容器宽度自适应（用于整行描述条）。
+private struct SkeletonBlock: View {
+    var width: CGFloat?
+    var height: CGFloat
+    var radius: CGFloat = 4
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius)
+            .fill(AppColor.bgTertiary)
+            .frame(width: width, height: height)
+    }
+}
+
+/// 音色卡片骨架：形状 / 尺寸与 VoiceCard 对齐，覆盖一层扫光动画，
+/// 在真实数据 load 完成前占位，消除首屏空白与卡顿观感。
+struct VoiceCardSkeleton: View {
+    /// 扫光相位：从 -0.6 平移到 1.6，形成一次完整的横向扫过。
+    @State private var shimmerPhase: CGFloat = -0.6
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // 头部：头像 + 右上角两行元信息
+            HStack(alignment: .top) {
+                SkeletonBlock(width: 40, height: 40, radius: 20)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 6) {
+                    SkeletonBlock(width: 56, height: 12)
+                    SkeletonBlock(width: 72, height: 12)
+                }
+            }
+
+            // 名称
+            SkeletonBlock(width: 110, height: 14)
+
+            // 描述（两行）
+            VStack(alignment: .leading, spacing: 5) {
+                SkeletonBlock(width: nil, height: 10)
+                SkeletonBlock(width: 130, height: 10)
+            }
+
+            Spacer(minLength: 0)
+
+            // 操作行：预览 / 收藏 / 使用
+            HStack(spacing: 6) {
+                SkeletonBlock(width: 32, height: 26, radius: 6)
+                SkeletonBlock(width: 32, height: 26, radius: 6)
+                Spacer()
+                SkeletonBlock(width: 28, height: 28, radius: 14)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [
+                    AppColor.bgSecondary,
+                    AppColor.accentPrimary.opacity(0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .overlay(shimmerOverlay)
+    }
+
+    /// 横向扫光：一条半透明高光带在卡片内平移，blendMode .screen 在暗色背景上更自然。
+    private var shimmerOverlay: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0),
+                            Color.white.opacity(0.12),
+                            Color.white.opacity(0)
+                        ],
+                        startPoint: .init(x: 0, y: 0),
+                        endPoint: .init(x: 1, y: 0)
+                    )
+                )
+                .frame(width: w * 0.5)
+                .offset(x: shimmerPhase * w)
+                .blendMode(.screen)
+                .animation(
+                    .linear(duration: 1.3).repeatForever(autoreverses: false),
+                    value: shimmerPhase
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+        .allowsHitTesting(false)
+        .onAppear {
+            shimmerPhase = 1.6
+        }
+    }
+}
