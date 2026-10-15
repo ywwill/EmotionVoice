@@ -13,6 +13,8 @@ struct CreditsView: View {
 
     @EnvironmentObject var appState: AppState
     @StateObject private var storeManager = StoreKitManager.shared
+    /// StoreKit 购买动作，自带 UI 上下文，确认弹窗会贴着当前视图显示
+    @Environment(\.purchase) private var purchaseAction
     
     // 分页状态
     @State private var currentPage: Int = 1
@@ -24,11 +26,17 @@ struct CreditsView: View {
         totalPages: 1
     )
     
-    // 监听购买状态
-    @State private var lastPurchaseState: PurchaseState = .idle
-    
+    // 购买结果提示（成功 / 失败 / 取消）
+    @State private var purchaseFeedback: PurchaseFeedback?
+    @State private var feedbackHideTask: Task<Void, Never>?
+
     // 计费规则弹窗
     @State private var showCreditRulePopover = false
+
+    /// 是否有任意一笔购买正在进行中（用于锁住其余套餐）
+    private var isPurchaseInProgress: Bool {
+        storeManager.purchasingProductId != nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -42,10 +50,94 @@ struct CreditsView: View {
             }
         }
         .onAppear { reload() }
+        .onDisappear { feedbackHideTask?.cancel() }
         .onChange(of: storeManager.purchaseState) { _, newState in
-            // 购买成功后刷新积分记录
-            if case .success = newState {
-                reload()
+            handlePurchaseState(newState)
+        }
+        // 购买结果用浮层 toast 提示，从顶部往下弹出，不占据内容区布局
+        .overlay(alignment: .top) {
+            if let feedback = purchaseFeedback {
+                purchaseToast(feedback)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(10)
+            }
+        }
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: purchaseFeedback?.text)
+    }
+
+    // MARK: - 购买状态
+
+    /// 购买状态 → 视觉反馈：按钮转圈 + 其余卡片蒙版由 isPurchasing/isBlocked 驱动，
+    /// 这里只负责结果提示条与数据刷新
+    private func handlePurchaseState(_ state: PurchaseState) {
+        switch state {
+        case .idle, .loading:
+            clearFeedback()
+
+        case .purchasing:
+            // 新一轮开始，立刻清掉上一条提示
+            clearFeedback()
+
+        case .success(let credits):
+            reload()
+            showFeedback(
+                credits > 0
+                    ? PurchaseFeedback(kind: .success, text: "已到账 %d 积分".localized(credits))
+                    : PurchaseFeedback(kind: .success, text: "购买已完成".localized())
+            )
+
+        case .failed(let message):
+            if message == StoreError.userCancelled.localizedDescription {
+                showFeedback(PurchaseFeedback(kind: .info, text: "已取消购买".localized()))
+            } else if message == StoreError.pending.localizedDescription {
+                showFeedback(PurchaseFeedback(kind: .info, text: "等待确认，到账后自动发放".localized()))
+            } else {
+                showFeedback(PurchaseFeedback(kind: .error, text: "购买失败".localized() + "：\(message)"))
+            }
+        }
+    }
+
+    private func showFeedback(_ feedback: PurchaseFeedback) {
+        feedbackHideTask?.cancel()
+        withAnimation(.easeOut(duration: 0.18)) {
+            purchaseFeedback = feedback
+        }
+        // 成功/提示 4 秒后自动消失，失败留久一点给用户看清原因
+        let delay: UInt64 = feedback.kind == .error ? 8 : 4
+        feedbackHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                self.purchaseFeedback = nil
+            }
+        }
+    }
+
+    private func clearFeedback() {
+        feedbackHideTask?.cancel()
+        feedbackHideTask = nil
+        purchaseFeedback = nil
+    }
+
+    /// 购买结果提示模型
+    private struct PurchaseFeedback: Equatable {
+        enum Kind { case success, error, info }
+        let kind: Kind
+        let text: String
+
+        var tint: Color {
+            switch kind {
+            case .success: return AppColor.statusSuccess
+            case .error:   return AppColor.statusError
+            case .info:    return AppColor.textSecondary
+            }
+        }
+
+        var iconName: String {
+            switch kind {
+            case .success: return "checkmark.circle.fill"
+            case .error:   return "exclamationmark.triangle.fill"
+            case .info:    return "info.circle.fill"
             }
         }
     }
@@ -185,12 +277,43 @@ struct CreditsView: View {
         }
     }
 
+    /// 顶部浮层 toast：从顶部往下弹出，悬浮在内容之上，不参与布局计算，出现/消失都不会顶动套餐区
+    private func purchaseToast(_ feedback: PurchaseFeedback) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: feedback.iconName)
+                .font(.system(size: 13))
+            Text(feedback.text)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+        }
+        .foregroundStyle(feedback.tint)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(AppColor.bgElevated)
+                .shadow(color: .black.opacity(0.35), radius: 16, x: 0, y: 6)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .stroke(feedback.tint.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.top, 24)
+        .allowsHitTesting(false)
+    }
+
     private var productCards: some View {
         HStack(spacing: 12) {
             ForEach(storeManager.products, id: \.id) { product in
-                ProductCardView(product: product, creditProduct: CreditProduct(rawValue: product.id)) {
+                ProductCardView(
+                    product: product,
+                    creditProduct: CreditProduct(rawValue: product.id),
+                    isPurchasing: storeManager.purchasingProductId == product.id,
+                    isBlocked: isPurchaseInProgress
+                ) {
                     Task {
-                        await storeManager.purchase(product)
+                        await storeManager.purchase(product, confirmWith: purchaseAction)
                     }
                 }
             }

@@ -52,7 +52,7 @@ struct VoiceStudioView: View {
             }
         .sheet(isPresented: $showCreditsPurchaseSheet) {
             CreditsPurchaseView()
-                .frame(width: 500, height: 620)
+                .frame(width: 600, height: 600)
         }
         .alert(item: $vm.alertItem) { item in
             Alert(

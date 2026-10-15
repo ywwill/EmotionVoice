@@ -15,8 +15,15 @@ struct CreditsPurchaseView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var storeManager = StoreKitManager.shared
     @Environment(\.dismiss) private var dismiss
+    /// StoreKit 购买动作，自带 UI 上下文，确认弹窗会贴着当前视图显示
+    @Environment(\.purchase) private var purchaseAction
     
     @State private var appearAnimation = false
+
+    /// 是否有任意一笔购买正在进行中（用于锁住其他套餐）
+    private var isPurchaseInProgress: Bool {
+        storeManager.purchasingProductId != nil
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -145,11 +152,27 @@ struct CreditsPurchaseView: View {
     private var packagesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             // 简洁标题
-            Text("选择套餐")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(AppColor.textTertiary)
-                .textCase(.uppercase)
-                .tracking(0.1)
+            HStack(spacing: 8) {
+                Text("选择套餐")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppColor.textTertiary)
+                    .textCase(.uppercase)
+                    .tracking(0.1)
+
+                Spacer()
+
+                if isPurchaseInProgress {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("处理中…")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(AppColor.textTertiary)
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.15), value: isPurchaseInProgress)
 
             if storeManager.isLoading {
                 skeletonProductCards
@@ -163,15 +186,16 @@ struct CreditsPurchaseView: View {
 
     private var productCards: some View {
         VStack(spacing: 10) {
-            ForEach(Array(storeManager.products.enumerated()), id: \.element.id) { index, product in
+            ForEach(storeManager.products, id: \.id) { product in
                 PurchaseProductRow(
                     product: product,
                     creditProduct: CreditProduct(rawValue: product.id),
                     isHighlighted: CreditProduct(rawValue: product.id)?.isRecommended == true,
-                    isPurchasing: storeManager.purchasingProductId == product.id
+                    isPurchasing: storeManager.purchasingProductId == product.id,
+                    isBlocked: isPurchaseInProgress
                 ) {
                     Task {
-                        await storeManager.purchase(product)
+                        await storeManager.purchase(product, confirmWith: purchaseAction)
                     }
                 }
                 .transition(.asymmetric(
@@ -215,40 +239,55 @@ struct PurchaseProductRow: View {
     let creditProduct: CreditProduct?
     let isHighlighted: Bool
     let isPurchasing: Bool
+    /// 有别的套餐正在购买中 —— 本行需被蒙版锁住
+    var isBlocked: Bool = false
     let onPurchase: () -> Void
     
     @State private var isHovered = false
 
+    /// 本行是否被蒙版遮住（别的套餐在买）
+    private var isMasked: Bool { isBlocked && !isPurchasing }
+
+    /// 按钮是否不可点：商品未加载 / 本行在买 / 别的行在买
+    private var isButtonDisabled: Bool { product == nil || isPurchasing || isMasked }
+
     var body: some View {
         HStack(spacing: 16) {
-            // 积分图标 - 纯色背景
+            // 积分图标 - 低饱和柔光底 + 细描边，避免大面积高亮刺眼
             ZStack {
                 Circle()
-                    .fill(iconColor)
+                    .fill(iconTint.opacity(0.14))
                     .frame(width: 44, height: 44)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(iconTint.opacity(0.24), lineWidth: 1)
+                    )
 
                 Text(emoji)
                     .font(.system(size: 18))
+                    .opacity(0.92)
             }
 
             // 信息
+            // 「推荐」徽章与积分同一行：若单独占一行，非推荐行虽为空但仍吃 VStack spacing，
+            // 会导致各行高度不一致
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     if isHighlighted {
                         Text("推荐")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppColor.accentPrimary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
                             .background(AppColor.accentPrimary.opacity(0.15))
                             .clipShape(Capsule())
+                            .fixedSize()
                     }
-                }
 
-                HStack(spacing: 6) {
-                    Text("\(creditProduct?.creditsAmount ?? 0) 积分")
+                    Text("\(creditProduct?.creditsAmount ?? 0) " + "积分".localized())
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppColor.accentGlow)
+                        .fixedSize()
                     
                     Text("·")
                         .foregroundStyle(AppColor.textTertiary)
@@ -256,7 +295,9 @@ struct PurchaseProductRow: View {
                     Text(productDescription)
                         .font(AppFont.caption)
                         .foregroundStyle(AppColor.textSecondary)
+                        .lineLimit(1)
                 }
+                .frame(height: 20)
                 
                 // 价格放在这里
                 Text(product?.displayPrice ?? "...")
@@ -281,16 +322,20 @@ struct PurchaseProductRow: View {
                             .font(.system(size: 12, weight: .semibold))
                     }
                 }
-                .frame(width: 72)
-                .padding(.vertical, 8)
+                // 内容尺寸恒定：spinner 与文字固有高度不同，不钉死会在点击瞬间撑高按钮
+                .frame(width: 72, height: 18)
+                // 按钮整体高度恒定（原来靠 padding 撑，文字换成 spinner 后会变）
+                .frame(height: 34)
                 .background(isHighlighted ? AppColor.accentPrimary : AppColor.bgTertiary)
                 .foregroundStyle(isHighlighted ? .white : AppColor.textPrimary)
                 .clipShape(Capsule())
             }
             .buttonStyle(PurchaseButtonStyle())
-            .disabled(product == nil || isPurchasing)
+            .disabled(isButtonDisabled)
         }
         .padding(16)
+        // 等高兜底：所有套餐行保持同一高度，不受有无「推荐」徽章、文案长短影响
+        .frame(minHeight: 76)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.large)
                 .fill(isHighlighted ? AppColor.accentPrimary.opacity(0.08) : AppColor.bgSecondary)
@@ -303,8 +348,19 @@ struct PurchaseProductRow: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+        // 购买中：给其余套餐盖一层蒙版，既Dim 视觉也吃掉点击
+        .overlay {
+            if isMasked {
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .fill(AppColor.bgPrimary.opacity(0.55))
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(true)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isMasked)
         .onHover { hovering in
-            isHovered = hovering
+            isHovered = isBlocked ? false : hovering
         }
     }
 
@@ -317,10 +373,10 @@ struct PurchaseProductRow: View {
 
     private var productDescription: String {
         switch creditProduct {
-        case .credits6: return "适合尝鲜".localized()
+        case .credits6: return "适合尝鲜体验".localized()
         case .credits30: return "个人创作首选".localized()
-        case .credits60: return "进阶用户".localized()
-        case .credits98: return "高频使用".localized()
+        case .credits60: return "高频使用推荐".localized()
+        case .credits98: return "专业创作者".localized()
         case .none: return ""
         }
     }
@@ -329,23 +385,15 @@ struct PurchaseProductRow: View {
         creditProduct?.icon ?? "💎"
     }
 
-    private var iconColor: Color {
+    /// 低饱和图标色调：只用于 14% 柔光底 + 24% 细描边，
+    /// 替代原来的满饱和纯色实心圆（大面积高亮刺眼）
+    private var iconTint: Color {
         switch creditProduct {
-        case .credits6: return .orange
-        case .credits30: return .purple
-        case .credits60: return .red
-        case .credits98: return AppColor.accentPrimary
-        case .none: return AppColor.accentPrimary
-        }
-    }
-
-    private var gradientColors: [Color] {
-        switch creditProduct {
-        case .credits6: return [Color.orange.opacity(0.9), Color.yellow.opacity(0.8)]
-        case .credits30: return [Color.purple.opacity(0.9), Color.pink.opacity(0.8)]
-        case .credits60: return [Color.red.opacity(0.9), Color.orange.opacity(0.8)]
-        case .credits98: return [AppColor.accentPrimary, AppColor.accentGlow]
-        case .none: return [AppColor.accentPrimary, AppColor.accentGlow]
+        case .credits6:  return Color(hex: 0x7C9A80)   // 🌱 哑光苔绿
+        case .credits30: return Color(hex: 0xB98A55)   // ⭐ 哑光琥珀
+        case .credits60: return Color(hex: 0xC4735A)   // 🔥 哑光赭红
+        case .credits98: return Color(hex: 0x7C86B8)   // 💎 哑光蓝紫
+        case .none:      return AppColor.textTertiary
         }
     }
 }
@@ -355,8 +403,8 @@ struct PurchaseProductRow: View {
 struct PurchaseButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .opacity(configuration.isPressed ? 0.9 : 1.0)
+            // 刻意不做 scaleEffect：按下时缩放会让按钮看起来尺寸在变，这里只用透明度反馈
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
@@ -373,31 +421,26 @@ struct SkeletonProductRow: View {
                 .fill(AppColor.bgTertiary)
                 .frame(width: 44, height: 44)
 
-            // 文字骨架
+            // 文字骨架（与真实行同构：积分行 + 价格行）
             VStack(alignment: .leading, spacing: 6) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(skeletonColor)
-                    .frame(width: 100, height: 14)
+                    .frame(width: 100, height: 11)
 
                 RoundedRectangle(cornerRadius: 4)
                     .fill(skeletonColor)
-                    .frame(width: 60, height: 11)
+                    .frame(width: 60, height: 14)
             }
 
             Spacer()
 
-            // 价格骨架
-            VStack(alignment: .trailing, spacing: 10) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(skeletonColor)
-                    .frame(width: 45, height: 16)
-
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(skeletonColor)
-                    .frame(width: 72, height: 30)
-            }
+            // 按钮骨架
+            RoundedRectangle(cornerRadius: 14)
+                .fill(skeletonColor)
+                .frame(width: 72, height: 30)
         }
         .padding(16)
+        .frame(minHeight: 76)
         .background(AppColor.bgSecondary)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.large)

@@ -7,6 +7,7 @@
 
 import Foundation
 import StoreKit
+import SwiftUI
 import Combine
 
 // MARK: - 商品配置
@@ -146,13 +147,25 @@ final class StoreKitManager: NSObject, ObservableObject {
     
     // MARK: - 购买商品
     
-    func purchase(_ product: Product) async {
+    /// 发起购买。
+    ///
+    /// `confirmWith` 传 SwiftUI 的 `PurchaseAction`（`@Environment(\.purchase)`）。
+    /// Apple 建议 SwiftUI 应用**不要**直接用 `product.purchase()`：后者不带 UI 上下文，
+    /// 系统需要自己猜该把购买确认弹窗挂到哪个 window / scene —— 猜不到（例如当前窗口已经
+    /// 挂着 .sheet）时会直接返回 `.userCancelled`，表现为「用户什么都没点却购买失败」。
+    /// `PurchaseAction` 自带视图所在的 UI 上下文，弹窗会贴着当前视图显示。
+    func purchase(_ product: Product, confirmWith action: PurchaseAction? = nil) async {
         purchasingProductId = product.id
         purchaseState = .purchasing
         
         do {
-            let result = try await product.purchase()
-            
+            let result: Product.PurchaseResult
+            if let action {
+                result = try await action(product, options: [])
+            } else {
+                result = try await product.purchase()
+            }
+
             switch result {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
@@ -178,14 +191,21 @@ final class StoreKitManager: NSObject, ObservableObject {
                     
                     Log(messageType: "StoreKit", message: "✅ 购买成功，获得 \(credits) 积分")
                     purchaseState = .success(credits: credits)
-                    purchasingProductId = nil
+                } else {
+                    Log(messageType: "StoreKit", message: "⚠️ 未知商品 \(product.id)，未发放积分")
+                    purchaseState = .success(credits: 0)
                 }
-                
+
+                // 无论是否匹配到套餐，都必须解锁 UI（否则购买蒙版会永久卡住）
+                purchasingProductId = nil
+
                 // 完成交易
                 await transaction.finish()
                 
             case .userCancelled:
-                Log(messageType: "StoreKit", message: "⚠️ 用户取消购买")
+                // StoreKit 把「弹窗没挂上去而无法确认」也报成 userCancelled，
+                // 补充上下文便于区分是真取消还是 UI 上下文缺失
+                Log(messageType: "StoreKit", message: "⚠️ 购买返回 userCancelled（商品 \(product.id)，是否带 UI 上下文：\(action != nil)）——若用户并未取消，通常是确认弹窗没能挂到窗口上")
                 purchaseState = .failed(message: StoreError.userCancelled.localizedDescription)
                 purchasingProductId = nil
                 
@@ -199,19 +219,19 @@ final class StoreKitManager: NSObject, ObservableObject {
                 purchasingProductId = nil
             }
         } catch {
-            Log(messageType: "StoreKit", message: "❌ 购买失败: \(error.localizedDescription)")
+            Log(messageType: "StoreKit", message: "❌ 购买失败: \(type(of: error)) - \(error.localizedDescription)")
             purchaseState = .failed(message: error.localizedDescription)
             purchasingProductId = nil
         }
     }
     
     /// 便捷方法：通过商品类型购买
-    func purchase(_ creditProduct: CreditProduct) async {
+    func purchase(_ creditProduct: CreditProduct, confirmWith action: PurchaseAction? = nil) async {
         guard let product = products.first(where: { $0.id == creditProduct.rawValue }) else {
             purchaseState = .failed(message: StoreError.productNotFound.localizedDescription)
             return
         }
-        await purchase(product)
+        await purchase(product, confirmWith: action)
     }
     
     /// 重置购买状态

@@ -13,6 +13,10 @@ import StoreKit
 struct ProductCardView: View {
     let product: Product?
     let creditProduct: CreditProduct?
+    /// 本卡片正在购买中
+    var isPurchasing: Bool = false
+    /// 有别的卡片正在购买中 —— 本卡片需被蒙版锁住
+    var isBlocked: Bool = false
     let onPurchase: () -> Void
 
     @State private var isHovered = false
@@ -20,6 +24,13 @@ struct ProductCardView: View {
     private var isRecommended: Bool {
         creditProduct?.isRecommended ?? false
     }
+
+    /// 本卡片被蒙版遮住（别的套餐在买）
+    private var isMasked: Bool { isBlocked && !isPurchasing }
+
+    /// 按钮不可点：本卡在买 / 别的卡在买。
+    /// 注意：商品未加载（nil）时保持可点，用作「重新加载」重试入口
+    private var isButtonDisabled: Bool { isPurchasing || isMasked }
 
     private var icon: String {
         creditProduct?.icon ?? "💎"
@@ -158,27 +169,14 @@ struct ProductCardView: View {
                 }
             }
 
-            // 购买按钮
-            Button(action: onPurchase) {
-                HStack(spacing: 6) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: packageTextColor))
-                            .scaleEffect(0.8)
-                    } else {
-                        Text("购买".localized())
-                            .font(.system(size: 12, weight: .semibold))
-                    }
+            // 购买按钮（不可点时不挂手型光标，避免给出「还能点」的暗示）
+            Group {
+                if isButtonDisabled {
+                    purchaseButton
+                } else {
+                    purchaseButton.pointingHandCursor()
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(recommendedButtonBackground)
-                .foregroundStyle(packageTextColor)
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
             }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-            .disabled(isLoading)
         }
         .padding(20)
         .frame(minWidth: 160, minHeight: 360)
@@ -187,14 +185,26 @@ struct ProductCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.large)
                 .stroke(
-                    isHovered ? AppColor.accentPrimary : AppColor.borderSubtle,
-                    lineWidth: isHovered ? 1 : 1
+                    isPurchasing ? AppColor.accentPrimary.opacity(0.55)
+                        : (isHovered ? AppColor.accentPrimary : AppColor.borderSubtle),
+                    lineWidth: 1
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+        // 购买中：给其余套餐盖一层蒙版，既压暗视觉也吃掉点击
+        .overlay {
+            if isMasked {
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .fill(AppColor.bgPrimary.opacity(0.55))
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(true)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isMasked)
         .onHover { hovering in
             // 直接更新状态，不使用动画，避免干扰按钮点击
-            isHovered = hovering
+            isHovered = isBlocked ? false : hovering
         }
     }
 
@@ -213,6 +223,37 @@ struct ProductCardView: View {
         }
     }
 
+
+    @ViewBuilder
+    private var purchaseButton: some View {
+        Button(action: onPurchase) {
+            HStack(spacing: 6) {
+                if isPurchasing {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: packageTextColor))
+                        .scaleEffect(0.7)
+                    Text("处理中…".localized())
+                        .font(.system(size: 12, weight: .semibold))
+                } else if isLoading {
+                    Text("重新加载".localized())
+                        .font(.system(size: 12, weight: .semibold))
+                } else {
+                    Text("购买".localized())
+                        .font(.system(size: 12, weight: .semibold))
+                }
+            }
+            // 内容高度恒定：spinner 与文字的固有高度不同，不钉死会在点击瞬间撑高按钮
+            .frame(height: 18)
+            .frame(maxWidth: .infinity)
+            // 按钮整体高度恒定（原来靠 padding 撑，文字换成 spinner 后会变）
+            .frame(height: 34)
+            .background(recommendedButtonBackground)
+            .foregroundStyle(packageTextColor)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        }
+        .buttonStyle(.plain)
+        .disabled(isButtonDisabled)
+    }
 
     private var cardBackground: Color {
         if isRecommended {

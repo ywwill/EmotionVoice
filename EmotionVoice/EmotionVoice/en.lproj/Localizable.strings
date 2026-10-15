@@ -299,7 +299,7 @@
 "菲律宾语" = "Filipino";
 "阿拉伯语" = "Arabic";
 
-/* Voice catalog — tier / language / gender / scene / age */
+// 音频分类
 "旗舰" = "Premium";
 "基础" = "Basic";
 "女" = "Female";
@@ -350,3 +350,12 @@
 "导出中…" = "Exporting…";
 "✓ 已导出" = "✓ Exported";
 "导出音频" = "Export audio";
+"处理中…" = "Processing…";
+"重新加载" = "Reload";
+"已到账 %d 积分" = "%d credits added";
+"购买已完成" = "Purchase completed";
+"已取消购买" = "Purchase cancelled";
+"等待确认，到账后自动发放" = "Pending approval — credits arrive once approved";
+"购买失败" = "Purchase failed";
+"积分不足" = "Insufficient Credits";
+"选择套餐" = "Plan";
