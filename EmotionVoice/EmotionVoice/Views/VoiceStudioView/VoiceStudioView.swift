@@ -48,11 +48,11 @@ struct VoiceStudioView: View {
             .animation(.easeInOut(duration: 0.25), value: showGenerationModal)
             .sheet(isPresented: $showVoiceLibrarySheet) {
                 VoiceLibrarySheet()
-                    .frame(width: 1400, height: 880)
+                    .frame(width: 1400, height: 830)
             }
         .sheet(isPresented: $showCreditsPurchaseSheet) {
             CreditsPurchaseView()
-                .frame(width: 480, height: 620)
+                .frame(width: 500, height: 620)
         }
         .alert(item: $vm.alertItem) { item in
             Alert(
@@ -99,8 +99,8 @@ struct VoiceStudioView: View {
             }
             .frame(width: 360)
         }
-        .padding(20)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 15)
         // 撑满所在区域，遮罩才能铺满整个窗口；两列高度仍是内容自身高度并垂直居中
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

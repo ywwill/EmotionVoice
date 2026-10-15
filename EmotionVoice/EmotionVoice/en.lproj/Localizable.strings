@@ -1,4 +1,5 @@
 "取消" = "Cancel";
+"关闭" = "Close";
 "确认" = "Confirm";
 "完成" = "Done";
 "保存" = "Save";
@@ -18,6 +19,7 @@
 "积分中心" = "Points Center";
 "使用统计" = "Usage Statistics";
 "设置" = "Settings";
+"创作" = "Create";
 "积分消耗" = "Points Consumed";
 "音频生成" = "Audio Generation";
 "音色使用" = "Voice Usage";

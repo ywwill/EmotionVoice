@@ -7,7 +7,7 @@
 //  音色库视图模型：
 //  - 选中分类 + 搜索文本变化时重置分页并加载
 //  - 分页（pageSize = N 行 × 实际列数）从数据库按需查询，避免一次性加载全表
-//  - chip 数量缓存于 chipCounts，按 searchText 防抖刷新
+//  - chip 数量缓存于 chipCounts，恒为全量统计（不随 searchText 变化，搜索时分类区固定）
 //
 
 import Foundation
@@ -61,6 +61,8 @@ final class VoicesLibraryViewModel: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     /// 上次查询的签名（用于判断是否需要重新计算 totalCount）
     private var lastQueryKey: String = ""
+    /// 上次计算 chip 计数时的结构性筛选键（不含搜索词，用于判断是否需要重算 chip 计数）
+    private var lastChipCountKey: String = ""
     /// 缓存：当前查询签名下「过滤 + 排序」后的完整**有序 key 列表**（仅 [String]，几十 KB）。
     /// 仅在签名变化（切分类 / 搜索 / 切收藏）时重算；纯翻页只对其切片，再按 key 取当前这一窗的 Voice 对象。
     /// 这样上一页的 Voice 对象不保留，内存稳定，也不会连点翻页时反复全表重查 + 全量排序。
@@ -189,7 +191,8 @@ final class VoicesLibraryViewModel: ObservableObject {
     }
 
     /// 重新加载当前页：
-    /// - 查询签名（分类 / 搜索 / 收藏）变化时才重查「完整有序结果 + 总数 + chip 计数」并缓存
+    /// - 查询签名（分类 / 搜索 / 收藏）变化时才重查「完整有序结果 + 总数」并缓存
+    /// - chip 计数为全量统计，另按结构性筛选（分类 / 收藏）变化刷新，不受搜索影响
     /// - 纯翻页（签名不变）直接对缓存结果切片，不再全表重查 + 全量排序（避免连点翻页 CPU / 内存飙升）
     /// 注意：搜索时忽略分类，在全部数据中搜索
     func reloadCurrentPage() {
@@ -199,8 +202,11 @@ final class VoicesLibraryViewModel: ObservableObject {
         let category = isSearching ? nil : selectedCategory
         let showingFavorites = showFavoritesOnly
         let key = "\(showingFavorites ? "__fav__" : (category?.rawValue ?? Self.allKey))|\(needle)"
+        // 结构性筛选键（**不含搜索词**，且不受「搜索时忽略分类」影响）：
+        // chip 计数是全量统计，只在分类 / 收藏这类结构性筛选变化时才需要重算
+        let structuralKey = showingFavorites ? "__fav__" : (selectedCategory?.rawValue ?? Self.allKey)
 
-        // 查询签名变化 → 重新计算有序 key 列表、总数与 chip 计数
+        // 查询签名变化 → 重新计算有序 key 列表与总数
         if key != lastQueryKey {
             // 只取「过滤 + 排序」后的有序 key 列表（轻量），Voice 对象按需按页取
             cachedOrderedKeys = VoiceService.shared.orderedVoices(
@@ -211,8 +217,14 @@ final class VoicesLibraryViewModel: ObservableObject {
             totalCount = cachedOrderedKeys.count
             totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
             if currentPage > totalPages { currentPage = totalPages }
-            reloadChipCounts(searchText: needle)
             lastQueryKey = key
+
+            // chip 计数为全量、不随搜索变化，故只在结构性筛选改变时才重算，
+            // 避免每次搜索键击都触发一轮 ~18 次 count 查询
+            if structuralKey != lastChipCountKey {
+                reloadChipCounts()
+                lastChipCountKey = structuralKey
+            }
         }
 
         // 翻页：对有序 key 列表按 offset 切片，再只取当前这一窗的 Voice 对象
@@ -224,20 +236,21 @@ final class VoicesLibraryViewModel: ObservableObject {
         isEmpty = (totalCount == 0)
     }
 
-    /// 刷新所有 chip 上的命中数量（仅依赖 searchText）
-    private func reloadChipCounts(searchText: String) {
-        let needle = searchText.trimmingCharacters(in: .whitespaces)
-
+    /// 刷新所有 chip 上的数量。
+    ///
+    /// 数量**始终为全量统计**（搜索词恒为空）：搜索时分类区应保持固定不动，
+    /// 各分类的数字不随搜索词变化而改变。
+    private func reloadChipCounts() {
         var newCounts: [String: Int] = [:]
 
         // "全部"
-        let allCount = VoiceService.shared.count(category: nil, searchText: needle)
+        let allCount = VoiceService.shared.count(category: nil, searchText: "")
         newCounts[Self.allKey] = allCount
         totalMatched = allCount
 
         // 每个分类
         for cat in VoiceCategory.allCases {
-            newCounts[cat.rawValue] = VoiceService.shared.count(category: cat, searchText: needle)
+            newCounts[cat.rawValue] = VoiceService.shared.count(category: cat, searchText: "")
         }
 
         chipCounts = newCounts

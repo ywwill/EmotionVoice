@@ -12,6 +12,7 @@
 //  - 顶部 chip 使用瀑布流布局（FlowLayout）
 //  - 卡片列表使用 SQL 分页：每页 3 行，按列数动态计算 pageSize
 //  - 底部带分页栏：上一页 / 页码输入 / 下一页 / 总数，仅 1 页时输入框不可编辑
+//  - 底部分页栏始终占位：骨架阶段渲染等高占位条，骨架只铺在内容区，不盖住页码切换
 //
 
 import SwiftUI
@@ -51,8 +52,8 @@ struct VoicesLibraryView: View {
 
     // 每行 3 个音色的目标行数
     private static let rowsPerPage: Int = 4
-    /// 骨架屏占位卡片数：4 行 × 5 列 = 20（与首屏 pageSize 形状一致）
-    private static let skeletonCount: Int = rowsPerPage * 5
+    /// 骨架屏固定铺「5 列 × 4 行」：与首屏 pageSize 形状一致，不多不少
+    private static let skeletonColumns: Int = 5
     // 卡片最小宽度 + 间距（与下方 GridItem 保持一致）
     private static let cardMinWidth: CGFloat = 220
     private static let gridSpacing: CGFloat = 14
@@ -137,69 +138,77 @@ struct VoicesLibraryView: View {
 
     @ViewBuilder
     private var content: some View {
-        if vm.isLoading {
-            // 骨架屏：先上屏，等 load() 完成（isLoading = false）再切换到真实网格
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Color.clear
-                        .frame(width: 1, height: 1)
-                        .id("library-top")
-
-                    skeletonGrid
-                }
-            }
-        } else if vm.isEmpty {
-            ScrollView {
-                emptyState.padding(20)
-            }
-        } else {
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
+        // 底部页码切换区始终占据自己的一条（骨架阶段用等高的占位条顶住），
+        // 使上方的网格 / 骨架只铺在内容区内，不会一路盖到底部边缘。
+        VStack(spacing: 0) {
+            Group {
+                if vm.isLoading {
+                    // 骨架屏：先上屏，等 load() 完成（isLoading = false）再切换到真实网格
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            // 切换分类 / 翻页时滚动到此处
                             Color.clear
                                 .frame(width: 1, height: 1)
                                 .id("library-top")
 
-                            // 单分类卡片列表（分页由 vm 管理）
-                            singleCategoryCardList
-                                .opacity(voicesAppear ? 1 : 0)
-                                .scaleEffect(voicesAppear ? 1 : 0.95)
+                            skeletonGrid
                         }
                     }
-                    .onChange(of: vm.selectedCategory) { _, _ in
-                        syncPageInput()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            proxy.scrollTo("library-top", anchor: .top)
-                        }
+                } else if vm.isEmpty {
+                    ScrollView {
+                        emptyState.padding(20)
                     }
-                    .onChange(of: vm.showFavoritesOnly) { _, _ in
-                        syncPageInput()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            proxy.scrollTo("library-top", anchor: .top)
-                        }
-                    }
-                    .onChange(of: vm.currentPage) { _, _ in
-                        syncPageInput()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            proxy.scrollTo("library-top", anchor: .top)
-                        }
-                    }
-                    .onChange(of: vm.scrollTargetVoiceKey) { _, key in
-                        // sheet 进入定位到选中音色所在页后，将该卡片滚动到可视区域中央
-                        if let key = key {
-                            DispatchQueue.main.async {
-                                proxy.scrollTo("voice-\(key)", anchor: .center)
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                // 切换分类 / 翻页时滚动到此处
+                                Color.clear
+                                    .frame(width: 1, height: 1)
+                                    .id("library-top")
+
+                                // 单分类卡片列表（分页由 vm 管理）
+                                singleCategoryCardList
+                                    .opacity(voicesAppear ? 1 : 0)
+                                    .scaleEffect(voicesAppear ? 1 : 0.95)
                             }
                         }
-                    }
-                    .onAppear {
-                        syncPageInput()
+                        .onChange(of: vm.selectedCategory) { _, _ in
+                            syncPageInput()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("library-top", anchor: .top)
+                            }
+                        }
+                        .onChange(of: vm.showFavoritesOnly) { _, _ in
+                            syncPageInput()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("library-top", anchor: .top)
+                            }
+                        }
+                        .onChange(of: vm.currentPage) { _, _ in
+                            syncPageInput()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("library-top", anchor: .top)
+                            }
+                        }
+                        .onChange(of: vm.scrollTargetVoiceKey) { _, key in
+                            // sheet 进入定位到选中音色所在页后，将该卡片滚动到可视区域中央
+                            if let key = key {
+                                DispatchQueue.main.async {
+                                    proxy.scrollTo("voice-\(key)", anchor: .center)
+                                }
+                            }
+                        }
+                        .onAppear {
+                            syncPageInput()
+                        }
                     }
                 }
+            }
 
-                // 分页栏（仅在有数据时显示）
+            // 分页栏：骨架阶段用等高占位条保位，其余仅在有数据时显示
+            if vm.isLoading {
+                paginationBarPlaceholder
+            } else if !vm.isEmpty {
                 paginationBar
             }
         }
@@ -242,7 +251,9 @@ struct VoicesLibraryView: View {
         .padding(.vertical, 20)
     }
 
-    /// 骨架屏网格：与真实网格同形状（4 行 × 5 列自适应），先占位再被真实数据替换。
+    /// 骨架屏网格：固定 5 列 × 4 行 = 20 张，先占位再被真实数据替换。
+    /// 内外边距与 `singleCategoryCardList` 完全一致，
+    /// 保证骨架与真实卡片左右对齐、上下留白一致（含底部不贴边）。
     private var skeletonGrid: some View {
         LazyVGrid(
             columns: [
@@ -250,11 +261,13 @@ struct VoicesLibraryView: View {
             ],
             spacing: Self.gridSpacing
         ) {
-            ForEach(0..<Self.skeletonCount, id: \.self) { _ in
+            ForEach(0..<(Self.skeletonColumns * Self.rowsPerPage), id: \.self) { _ in
                 VoiceCardSkeleton()
             }
         }
         .background(gridWidthTracker)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 20)
     }
 
     /// 网格可用宽度测量（骨架与真实网格共用），用于确定列数 → pageSize。
@@ -361,6 +374,30 @@ struct VoicesLibraryView: View {
         }
     }
 
+    /// 骨架阶段的分页栏占位：与 `paginationBar` 等高（内容 27pt + 上下 12pt），
+    /// 只用来把底部这一条位置先占住，让骨架网格不会铺到底部边缘、
+    /// 也避免 load() 完成后真实分页栏突然顶出来造成布局跳动。
+    private var paginationBarPlaceholder: some View {
+        HStack(spacing: 12) {
+            SkeletonBlock(width: 74, height: 26, radius: 13)
+            SkeletonBlock(width: 82, height: 26, radius: 13)
+            SkeletonBlock(width: 74, height: 26, radius: 13)
+            Spacer()
+            SkeletonBlock(width: 124, height: 12, radius: 4)
+        }
+        // 与真实分页栏内容高度对齐（按钮：12pt 字号 + 上下 6pt ≈ 27pt）
+        .frame(height: 27)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 12)
+        .background(
+            Color(hex: 0x0E0F12).opacity(0.4)
+                .background(.ultraThinMaterial)
+        )
+        .overlay(alignment: .top) {
+            Divider().background(AppColor.borderSubtle)
+        }
+    }
+
     /// 形如 "1 - 12 / 共 891 个"
     private var rangeDescription: String {
         if vm.totalCount == 0 { return "共 0 个".localized() }
@@ -417,18 +454,28 @@ struct VoicesLibraryView: View {
 
                 searchField
 
+                // 关闭 sheet：用**文字胶囊按钮**而非圆形 ×。
+                // 搜索展开时框内已有一个「清空并收起」的 ×，若这里也是 ×，
+                // 两个同形图标并排会互相干扰；改成「关闭」文字后形态完全区分，
+                // 且按钮常驻——搜索期间同样可以随时关闭 sheet。
                 if let dismissWrapper = sheetDismiss {
                     Button {
                         dismissWrapper()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
+                        Text("关闭".localized())
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppColor.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(AppColor.bgTertiary)
-                            .clipShape(Circle())
+                            .overlay(
+                                Capsule()
+                                    .stroke(AppColor.borderSubtle, lineWidth: 1)
+                            )
+                            .clipShape(Capsule())
+                            .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(StaticButtonStyle())
                     .pointingHandCursor()
                 }
             }
@@ -448,30 +495,18 @@ struct VoicesLibraryView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(AppColor.textTertiary)
-            TextField("搜索".localized(), text: Binding(
+        ExpandableSearchField(
+            text: Binding(
                 get: { vm.searchText },
                 set: { newValue in
                     vm.searchText = newValue
                     appState.voiceLibrarySearchText = newValue
                     debouncedReload()
                 }
-            ))
-                .textFieldStyle(.plain)
-                .foregroundStyle(AppColor.textPrimary)
-                .frame(width: 220)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(AppColor.bgTertiary)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.small)
-                .stroke(AppColor.borderSubtle, lineWidth: 1)
+            ),
+            placeholder: "搜索".localized(),
+            expandedWidth: 220
         )
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-        .pointingHandCursor()
     }
 
     /// 分类 Chip：两行布局

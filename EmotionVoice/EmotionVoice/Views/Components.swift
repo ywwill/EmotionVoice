@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 // MARK: - 主按钮
 
@@ -373,5 +374,155 @@ struct SegmentedOption<Item: Hashable & Identifiable, Label: View>: View {
         }
         .background(AppColor.bgTertiary)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+// MARK: - 可展开搜索框（折叠态仅图标，点击从右往左展开并自动聚焦键盘）
+
+/// 折叠态只显示一个放大镜图标；点击后用 spring 动画从右往左展开为输入框，
+/// 并自动聚焦以响应键盘输入。
+///
+/// 展开后框内右侧只有一个关闭按钮（细叉）：取消搜索 —— 清空并收起，
+/// 完全恢复到「仅图标」的初始状态（若只收起不清空，结果仍被看不见的关键词过滤，用户无从察觉）。
+///
+/// 收起（恢复原状）的路径：点关闭按钮 / 按 Esc / 展开且为空时失焦自动收起。
+struct ExpandableSearchField: View {
+
+    @Binding var text: String
+    var placeholder: String
+    var expandedWidth: CGFloat = 220
+    var onChange: ((String) -> Void)? = nil
+    var onSubmit: (() -> Void)? = nil
+
+    @FocusState private var isFocused: Bool
+    @State private var isExpanded: Bool
+
+    init(
+        text: Binding<String>,
+        placeholder: String,
+        expandedWidth: CGFloat = 220,
+        onChange: ((String) -> Void)? = nil,
+        onSubmit: (() -> Void)? = nil
+    ) {
+        self._text = text
+        self.placeholder = placeholder
+        self.expandedWidth = expandedWidth
+        self.onChange = onChange
+        self.onSubmit = onSubmit
+        // 若已有搜索词（如从持久化恢复），初始即展开
+        self._isExpanded = State(initialValue: !text.wrappedValue.isEmpty)
+    }
+
+    private let collapsedWidth: CGFloat = 34
+    private let fixedHeight: CGFloat = 32
+
+    var body: some View {
+        HStack(spacing: 6) {
+            // 前导放大镜：折叠态是唯一内容（点击展开），展开态作为输入框的前导图标
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: isExpanded ? 12 : 14, weight: .medium))
+                .foregroundStyle(AppColor.textTertiary)
+                .frame(width: isExpanded ? 16 : 18, height: isExpanded ? 16 : 18)
+                .contentShape(Rectangle())
+                .onTapGesture { handleIconTap() }
+
+            if isExpanded {
+                TextField(placeholder, text: $text)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColor.textPrimary)
+                    .focused($isFocused)
+                    .onChange(of: text) { _, newValue in onChange?(newValue) }
+                    .onSubmit { onSubmit?() }
+                    // Esc：取消搜索 —— 清空并收起（对齐 macOS 上 Esc 表示放弃输入的直觉）
+                    .onKeyPress(.escape) {
+                        collapse(clearingText: true)
+                        return .handled
+                    }
+                    .frame(maxWidth: .infinity)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .trailing)),
+                        removal: .opacity
+                    ))
+
+                // 关闭按钮：取消搜索 —— 清空并收起，完全恢复初始状态
+                // （若只收起不清空，结果仍被看不见的关键词过滤，用户无从察觉）
+                iconButton(systemName: "xmark", size: 10, color: AppColor.textTertiary) {
+                    collapse(clearingText: true)
+                }
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(width: isExpanded ? expandedWidth : collapsedWidth, height: fixedHeight)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .fill(isExpanded ? AppColor.bgTertiary : Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                        .stroke(AppColor.borderSubtle, lineWidth: 1)
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        .contentShape(Rectangle())
+        .pointingHandCursor()
+        .onChange(of: isFocused) { _, focused in
+            // 失焦且搜索词为空时自动收起
+            if !focused && text.isEmpty {
+                collapse(clearingText: false)
+            }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: isExpanded)
+    }
+
+    /// 框内右侧的小图标按钮（目前只有关闭）。
+    /// 不单独挂 `pointingHandCursor`：外层容器已统一设置手型，避免 onHover 互相覆盖导致光标闪烁。
+    private func iconButton(
+        systemName: String,
+        size: CGFloat,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: size, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func handleIconTap() {
+        if !isExpanded {
+            expandAndFocus()
+        } else {
+            // 展开态点击前导放大镜：把焦点交还给输入框
+            isFocused = true
+        }
+    }
+
+    /// 收起搜索框，恢复到「仅图标」的初始状态
+    /// - Parameter clearingText: 是否同时清空搜索词（Esc 取消搜索时为 true）
+    private func collapse(clearingText: Bool) {
+        if clearingText {
+            text = ""
+            onChange?("")
+        }
+        isFocused = false
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            isExpanded = false
+        }
+    }
+
+    private func expandAndFocus() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            isExpanded = true
+        }
+        // TextField 挂载后再聚焦，确保键盘立即响应
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            isFocused = true
+        }
     }
 }

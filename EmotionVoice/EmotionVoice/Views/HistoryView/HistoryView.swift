@@ -20,8 +20,22 @@ struct HistoryView: View {
     @State private var isSelectionMode: Bool = false
     @State private var selectedAudioIds: Set<Int64> = []
 
+    /// 左栏固定宽度
+    private let panelWidth: CGFloat = 340
     /// 左右两栏头部统一高度
     private let panelHeaderHeight: CGFloat = 40
+    /// 头部左右内边距
+    private let headerPadding: CGFloat = 20
+    /// 头部元素间距
+    private let headerSpacing: CGFloat = 12
+    /// waveform 图标预留槽位（SF Symbol 实际宽度通常略大于字号，留 24 防止与搜索框挤到一起）
+    private let headerIconSlot: CGFloat = 24
+
+    /// 搜索框展开后的宽度：撑满「waveform 图标 → 栏右边缘」的剩余空间。
+    /// 展开是从右往左生长，所以左边缘最终会停在紧贴 waveform 图标的位置。
+    private var searchExpandedWidth: CGFloat {
+        panelWidth - headerPadding * 2 - headerIconSlot - headerSpacing
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -58,33 +72,22 @@ struct HistoryView: View {
     private var audioListPanel: some View {
         VStack(spacing: 0) {
             // 列表头部 - 搜索框区域
-            HStack(spacing: 12) {
-                Image(systemName: "waveform")
+            HStack(spacing: headerSpacing) {
+                Image(systemName: "waveform.path")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppColor.accentPrimary)
-                
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppColor.textTertiary)
+                    .frame(width: headerIconSlot)
 
-                    TextField("搜索音频...", text: $viewModel.searchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColor.textPrimary)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(AppColor.bgTertiary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(AppColor.borderSubtle, lineWidth: 1)
+                ExpandableSearchField(
+                    text: $viewModel.searchText,
+                    placeholder: "搜索",
+                    expandedWidth: searchExpandedWidth
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .frame(width: searchExpandedWidth, alignment: .trailing)
             }
-            .frame(height: panelHeaderHeight)
-            .padding(.horizontal, 20)
+            // 头部宽度也钉死（= 栏宽 - 左右内边距），保证 overlay 的 Divider 宽度不随内容变
+            .frame(width: panelWidth - headerPadding * 2, height: panelHeaderHeight)
+            .padding(.horizontal, headerPadding)
             .overlay(alignment: .bottom) {
                 Divider().background(AppColor.borderSubtle)
             }
@@ -167,7 +170,7 @@ struct HistoryView: View {
                 batchOperationBar
             }
         }
-        .frame(width: 340)
+        .frame(width: panelWidth)
         .background(AppColor.bgSecondary)
         .overlay(alignment: .trailing) {
             Divider().background(AppColor.borderSubtle)
