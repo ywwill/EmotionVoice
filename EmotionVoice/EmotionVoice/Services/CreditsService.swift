@@ -247,7 +247,7 @@ final class CreditsService {
             combinedRecords.append(CreditRecord(
                 id: "c_\(consume.id)",
                 type: .consumption,
-                title: consume.voiceName,
+                title: VoiceService.shared.displayName(forKey: consume.voiceKey) ?? consume.voiceName,
                 subtitle: "\(consume.formattedDuration)",
                 amount: consume.points,
                 createdAt: consume.createdAt
@@ -259,7 +259,7 @@ final class CreditsService {
             combinedRecords.append(CreditRecord(
                 id: "p_\(purchase.id)",
                 type: .purchase,
-                title: "购买积分".localized(),
+                title: "购买".localized(),
                 subtitle: "/",
                 amount: Double(purchase.quantity),
                 createdAt: purchase.createdAt

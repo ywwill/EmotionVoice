@@ -34,8 +34,8 @@ final class VoiceService {
             return cached as String
         }
         guard let voice = fetchByKeys([key]).first else { return nil }
-        nameCache.setObject(voice.name as NSString, forKey: cacheKey)
-        return voice.name
+        nameCache.setObject(voice.localizedName as NSString, forKey: cacheKey)
+        return voice.localizedName
     }
 
     // MARK: - 全量

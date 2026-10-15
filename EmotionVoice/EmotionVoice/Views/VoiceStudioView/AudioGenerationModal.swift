@@ -617,7 +617,8 @@ struct AudioGenerationModal: View {
                                 lineWidth: 1
                             )
                     )
-                Text(isCompleted ? "✓" : "🎵")
+                Image(systemName: isCompleted ? "checkmark.circle.fill" : "music.quarternote.3")
+                    .symbolEffect(.pulse)
                     .font(.system(size: isCompleted ? 15 : 14, weight: isCompleted ? .bold : .regular))
                     .foregroundStyle(isCompleted ? AppColor.statusSuccess : AppColor.textPrimary)
             }
@@ -954,7 +955,7 @@ struct AudioGenerationModal: View {
     private var exportTitle: String {
         if isExporting { return "导出中…".localized() }
         if exportSuccess { return "✓ 已导出".localized() }
-        return "⬇ 导出音频".localized()
+        return "⬇ 导出".localized()
     }
 
     // MARK: - 行为
@@ -1027,10 +1028,30 @@ struct AudioGenerationModal: View {
         }
     }
 
+    /// 默认音频名：优先取输入文本的前 10 个字符，空则退回时间戳。
+    ///
+    /// 两条细节：
+    /// 1. 取的是 `plainText` —— 情感 / 拟声标签是编辑器里的 UI 装饰
+    ///    （"...笑声..."），不该混进文件名。
+    /// 2. 文本是自由输入，必须先过一遍 `sanitizeFileName` 洗掉文件名不允许的字符
+    ///    （`/`、`:` 等），这个名不只是显示，导出时还会直接变成保存面板的默认文件名。
     private func generateDefaultAudioName() -> String {
+        // 换行折叠成空格：否则"前 10 个字符"里可能一个有效字符都没有
+        let source = vm.plainText
+            .components(separatedBy: .newlines)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        // 先截 40 再清洗：10 个名额可能被非法字符占掉，留点余量；
+        // 顺带把正则的开销钉在常数级，长篇台词也不受影响
+        let cleaned = sanitizeFileName(String(source.prefix(40)))
+        let prefix = String(cleaned.prefix(10))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-").union(.whitespaces))
+        if !prefix.isEmpty { return prefix }
+
+        // 兜底：文本为空，或洗完什么都不剩
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm"
-        return "音频_\(formatter.string(from: Date()))"
+        return sanitizeFileName("音频_" + formatter.string(from: Date()))
     }
 
     /// 保存编辑后的音频名称
@@ -1057,7 +1078,6 @@ struct AudioGenerationModal: View {
 
         let savePanel = NSSavePanel()
         savePanel.title = "导出音频".localized()
-        savePanel.message = "选择保存位置".localized()
         savePanel.nameFieldStringValue = defaultFileName
         savePanel.canCreateDirectories = true
         savePanel.allowedContentTypes = [.audio]

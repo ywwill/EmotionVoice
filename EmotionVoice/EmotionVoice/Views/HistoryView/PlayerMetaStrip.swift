@@ -23,7 +23,7 @@ struct PlayerMetaStrip: View {
             columnDivider
             metaColumn(icon: "waveform", title: "格式".localized(), value: formatText, unit: nil)
             columnDivider
-            metaColumn(icon: "sparkles", title: "积分".localized(), value: formatCredits(audio.pointsCost), unit: "分")
+            metaColumn(icon: "sparkles", title: "积分".localized(), value: formatCredits(audio.pointsCost), unit: nil)
             columnDivider
             metaColumn(icon: "person.wave.2", title: "音色".localized(), value: voiceName ?? "—", unit: nil)
         }

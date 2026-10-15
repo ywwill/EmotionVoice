@@ -48,6 +48,40 @@ func formatCredits(_ value: Double) -> String {
     }
 }
 
+// MARK: - 文件名清洗
+
+/// 路径分隔符：`/` `\` `:`
+///
+/// macOS 在 POSIX 层允许它们出现在文件名里，但 Finder、iCloud、跨平台工具
+/// （以及导出到 U 盘 / Windows）都会当成路径或卷名分隔符处理，必须挡掉。
+private let pathSeparatorCharacters = CharacterSet(charactersIn: "/\\:")
+
+/// 直接删掉的字符：`*` `?` `"` `<` `>` `|` 与控制字符
+private let forbiddenFileNameCharacters = CharacterSet(charactersIn: "*?\"<>|")
+    .union(.controlCharacters)
+
+/// 把任意字符串洗成能直接当文件名的样子
+///
+/// 用户输入的台词是自由的，直接拿来当文件名会踩到一堆雷：
+/// - 换行 / 制表符 / 全角空格：先折叠成单个普通空格，否则截前 10 个字符可能全是回车
+/// - 路径分隔符（`/` `\` `:`）：替换成 `-`，既是非法字符，也贴合用户本来想表达的分隔意图
+///   （"10:30 开会" → "10-30 开会"）
+/// - 其余非法字符与控制字符：直接删掉
+/// - 连续 `-` 合并成一个，首尾的 `-` 与空白裁掉（否则出现 "-abc-" 这种名字）
+///
+/// 中文、全角标点（，。！？、（））都是合法文件名字符，一律保留。
+func sanitizeFileName(_ raw: String) -> String {
+    var text = raw.replacingOccurrences(
+        of: "[\\s\u{3000}]+",
+        with: " ",
+        options: .regularExpression
+    )
+    text = text.components(separatedBy: pathSeparatorCharacters).joined(separator: "-")
+    text = text.components(separatedBy: forbiddenFileNameCharacters).joined()
+    text = text.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
+    return text.trimmingCharacters(in: CharacterSet(charactersIn: "-").union(.whitespaces))
+}
+
 // MARK: - 字节 / 时长格式化
 
 /// 千分位 + 两位小数的数值格式化器（用于「已接收 / 速率」大数字）

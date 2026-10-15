@@ -241,10 +241,10 @@ struct SettingsView: View {
                     desc: "定期清理临时文件".localized(),
                     control: {
                         Picker("", selection: .constant(30)) {
-                            Text("7 天").tag(7)
-                            Text("30 天").tag(30)
-                            Text("60 天").tag(60)
-                            Text("从不").tag(0)
+                            Text("7 天".localized()).tag(7)
+                            Text("30 天".localized()).tag(30)
+                            Text("60 天".localized()).tag(60)
+                            Text("从不".localized()).tag(0)
                         }
                         .labelsHidden()
                         .frame(width: 140)

@@ -67,9 +67,12 @@
 "已就绪" = "Ready";
 "复制" = "Copy";
 "已复制" = "Copied";
-"剩余约" = "Approximately Remaining";
-"%d 字 · %d 句" = "%d Characters · %d Sentences";
+"剩余约" = "Remaining";
+"%d 字 · %d 句" = "%d Chars · %d Sentences";
 "暂无原文内容" = "No Original Text";
+"导出" = "Export";
+"批量操作" = "Batch Actions";
+"编辑名称" = "Edit Name";
 
 // 音色
 "音色" = "Voice";
@@ -253,9 +256,20 @@
 "音频质量" = "Audio Quality";
 "文件" = "File";
 "导出目录" = "Export Directory";
+"自动清理缓存" = "Auto Clean Cache";
+"定期清理临时文件" = "Periodically clean up temporary files";
+"音频文件保存位置" = "Where audio files are saved";
+"未设置" = "Not Set";
+"打开..." = "Open...";
+"更改" = "Change";
+"7 天" = "7 days";
+"30 天" = "30 days";
+"60 天" = "60 days";
+"从不" = "Never";
 "积分" = "Points";
 "加载中..." = "Loading...";
 "暂无音频" = "No audio available";
+"MP3 (推荐)" = "MP3 (Best)";
 
 // 语言
 "中文" = "Chinese";
@@ -330,7 +344,7 @@
 "本次消耗积分" = "Credits used";
 "剩余 %d 积分" = "%d credits left";
 "关闭窗口不会中断，音频将在后台继续接收" = "Closing won't interrupt it — audio keeps downloading in the background";
-"⬇ 导出音频" = "⬇ Export audio";
+"⬇ 导出" = "⬇ Export";
 "导出中…" = "Exporting…";
 "✓ 已导出" = "✓ Exported";
 "导出音频" = "Export audio";

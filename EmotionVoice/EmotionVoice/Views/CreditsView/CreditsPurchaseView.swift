@@ -78,7 +78,7 @@ struct CreditsPurchaseView: View {
 
             Spacer()
 
-            Text("购买积分")
+            Text("购买")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppColor.textPrimary)
 
