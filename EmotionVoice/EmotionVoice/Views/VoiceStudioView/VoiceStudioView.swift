@@ -423,7 +423,7 @@ struct VoiceStudioView: View {
                             .font(AppFont.caption)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 6)
                             .background(AppColor.bgTertiary)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
