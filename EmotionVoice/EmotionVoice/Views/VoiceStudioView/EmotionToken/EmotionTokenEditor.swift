@@ -112,6 +112,13 @@ struct EmotionTokenEditor: NSViewRepresentable {
         tokenView.isHorizontallyResizable = false
         tokenView.autoresizingMask = [.width]
 
+        // v13：语气胶囊要画在字形**下面**（先在 draw(_:) 里铺胶囊，再交 super 画文字）。
+        // NSTextView 默认 drawsBackground = true，它刷的那层背景会把胶囊整片盖掉，
+        // 所以这里必须关掉，让 SwiftUI 卡片自己的背景（AppColor.bgSecondary）透上来。
+        // 徽章的底色默认也按这个背景色取值（见 resolvedBadgeBackgroundColor）。
+        tokenView.drawsBackground = false
+        tokenView.backgroundColor = .clear
+
         scrollView.documentView = tokenView
 
         // 强制 tile 一次，让 documentView 真正占据 scrollview 的可视区

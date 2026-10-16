@@ -76,6 +76,26 @@
 - 已知既有问题：`CreditsService.swift` 有 4 条 Swift6 actor 隔离报错；
   `PackageCardView.swift` 是未加入 target 的孤儿文件，`CreditsPackage` 类型不存在
 
+## EmotionTokenEditor 标签 UI（2026-10-16 起：语气胶囊版 v13，已取代 10-14 的下划线版）
+- 语气标签 = **作用域整段同色胶囊**（fill 13%、1px 内描边 42%、圆角 9、内边距 8×6）
+  + **emoji/名称徽章压在胶囊左上角**（10.5pt 粗体、底色取编辑器背景、只在首块出现）；
+  拟声 = 虚线 pill（12pt、圆角 6、内边距 7×1.5、悬停正中浮 ×），嵌在胶囊内不打断语气。
+- **绘制顺序铁律**（`EmotionTokenTextView.draw(_:)`）：胶囊 → **徽章** → `super.draw`。
+  ⚠️ 徽章必须在 `super.draw` **之前**：实测 super.draw 返回后裁剪被收窄到文本容器区域
+  （container origin 起），徽章画在容器上沿之外（container y 为负）会整块被裁掉。
+  徽章提前画是安全的——它不与任何字形相交（底边比首行字形顶端还高 1.5pt）。
+  配套：`tokenView.drawsBackground = false`（NSTextView 默认背景会盖掉胶囊）。
+  `textContainerInset.height = 28`、`bodyAttributes.lineSpacing = 28`。
+- 语气标记 cell 是 **5×1 的不可见占位**（`toneMarkerWidth = 5`）：这 5pt 是相邻两个语气作用域
+  之间唯一的物理间距，靠它 `resolveCapsuleSeams` 才切得出 `capsuleSeamGap = 2` 的净间隙。
+  胶囊/徽章全由文本视图自绘（几何见 `toneCapsuleGeometries()`，绘制与命中同一份）。
+  拟声 pill 绘制时左右各内缩 `soundEdgeInset = 3`（advance 不变），给胶囊留收尾空间。
+- 悬停区 = 字形 ∪ × ∪ 徽章 ∪ 整段胶囊；小手光标**不含**胶囊（正文要保持 I 型）。
+- 几何陷阱：`boundingRect(forGlyphRange:)` 高度是整行高，只有 x/width 可信；
+  同一行判据用 `lineRect.minY`（不是 rect.minY，胶囊 28.5 vs pill 17 差 7pt）；
+  行首/行尾片段要夹进容器边界；空作用域要补兜底胶囊。详见该目录 README。
+- 离屏几何测试可调 internal `EmotionTokenTextView.debugToneCapsuleGeometry()`。
+
 ## EmotionTokenEditor 标签 UI（2026-10-14 优化）
 - 插入的标签（EmotionToken）**按情感着色**：基础色来自 `EmotionTokenStyle.colorMap`
   （英文 tag → NSColor，对齐 Constants 的 emotions/richLanguageTags 与 AppColor 情感色）；

@@ -4,16 +4,17 @@
 //
 //  Created by young on 2026/9/1.
 //
-//  v3 · 两类标签的绘制：
-//    · .emotion（语气）：标记是「零宽高占位」，在其下方绘制 emoji + 文字标注；
-//      真正的语气作用域由文本下划线（EmotionTokenTextView.applyToneScopes）承担。
-//    · .richLanguage（拟声）：在当前位置绘制一个声音标记（虚线框 + 播放三角 + 名称 +
-//      右上角外置 × 圆钮），不代表任何文本，是一个点插入的声音事件。
+//  v13 · 两类标签的绘制：
+//    · .emotion（语气）：标记是 1×1 的**不可见占位**，什么都不画。
+//      作用域的视觉（整段胶囊 + 左上角徽章）全部由 EmotionTokenTextView 自绘——
+//      胶囊必须画在字形下面、徽章必须画在字形上面，只有文本视图拿得到那个时机。
+//    · .richLanguage（拟声）：在当前位置绘制一个声音标记（虚线框 + 名称 +
+//      悬停时正中浮出的 × 圆钮），不代表任何文本，是一个点插入的声音事件。
 //
 //  设计要点：
 //    * cellSize() 必须精确，否则附件高度会和普通文本不一致，破坏行高。
 //    * cellBaselineOffset() 让 baseline 与 body font 对齐。
-//    * trackMouse 负责 × 点击 → 删除整个 attachment。
+//    * 删除逻辑统一由 EmotionTokenTextView.mouseDown 命中（cell 只负责「命中本体 → 选中」）。
 //
 
 import AppKit
@@ -29,9 +30,9 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
     nonisolated(unsafe) var tokenEmoji: String = ""
     /// 标签家族（语气 / 拟声），驱动 cellSize / 绘制分支（nonisolated 安全，构造后不变）。
     nonisolated(unsafe) var tokenCategory: EmotionCategory = .emotion
-    /// 所属文本容器（text container）的宽度。由 `EmotionTokenTextView` 在布局 / 尺寸变化时写入，
-    /// 用于「标签在行尾时把下方标注左移，避免画到容器外被裁掉」。
+    /// 所属文本容器（text container）的宽度。由 `EmotionTokenTextView` 在布局 / 尺寸变化时写入。
     /// 之所以要外部写入：AppKit 绘制文本附件时 `controlView` 传的是 nil，取不到容器。
+    /// v13 起语气徽章的定位改由文本视图用 `textContainer.size.width` 直接算，这里仅作保留。
     nonisolated(unsafe) var containerMaxX: CGFloat = CGFloat.greatestFiniteMagnitude
 
     // MARK: - 尺寸
@@ -43,15 +44,14 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         return toneCellSize()
     }
 
+    /// v13（胶囊版）：语气标记彻底变成**不可见占位**。
+    /// 作用域的视觉由「整段胶囊 + 左上角徽章」承担，两者都由 EmotionTokenTextView 自绘，
+    /// cell 不再画任何东西，也不再因为要挂标注而额外撑高行高。
+    /// 宽度取 `toneMarkerWidth`（5pt）而不是 1pt：
+    /// 这是相邻两个语气作用域之间唯一的物理间距，靠它 `resolveCapsuleSeams` 才切得出
+    /// 真正的 `capsuleSeamGap` 间隙（1pt 时两段文本几乎贴死，两侧 8pt 内边距必然重叠）。
     private nonisolated func toneCellSize() -> NSSize {
-        let style = EmotionTokenStyle.default
-        let bodyFont = NSFont.systemFont(ofSize: 14)
-        let bodyH = ceil(bodyFont.ascender - bodyFont.descender)
-        let annoFont = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
-        let annoH = ceil(annoFont.ascender - annoFont.descender)
-        // 标记自身只占 1px 宽；高度 = 正文高度 + 标注所需的下方留白，让标注落在该行下方、不压下一行。
-        let height = bodyH + style.annotationGap + annoH + 2
-        return NSSize(width: 1, height: height)
+        NSSize(width: EmotionTokenStyle.default.toneMarkerWidth, height: 1)
     }
 
     private nonisolated func soundCellSize() -> NSSize {
@@ -72,11 +72,8 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
             let f = NSFont.systemFont(ofSize: style.soundFontSize, weight: .medium)
             return NSPoint(x: 0, y: f.descender - style.soundVerticalPadding - 1)
         }
-        // 语气标记：基线对齐正文，下方留出标注高度。
-        let bodyFont = NSFont.systemFont(ofSize: 14)
-        let annoFont = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
-        let annoH = ceil(annoFont.ascender - annoFont.descender)
-        return NSPoint(x: 0, y: bodyFont.descender - style.annotationGap - annoH - 1)
+        // 语气标记：1×1 的不可见占位，基线直接对齐正文即可。
+        return .zero
     }
 
     // MARK: - 绘制分发
@@ -96,62 +93,11 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         let style = resolvedStyle(for: controlView)
         if identity.category == .richLanguage {
             drawSound(in: frame, controlView: controlView, style: style)
-        } else {
-            drawToneAnnotation(in: frame, controlView: controlView, style: style)
         }
+        // 语气标记：不可见占位，什么都不画（见 drawToneMarker）
     }
 
-    // MARK: - 语气标签：下方标注
-
-    private nonisolated func toneAnnotationString() -> String {
-        (tokenEmoji.isEmpty ? "" : tokenEmoji + " ") + tokenLabel
-    }
-
-    private nonisolated func toneAnnotationTextHeight(style: EmotionTokenStyle) -> CGFloat {
-        let f = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
-        return ceil(f.ascender - f.descender)
-    }
-
-    private nonisolated func toneAnnotationSize(style: EmotionTokenStyle) -> CGSize {
-        let s = toneAnnotationString()
-        if s.isEmpty { return .zero }
-        let f = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
-        return (s as NSString).size(withAttributes: [.font: f])
-    }
-
-    private func drawToneAnnotation(in frame: NSRect, controlView: NSView?, style: EmotionTokenStyle) {
-        let hovered = (attachment.map { $0 === kEmotionAttachmentHovered } ?? false)
-        let _ = (attachment.flatMap { kEmotionAttachmentSelectionStates[ObjectIdentifier($0)] } ?? false)
-
-        let s = toneAnnotationString()
-        if s.isEmpty { return }
-        // 容器右边界：标签在行尾时标注要整体左移，否则会画到容器外被裁掉。
-        // 注意不能从 controlView 取——**AppKit 绘制文本附件时传进来的 controlView 是 nil**（实测），
-        // 所以这个值由 EmotionTokenTextView 在布局 / 尺寸变化时写进来。
-        let maxX = min(containerMaxX,
-                       (controlView as? NSTextView)?.textContainer?.size.width
-                        ?? CGFloat.greatestFiniteMagnitude)
-        guard let layout = toneAnnotationLayout(for: frame,
-                                                label: tokenLabel,
-                                                emoji: tokenEmoji,
-                                                style: style,
-                                                maxX: maxX) else { return }
-
-        let f = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
-        let attrs: [NSAttributedString.Key: Any] = [.font: f, .foregroundColor: style.textColor]
-        (s as NSString).draw(at: layout.textOrigin, withAttributes: attrs)
-
-        // 删除 ×：悬停时出现（标注右侧）
-        if hovered {
-            let xStr = "×" as NSString
-            let xAttrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 11, weight: .bold),
-                .foregroundColor: style.textColor
-            ]
-            xStr.draw(at: NSPoint(x: layout.closeRect.minX + 2, y: layout.textOrigin.y),
-                      withAttributes: xAttrs)
-        }
-    }
+    // MARK: - 语气标记：不可见占位
 
     // MARK: - 拟声效果：声音标记
 
@@ -160,8 +106,11 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
         let selected = (attachment.flatMap { kEmotionAttachmentSelectionStates[ObjectIdentifier($0)] } ?? false)
         let dark = EmotionTokenStyle.isDarkAppearance(controlView?.effectiveAppearance ?? NSApp.effectiveAppearance)
 
+        // 左右各内缩 soundEdgeInset：给两边的语气胶囊留出收尾空间，
+        // 否则胶囊的 8pt 内边距会压到 pill 底下，从 pill 半透明的填充里透出一道重叠的描边。
+        let box = frame.insetBy(dx: style.soundEdgeInset, dy: 0)
         let radius = style.soundCornerRadius
-        let path = NSBezierPath(roundedRect: frame.insetBy(dx: 0.5, dy: 0.5),
+        let path = NSBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5),
                                 xRadius: radius, yRadius: radius)
 
         // 填充
@@ -182,19 +131,19 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
 
         // 选中态：情绪色外圈彩环
         if selected {
-            let halo = NSBezierPath(roundedRect: frame.insetBy(dx: -1.5, dy: -1.5),
+            let halo = NSBezierPath(roundedRect: box.insetBy(dx: -1.5, dy: -1.5),
                                     xRadius: radius + 1.5, yRadius: radius + 1.5)
             style.textColor.withAlphaComponent(0.9).setStroke()
             halo.lineWidth = 2.0
             halo.stroke()
         }
 
-        // 名称（v5：不再有播放三角，名称直接从内边距起排）
-        let cy = frame.midY
+        // 名称（v5：不再有播放三角）。pill 内缩过，所以名称按内缩后的盒子**居中**排，
+        // 左右留白才对称（仍按内边距起排的话右边只剩 1pt）。
         let lf = NSFont.systemFont(ofSize: style.soundFontSize, weight: .medium)
         let labelStr = tokenLabel as NSString
         let lsize = labelStr.size(withAttributes: [.font: lf, .foregroundColor: style.textColor])
-        labelStr.draw(at: NSPoint(x: frame.minX + style.soundHorizontalPadding, y: cy - lsize.height / 2),
+        labelStr.draw(at: NSPoint(x: box.midX - lsize.width / 2, y: box.midY - lsize.height / 2),
                       withAttributes: [.font: lf, .foregroundColor: style.textColor])
 
         // 居中 × 圆钮：v5 起仅悬停时绘制；v9 位置改到整个标签正中间（叠在名称上不再外挂）。

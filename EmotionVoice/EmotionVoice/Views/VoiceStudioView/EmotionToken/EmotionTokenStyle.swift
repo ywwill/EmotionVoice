@@ -55,40 +55,77 @@ struct EmotionTokenStyle {
     /// 是否显示删除按钮
     var showsDeleteButton: Bool = true
 
-    // MARK: - 语气标签（下划线 + 下方标注）
+    // MARK: - 语气标签（整段胶囊）
 
-    /// 下划线粗细（v4 加粗：由 2 → 2.5，接近设计稿的强调感）
-    var underlineThickness: CGFloat = 2.5
-    /// 下划线与正文之间的间距：以「正文字体的降部底线」为基准再往下留出的空隙。
-    /// AppKit 内置 underline 属性无法控制这个间距，因此下划线改为自绘。
-    var underlineGap: CGFloat = 2
-    /// 两个语气作用域「接缝处」额外让出的间距。
-    /// 相邻两个语气标签只隔着一个 1pt 宽的标记，下划线几乎会连成一条；
-    /// 在接缝的上一作用域尾端与下一作用域首端各内缩这么多，视觉上才分得开。
-    var underlineJointGap: CGFloat = 3
-    /// 下方标注字号
-    var annotationFontSize: CGFloat = 10.5
-    /// 下方标注与正文降部底线之间的间距。
+    /// 语气作用域的整段文本包进一个同色胶囊：填充 = 情绪色 13%、1px 内描边 42%、圆角 9。
+    /// 颜色本身就是「这段用什么语气」的信号，信息量比单一下划线更大。
+    var capsuleCornerRadius: CGFloat = 9
+    /// 胶囊水平内边距：文本左右各留这么多
+    var capsuleHorizontalPadding: CGFloat = 8
+    /// 相邻两块（胶囊↔胶囊、胶囊↔拟声 pill）之间要留出的净间隙。
+    var capsuleSeamGap: CGFloat = 2
+    /// 接缝收敛时每侧至少保留的内边距。
     ///
-    /// 注意与自绘下划线的关系：标注顶端 = 基线 + |descender| + annotationGap，
-    /// 下划线占据基线 + |descender| + underlineGap 起、厚 underlineThickness。
-    /// 下划线加粗并留间距后底部到了基线 +7.45，因此这里取 7（标注顶端 ≈ 基线 +9.95），
-    /// 给下划线留出约 2.5pt 的净空，避免两者叠在一起。
-    var annotationGap: CGFloat = 7
-    /// 下方标注中 emoji 与文字之间的间距
-    var annotationEmojiToLabel: CGFloat = 3
+    /// 0 = 允许胶囊边缘贴到文字的 advance 边界。CJK / 拉丁字形本身有约 0.6pt 的左右边距，
+    /// 所以贴边也不会压到笔画；再小就会切进字形了。
+    var capsuleSeamMinPadding: CGFloat = 0
+    /// 语气标记在文本流里占的宽度。
+    ///
+    /// 标记本身不可见，但它是相邻两个语气作用域之间**唯一**的物理间距：
+    /// 文档里两段作用域文本只隔这一个字符位，两侧各 8px 的内边距必然互相压进去，
+    /// 再怎么收敛都留不出缝隙。把它加宽到 5px（≈1/3 个汉字）后，
+    /// `resolveCapsuleSeams` 才能在接缝处切出真正的 `capsuleSeamGap` 间隙。
+    /// 设计稿里这一步是 CSS 的 `margin: 0 4px`（两段之间共 8px），这里是 AppKit 版的等价物。
+    var toneMarkerWidth: CGFloat = 5
+    /// 胶囊垂直内边距：文本上下各留这么多（v12 由 4 → 6，文本不再贴着描边）
+    var capsuleVerticalPadding: CGFloat = 6
+    /// 胶囊填充不透明度：常态 0.13，悬停抬到 0.20
+    var capsuleFillAlpha: CGFloat = 0.13
+    var capsuleFillAlphaHovered: CGFloat = 0.20
+    /// 胶囊 1px 内描边的不透明度
+    var capsuleStrokeAlpha: CGFloat = 0.42
+    /// 选中态：胶囊外再套一圈 2px 情绪色光环
+    var capsuleSelectionRingAlpha: CGFloat = 0.90
+    /// 作用域为空（标签后面还没输入文字）时，兜底画一个最小宽度的空胶囊，
+    /// 否则徽章无处安放，标签会变成看不见也删不掉的幽灵。
+    var capsuleEmptyWidth: CGFloat = 20
+
+    // MARK: - 左上角徽章（emoji + 名称）
+
+    /// 徽章字号（加粗，压在胶囊左上角）
+    var badgeFontSize: CGFloat = 10.5
+    /// 徽章字体
+    var badgeFont: NSFont { NSFont.systemFont(ofSize: badgeFontSize, weight: .bold) }
+    var badgeCornerRadius: CGFloat = 5
+    var badgeHorizontalPadding: CGFloat = 6
+    var badgeVerticalPadding: CGFloat = 3
+    /// 徽章文字与右侧 × 之间的间隙
+    var badgeToCloseGap: CGFloat = 3
+    /// 徽章相对胶囊左上角：向上探出的距离（需要 textContainerInset 留出等量 + 余量的顶部空间）
+    var badgeTopOffset: CGFloat = 14
+    /// 徽章相对胶囊左上角：向右的偏移
+    var badgeLeftOffset: CGFloat = 6
+    /// 徽章描边不透明度（底色取编辑器背景，保证压在任何文本上都读得清）
+    var badgeStrokeAlpha: CGFloat = 0.5
+    /// 徽章右侧 × 的宽度。常态也占位（只是不绘制），避免悬停时徽章变宽跳动。
+    var badgeCloseWidth: CGFloat = 13
 
     // MARK: - 拟声效果（点插入声音标记）
 
-    /// 声音标记圆角
-    var soundCornerRadius: CGFloat = 8
-    /// 声音标记内边距
-    var soundHorizontalPadding: CGFloat = 9
-    var soundVerticalPadding: CGFloat = 3
-    /// 声音标记名称字号
-    var soundFontSize: CGFloat = 13
-    /// 右上角外置 × 圆钮直径
-    var soundDeleteButtonDiameter: CGFloat = 16
+    /// 声音标记圆角（v12：8 → 6，更轻）
+    var soundCornerRadius: CGFloat = 6
+    /// 声音标记内边距（v12：9 / 3 → 7 / 1.5，不再撑行）
+    var soundHorizontalPadding: CGFloat = 7
+    var soundVerticalPadding: CGFloat = 1.5
+    /// 拟声 pill 的绘制 / 接缝内缩。
+    ///
+    /// cell 的 advance 宽度不变，但 pill 只画在中间：左右各让出 3pt 给两边的语气胶囊收尾，
+    /// 否则胶囊的 8px 内边距会直接压到 pill 底下（pill 画在上层，看得见一道重叠的描边）。
+    var soundEdgeInset: CGFloat = 3
+    /// 声音标记名称字号（v12：13 → 12）
+    var soundFontSize: CGFloat = 12
+    /// 居中浮出的 × 圆钮直径（v12：16 → 14）
+    var soundDeleteButtonDiameter: CGFloat = 14
 
     // MARK: - 颜色（绘制时由 identity + appearance 解析覆盖；这里只作兜底）
 
@@ -102,9 +139,6 @@ struct EmotionTokenStyle {
     /// hover / 选中时的高亮填充色
     var fillColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.09)
     var strokeColorHovered: NSColor = NSColor(white: 1.0, alpha: 0.16)
-
-    /// 下划线颜色（语气标签作用域）
-    var underlineColor: NSColor = fallbackBaseColor
 
     // MARK: - 几何
 
@@ -192,21 +226,22 @@ struct EmotionTokenStyle {
         let base = identity.baseColor
         s.dashedBorder = (identity.category == .richLanguage)
 
+        // 胶囊由文本视图自绘（用 scope.color + capsuleFillAlpha 等），
+        // 这里的 fillColor / strokeColor 只服务拟声标记：v12 起整体减淡，
+        // 常态不抢正文注意力，悬停才抬到 0.18。
         if dark {
             s.textColor = base
-            s.fillColor = base.withAlphaComponent(0.12)
-            s.strokeColor = base.withAlphaComponent(0.60)
-            s.fillColorHovered = base.withAlphaComponent(0.22)
-            s.strokeColorHovered = base.withAlphaComponent(0.90)
-            s.underlineColor = base
+            s.fillColor = base.withAlphaComponent(0.10)
+            s.strokeColor = base.withAlphaComponent(0.45)
+            s.fillColorHovered = base.withAlphaComponent(0.18)
+            s.strokeColorHovered = base.withAlphaComponent(0.70)
         } else {
             let t = base.darkened(by: 0.40)
             s.textColor = t
             s.fillColor = base.withAlphaComponent(0.10)
             s.strokeColor = base.withAlphaComponent(0.45)
-            s.fillColorHovered = base.withAlphaComponent(0.20)
-            s.strokeColorHovered = base.withAlphaComponent(0.80)
-            s.underlineColor = t
+            s.fillColorHovered = base.withAlphaComponent(0.18)
+            s.strokeColorHovered = base.withAlphaComponent(0.70)
         }
         return s
     }
@@ -237,63 +272,55 @@ func soundDeleteHitRect(for frame: NSRect, style: EmotionTokenStyle) -> NSRect {
     return NSRect(x: cx - r / 2, y: cy - r / 2, width: r, height: r)
 }
 
-/// 语气标签下方标注的布局结果（绘制与命中测试共用同一份，避免两边错位）。
-struct ToneAnnotationLayout {
-    /// 标注文字（emoji + 名称）的绘制原点
+/// 语气标签「左上角徽章」的布局结果（绘制与命中测试共用同一份，避免两边错位）。
+struct ToneBadgeLayout {
+    /// 徽章本体（含左右内边距 + 右侧 × 的预留位）
+    let rect: NSRect
+    /// 徽章文字（emoji + 名称）的绘制原点
     let textOrigin: NSPoint
-    /// 标注的悬停命中区（含留白）
-    let textRect: NSRect
-    /// 右侧 × 的命中区
+    /// 右侧 × 的命中区（比徽章略高，好点）
     let closeRect: NSRect
 }
 
-/// 语气标签：下方标注的整体布局。
-/// 标注画在 glyph 矩形之外（一行里属于它的只有 1px 宽的标记），不并入命中区的话，
-/// 鼠标移到看得见的「😮 惊叹」上根本不会触发 hover，× 也就不会出现。
+/// 语气标签：徽章挂在作用域**首块胶囊的左上角**（向上探出 `badgeTopOffset`）。
+/// 绘制与命中都走这一份，鼠标移到看得见的「😮 惊叹」上才可能触发 hover。
 ///
-/// `maxX` 是文本容器的右边界：**标签插在行尾时，标注会画到容器外面被裁掉**，
-/// 这时把整个标注（连同它的 ×）一起左移，保证完整可见。
-/// 留白给得比字号多一点：标注是 10.5pt 的小字，紧贴边缘很难瞄。
-func toneAnnotationLayout(for frame: NSRect,
-                          label: String,
-                          emoji: String,
-                          style: EmotionTokenStyle,
-                          maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> ToneAnnotationLayout? {
+/// `maxX` 是文本容器的右边界：**作用域起点贴着行尾时，徽章会画到容器外面被裁掉**，
+/// 这时把整个徽章（连同它的 ×）一起左移，保证完整可见。
+/// `minY` 是容器顶部的下界（= `-textContainerOrigin.y`）：徽章压在首行胶囊上沿之外，
+/// 顶部留白不够时会被容器裁掉一半——这里兜底把它压回可见区域，宁可多盖一点胶囊也不能缺一块。
+/// × 的位置常态也占位，只是不绘制，避免悬停时徽章宽度跳动。
+func toneBadgeLayout(forCapsule capsule: NSRect,
+                     label: String,
+                     emoji: String,
+                     style: EmotionTokenStyle,
+                     maxX: CGFloat = CGFloat.greatestFiniteMagnitude,
+                     minY: CGFloat = -CGFloat.greatestFiniteMagnitude) -> ToneBadgeLayout? {
     let s = (emoji.isEmpty ? "" : emoji + " ") + label
     if s.isEmpty { return nil }
-    let f = NSFont.systemFont(ofSize: style.annotationFontSize, weight: .medium)
+    let f = style.badgeFont
     let size = (s as NSString).size(withAttributes: [.font: f])
     guard size.width > 0 else { return nil }
 
-    let h = ceil(f.ascender - f.descender)
-    let y = frame.maxY - h - 1
-    let padX: CGFloat = 4
-    let padY: CGFloat = 3
-    let closeW: CGFloat = 18
-    // 标注 + × 一起占据的总宽度
-    let total = padX + size.width + 2 + closeW + padX
+    let textW = ceil(size.width)
+    let textH = ceil(f.ascender - f.descender)
+    let h = textH + style.badgeVerticalPadding * 2
+    let w = style.badgeHorizontalPadding * 2 + textW + style.badgeToCloseGap + style.badgeCloseWidth
 
-    var x = frame.minX - padX
-    if maxX.isFinite, x + total > maxX { x = maxX - total }
-    if x < 0 { x = 0 }
+    var x = capsule.minX + style.badgeLeftOffset
+    var y = capsule.minY - style.badgeTopOffset
+    if maxX.isFinite, x + w > maxX { x = max(0, maxX - w) }
+    if minY.isFinite { y = max(y, minY) }
 
-    return ToneAnnotationLayout(
-        textOrigin: NSPoint(x: x + padX, y: y),
-        textRect: NSRect(x: x, y: y - padY, width: size.width + padX * 2, height: h + padY * 2),
-        closeRect: NSRect(x: x + padX + size.width + 1, y: y - 3, width: closeW, height: h + 6)
+    return ToneBadgeLayout(
+        rect: NSRect(x: x, y: y, width: w, height: h),
+        textOrigin: NSPoint(x: x + style.badgeHorizontalPadding,
+                            y: y + style.badgeVerticalPadding),
+        closeRect: NSRect(x: x + style.badgeHorizontalPadding + textW + style.badgeToCloseGap,
+                          y: y - 2,
+                          width: style.badgeCloseWidth,
+                          height: h + 4)
     )
-}
-
-/// 语气标签：下方标注的悬停命中区（container 坐标）
-func toneAnnotationRect(for frame: NSRect, label: String, emoji: String, style: EmotionTokenStyle,
-                        maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> NSRect? {
-    toneAnnotationLayout(for: frame, label: label, emoji: emoji, style: style, maxX: maxX)?.textRect
-}
-
-/// 语气标签：下方标注里 × 的命中区域（× 绘制在 glyph 矩形之外，需由文本视图层命中）
-func toneAnnotationCloseRect(for frame: NSRect, label: String, emoji: String, style: EmotionTokenStyle,
-                             maxX: CGFloat = CGFloat.greatestFiniteMagnitude) -> NSRect? {
-    toneAnnotationLayout(for: frame, label: label, emoji: emoji, style: style, maxX: maxX)?.closeRect
 }
 
 /// 把 0xRRGGBB 转成 sRGB 的 NSColor（alpha 默认 1）。

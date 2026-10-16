@@ -48,38 +48,54 @@ final class EmotionTokenTextView: NSTextView {
 
     // MARK: - 语气作用域（v4：只作为绘图数据，不再写入 NSTextStorage）
 
-    /// 一个语气标签的作用域：字符区间 + 解析后的下划线颜色。
+    /// 一个语气标签的作用域：字符区间 + 解析后的情绪色。
     ///
     /// 旧实现把 `.underlineStyle` / `.underlineColor` 写进 NSTextStorage，
     /// 导致每按一次键都要：beginEditing → 全文档 removeAttribute → addAttribute → endEditing，
     /// `endEditing` 会触发全文档 `processEditing`（属性修正 + 布局失效 + 重排），
-    /// 这是「插入标签后继续输入变卡」的主因。现在只存数据，绘制阶段自己画线，
+    /// 这是「插入标签后继续输入变卡」的主因。现在只存数据，绘制阶段自己画胶囊，
     /// 输入过程零属性变更、零重排。
     private struct ToneScope: Equatable {
-        /// 需要画线的区间。通常只有一段；中间夹了拟声标记时拆成多段——
-        /// 拟声标记是「插入的声音事件」，不代表文本，不该被语气下划线划过去。
+        /// 作用域的起点标记。用于 hover / 选中 / 删除，以及空作用域时定位徽章。
+        let attachment: NSTextAttachment
+        /// 需要包进胶囊的区间。通常只有一段；中间夹了拟声标记时拆成多段——
+        /// 拟声标记是「插入的声音事件」，不代表文本，不该被胶囊圈进去。
         let segments: [NSRange]
         let color: NSColor
-        /// 作用域首端 / 尾端与相邻语气作用域之间的接缝留白
-        let leadingInset: CGFloat
-        let trailingInset: CGFloat
 
         static func == (lhs: ToneScope, rhs: ToneScope) -> Bool {
+            lhs.attachment === rhs.attachment &&
             lhs.segments == rhs.segments &&
-            lhs.color.isEqual(rhs.color) &&
-            lhs.leadingInset == rhs.leadingInset &&
-            lhs.trailingInset == rhs.trailingInset
+            lhs.color.isEqual(rhs.color)
         }
     }
 
-    /// 一行里待画的一段下划线（container 坐标系）
-    private struct UnderlineFragment {
-        var x: CGFloat
-        var width: CGFloat
-        var baseline: CGFloat
+    /// 一个语气作用域的胶囊几何（container 坐标系）。绘制与命中测试共用，避免两边错位。
+    private struct ToneCapsuleGeometry {
+        let attachment: NSTextAttachment
+        let color: NSColor
+        /// 每个行片段各一块胶囊（对应 CSS 的 `box-decoration-break: clone`）
+        let capsuleRects: [NSRect]
+        /// 左上角徽章（只在首块上，续段不再重复）
+        let badge: ToneBadgeLayout?
+        /// 徽章文字（emoji + 名称）
+        let badgeText: String?
+        let hovered: Bool
+        let selected: Bool
     }
 
     private var toneScopes: [ToneScope] = []
+
+    /// 徽章的底色。它压在胶囊描边上，必须不透明才读得清。
+    /// 默认 nil → 按当前外观取编辑器背景色（暗 #15171B / 亮 白）。
+    var badgeBackgroundColor: NSColor?
+
+    private var resolvedBadgeBackgroundColor: NSColor {
+        if let c = badgeBackgroundColor { return c }
+        return EmotionTokenStyle.isDarkAppearance(effectiveAppearance)
+            ? NSColor(red: 0.082, green: 0.090, blue: 0.106, alpha: 1.0)   // #15171B
+            : NSColor.white
+    }
 
     // MARK: - 内容变更去抖
 
@@ -88,10 +104,16 @@ final class EmotionTokenTextView: NSTextView {
     private static let contentChangeDelay: TimeInterval = 0.35
     private var contentChangeWorkItem: DispatchWorkItem?
 
-    /// 普通文本的基础属性（含段落 lineSpacing，给语气标注留白）
+    /// 普通文本的基础属性（含段落 lineSpacing，给语气胶囊与徽章留白）
+    ///
+    /// v13：12 → 28。行距要同时喂饱三样东西：
+    ///   · 胶囊实高 28.5pt（含 2×6 垂直内边距），比正文行高多 12pt；
+    ///   · 徽章从胶囊上沿向上探出 `badgeTopOffset` = 14pt；
+    ///   · 相邻两行的胶囊之间还要留得住呼吸位。
+    /// 28 → 行距 44.5pt，胶囊之间净空 16pt，徽章顶端离上一行胶囊下沿还有 2pt。
     private var bodyAttributes: [NSAttributedString.Key: Any] {
         let ps = NSMutableParagraphStyle()
-        ps.lineSpacing = 12
+        ps.lineSpacing = 28
         ps.paragraphSpacing = 0
         return [
             .font: EmotionTokenStyle.bodyFont,
@@ -129,8 +151,11 @@ final class EmotionTokenTextView: NSTextView {
         isHorizontallyResizable = false
         textContainer?.widthTracksTextView = true
         textContainer?.lineFragmentPadding = 0
-        // 顶部留出足够空间给拟声标记的「外置 ×」圆钮（直径 16，画在胶囊上沿之外）
-        textContainerInset = NSSize(width: 0, height: 18)
+        // 顶部留白：徽章压在首行胶囊的上沿之外（向上探出 badgeTopOffset = 14），
+        // 再加胶囊自身 6pt 上内边距 + 字形到行顶的 ~0.5pt，首行徽章顶端在 container
+        // y ≈ -20.5。给到 28 留出 7pt 余量，避免任何字体度量差异把徽章削掉半截。
+        // （另有一层兜底：toneBadgeLayout 的 minY 会把徽章压回可见区域。）
+        textContainerInset = NSSize(width: 0, height: 28)
         font = EmotionTokenStyle.bodyFont
         textColor = NSColor.white
         backgroundColor = .clear
@@ -456,14 +481,14 @@ final class EmotionTokenTextView: NSTextView {
         }
         let full = NSRange(location: 0, length: storage.length)
         let dark = EmotionTokenStyle.isDarkAppearance(effectiveAppearance)
-        let jointGap = EmotionTokenStyle.default.underlineJointGap
 
-        var entries: [(location: Int, color: NSColor, category: EmotionCategory)] = []
+        var entries: [(location: Int, attachment: NSTextAttachment, color: NSColor,
+                       category: EmotionCategory)] = []
         storage.enumerateAttribute(.attachment, in: full, options: []) { value, range, _ in
             guard let att = value as? NSTextAttachment,
                   EmotionTokenAttachment.isEmotionToken(att),
                   let id = kEmotionAttachmentIdentity[ObjectIdentifier(att)] else { return }
-            entries.append((range.location, id.baseColor, id.category))
+            entries.append((range.location, att, id.baseColor, id.category))
         }
 
         let sorted = entries.sorted { $0.location < $1.location }
@@ -478,12 +503,12 @@ final class EmotionTokenTextView: NSTextView {
             // v5：作用域延伸到「下一个语气标记」，拟声标记不再打断它
             // （插入拟声后继续输入的文本，仍属于前面的语气标签）
             var end = storage.length
-            var hasNextTone = false
             if k + 1 < toneIndices.count {
                 end = sorted[toneIndices[k + 1]].location
-                hasNextTone = true
             }
-            guard end > start else { continue }
+            // v13：作用域允许为空（标签刚插入、后面还没输文字），
+            // 空作用域也要留一条记录，否则徽章无处安放 → 标签变成看不见也删不掉的幽灵。
+            guard end >= start else { continue }
 
             // 拟声标记占的那 1 个字符不画线，把区间拆成若干段跳过它
             var segments: [NSRange] = []
@@ -500,16 +525,9 @@ final class EmotionTokenTextView: NSTextView {
             if end > cursor {
                 segments.append(NSRange(location: cursor, length: end - cursor))
             }
-            guard !segments.isEmpty else { continue }
 
             let col = dark ? e.color : e.color.darkened(by: 0.40)
-            result.append(ToneScope(
-                segments: segments,
-                color: col,
-                // 接缝处让开：前面 / 后面还有语气作用域时才内缩，文首文末不留空
-                leadingInset: (k > 0) ? jointGap : 0,
-                trailingInset: hasNextTone ? jointGap : 0
-            ))
+            result.append(ToneScope(attachment: e.attachment, segments: segments, color: col))
         }
 
         let changed = (result != toneScopes)
@@ -517,61 +535,362 @@ final class EmotionTokenTextView: NSTextView {
         if changed { needsDisplay = true }
     }
 
-    // MARK: - 自绘语气下划线
+    // MARK: - 语气胶囊几何
 
-    /// 在系统绘制完文本之后补画语气下划线。
-    /// AppKit 的 `.underlineStyle` 无法控制粗细与「离正文的间距」，只能自绘。
-    override func draw(_ rect: NSRect) {
-        super.draw(rect)
-        drawToneUnderlines(in: rect)
+    /// 由作用域数据算出每个胶囊矩形 + 首块的左上角徽章（container 坐标系）。
+    ///
+    /// 每次调用都现算：布局随时可能因换行 / 宽度变化而失效，缓存反而容易拿到过期几何。
+    /// 一次调用只是 O(作用域数 × 行片段数) 的 layoutManager 查询，绘制与鼠标移动都用得起。
+    /// 参与接缝收敛的一个盒子：语气胶囊的一块（可让位）或拟声标记本体（实心，不让位）。
+    private struct CapsuleSeamBox {
+        var rect: NSRect
+        /// 该盒子真正包裹的文本矩形，用于「至少保留多少内边距」的兜底
+        let textRect: NSRect
+        let isSolid: Bool
+        /// 所在 line fragment 的 minY，用作「同一行」的判据。
+        /// 不能用 rect.minY：胶囊高 28.5、拟声 pill 高 17，两者 minY 差 7pt，
+        /// 拿它判定会把同一行里的胶囊与拟声当成两行，接缝就永远收敛不到。
+        let lineMinY: CGFloat
+        /// 回写用：属于第几个作用域的第几块（拟声标记为 nil）
+        let scopeIndex: Int?
+        let fragmentIndex: Int?
     }
 
-    private func drawToneUnderlines(in dirtyRect: NSRect) {
-        guard !toneScopes.isEmpty, let lm = layoutManager else { return }
+    private func toneCapsuleGeometries() -> [ToneCapsuleGeometry] {
+        guard !toneScopes.isEmpty, let lm = layoutManager, let tc = textContainer else { return [] }
         let style = EmotionTokenStyle.default
         let font = EmotionTokenStyle.bodyFont
-        let origin = textContainerOrigin
-        // 脏矩形换算到 container 坐标系，用于剔掉不可见的线段
-        let clip = dirtyRect.offsetBy(dx: -origin.x, dy: -origin.y)
-        let radius = style.underlineThickness / 2
+        let maxX = tc.size.width
+        let capsuleH = (font.ascender - font.descender) + style.capsuleVerticalPadding * 2
+        let textH = font.ascender - font.descender
+        let hPad = style.capsuleHorizontalPadding
+        // 行首 / 行尾的片段没有额外的内外空间，内边距必须夹进容器边界里，
+        // 否则胶囊会伸出容器被裁掉（实测右侧会溢出 3pt、左侧会溢出 8pt）。
+        let clampX = { (x0: CGFloat, x1: CGFloat) -> NSRect in
+            let lo = max(0, x0)
+            let hi = min(maxX, x1)
+            return NSRect(x: lo, y: 0, width: max(hi - lo, 1), height: 0)
+        }
 
-        for scope in toneScopes {
-            scope.color.setFill()
-            let segments = scope.segments
-            for (si, seg) in segments.enumerated() {
+        // 1) 每个作用域按「行片段」各出一块胶囊（对应 CSS 的 box-decoration-break: clone）
+        var perScopeRects: [[NSRect]] = Array(repeating: [], count: toneScopes.count)
+        var boxes: [CapsuleSeamBox] = []
+
+        for (si, scope) in toneScopes.enumerated() {
+            var rects: [NSRect] = []
+            var textRects: [NSRect] = []
+            var lineKeys: [CGFloat] = []
+            for seg in scope.segments {
                 let glyphRange = lm.glyphRange(forCharacterRange: seg, actualCharacterRange: nil)
                 guard glyphRange.length > 0 else { continue }
-
-                var frags: [UnderlineFragment] = []
                 lm.enumerateLineFragments(forGlyphRange: glyphRange) { lineRect, _, container, lineGlyphRange, _ in
                     let sub = NSIntersectionRange(glyphRange, lineGlyphRange)
                     guard sub.length > 0 else { return }
                     let br = lm.boundingRect(forGlyphRange: sub, in: container)
                     guard br.width >= 0.5 else { return }
-                    // 该行的基线 = line fragment 顶部 + 字形定位的 y 偏移
+                    // 纵向不能用 br：`boundingRect(forGlyphRange:in:)` 的高度是**整行**高，
+                    // 会带着 lineSpacing 一起算进来，胶囊会胖到把行距吃掉。
+                    // 只有 x / width 可信，上下沿必须由基线 ± 字体度量推出来。
                     let baseline = lineRect.minY + lm.location(forGlyphAt: sub.location).y
-                    frags.append(UnderlineFragment(x: br.minX, width: br.width, baseline: baseline))
-                }
-                guard !frags.isEmpty else { continue }
-
-                // 接缝留白只加在整个作用域的首段起点 / 末段终点
-                if si == 0, scope.leadingInset > 0 {
-                    frags[0].x += scope.leadingInset
-                    frags[0].width -= scope.leadingInset
-                }
-                if si == segments.count - 1, scope.trailingInset > 0 {
-                    frags[frags.count - 1].width -= scope.trailingInset
-                }
-
-                for f in frags where f.width >= 0.5 {
-                    // 降部底线（descender 为负值）再往下让出 gap
-                    let y = f.baseline - font.descender + style.underlineGap
-                    let line = NSRect(x: f.x, y: y, width: f.width, height: style.underlineThickness)
-                    guard line.intersects(clip) else { continue }
-                    NSBezierPath(roundedRect: line.offsetBy(dx: origin.x, dy: origin.y),
-                                 xRadius: radius, yRadius: radius).fill()
+                    let top = baseline - font.ascender - style.capsuleVerticalPadding
+                    let band = clampX(br.minX - hPad, br.maxX + hPad)
+                    textRects.append(NSRect(x: br.minX, y: top + style.capsuleVerticalPadding,
+                                            width: br.width, height: textH))
+                    rects.append(NSRect(x: band.minX, y: top,
+                                        width: band.width, height: capsuleH))
+                    lineKeys.append(lineRect.minY)
                 }
             }
+            // 作用域为空（标签后还没输入文字）→ 在标记处补一个最小宽度的空胶囊，
+            // 徽章挂上去，标签才不会变成看不见也点不到的幽灵。
+            if rects.isEmpty, let anchor = markerAnchor(for: scope.attachment) {
+                let top = anchor.point.y - font.ascender - style.capsuleVerticalPadding
+                let band = clampX(anchor.point.x - hPad, anchor.point.x + style.capsuleEmptyWidth - hPad)
+                textRects.append(NSRect(x: anchor.point.x, y: top + style.capsuleVerticalPadding,
+                                        width: 0, height: textH))
+                rects.append(NSRect(x: band.minX, y: top, width: band.width, height: capsuleH))
+                lineKeys.append(anchor.lineMinY)
+            }
+            perScopeRects[si] = rects
+            for (fi, r) in rects.enumerated() {
+                boxes.append(CapsuleSeamBox(rect: r, textRect: textRects[fi], isSolid: false,
+                                            lineMinY: lineKeys[fi],
+                                            scopeIndex: si, fragmentIndex: fi))
+            }
+        }
+
+        // 2) 拟声标记也占位置：胶囊不能压到它下面（它是实心 pill，画在胶囊之上）
+        for s in soundMarkerFrames() {
+            boxes.append(CapsuleSeamBox(rect: s.frame, textRect: s.frame, isSolid: true,
+                                        lineMinY: s.lineMinY,
+                                        scopeIndex: nil, fragmentIndex: nil))
+        }
+
+        // 3) 接缝收敛
+        resolveCapsuleSeams(&boxes)
+
+        for b in boxes {
+            guard let si = b.scopeIndex, let fi = b.fragmentIndex,
+                  si < perScopeRects.count, fi < perScopeRects[si].count else { continue }
+            perScopeRects[si][fi] = b.rect
+        }
+
+        // 4) 组装结果：徽章挂在首块的左上角
+        var result: [ToneCapsuleGeometry] = []
+        result.reserveCapacity(toneScopes.count)
+        for (si, scope) in toneScopes.enumerated() {
+            let rects = perScopeRects[si]
+            guard let first = rects.first else { continue }
+            let (label, emoji) = labelAndEmoji(for: scope.attachment)
+            let text = (emoji.isEmpty ? "" : emoji + " ") + label
+            let badge = toneBadgeLayout(forCapsule: first,
+                                        label: label,
+                                        emoji: emoji,
+                                        style: style,
+                                        maxX: maxX,
+                                        // 兜底：顶部留白不够时把徽章压回可见区，宁可多盖一点胶囊
+                                        minY: -textContainerOrigin.y + 2)
+            result.append(ToneCapsuleGeometry(
+                attachment: scope.attachment,
+                color: scope.color,
+                capsuleRects: rects,
+                badge: badge,
+                badgeText: text.isEmpty ? nil : text,
+                hovered: scope.attachment === kEmotionAttachmentHovered,
+                selected: kEmotionAttachmentSelectionStates[ObjectIdentifier(scope.attachment)] ?? false
+            ))
+        }
+        return result
+    }
+
+    /// 相邻两段在文档里只隔 1 个字符位（语气标记宽 1px），两侧的 8px 内边距必然互相压进去。
+    /// 这里按「行 → x」排序后两两收敛：在重叠区中点切开，但每侧至少保留
+    /// `capsuleSeamMinPadding` 的内边距——宁可留 ~3px 重叠，也绝不让胶囊边缘切到文字。
+    ///
+    /// （设计稿靠 CSS 的 `margin: 0 4px` 在两段文本之间留出 8px 空隙才做到「3px 间隙」；
+    ///  AppKit 里文本是连续排布的，没法凭空插空隙，只能这样收敛。）
+    private func resolveCapsuleSeams(_ boxes: inout [CapsuleSeamBox]) {
+        guard boxes.count > 1 else { return }
+        let style = EmotionTokenStyle.default
+        let gap = style.capsuleSeamGap
+        let minPad = style.capsuleSeamMinPadding
+        boxes.sort { a, b in
+            if abs(a.lineMinY - b.lineMinY) > 1 { return a.lineMinY < b.lineMinY }
+            return a.rect.minX < b.rect.minX
+        }
+        for i in 0..<(boxes.count - 1) {
+            let j = i + 1
+            // 不同行不存在水平接缝
+            guard abs(boxes[i].lineMinY - boxes[j].lineMinY) <= 1 else { continue }
+            guard boxes[i].rect.maxX > boxes[j].rect.minX - gap else { continue }
+            let mid = (boxes[i].rect.maxX + boxes[j].rect.minX) / 2
+
+            // 实心（拟声 pill）不让位：那一侧的间隙由胶囊单方面让出来。
+            // 两边都是胶囊才在重叠区中点各让一半。
+            var aMax = mid - gap / 2
+            var bMin = mid + gap / 2
+            if boxes[j].isSolid {
+                aMax = boxes[j].rect.minX - gap
+            } else if boxes[i].isSolid {
+                bMin = boxes[i].rect.maxX + gap
+            }
+
+            if !boxes[i].isSolid {
+                // 下限：不能切掉文字（minPad 允许贴到 advance 边界，字形自带 ~0.6pt 边距）
+                let floorX = boxes[i].textRect.maxX + minPad
+                let target = min(boxes[i].rect.maxX, max(aMax, floorX))
+                boxes[i].rect.size.width = max(target - boxes[i].rect.minX, 4)
+            }
+            if !boxes[j].isSolid {
+                let ceilX = boxes[j].textRect.minX - minPad
+                let target = max(boxes[j].rect.minX, min(bMin, ceilX))
+                let right = boxes[j].rect.maxX
+                let clampedMin = min(target, right - 4)
+                boxes[j].rect.origin.x = clampedMin
+                boxes[j].rect.size.width = right - clampedMin
+            }
+        }
+    }
+
+    /// 所有拟声标记的真实 frame（container 坐标系）。
+    /// 不能用 `boundingRect(forGlyphRange:)`：它的高度会被抬到整行高，只有 x / width 可信。
+    private func soundMarkerFrames() -> [(frame: NSRect, lineMinY: CGFloat)] {
+        guard let storage = textStorage, let lm = layoutManager else { return [] }
+        var out: [(frame: NSRect, lineMinY: CGFloat)] = []
+        storage.enumerateAttribute(.attachment,
+                                   in: NSRange(location: 0, length: storage.length),
+                                   options: []) { value, range, _ in
+            guard let att = value as? NSTextAttachment,
+                  EmotionTokenAttachment.isEmotionToken(att),
+                  let cell = att.attachmentCell as? EmotionTokenAttachmentCell,
+                  cell.tokenCategory == .richLanguage else { return }
+            let glyph = lm.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            guard glyph.length > 0 else { return }
+            var lineOrigin = NSPoint.zero
+            lm.enumerateLineFragments(forGlyphRange: glyph) { lineRect, _, _, _, _ in
+                lineOrigin = lineRect.origin
+            }
+            let loc = lm.location(forGlyphAt: glyph.location)
+            let size = cell.cellSize()
+            // 返回的是 pill **绘制**用的矩形（左右各内缩 soundEdgeInset），
+            // 不是 cell 的完整 frame——接缝要按看得见的边界算，否则间隙会落在 pill 底下。
+            let inset = EmotionTokenStyle.default.soundEdgeInset
+            out.append((NSRect(x: lineOrigin.x + loc.x,
+                               y: lineOrigin.y + loc.y - size.height,
+                               width: size.width, height: size.height)
+                            .insetBy(dx: inset, dy: 0),
+                        lineOrigin.y))
+        }
+        return out
+    }
+
+    /// 离屏几何测试用：导出当前语气胶囊 / 徽章 / × 的几何（container 坐标系）。
+    /// - Note: internal 而非 private：供离屏几何测试直接调用（与 `hitTestTokenDelete` 同款）。
+    func debugToneCapsuleGeometry() -> [(capsules: [NSRect], badge: NSRect?, close: NSRect?)] {
+        toneCapsuleGeometries().map {
+            (capsules: $0.capsuleRects, badge: $0.badge?.rect, close: $0.badge?.closeRect)
+        }
+    }
+
+    /// 某个标记附件所在位置的基线点（container 坐标系），用于空作用域定位徽章。
+    private func markerAnchor(for attachment: NSTextAttachment) -> (point: NSPoint, lineMinY: CGFloat)? {
+        guard let storage = textStorage, let lm = layoutManager else { return nil }
+        var found: NSRange?
+        storage.enumerateAttribute(.attachment,
+                                   in: NSRange(location: 0, length: storage.length),
+                                   options: []) { value, range, stop in
+            guard let att = value as? NSTextAttachment, att === attachment else { return }
+            found = range
+            stop.pointee = true
+        }
+        guard let r = found else { return nil }
+        let glyph = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+        guard glyph.length > 0 else { return nil }
+        var lineOrigin: NSPoint?
+        lm.enumerateLineFragments(forGlyphRange: glyph) { lineRect, _, _, _, _ in
+            lineOrigin = lineRect.origin
+        }
+        // 一个 line fragment 都没枚举到 → 布局还没做完，此时返回坐标只会得到 (0,0)，
+        // 会把空作用域的胶囊错误地挂到第 1 行去。宁可返回 nil 让这次跳过。
+        guard let origin = lineOrigin else { return nil }
+        let loc = lm.location(forGlyphAt: glyph.location)
+        // 取标记的**右边缘**：空作用域后面接着输入的文字是从这里开始的，
+        // 拿左边缘会和上一段文本的末尾重合，接缝处就切不出间隙。
+        let width = (attachment.attachmentCell as? EmotionTokenAttachmentCell)?.cellSize().width ?? 0
+        return (NSPoint(x: origin.x + loc.x + width, y: origin.y + loc.y), origin.y)
+    }
+
+    /// 从 cell（缺失时退回 FileWrapper）里取出标签的名称与 emoji。
+    private func labelAndEmoji(for attachment: NSTextAttachment) -> (label: String, emoji: String) {
+        let cell = attachment.attachmentCell as? EmotionTokenAttachmentCell
+        let token = (cell == nil) ? EmotionTokenAttachment.parse(from: attachment) : nil
+        return (cell?.tokenLabel ?? token?.label ?? "",
+                cell?.tokenEmoji ?? token?.emoji ?? "")
+    }
+
+    // MARK: - 自绘语气胶囊
+
+    /// 三段式绘制（顺序**不能换**）：
+    ///   1. 先画胶囊（填充 + 内描边）——必须在字形**下面**，否则会把正文盖住；
+    ///   2. 再画徽章——它压在自己胶囊的上沿、且不与任何字形相交（徽章底边比首行字形顶端
+    ///      还高 1.5pt），所以放在 super.draw 之前画不会被打断；
+    ///   3. 最后交给 super 画文本 / 附件（拟声标记落在胶囊内部，视觉上不打断语气）。
+    ///
+    /// ⚠️ 徽章**必须**在 `super.draw(rect)` 之前画：实测 `super.draw` 返回后图形状态里的
+    /// 裁剪被收窄到文本容器区域（从 container origin 开始），而徽章恰恰画在容器上沿之外
+    /// （container y 为负），整块会被裁掉——胶囊在容器内、v12 的下划线也在容器内，
+    /// 所以只有徽章消失。离屏渲染验证过：提前画就能完整显示（含 emoji + 文字）。
+    override func draw(_ rect: NSRect) {
+        let geometries = toneCapsuleGeometries()
+        drawToneCapsules(geometries, in: rect)
+        drawToneBadges(geometries, in: rect)
+        super.draw(rect)
+    }
+
+    private func drawToneCapsules(_ geometries: [ToneCapsuleGeometry], in dirtyRect: NSRect) {
+        guard !geometries.isEmpty else { return }
+        let style = EmotionTokenStyle.default
+        let origin = textContainerOrigin
+
+        for g in geometries {
+            let fill = g.color.withAlphaComponent(g.hovered ? style.capsuleFillAlphaHovered
+                                                            : style.capsuleFillAlpha)
+            let stroke = g.color.withAlphaComponent(style.capsuleStrokeAlpha)
+            for r in g.capsuleRects {
+                let rr = r.offsetBy(dx: origin.x, dy: origin.y)
+                guard rr.intersects(dirtyRect) else { continue }
+                let path = NSBezierPath(roundedRect: rr,
+                                        xRadius: style.capsuleCornerRadius,
+                                        yRadius: style.capsuleCornerRadius)
+                fill.setFill()
+                path.fill()
+                // 1px 内描边：路径内缩 0.5，描边才不会溢出到圆角外面
+                let insetPath = NSBezierPath(roundedRect: rr.insetBy(dx: 0.5, dy: 0.5),
+                                             xRadius: max(style.capsuleCornerRadius - 0.5, 0),
+                                             yRadius: max(style.capsuleCornerRadius - 0.5, 0))
+                stroke.setStroke()
+                insetPath.lineWidth = 1
+                insetPath.stroke()
+
+                // 选中态：胶囊外再套一圈 2px 情绪色光环
+                if g.selected {
+                    let ring = NSBezierPath(roundedRect: rr.insetBy(dx: -1.5, dy: -1.5),
+                                            xRadius: style.capsuleCornerRadius + 1.5,
+                                            yRadius: style.capsuleCornerRadius + 1.5)
+                    g.color.withAlphaComponent(style.capsuleSelectionRingAlpha).setStroke()
+                    ring.lineWidth = 2
+                    ring.stroke()
+                }
+            }
+        }
+    }
+
+    private func drawToneBadges(_ geometries: [ToneCapsuleGeometry], in dirtyRect: NSRect) {
+        guard !geometries.isEmpty else { return }
+        let style = EmotionTokenStyle.default
+        let origin = textContainerOrigin
+        let bg = resolvedBadgeBackgroundColor
+
+        for g in geometries {
+            guard let badge = g.badge else { continue }
+            let rr = badge.rect.offsetBy(dx: origin.x, dy: origin.y)
+            guard rr.intersects(dirtyRect) else { continue }
+
+            let path = NSBezierPath(roundedRect: rr,
+                                    xRadius: style.badgeCornerRadius,
+                                    yRadius: style.badgeCornerRadius)
+            bg.setFill()
+            path.fill()
+            g.color.withAlphaComponent(style.badgeStrokeAlpha).setStroke()
+            path.lineWidth = 1
+            path.stroke()
+
+            if let text = g.badgeText {
+                var attrs: [NSAttributedString.Key: Any] = [
+                    .font: style.badgeFont,
+                    .foregroundColor: g.color
+                ]
+                // 选中态：徽章文字加下划线（对应设计稿 .seg.sel .badge）
+                if g.selected {
+                    attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                }
+                let textOrigin = NSPoint(x: badge.textOrigin.x + origin.x,
+                                         y: badge.textOrigin.y + origin.y)
+                (text as NSString).draw(at: textOrigin, withAttributes: attrs)
+            }
+
+            // × 只在悬停时绘制；位置常态已占位，所以徽章宽度不会跳。
+            guard g.hovered else { continue }
+            let cr = badge.closeRect.offsetBy(dx: origin.x, dy: origin.y)
+            let xStr = "×" as NSString
+            let xAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 11, weight: .bold),
+                .foregroundColor: g.color
+            ]
+            let xSize = xStr.size(withAttributes: xAttrs)
+            xStr.draw(at: NSPoint(x: cr.midX - xSize.width / 2,
+                                  y: rr.minY + style.badgeVerticalPadding),
+                      withAttributes: xAttrs)
         }
     }
 
@@ -727,8 +1046,11 @@ final class EmotionTokenTextView: NSTextView {
         let style: EmotionTokenStyle
         /// 删除按钮命中区（× 画在 frame 之外）
         let deleteRect: NSRect?
-        /// 语气类的下方标注区域（也画在 frame 之外）
-        let annotationRect: NSRect?
+        /// 语气类的左上角徽章（画在 frame 之外，压在胶囊上沿）
+        let badgeRect: NSRect?
+        /// 语气类的胶囊矩形（跨行时每个行片段一块）。
+        /// 只参与 hover，不参与小手光标——正文还是要能正常选中，光标应保持 I 型。
+        let capsuleRects: [NSRect]
     }
 
     /// 扫描当前所有 emotion token，算出各自的真实 frame 与附属命中区。
@@ -736,6 +1058,10 @@ final class EmotionTokenTextView: NSTextView {
         guard let storage = textStorage, let lm = layoutManager, let tc = textContainer else { return [] }
         let dark = EmotionTokenStyle.isDarkAppearance(effectiveAppearance)
         var regions: [TokenHitRegion] = []
+        // 语气类的徽章 / 胶囊由作用域几何给出（绘制与命中必须同一份，否则会错位）。
+        let toneGeometry = Dictionary(uniqueKeysWithValues: toneCapsuleGeometries().map { g in
+            (ObjectIdentifier(g.attachment), g)
+        })
 
         storage.enumerateAttribute(.attachment,
                                    in: NSRange(location: 0, length: storage.length),
@@ -750,9 +1076,6 @@ final class EmotionTokenTextView: NSTextView {
             let id = kEmotionAttachmentIdentity[ObjectIdentifier(att)]
                 ?? EmotionTokenIdentity(baseColor: EmotionTokenStyle.fallbackBaseColor, category: .emotion)
             let cell = att.attachmentCell as? EmotionTokenAttachmentCell
-            let token = (cell == nil) ? EmotionTokenAttachment.parse(from: att) : nil
-            let label = cell?.tokenLabel ?? token?.label ?? ""
-            let emoji = cell?.tokenEmoji ?? token?.emoji ?? ""
             let style = EmotionTokenStyle.resolved(for: id, dark: dark)
 
             var lineOrigin = NSPoint.zero
@@ -771,20 +1094,24 @@ final class EmotionTokenTextView: NSTextView {
             }
 
             let deleteRect: NSRect?
-            let annotationRect: NSRect?
+            let badgeRect: NSRect?
+            let capsuleRects: [NSRect]
             if id.category == .richLanguage {
                 deleteRect = soundDeleteHitRect(for: frame, style: style)
-                annotationRect = nil
+                badgeRect = nil
+                capsuleRects = []
             } else {
-                let maxX = tc.size.width
-                deleteRect = toneAnnotationCloseRect(for: frame, label: label, emoji: emoji,
-                                                     style: style, maxX: maxX)
-                annotationRect = toneAnnotationRect(for: frame, label: label, emoji: emoji,
-                                                    style: style, maxX: maxX)
+                let g = toneGeometry[ObjectIdentifier(att)]
+                // × 挂在徽章右侧；空作用域没有胶囊时 deleteRect 也不能为空，
+                // 否则刚插入的标签删不掉（此时徽章一定存在，因为它是唯一可见物）。
+                deleteRect = g?.badge?.closeRect
+                badgeRect = g?.badge?.rect
+                capsuleRects = g?.capsuleRects ?? []
             }
             regions.append(TokenHitRegion(attachment: att, identity: id, range: range,
                                           frame: frame, style: style,
-                                          deleteRect: deleteRect, annotationRect: annotationRect))
+                                          deleteRect: deleteRect, badgeRect: badgeRect,
+                                          capsuleRects: capsuleRects))
         }
         return regions
     }
@@ -854,7 +1181,11 @@ final class EmotionTokenTextView: NSTextView {
         let origin = textContainerOrigin
         var tokenRects: [NSRect] = []
         for region in tokenHitRegions() {
-            for rect in [region.frame, region.deleteRect, region.annotationRect].compactMap({ $0 }) {
+            // 刻意**不含 capsuleRects**：胶囊里裹的是正文，光标必须保持 I 型才能正常选中 /
+            // 定位插入点。胶囊只参与 hover（见 attachment(at:)），不参与小手光标。
+            // 语气标记本体也排除：它是不可见占位（现在还有 5pt 宽），没有可点的视觉对象。
+            let ownFrame = region.identity.category == .richLanguage ? region.frame : nil
+            for rect in [ownFrame, region.deleteRect, region.badgeRect].compactMap({ $0 }) {
                 let clipped = rect.offsetBy(dx: origin.x, dy: origin.y).intersection(visible)
                 guard !clipped.isNull, !clipped.isEmpty else { continue }
                 tokenRects.append(clipped)
@@ -1034,7 +1365,9 @@ final class EmotionTokenTextView: NSTextView {
         let p = containerPoint(from: point)
         var best: (attachment: NSTextAttachment, area: CGFloat)?
         for r in tokenHitRegions() {
-            let candidates = [r.frame, r.deleteRect, r.annotationRect].compactMap { $0 }
+            // 悬停区 = 字形 ∪ × ∪ 徽章 ∪ 整段胶囊。
+            // 只判本体的话，鼠标从胶囊移向徽章 × 的过程中 hover 会丢，× 也就永远点不到。
+            let candidates = [r.frame, r.deleteRect, r.badgeRect].compactMap { $0 } + r.capsuleRects
             // 取命中的最小区域：相邻 tag 的区域可能有重叠，小的那个更贴近指针所指之物
             for c in candidates where c.contains(p) {
                 let area = c.width * c.height
