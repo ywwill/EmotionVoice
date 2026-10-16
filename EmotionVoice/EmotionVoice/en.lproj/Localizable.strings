@@ -184,6 +184,10 @@
 "直到遇到下一个控制类标签，或因句子较长被自动切分为止" = "Until encountering the next control tag, or when a long sentence is auto-split";
 "在当前位置插入一段拟声效果" = "Insert a sound effect at the current position";
 "不影响前后文本的情感风格" = "Does not affect the emotion or style of surrounding text";
+"中断" = "Interrupt";
+"不是一个情绪，而是一个「结束点」：提前终止前一个语气标签的作用" = "Not an emotion but an end point — it stops the previous tone tag early";
+"从插入位置起，文本回到音色本身的默认状态朗读，不带任何情绪基调" = "From here on, text is read in the voice's own default state, with no emotional tint";
+"作用持续到下一个语气标签；期间可以正常插入拟声效果" = "It lasts until the next tone tag; sound effects still work in between";
 
 // 标签描述
 "悲伤低落的语气，带有忧愁、沮丧的情感基调。" = "A sad, downcast tone conveying sorrow and dejection.";

@@ -48,7 +48,7 @@ final class EmotionTokenTextView: NSTextView {
 
     // MARK: - 语气作用域（v4：只作为绘图数据，不再写入 NSTextStorage）
 
-    /// 一个语气标签的作用域：字符区间 + 解析后的情绪色。
+    /// 一个作用域：字符区间 + 解析后的情绪色（nil = 中断，不带语气）。
     ///
     /// 旧实现把 `.underlineStyle` / `.underlineColor` 写进 NSTextStorage，
     /// 导致每按一次键都要：beginEditing → 全文档 removeAttribute → addAttribute → endEditing，
@@ -61,19 +61,21 @@ final class EmotionTokenTextView: NSTextView {
         /// 需要包进胶囊的区间。通常只有一段；中间夹了拟声标记时拆成多段——
         /// 拟声标记是「插入的声音事件」，不代表文本，不该被胶囊圈进去。
         let segments: [NSRange]
-        let color: NSColor
+        /// 情绪色；nil = 中断作用域（文本按普通正文渲染，胶囊 / 徽章都不画）
+        let color: NSColor?
 
         static func == (lhs: ToneScope, rhs: ToneScope) -> Bool {
             lhs.attachment === rhs.attachment &&
             lhs.segments == rhs.segments &&
-            lhs.color.isEqual(rhs.color)
+            lhs.color?.isEqual(rhs.color) == true
         }
     }
 
-    /// 一个语气作用域的胶囊几何（container 坐标系）。绘制与命中测试共用，避免两边错位。
+    /// 一个作用域的胶囊几何（container 坐标系）。绘制与命中测试共用，避免两边错位。
     private struct ToneCapsuleGeometry {
         let attachment: NSTextAttachment
-        let color: NSColor
+        /// 情绪色；nil = 中断作用域，只保留几何用于命中，不画胶囊
+        let color: NSColor?
         /// 每个行片段各一块胶囊（对应 CSS 的 `box-decoration-break: clone`）
         let capsuleRects: [NSRect]
         /// 左上角徽章（只在首块上，续段不再重复）
@@ -104,21 +106,30 @@ final class EmotionTokenTextView: NSTextView {
     private static let contentChangeDelay: TimeInterval = 0.35
     private var contentChangeWorkItem: DispatchWorkItem?
 
-    /// 普通文本的基础属性（含段落 lineSpacing，给语气胶囊与徽章留白）
-    ///
-    /// v13：12 → 28。行距要同时喂饱三样东西：
+    /// 正文行距。行距要同时喂饱三样东西：
     ///   · 胶囊实高 28.5pt（含 2×6 垂直内边距），比正文行高多 12pt；
     ///   · 徽章从胶囊上沿向上探出 `badgeTopOffset` = 14pt；
     ///   · 相邻两行的胶囊之间还要留得住呼吸位。
     /// 28 → 行距 44.5pt，胶囊之间净空 16pt，徽章顶端离上一行胶囊下沿还有 2pt。
-    private var bodyAttributes: [NSAttributedString.Key: Any] {
+    static let bodyLineSpacing: CGFloat = 28
+
+    /// 正文段落样式。**必须**同时设成 `defaultParagraphStyle`：
+    /// 段落样式取自段落**首字符**的属性，而语气 / 中断标签是 attachment，
+    /// 自身不带段落样式 —— 一旦标签恰好落在段首，整段就会退回系统默认行距
+    /// （实测 ≈ 0），排版直接塌掉、首行徽章也会被裁掉。这是离屏渲染时抓到的真 bug。
+    static var bodyParagraphStyle: NSParagraphStyle {
         let ps = NSMutableParagraphStyle()
-        ps.lineSpacing = 28
+        ps.lineSpacing = bodyLineSpacing
         ps.paragraphSpacing = 0
-        return [
+        return ps
+    }
+
+    /// 普通文本的基础属性（含段落 lineSpacing，给语气胶囊与徽章留白）
+    private var bodyAttributes: [NSAttributedString.Key: Any] {
+        [
             .font: EmotionTokenStyle.bodyFont,
             .foregroundColor: NSColor.white,
-            .paragraphStyle: ps
+            .paragraphStyle: Self.bodyParagraphStyle
         ]
     }
 
@@ -161,6 +172,15 @@ final class EmotionTokenTextView: NSTextView {
         backgroundColor = .clear
         drawsBackground = false
         usesFindBar = true
+
+        // 段落样式兜底：标签恰好是段首字符时，attachment 自身没有段落样式，
+        // 不设 defaultParagraphStyle 的话该段行距会塌回系统默认（实测 ≈ 0）。
+        defaultParagraphStyle = Self.bodyParagraphStyle
+        // 光标处继续输入时也要带上同样的段落样式 + 正文字体
+        typingAttributes = [
+            .font: EmotionTokenStyle.bodyFont,
+            .paragraphStyle: Self.bodyParagraphStyle
+        ]
 
         // 悬停检测：仅在可编辑时开启，让 × 在鼠标移入 tag 时才高亮。
         // 只读（预览）场景不加追踪区，tag 保持完全静止、不出现 ×。
@@ -492,19 +512,19 @@ final class EmotionTokenTextView: NSTextView {
         }
 
         let sorted = entries.sorted { $0.location < $1.location }
-        // 语气标记的下标（拟声标记不构成作用域边界）
-        let toneIndices = sorted.indices.filter { sorted[$0].category == .emotion }
+        // 作用域边界：语气标记与中断标记都是（拟声标记不构成边界）
+        let scopeIndices = sorted.indices.filter { sorted[$0].category != .richLanguage }
 
         var result: [ToneScope] = []
-        result.reserveCapacity(toneIndices.count)
-        for (k, i) in toneIndices.enumerated() {
+        result.reserveCapacity(scopeIndices.count)
+        for (k, i) in scopeIndices.enumerated() {
             let e = sorted[i]
             let start = e.location + 1
-            // v5：作用域延伸到「下一个语气标记」，拟声标记不再打断它
+            // v5：作用域延伸到「下一个边界标记」，拟声标记不再打断它
             // （插入拟声后继续输入的文本，仍属于前面的语气标签）
             var end = storage.length
-            if k + 1 < toneIndices.count {
-                end = sorted[toneIndices[k + 1]].location
+            if k + 1 < scopeIndices.count {
+                end = sorted[scopeIndices[k + 1]].location
             }
             // v13：作用域允许为空（标签刚插入、后面还没输文字），
             // 空作用域也要留一条记录，否则徽章无处安放 → 标签变成看不见也删不掉的幽灵。
@@ -526,7 +546,11 @@ final class EmotionTokenTextView: NSTextView {
                 segments.append(NSRange(location: cursor, length: end - cursor))
             }
 
-            let col = dark ? e.color : e.color.darkened(by: 0.40)
+            // 中断标签的作用域没有情绪色（nil）→ 编辑器里不画胶囊也不画徽章，
+            // 它唯一的作用就是「切断」前一个语气标签的作用域。
+            let col: NSColor? = (e.category == .emotion)
+                ? (dark ? e.color : e.color.darkened(by: 0.40))
+                : nil
             result.append(ToneScope(attachment: e.attachment, segments: segments, color: col))
         }
 
@@ -813,9 +837,11 @@ final class EmotionTokenTextView: NSTextView {
         let origin = textContainerOrigin
 
         for g in geometries {
-            let fill = g.color.withAlphaComponent(g.hovered ? style.capsuleFillAlphaHovered
-                                                            : style.capsuleFillAlpha)
-            let stroke = g.color.withAlphaComponent(style.capsuleStrokeAlpha)
+            // 中断作用域没有情绪色 → 不画胶囊（文本按普通正文渲染）
+            guard let base = g.color else { continue }
+            let fill = base.withAlphaComponent(g.hovered ? style.capsuleFillAlphaHovered
+                                                         : style.capsuleFillAlpha)
+            let stroke = base.withAlphaComponent(style.capsuleStrokeAlpha)
             for r in g.capsuleRects {
                 let rr = r.offsetBy(dx: origin.x, dy: origin.y)
                 guard rr.intersects(dirtyRect) else { continue }
@@ -837,7 +863,7 @@ final class EmotionTokenTextView: NSTextView {
                     let ring = NSBezierPath(roundedRect: rr.insetBy(dx: -1.5, dy: -1.5),
                                             xRadius: style.capsuleCornerRadius + 1.5,
                                             yRadius: style.capsuleCornerRadius + 1.5)
-                    g.color.withAlphaComponent(style.capsuleSelectionRingAlpha).setStroke()
+                    base.withAlphaComponent(style.capsuleSelectionRingAlpha).setStroke()
                     ring.lineWidth = 2
                     ring.stroke()
                 }
@@ -856,19 +882,21 @@ final class EmotionTokenTextView: NSTextView {
             let rr = badge.rect.offsetBy(dx: origin.x, dy: origin.y)
             guard rr.intersects(dirtyRect) else { continue }
 
+            // 语气 = 情绪色；中断 = 次级文字色（刻意做成安静的弱提示）
+            let accent = g.color ?? EmotionTokenStyle.badgeNeutralColor
             let path = NSBezierPath(roundedRect: rr,
                                     xRadius: style.badgeCornerRadius,
                                     yRadius: style.badgeCornerRadius)
             bg.setFill()
             path.fill()
-            g.color.withAlphaComponent(style.badgeStrokeAlpha).setStroke()
+            accent.withAlphaComponent(style.badgeStrokeAlpha).setStroke()
             path.lineWidth = 1
             path.stroke()
 
             if let text = g.badgeText {
                 var attrs: [NSAttributedString.Key: Any] = [
                     .font: style.badgeFont,
-                    .foregroundColor: g.color
+                    .foregroundColor: accent
                 ]
                 // 选中态：徽章文字加下划线（对应设计稿 .seg.sel .badge）
                 if g.selected {
@@ -885,7 +913,7 @@ final class EmotionTokenTextView: NSTextView {
             let xStr = "×" as NSString
             let xAttrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 11, weight: .bold),
-                .foregroundColor: g.color
+                .foregroundColor: g.color ?? EmotionTokenStyle.badgeNeutralColor
             ]
             let xSize = xStr.size(withAttributes: xAttrs)
             xStr.draw(at: NSPoint(x: cr.midX - xSize.width / 2,

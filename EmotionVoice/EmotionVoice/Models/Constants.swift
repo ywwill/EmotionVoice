@@ -34,6 +34,24 @@ enum Constants {
         return combined.first(where: { $0.tag == tag })?.label
     }
 
+    // MARK: - 中断标签
+    //
+    // 「中断」不是一个情绪，而是一个**作用域边界**：
+    // 它终止前一个语气标签的作用域，并让「从这里到下一个语气标签」之间的文本
+    // 回到音色本身的默认状态朗读（不带任何情绪基调）。
+    //
+    // ⚠️ API 本身并不支持中断标签。因此它**不会**被写进请求字符串
+    // （`toTTSAPIString()` 会把它整段丢掉），而是由 `toTTSSegments()`
+    // 以它为界把整段文本切成多个**互相独立的合成请求**，
+    // 合成完成后再按文档顺序拼接音频 —— 保证中断内容既不被前序语气污染，
+    // 也不会把语气往后传递。
+    static let interruptItem = EmotionItem(
+        label: "中断",
+        emoji: "🔇",
+        tag: "break",
+        description: "从这里开始恢复正常语气，用音色本身的状态朗读，直到遇到下一个语气标签。"
+    )
+
     // MARK: - 默认音色
     static let defaultVoice = "longanlingxin"
 

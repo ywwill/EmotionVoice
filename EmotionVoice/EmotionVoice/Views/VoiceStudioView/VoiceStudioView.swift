@@ -23,6 +23,8 @@ struct VoiceStudioView: View {
     
     /// 语气控制说明弹窗
     @State private var showEmotionRulePopover: Bool = false
+    /// 中断说明弹窗
+    @State private var showInterruptRulePopover: Bool = false
     /// 拟声效果说明弹窗
     @State private var showRichLanguageRulePopover: Bool = false
     /// 语音指令说明弹窗
@@ -175,45 +177,39 @@ struct VoiceStudioView: View {
                 .buttonStyle(.plain)
                 .pointingHandCursor()
                 .popover(isPresented: $showEmotionRulePopover) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("语气控制".localized())
-                            .font(.system(size: 13, weight: .semibold))
-                            .padding(.bottom, 4)
-                        
-                        Group {
-                            HStack(alignment: .top, spacing: 8) {
-                                Circle()
-                                    .fill(AppColor.accentPrimary)
-                                    .frame(width: 5, height: 5)
-                                    .padding(.top, 6)
-                                Text("控制类标签用于设定语音的情感或风格")
-                                    .font(AppFont.caption)
-                            }
-                            
-                            HStack(alignment: .top, spacing: 8) {
-                                Circle()
-                                    .fill(AppColor.accentPrimary)
-                                    .frame(width: 5, height: 5)
-                                    .padding(.top, 6)
-                                Text("将标签写在文本中，标签会作用于其后的所有文本")
-                                    .font(AppFont.caption)
-                            }
-                            
-                            HStack(alignment: .top, spacing: 8) {
-                                Circle()
-                                    .fill(AppColor.accentPrimary)
-                                    .frame(width: 5, height: 5)
-                                    .padding(.top, 6)
-                                Text("直到遇到下一个控制类标签，或因句子较长被自动切分为止")
-                                    .font(AppFont.caption)
-                            }
-                        }
-                        .foregroundStyle(AppColor.textSecondary)
+                    RulePopover(title: "语气控制".localized()) {
+                        RuleBullet(text: "控制类标签用于设定语音的情感或风格".localized())
+                        RuleBullet(text: "将标签写在文本中，标签会作用于其后的所有文本".localized())
+                        RuleBullet(text: "直到遇到下一个控制类标签，或被中断标签提前结束".localized())
                     }
-                    .padding(16)
-                    .presentationCompactAdaptation(.popover)
                 }
-                
+
+                Spacer()
+            }
+
+            // 中断：不是一种情绪，而是「从这里恢复正常语气」的作用域边界
+            HStack(spacing: 6) {
+                InterruptTagButton {
+                    vm.insertInterrupt()
+                }
+
+                Button {
+                    showInterruptRulePopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColor.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .popover(isPresented: $showInterruptRulePopover) {
+                    RulePopover(title: Constants.interruptItem.label.localized()) {
+                        RuleBullet(text: "不是一个情绪，而是一个「结束点」：提前终止前一个语气标签的作用".localized())
+                        RuleBullet(text: "从插入位置起，文本回到音色本身的默认状态朗读，不带任何情绪基调".localized())
+                        RuleBullet(text: "作用持续到下一个语气标签；期间可以正常插入拟声效果".localized())
+                    }
+                }
+
                 Spacer()
             }
 
@@ -238,34 +234,10 @@ struct VoiceStudioView: View {
                     .buttonStyle(.plain)
                     .pointingHandCursor()
                     .popover(isPresented: $showRichLanguageRulePopover) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("拟声效果".localized())
-                                .font(.system(size: 13, weight: .semibold))
-                                .padding(.bottom, 4)
-                            
-                            Group {
-                                HStack(alignment: .top, spacing: 8) {
-                                    Circle()
-                                        .fill(AppColor.accentPrimary)
-                                        .frame(width: 5, height: 5)
-                                        .padding(.top, 6)
-                                    Text("在当前位置插入一段拟声效果")
-                                        .font(AppFont.caption)
-                                }
-                                
-                                HStack(alignment: .top, spacing: 8) {
-                                    Circle()
-                                        .fill(AppColor.accentPrimary)
-                                        .frame(width: 5, height: 5)
-                                        .padding(.top, 6)
-                                    Text("不影响前后文本的情感风格")
-                                        .font(AppFont.caption)
-                                }
-                            }
-                            .foregroundStyle(AppColor.textSecondary)
+                        RulePopover(title: "拟声效果".localized()) {
+                            RuleBullet(text: "在当前位置插入一段拟声效果".localized())
+                            RuleBullet(text: "不影响前后文本的情感风格".localized())
                         }
-                        .padding(16)
-                        .presentationCompactAdaptation(.popover)
                     }
                     
                     Spacer()
@@ -304,6 +276,76 @@ struct VoiceStudioView: View {
     }
 
     // MARK: - 情感卡片子组件
+
+    /// 说明弹窗容器（语气控制 / 中断 / 拟声效果 三处共用）
+    ///
+    /// 抽出来的原因：三处弹窗的版式完全一样（标题 + bullet 列表 + 16pt 内边距），
+    /// 之前各写一份，改版式要同时改三处。
+    struct RulePopover<Content: View>: View {
+        let title: String
+        @ViewBuilder var content: Content
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.bottom, 4)
+                content
+                    .foregroundStyle(AppColor.textSecondary)
+            }
+            .padding(16)
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    /// 说明弹窗里的一条 bullet
+    struct RuleBullet: View {
+        let text: String
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 8) {
+                Circle()
+                    .fill(AppColor.accentPrimary)
+                    .frame(width: 5, height: 5)
+                    .padding(.top, 6)
+                Text(text)
+                    .font(AppFont.caption)
+            }
+        }
+    }
+
+    /// 中断标签按钮
+    ///
+    /// 语义上它不是一个「语气」，而是**撤销语气**：插入到文本里表示
+    /// 「从这里开始用音色本身的默认状态朗读」，直到遇到下一个语气标签。
+    /// 所以它单列在语气网格之外，视觉上也刻意做成安静的次级样式。
+    struct InterruptTagButton: View {
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.uturn.backward.circle")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppColor.textSecondary)
+                    Text(Constants.interruptItem.label.localized())
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColor.textSecondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColor.bgTertiary.opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.small)
+                    .stroke(AppColor.borderSubtle, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+            }
+            .buttonStyle(.plain)
+            .help(Constants.interruptItem.description.localized())
+            .pointingHandCursor()
+        }
+    }
 
     /// 语气控制标签按钮
     /// 包含 emoji 和中文标签，参考拟声效果的视觉风格

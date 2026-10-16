@@ -16,6 +16,17 @@
   `<stem>` = 音色 key 去掉 `qwen-audio-3.0-tts-plus-` 前缀（= audio 文件名去扩展名）。
   代码侧用 `VoiceCatalog.localizedVoiceName/Feature(stem:language:)` 强制按语种读取。
 
+## 标签体系（v14 起三类家族）
+- `EmotionCategory`: `.emotion`（语气，胶囊+徽章）/ `.richLanguage`（拟声，虚线 pill）
+  / `.interrupt`（中断，**不画胶囊**，只有灰色徽章 🔇 中断，tag = `break`）。
+- **中断标签 API 不支持**：`toTTSAPIString()` 会整段丢掉；生成链路必须走
+  `Array.toTTSSegments()` —— 以中断标记为界切成多个独立请求（中断段 emotion=nil），
+  逐段 `synthesizeStream` 后用 `AudioConcatenator.merge()` 按序拼接
+  （WAV 解析 header 重写总 header，否则 RIFF/data size 停在第一段；mp3 直接字节拼）。
+- ⚠️ **段落样式取自段落首字符**：语气/中断标签是 attachment、不带段落样式，
+  一旦落在段首整段行距会塌回系统默认。必须设 `defaultParagraphStyle` +
+  `typingAttributes`（见 `EmotionTokenTextView.bodyParagraphStyle`）。
+
 ## 音色目录（Voice Catalog）
 - 唯一数据源：`EmotionVoice/EmotionVoice/Voices/basic_voices.json`（**v4 schema**）
 - **铁律：JSON 只存语言无关的语义 code 与稳定 key，任何文案（名/特质）外置到 `VoiceCatalog.strings`**

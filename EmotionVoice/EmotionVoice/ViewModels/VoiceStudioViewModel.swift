@@ -234,6 +234,19 @@ final class VoiceStudioViewModel: ObservableObject {
 
     // MARK: - 操作
 
+    /// 在 EmotionTokenEditor 的光标位置插入「中断」标签。
+    ///
+    /// 中断标签不是一种情绪，而是一个**作用域边界**：从这里开始回到音色本身的
+    /// 默认状态朗读，直到遇到下一个语气标签。它在发给 API 时会被剥掉
+    /// （见 `Array.toTTSSegments()`），只用于把前后语气分段隔离。
+    func insertInterrupt() {
+        insertTokenLabel = Constants.interruptItem.label.localized()
+        insertTokenEmoji = Constants.interruptItem.emoji
+        insertTokenEnglishTag = Constants.interruptItem.tag
+        insertTokenCategory = .interrupt
+        insertTokenTrigger &+= 1
+    }
+
     /// 在 EmotionTokenEditor 的光标位置插入情感标签。
     /// 触发 EmotionTokenEditor.updateNSView → insertToken(token)
     func insertEmotion(tag: String) {
@@ -283,7 +296,13 @@ final class VoiceStudioViewModel: ObservableObject {
                 if !textPart.isEmpty { items.append(.text(textPart)) }
             }
 
-            if let emotionItem = (Constants.emotions + Constants.richLanguageTags)
+            if label == Constants.interruptItem.label || label == Constants.interruptItem.tag {
+                // 中断标签：作用域边界，不是一种语气
+                items.append(.emotion(EmotionToken(label: Constants.interruptItem.label,
+                                                   emoji: Constants.interruptItem.emoji,
+                                                   englishTag: Constants.interruptItem.tag,
+                                                   category: .interrupt)))
+            } else if let emotionItem = (Constants.emotions + Constants.richLanguageTags)
                 .first(where: { $0.label == label || $0.tag == label }) {
                 let isRich = Constants.richLanguageTags.contains(where: { $0.label == label || $0.tag == label })
                 let token = EmotionToken(label: emotionItem.label,
@@ -310,10 +329,15 @@ final class VoiceStudioViewModel: ObservableObject {
     func generate(completion: @escaping (Bool) -> Void) {
         // 验证已在 VoiceStudioView.validateInputs() 中完成，此处直接开始生成
         
-        // 直接使用结构化的 ttsItems 生成 TTS API 字符串。
-        // 文本中已经包含所有 [english_tag] 标签，由 API 自己解析处理。
-        // 不再提取单个 emotion 参数，避免覆盖文本中的多标签。
-        let ttsText = ttsItems.toTTSAPIString()
+        // 直接使用结构化的 ttsItems 生成待合成的片段。
+        //
+        // ⚠️ 注意这里用的是 `toTTSSegments()` 而不是 `toTTSAPIString()`：
+        // 中断标签（`[break]`）不是 API 支持的 tag，必须把它两侧的文本切成
+        // **互相独立的请求**分别合成，否则前一个语气标签的作用域会越过中断标记
+        // 继续影响后面的文本。合成完再按文档顺序拼接音频，即是完整朗读结果。
+        let ttsSegments = ttsItems.toTTSSegments()
+        let totalChars = ttsSegments.reduce(0) { $0 + $1.text.count }
+        Log(message: "待合成 \(ttsSegments.count) 个片段，共 \(totalChars) 字符")
 
         // 预估积分消耗（在验证后立即计算）
         let points = estimatedPoints
@@ -342,42 +366,55 @@ final class VoiceStudioViewModel: ObservableObject {
 
         Task {
             do {
-                Log(message: "开始 TTS 合成，文本长度: \(ttsText.count) 字符")
+                // 每个片段的进度窗口：片段 i 占 [i/n, (i+1)/n]，映射到 0.05 -> 0.95，
+                // 保证整体进度单调递增（不会因为切段而回退）。
+                let segmentCount = max(1, ttsSegments.count)
+                var audioChunks: [Data] = []
 
-                // 准备流式回调：每收到一块音频就把进度往上推
-                // 由于事先不知道最终大小，按"已用时间 / 经验上限"模拟一条平滑曲线
-                let startedAt = Date()
-                let approxDuration: TimeInterval = max(2.5, Double(ttsText.count) / 12.0)
-                let onAudio: (Data) -> Void = { [weak self] audioChunk in
-                    guard let self else { return }
-                    let elapsed = Date().timeIntervalSince(startedAt)
-                    // 0.05 (已建连) -> 0.95 (接近完成)；剩余 5% 留给落盘 + 入库
-                    let p = min(0.95, 0.05 + 0.90 * (elapsed / approxDuration))
-                    Task { @MainActor in
-                        // 只写 stats（独立 ObservableObject），不会惊动订阅 VM 的工作台
-                        self.stats.receive(bytes: audioChunk.count, estimatedProgress: p)
-                    }
-                }
+                for (idx, segment) in ttsSegments.enumerated() {
+                    try Task.checkCancellation()
 
-                // 调用 TTS 流式接口（替代一次性 await）
-                // emotion 传 nil：完全由文本中的 [tag] 标签驱动情感/拟声，
-                // 避免覆盖用户输入的多标签。
-                let audioData: Data = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
-                    ttsService.synthesizeStream(
-                        text: ttsText,
-                        voice: voice.key,
-                        emotion: nil,
-                        rate: rate,
-                        volume: volume,
-                        sampleRate: sampleRate,
-                        format: self.selectedFormat.lowercased(),
-                        nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
-                        onAudio: onAudio,
-                        completion: { result in
-                            cont.resume(with: result)
+                    let windowStart = 0.05 + 0.90 * Double(idx) / Double(segmentCount)
+                    let windowEnd = 0.05 + 0.90 * Double(idx + 1) / Double(segmentCount)
+                    let startedAt = Date()
+                    let approxDuration: TimeInterval = max(2.5, Double(segment.text.count) / 12.0)
+
+                    let onAudio: (Data) -> Void = { [weak self] audioChunk in
+                        guard let self else { return }
+                        let elapsed = Date().timeIntervalSince(startedAt)
+                        let frac = min(1.0, elapsed / approxDuration)
+                        Task { @MainActor in
+                            // 只写 stats（独立 ObservableObject），不会惊动订阅 VM 的工作台
+                            self.stats.receive(bytes: audioChunk.count,
+                                               estimatedProgress: windowStart +
+                                                (windowEnd - windowStart) * frac)
                         }
-                    )
+                    }
+
+                    let chunk: Data = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
+                        ttsService.synthesizeStream(
+                            text: segment.apiText,
+                            voice: voice.key,
+                            emotion: nil,
+                            rate: rate,
+                            volume: volume,
+                            sampleRate: sampleRate,
+                            format: self.selectedFormat.lowercased(),
+                            nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
+                            onAudio: onAudio,
+                            completion: { result in
+                                cont.resume(with: result)
+                            }
+                        )
+                    }
+                    try Task.checkCancellation()
+                    // 单个片段为空说明这一段没合成出音频，合并后会造成「缺了一段」的静默错误
+                    guard !chunk.isEmpty else { throw TTSError.noAudioData }
+                    audioChunks.append(chunk)
                 }
+
+                let audioData = AudioConcatenator.merge(audioChunks)
+                guard !audioData.isEmpty else { throw TTSError.noAudioData }
 
                 // 收尾：把最后一段不足 100ms 的到达量补发，保证总数准确
                 await MainActor.run { self.stats.flush() }

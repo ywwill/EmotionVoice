@@ -109,6 +109,8 @@ struct EmotionTokenStyle {
     var badgeStrokeAlpha: CGFloat = 0.5
     /// 徽章右侧 × 的宽度。常态也占位（只是不绘制），避免悬停时徽章变宽跳动。
     var badgeCloseWidth: CGFloat = 13
+    /// 中断标签徽章的配色：刻意不用情绪色，用次级文字色，尽量安静、不抢正文。
+    static var badgeNeutralColor: NSColor { NSColor.secondaryLabelColor }
 
     // MARK: - 拟声效果（点插入声音标记）
 
