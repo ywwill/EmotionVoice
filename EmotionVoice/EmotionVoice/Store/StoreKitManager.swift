@@ -184,7 +184,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                     let credits = creditProduct.creditsAmount
                     
                     // 添加积分
-                    CreditManager.shared.addCredits(credits)
+                    CreditManager.shared.addCredits(Double(credits))
                     
                     // 保存购买记录
                     CreditsService.shared.addPurchaseRecord(quantity: credits)
@@ -269,7 +269,7 @@ final class StoreKitManager: NSObject, ObservableObject {
                     // 处理未完成的消耗型购买
                     if let creditProduct = CreditProduct(rawValue: transaction.productID) {
                         let credits = creditProduct.creditsAmount
-                        await CreditManager.shared.addCredits(credits)
+                        await CreditManager.shared.addCredits(Double(credits))
                         // 保存购买记录
                         CreditsService.shared.addPurchaseRecord(quantity: credits)
                         Log(messageType: "StoreKit", message: "✅ 恢复交易，获得 \(credits) 积分")

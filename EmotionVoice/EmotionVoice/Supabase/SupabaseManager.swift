@@ -23,7 +23,7 @@ class SupabaseManager {
     // 缓存用户数据，避免重复请求
     private var cachedUserData: UserCreditsModel?
     private var isInitializing = false
-    private var initializationTask: Task<(Int, UserCreditsModel?), Error>?
+    private var initializationTask: Task<(Double, UserCreditsModel?), Error>?
     
     /// 获取缓存的用户区域代码
     /// 如果缓存不存在，返回当前设备的区域代码
@@ -116,7 +116,7 @@ extension SupabaseManager {
     /// 初始化用户（首次启动时调用）
     /// 返回：(积分, 用户数据)
     /// 使用缓存避免重复请求
-    func initializeUser() async throws -> (credits: Int, user: UserCreditsModel?) {
+    func initializeUser() async throws -> (credits: Double, user: UserCreditsModel?) {
         // 如果已经有缓存，直接返回
         if let cached = cachedUserData {
             Log(messageType: "Supabase", message: "📦 使用缓存的用户数据")
@@ -130,7 +130,7 @@ extension SupabaseManager {
         }
         
         // 创建新的初始化任务
-        let task = Task<(Int, UserCreditsModel?), Error> {
+        let task = Task<(Double, UserCreditsModel?), Error> {
             if let user = try await getUser(deviceId: deviceId) {
                 // 用户已存在，缓存并返回
                 self.cachedUserData = user
@@ -166,7 +166,7 @@ extension SupabaseManager {
                 try await saveOrUpdateUser(newUser)
                 Log(messageType: "Supabase", message: "✅ 新用户已创建，区域: \(regionCode)，设备: \(newUser.deviceInfo ?? "")，赠送50积分")
                 self.cachedUserData = newUser
-                return (50, newUser)
+                return (50.0, newUser)
             }
         }
         
@@ -183,15 +183,15 @@ extension SupabaseManager {
     }
     
     /// 获取当前用户积分
-    func fetchCredits() async throws -> Int {
+    func fetchCredits() async throws -> Double {
         if let user = try await getUser(deviceId: deviceId) {
             return user.credits
         }
         return 0
     }
     
-    /// 更新用户积分
-    func updateCredits(_ credits: Int) async throws {
+    /// 更新用户积分（支持最多 2 位小数）
+    func updateCredits(_ credits: Double) async throws {
         // 优先使用缓存的 region，避免额外请求
         let region: String
         let deviceInfo: DeviceInfo
@@ -236,7 +236,7 @@ extension SupabaseManager {
     }
     
     /// 增加积分（内购成功后调用）
-    func addCredits(_ amount: Int) async throws -> Int {
+    func addCredits(_ amount: Double) async throws -> Double {
         let currentCredits = try await fetchCredits()
         let newCredits = currentCredits + amount
         try await updateCredits(newCredits)

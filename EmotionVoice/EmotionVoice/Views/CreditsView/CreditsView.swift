@@ -162,7 +162,7 @@ struct CreditsView: View {
                     .tracking(0.08)
 
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(appState.creditsBalance)")
+                    Text(formatCredits(appState.creditsBalance))
                         .font(.system(size: 56, weight: .bold, design: .monospaced))
                         .foregroundStyle(AppColor.accentGlow)
                         .tracking(-0.03)

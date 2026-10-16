@@ -489,7 +489,7 @@ struct AudioGenerationModal: View {
     /// （数据仍是真实到达量，只是不让它把弹窗刷爆）
     @State private var lastLogDate: Date = .distantPast
 
-    @State private var remainingCredits: Int = 0
+    @State private var remainingCredits: Double = 0
     /// 提示圆点的闪烁开关
     @State private var blink: Bool = false
 
@@ -881,7 +881,7 @@ struct AudioGenerationModal: View {
                     .foregroundStyle(AppColor.accentPrimary)
             }
             Spacer()
-            Text("剩余 %d 积分".localized(remainingCredits))
+            Text("剩余 %@ 积分".localized(formatCredits(remainingCredits)))
                 .font(.system(size: 11))
                 .fontDesign(.monospaced)
                 .foregroundStyle(AppColor.textTertiary)

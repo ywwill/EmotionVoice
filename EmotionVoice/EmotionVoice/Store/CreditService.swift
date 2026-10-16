@@ -10,13 +10,13 @@ import Foundation
 // MARK: - 积分服务错误
 
 enum CreditServiceError: LocalizedError {
-    case insufficientCredits(required: Int, available: Int)
+    case insufficientCredits(required: Double, available: Double)
     case operationFailed(Error)
     
     var errorDescription: String? {
         switch self {
         case .insufficientCredits(let required, let available):
-            return "积分不足，需要 \(required) 积分，当前积分 \(available) 积分"
+            return "积分不足，需要 \(formatCredits(required)) 积分，当前积分 \(formatCredits(available)) 积分"
         case .operationFailed(let error):
             return error.localizedDescription
         }
@@ -66,8 +66,8 @@ class CreditService {
     }
     
     /// 执行 TTS 前扣除积分
-    /// - Returns: 成功返回扣除的积分数，失败返回 nil
-    func deductForTTS(text: String, type: TTSType) -> Int? {
+    /// - Returns: 成功返回扣除的积分数（最多 2 位小数），失败返回 nil
+    func deductForTTS(text: String, type: TTSType) -> Double? {
         let characterCount = TextSplitter.calculateCharCount(text)
         let consumptionType: CreditConsumptionType = type == .normal
             ? .normalTTS(characterCount: characterCount)
@@ -85,23 +85,23 @@ class CreditService {
     }
     
     /// TTS 合成失败时返还积分
-    func refundTTS(credits: Int) {
+    func refundTTS(credits: Double) {
         creditManager.addCredits(credits)
-        Log(messageType: "Credit", message: "💰 TTS 合成失败，返还 \(credits) 积分")
+        Log(messageType: "Credit", message: "💰 TTS 合成失败，返还 \(formatCredits(credits)) 积分")
     }
     
     // MARK: - 积分预估
     
-    /// 获取 TTS 所需积分
-    func estimateCredits(text: String, type: TTSType) -> Int {
+    /// 获取 TTS 所需积分（按实际字符数，最多 2 位小数）
+    func estimateCredits(text: String, type: TTSType) -> Double {
         let characterCount = TextSplitter.calculateCharCount(text)
         return type == .normal
             ? creditManager.calculateCredits(for: .normalTTS(characterCount: characterCount))
             : creditManager.calculateCredits(for: .cloneTTS(characterCount: characterCount))
     }
     
-    /// 当前积分余额
-    var currentBalance: Int {
+    /// 当前积分余额（最多 2 位小数）
+    var currentBalance: Double {
         return creditManager.balance
     }
 }

@@ -435,9 +435,8 @@ final class VoiceStudioViewModel: ObservableObject {
                     // 保存音频 ID 用于后续重命名
                     self.generatedAudioId = audio.id
 
-                    // 扣减积分（根据实际文本长度计算）
-                    let charCount = TextSplitter.calculateCharCount(self.text)
-                    CreditManager.shared.deduct(for: .normalTTS(characterCount: charCount))
+                    // 扣减积分（与预估、入库记录用同一个值，按实际字符数计费，最多 2 位小数）
+                    CreditManager.shared.deduct(points: points)
                     
                     // 保存消耗记录
                     CreditsService.shared.addConsumptionRecord(

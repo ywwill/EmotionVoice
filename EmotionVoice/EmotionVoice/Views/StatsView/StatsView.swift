@@ -51,7 +51,7 @@ struct StatsView: View {
 
     private var summaryCards: some View {
         HStack(spacing: 12) {
-            statCard(value: "\(appState.monthlyUsed)", label: "积分消耗".localized(), icon: "💎")
+            statCard(value: formatCredits(appState.monthlyUsed), label: "积分消耗".localized(), icon: "💎")
             statCard(value: "28", label: "音频生成".localized(), icon: "🎵")
             statCard(value: "12.4h", label: "总时长".localized(), icon: "⏱")
             statCard(value: "18", label: "音色使用".localized(), icon: "🎭")

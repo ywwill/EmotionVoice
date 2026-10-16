@@ -11,7 +11,8 @@ import Foundation
 
 struct UserCreditsModel: Codable {
     var deviceId: String
-    var credits: Int
+    /// 积分余额，支持最多 2 位小数（云端列需为 numeric(10,2) / double precision）
+    var credits: Double
     var region: String  // 用户区域：苹果地区代码，如 CN, US, JP 等
     var deviceInfo: String?  // 设备信息存储格式
     var createdAt: String?
@@ -40,7 +41,7 @@ struct UserCreditsModel: Codable {
         return localDateFormatter.string(from: Date())
     }
 
-    init(deviceId: String, credits: Int = 0, region: String, deviceInfo: DeviceInfo? = nil) {
+    init(deviceId: String, credits: Double = 0, region: String, deviceInfo: DeviceInfo? = nil) {
         self.deviceId = deviceId
         self.credits = credits
         self.region = region.uppercased()  // 确保保存为大写

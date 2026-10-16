@@ -56,6 +56,17 @@
   仍要在闭包边界再套一层 `MainActor.assumeIsolated` 才能过编译。
 - 热键是 App 内全局（`GetEventDispatcherTarget()`），不会抢别的应用的键。
 
+## 积分体系（2026-10-16 起：全链路 Double，最多 2 位小数）
+- **记账单位**：`CreditManager` 是唯一权威（`balance` 走 UserDefaults + Supabase 同步），
+  `CreditsService`（Services）是门面，`CreditService`（Store）是旧校验封装。
+- **精度铁律**：所有余额/消耗都过 `CreditPrecision.normalize`（`(v*100).rounded()/100`）；
+  浮点比较统一加 `1e-9` 容差。**禁止再引入 `Int(ceil(...))` 这类向上取整**——
+  用户明确要求按实际消耗计费，短文本就是零点几分。
+- **计费公式**：`字符数 / 100 * rate`（普通 rate=2，复刻 rate=5），**没有起扣门槛**。
+  字符数用 `TextSplitter.calculateCharCount`（CJK 一个字算 2）。
+- **云端约束**：`user_credits.credits` 必须是 `numeric(10,2)`，否则小数写不进去。
+- 展示统一用全局 `formatCredits(_: Double)`（整数不给小数位，否则最多 2 位）。
+
 ## 构建与验证
 - 本机 `xcodebuild` 会被沙箱挡住包解析（`sandbox-exec: Operation not permitted`）
 - 替代方案：用 `swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0

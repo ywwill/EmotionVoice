@@ -38,7 +38,7 @@ enum Constants {
     static let defaultVoice = "longanlingxin"
 
     // MARK: - 默认采样率
-    static let defaultSampleRate = 48000
+    static let defaultSampleRate = 22050
     static let defaultFormat = "wav"
 
     // MARK: - 积分换算

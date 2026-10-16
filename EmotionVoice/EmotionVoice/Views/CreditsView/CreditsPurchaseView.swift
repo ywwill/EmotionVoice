@@ -123,7 +123,7 @@ struct CreditsPurchaseView: View {
                             .font(AppFont.caption)
                             .foregroundStyle(AppColor.textSecondary)
                         
-                        Text("\(appState.creditsBalance)")
+                        Text(formatCredits(appState.creditsBalance))
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
                             .foregroundStyle(Color.orange)
                         

@@ -19,11 +19,11 @@ final class AppState: ObservableObject {
     /// 当前选中的侧边栏项
     @Published var selectedSection: SidebarSection = .voiceStudio
 
-    /// 积分余额（联动 CreditsService）
-    @Published var creditsBalance: Int
+    /// 积分余额（联动 CreditsService，最多 2 位小数）
+    @Published var creditsBalance: Double
 
-    /// 本月已用积分
-    @Published var monthlyUsed: Int
+    /// 本月已用积分（最多 2 位小数）
+    @Published var monthlyUsed: Double
 
     /// 所有音色（首页加载时拉取）
     @Published var voices: [Voice] = []

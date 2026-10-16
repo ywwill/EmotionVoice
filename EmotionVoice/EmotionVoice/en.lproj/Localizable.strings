@@ -344,7 +344,7 @@
 "音频接收完成" = "Audio received";
 "大小" = "Size";
 "本次消耗积分" = "Credits used";
-"剩余 %d 积分" = "%d credits left";
+"剩余 %@ 积分" = "%@ credits left";
 "关闭窗口不会中断，音频将在后台继续接收" = "Closing won't interrupt it — audio keeps downloading in the background";
 "⬇ 导出" = "⬇ Export";
 "导出中…" = "Exporting…";

@@ -82,40 +82,46 @@ final class CreditsService {
     
     private let pageSize = 10
 
-    /// 本月已用积分（本地存储，不需要云端同步）
+    /// 本月已用积分（本地存储，不需要云端同步，支持 2 位小数）
     private let monthlyUsedKey = "ev.credits.monthly_used"
-    var monthlyUsed: Int {
+    var monthlyUsed: Double {
         get {
-            let v = UserDefaults.standard.integer(forKey: monthlyUsedKey)
-            return v == 0 ? Constants.defaultMonthlyUsed : v
+            let v = UserDefaults.standard.double(forKey: monthlyUsedKey)
+            return v == 0 ? Double(Constants.defaultMonthlyUsed) : v
         }
         set {
             UserDefaults.standard.set(newValue, forKey: monthlyUsedKey)
         }
     }
 
-    /// 当前余额（使用 CreditManager 的云端同步数据）
+    /// 当前余额（使用 CreditManager 的云端同步数据，支持 2 位小数）
     /// CreditManager 是 @MainActor，读写余额必须在主线程
     @MainActor
-    var balance: Int {
+    var balance: Double {
         creditManager.balance
     }
 
-    /// 消耗积分（生成成功后调用）
+    /// 消耗积分（按实际消耗扣减，支持 2 位小数）
     @MainActor
-    func consume(_ points: Int) {
-        creditManager.deduct(for: .createVoice)
+    @discardableResult
+    func consume(_ points: Double) -> Bool {
+        switch creditManager.deduct(points: points) {
+        case .success:
+            return true
+        case .insufficientCredits:
+            return false
+        }
     }
 
-    /// 检查是否可以消耗积分
+    /// 检查是否可以消耗积分（浮点比较带容差，避免 0.3 余额扣 0.3 被判不足）
     @MainActor
-    func canConsume(_ points: Int) -> Bool {
-        return creditManager.balance >= points
+    func canConsume(_ points: Double) -> Bool {
+        return creditManager.balance + 1e-9 >= points
     }
 
     /// 充值
     @MainActor
-    func purchase(_ points: Int) {
+    func purchase(_ points: Double) {
         creditManager.addCredits(points)
     }
 
