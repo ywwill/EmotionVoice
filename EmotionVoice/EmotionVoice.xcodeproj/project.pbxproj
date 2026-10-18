@@ -29,6 +29,7 @@
 		6F20939A303EC80500A770BB /* CreditsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209356303EC80500A770BB /* CreditsService.swift */; };
 		6F20939B303EC80500A770BB /* ProjectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209357303EC80500A770BB /* ProjectService.swift */; };
 		6F20939C303EC80500A770BB /* RegionConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209358303EC80500A770BB /* RegionConfig.swift */; };
+		6F2093C2303EC80500A770BB /* TTSEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BB /* TTSEndpoint.swift */; };
 		6F20939D303EC80500A770BB /* VoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209359303EC80500A770BB /* VoiceService.swift */; };
 		6F20939E303EC80500A770BB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935B303EC80500A770BB /* AppState.swift */; };
 		6F20939F303EC80500A770BB /* VoicesLibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935C303EC80500A770BB /* VoicesLibraryViewModel.swift */; };
@@ -721,6 +722,7 @@
 		6F209356303EC80500A770BB /* CreditsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsService.swift; sourceTree = "<group>"; };
 		6F209357303EC80500A770BB /* ProjectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectService.swift; sourceTree = "<group>"; };
 		6F209358303EC80500A770BB /* RegionConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionConfig.swift; sourceTree = "<group>"; };
+		6F2093C1303EC80500A770BB /* TTSEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSEndpoint.swift; sourceTree = "<group>"; };
 		6F209359303EC80500A770BB /* VoiceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceService.swift; sourceTree = "<group>"; };
 		6F20935B303EC80500A770BB /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		6F20935C303EC80500A770BB /* VoicesLibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicesLibraryViewModel.swift; sourceTree = "<group>"; };
@@ -1465,6 +1467,7 @@
 				6F209356303EC80500A770BB /* CreditsService.swift */,
 				6F209357303EC80500A770BB /* ProjectService.swift */,
 				6F209358303EC80500A770BB /* RegionConfig.swift */,
+				6F2093C1303EC80500A770BB /* TTSEndpoint.swift */,
 				6F209359303EC80500A770BB /* VoiceService.swift */,
 			);
 			path = Services;
@@ -2970,6 +2973,7 @@
 				6F6702983081F0CE0001A3BE /* AudioConcatenator.swift in Sources */,
 				6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */,
 				6F20939C303EC80500A770BB /* RegionConfig.swift in Sources */,
+				6F2093C2303EC80500A770BB /* TTSEndpoint.swift in Sources */,
 				6F20939D303EC80500A770BB /* VoiceService.swift in Sources */,
 				6F20939E303EC80500A770BB /* AppState.swift in Sources */,
 				6F2A63C301B8C3DC2448B1B4 /* HistoryViewModel.swift in Sources */,

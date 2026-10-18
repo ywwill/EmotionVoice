@@ -2,24 +2,19 @@
 //  RegionConfig.swift
 //  EmotionVoice
 //
-//  区域配置管理 - 根据用户区域自动选择中国或国际服务器
+//  区域配置管理 - 根据用户区域自动选择中国或国际节点
+//
+//  ⚠️ 这里只保留「区域判断」。上游的 WebSocket 地址、API Key、WorkspaceId
+//  已经全部移到 Supabase Edge Function 的 secrets 里（supabase/functions/bailian-tts），
+//  客户端只把区域代号（CN / INTL）作为 query 参数传给边缘函数。
 //
 
 import Foundation
 
 /// 区域配置
 struct RegionConfig {
-    /// WebSocket URL 模板（需要替换 WorkspaceId）
-    let wsUrlTemplate: String
-    /// API Key
-    let apiKey: String
-    /// Workspace ID
-    let workspaceId: String
-
-    /// 获取完整的 WebSocket URL
-    var wsUrl: String {
-        return String(format: wsUrlTemplate, workspaceId)
-    }
+    /// 传给边缘函数的区域代号
+    let edgeRegionCode: String
 }
 
 /// 区域配置管理器
@@ -32,18 +27,10 @@ class RegionManager {
     // MARK: - 配置
 
     /// 中国区域配置（北京）
-    private static let chinaConfig = RegionConfig(
-        wsUrlTemplate: "wss://%@.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference",
-        apiKey: "sk-964c3945bd89460f976f6b8bf13442b7",
-        workspaceId: "llm-quamnoopzri4mr6r"
-    )
+    private static let chinaConfig = RegionConfig(edgeRegionCode: "CN")
 
     /// 国际区域配置（新加坡）
-    private static let internationalConfig = RegionConfig(
-        wsUrlTemplate: "wss://%@.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/inference",
-        apiKey: "sk-557be4f42f724dd0848c08bc20f89c05",
-        workspaceId: "llm-4z5f5e3xl478r32c"
-    )
+    private static let internationalConfig = RegionConfig(edgeRegionCode: "INTL")
 
     // MARK: - 区域判断
 
@@ -71,19 +58,9 @@ class RegionManager {
         return Self.isCurrentRegionChina ? Self.chinaConfig : Self.internationalConfig
     }
 
-    /// 获取 WebSocket URL
-    var wsUrl: String {
-        return currentConfig.wsUrl
-    }
-
-    /// 获取 API Key
-    var apiKey: String {
-        return currentConfig.apiKey
-    }
-
-    /// 获取 Workspace ID
-    var workspaceId: String {
-        return currentConfig.workspaceId
+    /// 传给 TTS 边缘函数的区域代号（CN / INTL）
+    var edgeRegionCode: String {
+        return currentConfig.edgeRegionCode
     }
 
     /// 强制使用指定区域配置（用于测试或用户手动选择）

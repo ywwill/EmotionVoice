@@ -58,3 +58,9 @@ Pods
 
 
 .cursor/
+
+# Supabase
+supabase/functions/.env
+supabase/.branches
+supabase/.temp
+supabase/.env.local

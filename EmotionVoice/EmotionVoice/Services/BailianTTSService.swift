@@ -2,8 +2,16 @@
 //  BailianTTSService.swift
 //  EmotionVoice
 //
-//  阿里云百炼语音合成服务 - 流式版本
-//  使用 URLSessionWebSocketTask，支持连接复用
+//  阿里云百炼语音合成服务 - 流式版本（经 Supabase Edge Function 代理）
+//
+//  通道：客户端 ←WebSocket→ supabase/functions/bailian-tts ←WebSocket→ 阿里云百炼
+//
+//  百炼的 API Key / WorkspaceId / 模型协议（run-task → continue-task → finish-task、
+//  控制类标签切段）都在边缘函数里，客户端只发一次 `synthesize` 请求，
+//  然后原样消费上游转发回来的事件（`task-started`/`result-generated`/`task-finished`）
+//  与二进制音频分片。
+//
+//  使用 URLSessionWebSocketTask，支持连接复用。
 //
 
 import Foundation
@@ -11,13 +19,10 @@ import AVFoundation
 
 // MARK: - 常量定义
 
-/// 阿里云百炼 TTS 服务
+/// 阿里云百炼 TTS 服务（经 Supabase Edge Function 代理）
 final class BailianTTSService {
 
     static let shared = BailianTTSService()
-
-    // MARK: - 配置
-    private let model = "qwen-audio-3.0-tts-plus"
 
     // MARK: - 状态
     private var webSocketTask: URLSessionWebSocketTask?
@@ -175,10 +180,13 @@ final class BailianTTSService {
         // 确保 WebSocket 连接
         try await ensureConnection()
 
-        // 构建 run-task 事件
-        let runTaskEvent = buildRunTaskEvent(
+        // 一次性把参数交给边缘函数：
+        // run-task / 控制类标签切段 / continue-task / finish-task 由服务端完成
+        let request = buildSynthesizeRequest(
             taskId: taskId,
+            text: text,
             voice: voice,
+            emotion: emotion,
             rate: rate,
             volume: volume,
             sampleRate: sampleRate,
@@ -186,53 +194,23 @@ final class BailianTTSService {
             instruction: nlInstruction
         )
 
-        Log(message: "发送 run-task 事件，task_id: \(taskId)")
-        Log(message: "发送 参数: \(runTaskEvent)")
-        
-        // 发送 run-task
-        try await sendMessage(runTaskEvent)
+        // DEBUG: 输出文本（>200 字符时截断显示）便于排查「多标签只生效一个」问题
+        let preview: String
+        if text.count > 200 {
+            preview = String(text.prefix(200)) + "...（共 \(text.count) 字符）"
+        } else {
+            preview = text
+        }
+        Log(message: "发送 synthesize 请求，voice=\(voice) 文本长度: \(text.count) 字符")
+        Log(message: "  完整文本: \(preview)")
+
+        try await sendMessage(request)
 
         // 等待 task-started 事件
         try await waitForTaskStarted()
 
-        // 准备待合成的文本（添加情感标签）
-        let processedText = processTextWithEmotion(text: text, emotion: emotion)
-
-        // DEBUG: 输出完整文本（>200 字符时截断显示）便于排查「多标签只生效一个」问题
-        let preview: String
-        if processedText.count > 200 {
-            preview = String(processedText.prefix(200)) + "...（共 \(processedText.count) 字符）"
-        } else {
-            preview = processedText
-        }
-        Log(message: "发送 continue-task 事件，文本长度: \(processedText.count) 字符")
-        Log(message: "  完整文本: \(preview)")
-
-        // 关键修复：百炼 TTS 在单次请求中可能只识别第一个控制类标签和第一个富语言类标签，
-        // 后续标签会被静默忽略。把文本按控制类标签拆成多个 segment，
-        // 每个 segment 独立发送一次 continue-task，由 API 独立解析。
-        let segments = splitTextByControlTags(processedText)
-        Log(message: "  拆分为 \(segments.count) 个 segment:")
-        for (idx, seg) in segments.enumerated() {
-            Log(message: "    [\(idx+1)/\(segments.count)] \(seg)")
-        }
-
-        // 逐个发送 continue-task 事件
-        for segment in segments {
-            let continueTaskEvent = buildContinueTaskEvent(taskId: taskId, text: segment)
-            try await sendMessage(continueTaskEvent)
-        }
-
-        // 发送 finish-task 事件
-        Log(message: "发送 finish-task 事件")
-        let finishTaskEvent = buildFinishTaskEvent(taskId: taskId)
-        try await sendMessage(finishTaskEvent)
-
-        // 接收音频流
+        // 接收音频流（不逐帧打日志：分片很密，刷屏且没信息量）
         var isTaskFinished = false
-        // 每次收到二进制帧的序号与累计字节（用于观察流式到达节奏）
-        var chunkIndex = 0
-        var totalReceivedBytes = 0
 
         while !isTaskFinished {
             do {
@@ -240,57 +218,13 @@ final class BailianTTSService {
                 let message = try await receive()
 
                 if let jsonText = message.text {
-                    // 打印收到的 WebSocket 文本消息
-//                    if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
-//                       let event = (json["header"] as? [String: Any])?["event"] as? String {
-//                        Log(message: "[WS RECV] event=\(event)")
-//                    } else {
-//                        Log(message: "[WS RECV] \(jsonText.prefix(200))")
-//                    }
-
-                    // JSON 文本消息
+                    // JSON 文本消息：只关心任务级事件，中间过程事件直接忽略
                     if let json = try? JSONSerialization.jsonObject(with: jsonText.data(using: .utf8)!) as? [String: Any],
                        let event = (json["header"] as? [String: Any])?["event"] as? String {
-                        
+
                         switch event {
                         case "task-finished":
                             isTaskFinished = true
-                            if let usage = json["payload"] as? [String: Any],
-                               let usageInfo = usage["usage"] as? [String: Any],
-                               let chars = usageInfo["characters"] as? Int {
-                                Log(message: "任务完成，累计字符数: \(chars)")
-                            }
-
-                        case "result-generated":
-                            if let output = json["payload"] as? [String: Any],
-                               let outputData = output["output"] as? [String: Any],
-                               let type = outputData["type"] as? String {
-                                switch type {
-                                case "sentence-begin":
-                                    // 记录每个句子如何被 API 切分，帮助排查标签未生效问题
-                                    if let sentence = outputData["sentence"] as? [String: Any] {
-                                        let originalText = sentence["original_text"] as? String ?? ""
-                                        let textLen = originalText.count
-                                        Log(message: "[API切分] sentence-begin: 长度=\(textLen), 前100字=\(String(originalText.prefix(100)))")
-                                    } else {
-                                        // 找不到 sentence/original_text 时，打印完整结构
-                                        Log(message: "[API切分] sentence-begin: outputData keys=\(outputData.keys.sorted())")
-                                    }
-                                case "sentence-end":
-                                    if let sentence = outputData["sentence"] as? [String: Any] {
-                                        let originalText = sentence["original_text"] as? String ?? ""
-                                        let textLen = originalText.count
-                                        Log(message: "[API切分] sentence-end: 长度=\(textLen), 前100字=\(String(originalText.prefix(100)))")
-                                    } else {
-                                        Log(message: "[API切分] sentence-end: outputData keys=\(outputData.keys.sorted())")
-                                    }
-                                case "sentence-synthesis":
-                                    // 音频通过 binary 通道接收
-                                    break
-                                default:
-                                    break
-                                }
-                            }
 
                         case "task-failed":
                             isTaskFinished = true
@@ -299,16 +233,10 @@ final class BailianTTSService {
                             throw TTSError.serverError("[\(errorCode)] \(errorMessage)")
 
                         default:
-                            Log(message: "收到未知事件: \(event)")
                             break
                         }
                     }
                 } else if let binaryData = message.binaryData {
-                    // 打印收到的二进制数据大小
-                    chunkIndex += 1
-                    totalReceivedBytes += binaryData.count
-                    Log(message: "[WS RECV] #\(chunkIndex) 本次 \(binaryData.count) B (\(Self.debugKB(binaryData.count)) KB) · 累计 \(totalReceivedBytes) B (\(Self.debugKB(totalReceivedBytes)) KB)")
-                    // 二进制音频数据
                     if !binaryData.isEmpty {
                         completeAudioData.append(binaryData)
                         onAudio?(binaryData)
@@ -328,17 +256,16 @@ final class BailianTTSService {
             throw TTSError.noAudioData
         }
 
-        // 诊断：检查音频数据是否有 WAV header
+        // 音频生成完成后主动断开连接，下次使用时再重新建立
+        closeConnectionInternal()
+
+        // 诊断：音频头是否正常（WAV 以 RIFF 开头；合并多段时最容易在这里出错）
         let hasRIFFHeader = completeAudioData.count >= 4 &&
             completeAudioData[0] == 0x52 && // R
             completeAudioData[1] == 0x49 && // I
             completeAudioData[2] == 0x46 && // F
             completeAudioData[3] == 0x46    // F
-        Log(message: "收到音频数据: \(completeAudioData.count) bytes, hasRIFFHeader=\(hasRIFFHeader)")
-
-        // 音频生成完成后主动断开连接，下次使用时再重新建立
-        closeConnectionInternal()
-        Log(message: "音频生成完成，已主动断开 WebSocket 连接")
+        Log(message: "音频生成完成: \(completeAudioData.count) bytes, hasRIFFHeader=\(hasRIFFHeader)，已断开 WebSocket 连接")
 
         return completeAudioData
     }
@@ -350,188 +277,42 @@ final class BailianTTSService {
         var binaryData: Data?
     }
 
-    /// 日志用：字节 → KB（两位小数）
-    private static func debugKB(_ bytes: Int) -> String {
-        String(format: "%.2f", Double(bytes) / 1000.0)
-    }
+    // MARK: - 请求构建
 
-    // MARK: - 文本处理
-
-    /// 处理文本，添加情感标签
-    private func processTextWithEmotion(text: String, emotion: String?) -> String {
-        // 如果已有 [emotion] 格式的标签，直接返回
-        if text.contains("[") && text.contains("]") {
-            return text
-        }
-
-        // 如果有情感标签，在开头添加
-        if let emotion = emotion, !emotion.isEmpty {
-            return "[\(emotion)]\(text)"
-        }
-
-        return text
-    }
-
-    /// 例子：
-    ///   输入: `[panicked]虽然…精简，[angry]其他…体验 [cough] [crying]几行…跑起来 [laughing]`
-    ///   输出:
-    ///     - "[panicked]虽然…精简，"
-    ///     - "[angry]其他…体验 [cough]"
-    ///     - "[crying]几行…跑起来 [laughing]"
-    private func splitTextByControlTags(_ text: String) -> [String] {
-        // 富语言类标签集合（用于区分控制 vs 富语言）
-        let richLanguageSet: Set<String> = Set(Constants.richLanguageTags.map { $0.tag })
-
-        struct Item {
-            enum Kind { case control, rich, text }
-            let kind: Kind
-            let value: String
-        }
-
-        let pattern = "\\[([^\\]]+)\\]"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return [text]
-        }
-        let nsText = text as NSString
-        let fullRange = NSRange(location: 0, length: nsText.length)
-
-        // 1) 用正则把 text 切成 [tag] / 普通文本 两类 item
-        var items: [Item] = []
-        var cursor = 0
-
-        for match in regex.matches(in: text, range: fullRange) {
-            let openLoc = match.range.location
-            let closeEnd = match.range.upperBound
-            let labelRange = match.range(at: 1)
-            guard let swiftRange = Range(labelRange, in: text) else { continue }
-            let label = String(text[swiftRange])
-            let tagStr = "[\(label)]"
-
-            if openLoc > cursor {
-                let textPart = nsText.substring(with: NSRange(location: cursor, length: openLoc - cursor))
-                if !textPart.isEmpty {
-                    items.append(Item(kind: .text, value: textPart))
-                }
-            }
-
-            let kind: Item.Kind = richLanguageSet.contains(label) ? .rich : .control
-            items.append(Item(kind: kind, value: tagStr))
-
-            cursor = closeEnd
-        }
-        if cursor < nsText.length {
-            let tail = nsText.substring(from: cursor)
-            if !tail.isEmpty {
-                items.append(Item(kind: .text, value: tail))
-            }
-        }
-
-        // 2) 按控制类标签分组
-        //    - 遇到 control: 提交当前 segment，开始新 segment
-        //    - 遇到 rich/text: 累加到当前 segment 末尾
-        var segments: [String] = []
-        var currentControl: String? = nil
-        var currentBody: String = ""
-
-        func flush() {
-            let combined = (currentControl ?? "") + currentBody
-            let trimmed = combined.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                segments.append(combined)
-            }
-            currentControl = nil
-            currentBody = ""
-        }
-
-        for item in items {
-            switch item.kind {
-            case .control:
-                flush()
-                currentControl = item.value
-            case .rich, .text:
-                currentBody.append(item.value)
-            }
-        }
-        flush()
-
-        return segments.isEmpty ? [text] : segments
-    }
-
-    // MARK: - 事件构建
-
-    private func buildRunTaskEvent(
+    /// 交给边缘函数的一次性合成请求。
+    ///
+    /// 文本里的 `[happy]` / `[laughing]` 等标签原样上传，由服务端
+    /// 做「无标签时补 emotion」与「按控制类标签切段」两件事。
+    private func buildSynthesizeRequest(
         taskId: String,
+        text: String,
         voice: String,
+        emotion: String?,
         rate: Double,
         volume: Double,
         sampleRate: Int,
         format: String,
         instruction: String?
     ) -> String {
-        var parameters: [String: Any] = [
-            "text_type": "PlainText",
+        var payload: [String: Any] = [
+            "action": "synthesize",
+            "task_id": taskId,
+            "text": text,
             "voice": voice,
-            "format": format.lowercased(),
-            "sample_rate": sampleRate,
-            "volume": Int(volume),
             "rate": rate,
-            "pitch": 1.0,
-            "enable_ssml": false
+            "volume": volume,
+            "sample_rate": sampleRate,
+            "format": format.lowercased()
         ]
 
+        if let emotion = emotion, !emotion.isEmpty {
+            payload["emotion"] = emotion
+        }
         if let instruction = instruction, !instruction.isEmpty {
-            parameters["instruction"] = instruction
+            payload["instruction"] = instruction
         }
 
-        let event: [String: Any] = [
-            "header": [
-                "action": "run-task",
-                "task_id": taskId,
-                "streaming": "duplex"
-            ],
-            "payload": [
-                "task_group": "audio",
-                "task": "tts",
-                "function": "SpeechSynthesizer",
-                "model": model,
-                "parameters": parameters,
-                "input": [:] as [String: Any]
-            ]
-        ]
-
-        return serializeToJson(event)
-    }
-
-    private func buildContinueTaskEvent(taskId: String, text: String) -> String {
-        let event: [String: Any] = [
-            "header": [
-                "action": "continue-task",
-                "task_id": taskId,
-                "streaming": "duplex"
-            ],
-            "payload": [
-                "input": [
-                    "text": text
-                ]
-            ]
-        ]
-
-        return serializeToJson(event)
-    }
-
-    private func buildFinishTaskEvent(taskId: String) -> String {
-        let event: [String: Any] = [
-            "header": [
-                "action": "finish-task",
-                "task_id": taskId,
-                "streaming": "duplex"
-            ],
-            "payload": [
-                "input": [:] as [String: Any]
-            ]
-        ]
-
-        return serializeToJson(event)
+        return serializeToJson(payload)
     }
 
     private func serializeToJson(_ dict: [String: Any]) -> String {
@@ -552,21 +333,20 @@ final class BailianTTSService {
 
         closeConnectionInternal()
 
-        let wsUrl = RegionManager.shared.wsUrl
-        Log(message: "[WS CONNECT] 建立 WebSocket 连接: \(wsUrl)")
+        let endpoint = try TTSEndpoint.current()
+        // 日志里不要把 secret 打出来
+        Log(message: "[WS CONNECT] 建立 WebSocket 连接: \(endpoint.url.absoluteString)")
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 60
         config.timeoutIntervalForResource = 300
 
         urlSession = URLSession(configuration: config)
-        guard let url = URL(string: wsUrl) else {
-            throw TTSError.connectionError
-        }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(RegionManager.shared.apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var request = URLRequest(url: endpoint.url)
+        for (name, value) in endpoint.headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
 
         webSocketTask = urlSession?.webSocketTask(with: request)
         webSocketTask?.resume()
@@ -580,19 +360,12 @@ final class BailianTTSService {
             throw TTSError.connectionError
         }
 
-        // 打印发送的 WebSocket 消息
+        // 打印发送的 WebSocket 消息（不打印整包，避免文本过长）
         if let json = try? JSONSerialization.jsonObject(with: message.data(using: .utf8)!) as? [String: Any],
-           let action = (json["header"] as? [String: Any])?["action"] as? String {
-            if action == "continue-task", let payload = json["payload"] as? [String: Any],
-               let input = payload["input"] as? [String: Any],
-               let text = input["text"] as? String {
-                let preview = text.count > 100 ? String(text.prefix(100)) + "..." : text
-                Log(message: "[WS SEND] action=\(action), text=\(preview)")
-            } else {
-                Log(message: "[WS SEND] action=\(action)")
-            }
+           let action = json["action"] as? String {
+            Log(message: "[WS SEND] action=\(action)")
         } else {
-            Log(message: "[WS SEND] \(message.prefix(200))")
+            Log(message: "[WS SEND] \(message.prefix(120))")
         }
 
         let wsMessage = URLSessionWebSocketTask.Message.string(message)
@@ -618,36 +391,11 @@ final class BailianTTSService {
                 return ReceivedMessage(text: nil, binaryData: nil)
             }
         } catch {
-            // WebSocket 连接可能已断开但 isConnected 标志未更新，自动重连重试一次
-            Log(message: "[WS ERROR] WebSocket 接收消息失败: \(error.localizedDescription)，尝试重新连接...")
-            return try await reconnectAndReceive()
-        }
-    }
-
-    /// 重新建立连接并接收消息（用于连接断开后的重试）
-    private func reconnectAndReceive() async throws -> ReceivedMessage {
-        // 关闭旧连接
-        closeConnectionInternal()
-
-        // 重建连接
-        try await ensureConnection()
-
-        // 重新接收消息
-        guard let webSocketTask = webSocketTask else {
-            throw TTSError.connectionError
-        }
-
-        let message = try await webSocketTask.receive()
-
-        switch message {
-        case .string(let text):
-            return ReceivedMessage(text: text, binaryData: nil)
-
-        case .data(let data):
-            return ReceivedMessage(text: nil, binaryData: data)
-
-        @unknown default:
-            return ReceivedMessage(text: nil, binaryData: nil)
+            // 协议由边缘函数驱动（run-task / continue-task / finish-task 都在服务端），
+            // 连接一旦断开无法"重连续传"——重连只会拿到一条没有任务的空连接。
+            // 这里如实上抛，由调用方按「已有音频就接受、一点没有就报错」处理。
+            Log(message: "[WS ERROR] WebSocket 接收消息失败: \(error.localizedDescription)")
+            throw error
         }
     }
 

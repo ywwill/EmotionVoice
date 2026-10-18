@@ -3,6 +3,31 @@
 ## 技术栈
 - macOS 原生 App，Swift + SwiftUI + Swift 5
 - 依赖：SQLite.swift、supabase-swift、keychain-swift（SPM）
+- 服务端：Supabase Edge Functions（Deno），代码在仓库根 `supabase/functions/`
+
+## TTS 链路（2026-10-18 起：客户端 → Supabase Edge Function → 阿里云百炼）
+- **App 里不再有任何百炼密钥**：`RegionConfig.swift` 只剩区域判断（`edgeRegionCode` → CN/INTL），
+  API Key / WorkspaceId / 模型名都在 function secrets 里。
+- 端点由 `Services/TTSEndpoint.swift` 拼：
+  `wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，
+  握手头 `Authorization`/`apikey`（publishable key）+ `x-app-secret`（`kSupabaseAppSecret`，
+  对应函数侧 `APP_SECRET`，也可走 query `?secret=`）。
+- **客户端协议只有一条消息**：`{"action":"synthesize", text, voice, emotion?, rate, volume,
+  sample_rate, format, instruction?}`。run-task / 控制类标签切段 / continue-task / finish-task
+  全在 `supabase/functions/bailian-tts/index.ts` 里。
+- 上游 JSON 事件被**原样转发**（`task-started`/`result-generated`/`task-finished`/`task-failed`），
+  二进制音频帧透传 —— 客户端收包逻辑与直连时一致，这是刻意设计的兼容点。
+- ⚠️ 协议在服务端后连接断开无法"重连续传"，`receive()` 失败必须直接上抛（已改，别再加重连）。
+- ⚠️ **出站 WS 带 header**：Supabase 线上运行时（Deno < 2.5）**不支持**
+  `new WebSocket(url, { headers })` —— 会把第二个参数当 subprotocol 校验，
+  options 对象转 "[object Object]" 非法 → 构造时抛 `Invalid protocol value`
+  （客户端看到的是"服务器错误: Invalid protocol value"）。
+  函数里用 `dialUpstream()` 两级拨号：先试原生 `{ headers }`，捕获异常后回退 `npm:ws@8`。
+  `?ws=npm` 可强制回退路径；日志会打印 `拨号方式: deno-native | npm:ws`。
+  别假设线上 Deno 能力跟本地（2.9）一致。
+- 边缘函数 `Deno.upgradeWebSocket(req, { idleTimeout: 0 })` 后必须
+  `EdgeRuntime.waitUntil(closed)`，否则 worker 提前回收。
+- 部署：`supabase/deploy.sh`（本机 CLI 账号无权访问该项目 + 无 Docker，需用户自己跑）。
 - 数据库：SQLite，文件放在用户 Documents 目录 `emotionvoice.sqlite3`（方便调试）
 - 本地化：`zh-Hans.lproj` / `en.lproj` 各一份 `Localizable.strings`，跟随系统语言，无 App 内切换
 

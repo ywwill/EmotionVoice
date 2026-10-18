@@ -1,0 +1,10 @@
+# Supabase 本地配置（本项目只用 Edge Functions，不跑本地 Postgres/Studio）
+project_id = "dpyyhbqqmegencxekkcr"
+
+[functions.bailian-tts]
+# WebSocket 客户端无法走 Supabase 的 JWT 校验，鉴权在函数内部用 APP_SECRET 完成
+verify_jwt = false
+
+[edge_runtime]
+# WebSocket 需要 per_worker，否则请求完成后 worker 会被回收、连接断开
+policy = "per_worker"
