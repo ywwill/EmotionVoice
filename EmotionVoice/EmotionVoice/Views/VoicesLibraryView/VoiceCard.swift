@@ -100,13 +100,8 @@ struct VoiceCard: View {
         VStack(alignment: .leading, spacing: 8) {
             header
 
-            // 名称 + 描述
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.textPrimary)
-                    .lineLimit(1)
-            }
+            // 名称 + 年龄 / 性别（meta 标签右对齐到名称同一行）
+            nameRow
 
             actionRow
         }
@@ -133,50 +128,64 @@ struct VoiceCard: View {
     private var header: some View {
         HStack(alignment: .top) {
             AvatarView(text: item.avatar, size: 40)
-            if item.isPremium {
-                Text("⭐ 旗舰".localized())
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.accentGlow)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(AppColor.accentPrimary.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
+            
             Spacer()
+            
             VStack(alignment: .trailing) {
-                if item.age != nil || !item.gender.isEmpty {
-                    metaTags
+                if item.isPremium {
+                    Text("⭐ 旗舰".localized())
+                        .font(AppFont.monoSmall)
+                        .foregroundStyle(AppColor.accentGlow)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppColor.accentPrimary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
-                
                 Text(item.desc)
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textSecondary)
                     .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
             }
         }
     }
 
+    /// 名称行：左侧音色名，右侧年龄 / 性别标签
+    private var nameRow: some View {
+        HStack(spacing: 6) {
+            Text(item.name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColor.textPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: 6)
+
+            // fixedSize：窄卡片时优先截断名称，保证 meta 标签不被压缩
+            metaTags
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// 年龄 / 性别标签（与名称同一行，右对齐）
     private var metaTags: some View {
         HStack(spacing: 6) {
-            
-            Spacer()
-            
             if let age = item.age {
-                Text("%d 岁".localized(age))
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.textTertiary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(AppColor.bgTertiary)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                metaTag("%d 岁".localized(age))
             }
             if !item.gender.isEmpty {
-                Text(item.gender)
-                    .font(AppFont.monoSmall)
-                    .foregroundStyle(AppColor.textTertiary)
+                metaTag(item.gender)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func metaTag(_ text: String) -> some View {
+        Text(text)
+            .font(AppFont.monoSmall)
+            .foregroundStyle(AppColor.textTertiary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(AppColor.bgTertiary)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
     private var actionRow: some View {

@@ -623,7 +623,6 @@ struct AudioGenerationModal: View {
                     .foregroundStyle(isCompleted ? AppColor.statusSuccess : AppColor.textPrimary)
             }
 
-            
             Text(isCompleted ? "音频生成完成".localized() : "正在接收音频数据".localized())
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.textPrimary)

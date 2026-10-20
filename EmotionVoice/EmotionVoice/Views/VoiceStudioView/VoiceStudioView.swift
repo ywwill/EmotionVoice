@@ -204,9 +204,9 @@ struct VoiceStudioView: View {
                 .pointingHandCursor()
                 .popover(isPresented: $showInterruptRulePopover) {
                     RulePopover(title: Constants.interruptItem.label.localized()) {
-                        RuleBullet(text: "不是一个情绪，而是一个「结束点」：提前终止前一个语气标签的作用".localized())
+                        RuleBullet(text: "终止前一个语气标签的作用".localized())
                         RuleBullet(text: "从插入位置起，文本回到音色本身的默认状态朗读，不带任何情绪基调".localized())
-                        RuleBullet(text: "作用持续到下一个语气标签；期间可以正常插入拟声效果".localized())
+                        RuleBullet(text: "作用持续到下一个语气标签，期间可以正常插入拟声效果".localized())
                     }
                 }
 

@@ -400,10 +400,10 @@ struct VoicesLibraryView: View {
 
     /// 形如 "1 - 12 / 共 891 个"
     private var rangeDescription: String {
-        if vm.totalCount == 0 { return "共 0 个".localized() }
+        if vm.totalCount == 0 { return "0" }
         let start = (vm.currentPage - 1) * vm.pageSize + 1
         let end = min(vm.currentPage * vm.pageSize, vm.totalCount)
-        return "\(start) - \(end) · 共 \(vm.totalCount) 个".localized()
+        return "%d - %d · 共 %d 个".localized(start, end, vm.totalCount)
     }
 
     /// 同步输入框显示
@@ -464,7 +464,7 @@ struct VoicesLibraryView: View {
                     } label: {
                         Text("关闭".localized())
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppColor.textSecondary)
+                            .foregroundStyle(AppColor.textPrimary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(AppColor.bgTertiary)

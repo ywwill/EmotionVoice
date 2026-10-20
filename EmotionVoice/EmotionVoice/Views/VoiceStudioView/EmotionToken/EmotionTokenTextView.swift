@@ -922,6 +922,67 @@ final class EmotionTokenTextView: NSTextView {
         }
     }
 
+    // MARK: - 插入光标（caret 高度修正）
+
+    /// `bodyLineSpacing = 28` 会把行片段矩形撑到 ≈ 44.5pt，系统默认按**整个行片段**
+    /// 画插入光标，蓝色 caret 比字形高一大截、下探到两行之间的空隙里。
+    /// 这里自绘：caret 上下沿由**基线 ± 字体度量**推出（与语气胶囊用的是同一套算法，
+    /// 见 `toneCapsuleGeometries()`），于是 caret 正好等于胶囊夹住的那块文本区，天然居中。
+    ///
+    /// ⚠️ 不能改用 `lineFragmentUsedRect` 居中：usedRect 与字形度量不是同一套口径，
+    /// 实测会把 caret 压得偏低、下沿超出胶囊。
+    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn: Bool) {
+        // 熄灭（闪烁的灭相）交给 super 擦除——它会擦整个行片段矩形，必然覆盖我们画的小 caret
+        guard turnedOn, shouldDrawInsertionPoint, isEditable,
+              let lm = layoutManager, let tc = textContainer else {
+            super.drawInsertionPoint(in: rect, color: color, turnedOn: turnedOn)
+            return
+        }
+
+        let f = font ?? EmotionTokenStyle.bodyFont
+        let fontHeight = f.ascender - f.descender
+
+        var caretRect = NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: fontHeight)
+        if let top = insertionPointTextTop(container: tc, layoutManager: lm) {
+            caretRect.origin.y = top + textContainerOrigin.y
+        }
+        // 兜底：无论度量怎么偏，绝不溢出系统给的插入点矩形（行片段范围）
+        caretRect.origin.y = min(max(caretRect.origin.y, rect.minY),
+                                 max(rect.maxY - caretRect.height, rect.minY))
+
+        color.setFill()
+        NSBezierPath(rect: caretRect).fill()
+    }
+
+    /// 光标所在行「文本区顶端」的 y（container 坐标系），nil = 拿不到布局信息（空文本等）。
+    ///
+    /// 与胶囊几何同源：`baseline = lineRect.minY + location(forGlyphAt:).y`
+    /// （`location` 返回的是相对**所在 line fragment 原点**的偏移，不是绝对 container 坐标）。
+    private func insertionPointTextTop(container tc: NSTextContainer,
+                                       layoutManager lm: NSLayoutManager) -> CGFloat? {
+        guard let storage = textStorage, storage.length > 0 else { return nil }
+        let length = storage.length
+        let charIndex = min(max(selectedRange().location, 0), length)
+
+        // 光标停在末尾空行（文本以换行结尾）：只有 extra line fragment 描述这一行
+        if charIndex >= length, lm.extraLineFragmentTextContainer === tc {
+            let frag = lm.extraLineFragmentRect
+            let used = lm.extraLineFragmentUsedRect
+            let f = font ?? EmotionTokenStyle.bodyFont
+            return used.height > 0
+                ? used.minY + (used.height - (f.ascender - f.descender)) / 2
+                : frag.minY
+        }
+
+        let char = min(charIndex, length - 1)
+        let glyph = min(lm.glyphIndexForCharacter(at: char), max(lm.numberOfGlyphs - 1, 0))
+        guard lm.isValidGlyphIndex(glyph) else { return nil }
+        let lineRect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        let baseline = lineRect.minY + lm.location(forGlyphAt: glyph).y
+        let f = font ?? EmotionTokenStyle.bodyFont
+        return baseline - f.ascender
+    }
+
     // MARK: - didChange
 
     override func didChangeText() {
