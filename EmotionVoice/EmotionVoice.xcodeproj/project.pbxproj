@@ -29,7 +29,6 @@
 		6F20939A303EC80500A770BB /* CreditsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209356303EC80500A770BB /* CreditsService.swift */; };
 		6F20939B303EC80500A770BB /* ProjectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209357303EC80500A770BB /* ProjectService.swift */; };
 		6F20939C303EC80500A770BB /* RegionConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209358303EC80500A770BB /* RegionConfig.swift */; };
-		6F2093C2303EC80500A770BB /* TTSEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BB /* TTSEndpoint.swift */; };
 		6F20939D303EC80500A770BB /* VoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209359303EC80500A770BB /* VoiceService.swift */; };
 		6F20939E303EC80500A770BB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935B303EC80500A770BB /* AppState.swift */; };
 		6F20939F303EC80500A770BB /* VoicesLibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20935C303EC80500A770BB /* VoicesLibraryViewModel.swift */; };
@@ -53,6 +52,7 @@
 		6F2093BA303EC80500A770BB /* Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937F303EC80500A770BB /* Sidebar.swift */; };
 		6F2093BB303EC80500A770BB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209382303EC80500A770BB /* ContentView.swift */; };
 		6F2093BC303EC80500A770BB /* EmotionVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209383303EC80500A770BB /* EmotionVoiceApp.swift */; };
+		6F2093C2303EC80500A770BB /* TTSEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BB /* TTSEndpoint.swift */; };
 		6F209615303EC80500A770BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F209381303EC80500A770BB /* Assets.xcassets */; };
 		6F209616303EC80500A770BB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F209386303EC80500A770BB /* Localizable.strings */; };
 		6F209788303EC80500A770BB /* CreditsPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209789303EC80500A770BB /* CreditsPurchaseView.swift */; };
@@ -722,7 +722,6 @@
 		6F209356303EC80500A770BB /* CreditsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsService.swift; sourceTree = "<group>"; };
 		6F209357303EC80500A770BB /* ProjectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectService.swift; sourceTree = "<group>"; };
 		6F209358303EC80500A770BB /* RegionConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionConfig.swift; sourceTree = "<group>"; };
-		6F2093C1303EC80500A770BB /* TTSEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSEndpoint.swift; sourceTree = "<group>"; };
 		6F209359303EC80500A770BB /* VoiceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceService.swift; sourceTree = "<group>"; };
 		6F20935B303EC80500A770BB /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		6F20935C303EC80500A770BB /* VoicesLibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicesLibraryViewModel.swift; sourceTree = "<group>"; };
@@ -749,6 +748,7 @@
 		6F209383303EC80500A770BB /* EmotionVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionVoiceApp.swift; sourceTree = "<group>"; };
 		6F209384303EC80500A770BB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6F209385303EC80500A770BB /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		6F2093C1303EC80500A770BB /* TTSEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSEndpoint.swift; sourceTree = "<group>"; };
 		6F209789303EC80500A770BB /* CreditsPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsPurchaseView.swift; sourceTree = "<group>"; };
 		6F209AC8303EC88F00A770BB /* basic_voices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = basic_voices.json; sourceTree = "<group>"; };
 		6F209AC9303EC88F00A770BB /* longanlingxin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = longanlingxin.m4a; sourceTree = "<group>"; };
@@ -1357,6 +1357,7 @@
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
 		6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
 		6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConcatenator.swift; sourceTree = "<group>"; };
+		6F9DEF56308754520048ED6F /* Emora-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Emora-Info.plist"; sourceTree = "<group>"; };
 		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
 		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
 		6FA000000000000000001002 /* PlayerTransportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTransportView.swift; sourceTree = "<group>"; };
@@ -2225,6 +2226,7 @@
 		6FEE97E2302705C600C39C26 = {
 			isa = PBXGroup;
 			children = (
+				6F9DEF56308754520048ED6F /* Emora-Info.plist */,
 				6F209387303EC80500A770BB /* EmotionVoice */,
 				6FEE97EC302705C600C39C26 /* Products */,
 			);
@@ -3191,6 +3193,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Emora-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -3236,6 +3239,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Emora-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
