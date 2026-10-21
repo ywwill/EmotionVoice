@@ -36,6 +36,9 @@ struct ContentView: View {
         }
         .background(AppColor.bgPrimary)
         .frame(minWidth: 1500, minHeight: 900)
+        // 生成弹窗 / 后台接收卡片挂在这一层：
+        // 弹窗关闭后接收仍在后台跑，提示必须能跨页面存在（见 GenerationOverlay）
+        .overlay { GenerationOverlay() }
         .onChange(of: appState.selectedSection) { _, newSection in
             scheduleContentSwap(to: newSection)
         }

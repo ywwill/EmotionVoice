@@ -335,7 +335,7 @@
 "%@ · %@ · 情感标签" = "%@ · %@ · Emotion Tags";
 
 // 音频生成弹窗（接收中 / 完成）
-"正在接收音频数据" = "Receiving audio data";
+"正在接收" = "Receiving";
 "音频生成完成" = "Audio generation complete";
 "关闭（后台继续接收）" = "Close (receiving continues in background)";
 "%@ 已接收" = "%@ received";
@@ -367,3 +367,4 @@
 "上一页" = "Previous";
 "下一页" = "Next";
 "%d - %d · 共 %d 个" = "%d–%d of %d";
+"查看" = "Show";

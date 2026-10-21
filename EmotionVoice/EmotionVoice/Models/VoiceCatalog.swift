@@ -22,6 +22,24 @@ enum AppLanguage {
             ?? "en"
         return preferred.hasPrefix("zh")
     }
+
+    /// 当前界面是否为繁体中文（zh-HK / zh-Hant / zh-TW）
+    ///
+    /// 先看 App 自身命中的本地化（已支持 zh-HK），再退到系统偏好语言列表。
+    static var prefersTraditionalChinese: Bool {
+        let tags = Bundle.main.preferredLocalizations + Locale.preferredLanguages
+        for tag in tags {
+            let id = tag.lowercased().replacingOccurrences(of: "_", with: "-")
+            if id.hasPrefix("zh-hant") || id.hasPrefix("zh-hk") || id.hasPrefix("zh-tw") {
+                return true
+            }
+            if id.hasPrefix("zh") || id.hasPrefix("en") {
+                // 明确命中简体 / 非中文，结束判断
+                return false
+            }
+        }
+        return false
+    }
 }
 
 // MARK: - 音色层级
@@ -144,12 +162,26 @@ enum VoiceCatalog {
 
     /// 读取指定语种的 VoiceCatalog.strings 词条；缺失时回退到 key 本身
     static func string(_ key: String, language: VoiceLangCode) -> String {
-        guard let path = Bundle.main.path(forResource: language == .zh ? "zh-Hans" : "en",
-                                          ofType: "lproj"),
-              let bundle = Bundle(path: path) else { return key }
-        let value = NSLocalizedString(key, tableName: "VoiceCatalog", bundle: bundle,
-                                     value: key, comment: "")
-        return value.isEmpty ? key : value
+        for lproj in lprojCandidates(for: language) {
+            guard let path = Bundle.main.path(forResource: lproj, ofType: "lproj"),
+                  let bundle = Bundle(path: path) else { continue }
+            let value = NSLocalizedString(key, tableName: "VoiceCatalog", bundle: bundle,
+                                         value: key, comment: "")
+            // 取不到（返回 key 本身）就往下个候选退，最终兜底仍是 key
+            if !value.isEmpty, value != key { return value }
+        }
+        return key
+    }
+
+    /// 中文按界面语言挑简体 / 繁体字形，英文固定 en
+    ///
+    /// 音色语种与界面语言无关（中文音色永远显示中文名），这里只决定用哪一套中文字形：
+    /// 繁体界面读 zh-HK.lproj，其余读 zh-Hans.lproj；缺词条时回退到简体。
+    private static func lprojCandidates(for language: VoiceLangCode) -> [String] {
+        guard language == .zh else { return ["en"] }
+        return AppLanguage.prefersTraditionalChinese
+            ? ["zh-HK", "zh-Hant", "zh-Hans"]
+            : ["zh-Hans"]
     }
 
     /// 音色名（指定语种）

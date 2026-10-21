@@ -17,7 +17,9 @@ struct VoiceStudioView: View {
     // 播放进度以 10Hz 刷新，一旦在页面层级订阅，整页（文本编辑器 + 全部面板）
     // 都会跟着重算。需要播放态的地方下沉到子视图里订阅，见 VoiceRowPlayback。
     @State private var showVoiceLibrarySheet: Bool = false
-    @State private var showGenerationModal: Bool = false
+    /// 生成弹窗的开关放在 AppState 上（全局承载，关掉后可从任意页面召回），
+    /// 这里只是读同一个值：接收中屏蔽下层交互与光标区。
+    private var showGenerationModal: Bool { appState.showGenerationModal }
     /// 积分不足时弹出购买页面
     @State private var showCreditsPurchaseSheet: Bool = false
     
@@ -34,36 +36,22 @@ struct VoiceStudioView: View {
         studioContent
             // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域
             .allowsHitTesting(!showGenerationModal)
-            // 生成弹窗用整窗遮罩承载，卡片在遮罩内按内容自行撑开并居中。
-            // 之前用 sheet 承载时窗口高度是固定的，内容一短，卡片下方就会露出一条黑色空白。
-            .overlay {
-                if showGenerationModal {
-                    AudioGenerationModal(vm: vm, isPresented: $showGenerationModal)
-                        .transition(.opacity)
-                }
-            }
             // 弹窗与工作台里的 NSTextView 共处同一窗口。SwiftUI 自绘内容不是 NSView，
             // 不参与 AppKit 的 cursor rect 判定，下层的 I-beam 会穿透到弹窗上方
             //（异常范围正好等于卡片内容区高度）。这里在弹窗期间禁用窗口的 cursor rects，
             // 交给弹窗内各控件的 hover 决定光标；弹窗关闭后恢复。
             .suppressesCursorRects(showGenerationModal)
-            .animation(.easeInOut(duration: 0.25), value: showGenerationModal)
             .sheet(isPresented: $showVoiceLibrarySheet) {
                 VoiceLibrarySheet()
                     .frame(width: 1400, height: 830)
             }
-        .sheet(isPresented: $showCreditsPurchaseSheet) {
-            CreditsPurchaseView()
-                .frame(width: 600, height: 600)
-        }
-        .alert(item: $vm.alertItem) { item in
-            Alert(
-                title: Text(item.title),
-                message: Text(item.message),
-                dismissButton: .default(Text("好".localized()))
-            )
-        }
-        .onAppear {
+            .sheet(isPresented: $showCreditsPurchaseSheet) {
+                CreditsPurchaseView()
+                    .frame(width: 600, height: 600)
+            }
+            // 注：生成失败/校验的 alert 已移到 GenerationOverlay（全局层），
+            // 关掉弹窗后即便切到别的页面也能弹出来。
+            .onAppear {
             // 初始化音色：上次使用的音色优先，没有则回落到旗舰默认音色（idx 1）
             appState.resolveSelectedVoice()
             vm.selectedVoiceKey = appState.selectedVoice?.key ?? appState.defaultVoiceKey
@@ -253,6 +241,23 @@ struct VoiceStudioView: View {
                 }
             }
             .padding(12)
+            // 后台接收卡片锚在这个区块的右下角：关掉生成弹窗后接收仍在跑，
+            // 它是工作台里唯一能看出"还在接收"的地方。
+            // 7 个拟声标签在宽屏下排不满一行，右侧是空的，卡片正好落在空白里不压标签。
+            .overlay(alignment: .bottomTrailing) {
+                if vm.isGenerating && !appState.showGenerationModal {
+                    BackgroundReceivingCard {
+                        appState.showGenerationModal = true
+                    }
+                    .padding(.trailing, 10)
+                    .padding(.bottom, 8)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: vm.isGenerating)
         }
         .padding(18)
         .background(AppColor.bgSecondary)
@@ -899,8 +904,8 @@ struct VoiceStudioView: View {
                     showCreditsPurchaseSheet = true
                     return
                 }
-                // 3. 积分充足，开始生成
-                showGenerationModal = true
+                // 3. 积分充足，开始生成（弹窗开关在 AppState 上，全局承载）
+                state.showGenerationModal = true
                 vm.generate { success in
                     if success {
                         state.refreshCredits()

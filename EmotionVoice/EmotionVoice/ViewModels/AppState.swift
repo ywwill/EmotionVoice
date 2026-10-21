@@ -40,6 +40,16 @@ final class AppState: ObservableObject {
     /// 触发动画效果（生成完成/开始时）
     @Published var isGenerating: Bool = false
 
+    /// 生成弹窗是否展开
+    ///
+    /// 放在 AppState 而不是 VoiceStudioView 的 @State，原因有两条：
+    /// 1. 关闭弹窗后接收仍在后台跑，右下角的「后台接收卡片」要能从**任意页面**
+    ///    把它重新唤起来；
+    /// 2. VoiceStudioView 在切换分区时会被销毁重建（ContentView 用
+    ///    `.id(renderedSection)` 换内容），存在 @State 里的开关会一起丢，
+    ///    切走再切回来弹窗就没了。
+    @Published var showGenerationModal: Bool = false
+
     /// 默认音频格式（用于导出和生成）
     @Published var defaultFormat: String {
         didSet {

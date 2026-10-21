@@ -185,6 +185,15 @@ final class VoiceStudioViewModel: ObservableObject {
     @Published var isGenerating: Bool = false
     @Published var alertItem: AlertItem? = nil
     @Published var generatedAudioURL: URL? = nil
+
+    /// 一次生成刚刚完成的信号（自增计数）
+    ///
+    /// 关掉弹窗后接收仍在后台继续，完成时靠它把弹窗重新唤起到完成态。
+    /// 用自增计数而不是 Bool：连续两次生成时 onChange 能各触发一次。
+    @Published private(set) var generationCompletedSignal: Int = 0
+
+    /// 本次生成的开始时刻（后台卡片与弹窗共用，重开弹窗时已用时不归零）
+    private(set) var generationStartedAt: Date? = nil
     @Published var generatedAudioId: Int64? = nil  // 用于保存编辑的名称
     @Published var generatedAudioDuration: TimeInterval = 0  // 生成的音频时长
     /// 生成过程的实时接收统计（字节数 / 段数 / 进度）
@@ -351,6 +360,7 @@ final class VoiceStudioViewModel: ObservableObject {
         }
 
         isGenerating = true
+        generationStartedAt = Date()
         alertItem = nil
         stats.reset()
         generatedAudioURL = nil
@@ -463,11 +473,12 @@ final class VoiceStudioViewModel: ObservableObject {
                     guard let audio = createdAudio else {
                         self.alertItem = AlertItem(title: "保存失败".localized(),
                                                     message: "无法写入音频条目，请稍后重试".localized())
-                        self.isGenerating = false
-                        self.stats.reset()
-                        completion(false)
-                        return
-                    }
+                    self.isGenerating = false
+                    self.generationStartedAt = nil
+                    self.stats.reset()
+                    completion(false)
+                    return
+                }
 
                     // 保存音频 ID 用于后续重命名
                     self.generatedAudioId = audio.id
@@ -487,6 +498,9 @@ final class VoiceStudioViewModel: ObservableObject {
                     self.generatedAudioDuration = duration  // 保存音频时长供播放使用
                     self.stats.markProgress(1.0)
                     self.isGenerating = false
+                    self.generationStartedAt = nil
+                    // 弹窗可能早就被关掉了：发一个完成信号，由全局浮层把它重新唤起
+                    self.generationCompletedSignal &+= 1
                     // 注意：不要清空 text — 需求 1 要求保留输入
                     completion(true)
                 }
@@ -494,6 +508,7 @@ final class VoiceStudioViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isGenerating = false
+                    self.generationStartedAt = nil
                     self.stats.reset()
                     self.alertItem = AlertItem(
                         title: "生成失败".localized(),
@@ -532,6 +547,7 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 取消生成
     func cancelGeneration() {
         isGenerating = false
+        generationStartedAt = nil
         stats.reset()
         BailianTTSService.shared.closeConnection()
     }

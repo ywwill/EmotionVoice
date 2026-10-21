@@ -549,11 +549,21 @@ struct AudioGenerationModal: View {
         .onExitCommand { dismiss() }
         .onAppear {
             audioName = generateDefaultAudioName()
-            startedAt = Date()
+            // 与后台接收卡片共用 VM 记下的开始时刻：中途关掉再回来，已用时不归零
+            startedAt = vm.generationStartedAt ?? Date()
             sampleBytes = stats.receivedBytes
             sampleDate = Date()
             refreshCredits()
             refreshCompletedInfo()
+            // 被「后台接收完成」的信号重新唤起时，stats.progress 已经是 1.0，
+            // onChange(of: stats.progress) 不会再触发一次 —— 这里直接落到完成态，
+            // 否则会停在"正在接收"的空壳界面上（此时 vm.isGenerating 已是 false）。
+            if vm.generatedAudioURL != nil, !vm.isGenerating {
+                // 时长同理：onChange(of: vm.generatedAudioDuration) 不会再触发一次
+                audioDuration = vm.generatedAudioDuration
+                isCompleted = true
+                return
+            }
             blink = true
             ticker.start()
         }
@@ -623,7 +633,7 @@ struct AudioGenerationModal: View {
                     .foregroundStyle(isCompleted ? AppColor.statusSuccess : AppColor.textPrimary)
             }
 
-            Text(isCompleted ? "音频生成完成".localized() : "正在接收音频数据".localized())
+            Text(isCompleted ? "音频生成完成".localized() : "正在接收".localized())
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.textPrimary)
                 
@@ -900,9 +910,6 @@ struct AudioGenerationModal: View {
     private var footer: some View {
         HStack(spacing: 10) {
             if isGenerating {
-                Text("关闭窗口不会中断，音频将在后台继续接收".localized())
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppColor.textTertiary)
                 Spacer()
             } else {
                 Spacer()

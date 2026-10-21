@@ -3,10 +3,9 @@
 """
 生成音色目录的数据文件与本地化词条。
 
-产出三份文件：
+产出：
   1. basic_voices.json（v4）—— 只含语义数据与稳定 key，不含任何文案、不含冗余 id
-  2. zh-Hans.lproj/VoiceCatalog.strings —— 中文词条
-  3. en.lproj/VoiceCatalog.strings —— 英文词条
+  2. 每个 .lproj 目录一份 VoiceCatalog.strings（zh-Hans / en / zh-HK …，自动扫描）
 
 设计要点：
   - 数据与文案彻底分离：JSON 零文案、零冗余字段
@@ -33,12 +32,28 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-SRC_JSON = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice", "Voices", "basic_voices.json")
-ZH_STRINGS = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice", "zh-Hans.lproj", "VoiceCatalog.strings")
-EN_STRINGS = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice", "en.lproj", "VoiceCatalog.strings")
+LOCALE_ROOT = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice")
+SRC_JSON = os.path.join(LOCALE_ROOT, "Voices", "basic_voices.json")
+
+# 基准语种：JSON 之外的所有文案都以它为回退源（新增语种缺词条时先用简体顶上）
+BASE_LOCALE = "zh-Hans"
 
 # TTS 参数 key 的模型前缀，剥掉后得到短标识 stem
 MODEL_PREFIX = "qwen-audio-3.0-tts-plus-"
+
+
+def strings_path(locale):
+    return os.path.join(LOCALE_ROOT, "%s.lproj" % locale, "VoiceCatalog.strings")
+
+
+def discover_locales():
+    """扫描所有 .lproj（Base 除外）——加新语言只需新增一个目录，本脚本不用改"""
+    return sorted(
+        d[:-len(".lproj")]
+        for d in os.listdir(LOCALE_ROOT)
+        if d.endswith(".lproj") and d != "Base.lproj"
+        and os.path.isdir(os.path.join(LOCALE_ROOT, d))
+    )
 
 # ---------------------------------------------------------------------------
 # 合法值（用于校验）
@@ -152,24 +167,22 @@ def assign_idx(items):
 
 def build():
     items = load_data()
-    zh = parse_strings(ZH_STRINGS)
-    en = parse_strings(EN_STRINGS)
+    locales = discover_locales()
+    tables = {loc: parse_strings(strings_path(loc)) for loc in locales}
 
     ordered = assign_idx(items)
 
     voices = []
-    zh_entries = []
-    en_entries = []
+    entries = {loc: [] for loc in locales}
 
     for v in ordered:
         stem = stem_of(v)
         slug = v["featureKey"]
 
-        name_zh = zh.get("voice.%s.name" % stem, stem)
-        name_en = en.get("voice.%s.name" % stem, name_zh)
+        base = tables.get(BASE_LOCALE, {})
+        name_base = base.get("voice.%s.name" % stem, stem)
         # 特质：优先新的 per-voice key，回退到旧的共享 slug key（迁移兼容）
-        feat_zh = zh.get("voice.%s.feature" % stem) or zh.get("voice.feature.%s" % slug, stem)
-        feat_en = en.get("voice.%s.feature" % stem) or en.get("voice.feature.%s" % slug, feat_zh)
+        feat_base = base.get("voice.%s.feature" % stem) or base.get("voice.feature.%s" % slug, stem)
 
         voices.append({
             "idx": v["idx"],
@@ -182,24 +195,31 @@ def build():
             "audio": v["audio"],
         })
 
-        zh_entries.append(("voice.%s.name" % stem, name_zh))
-        en_entries.append(("voice.%s.name" % stem, name_en))
-        zh_entries.append(("voice.%s.feature" % stem, feat_zh))
-        en_entries.append(("voice.%s.feature" % stem, feat_en))
+        for loc in locales:
+            t = tables[loc]
+            if loc == BASE_LOCALE:
+                name, feat = name_base, feat_base
+            else:
+                name = t.get("voice.%s.name" % stem) or name_base
+                feat = (t.get("voice.%s.feature" % stem)
+                        or t.get("voice.feature.%s" % slug)
+                        or feat_base)
+            entries[loc].append(("voice.%s.name" % stem, name))
+            entries[loc].append(("voice.%s.feature" % stem, feat))
 
     payload = {
         "version": 4,
         "generatedBy": "tools/gen_basic_voices.py",
         "voices": voices,
     }
-    return payload, zh_entries, en_entries
+    return payload, entries
 
 
 # ---------------------------------------------------------------------------
 # 校验
 # ---------------------------------------------------------------------------
 
-def validate(payload, zh_entries, en_entries):
+def validate(payload, entries):
     errors = []
     voices = payload["voices"]
 
@@ -236,9 +256,10 @@ def validate(payload, zh_entries, en_entries):
     if missing:
         errors.append("缺失预览音频 %d 个: %s..." % (len(missing), missing[:5]))
 
-    # 中英词条数一致
-    if len(zh_entries) != len(en_entries):
-        errors.append("中英词条数不一致: %d vs %d" % (len(zh_entries), len(en_entries)))
+    # 各语种词条数一致
+    counts = {loc: len(e) for loc, e in entries.items()}
+    if len(set(counts.values())) > 1:
+        errors.append("各语种词条数不一致: %s" % counts)
 
     return errors
 
@@ -266,8 +287,8 @@ def write_strings(path, entries):
 
 
 def main():
-    payload, zh_entries, en_entries = build()
-    errors = validate(payload, zh_entries, en_entries)
+    payload, entries = build()
+    errors = validate(payload, entries)
     if errors:
         print("[error] 校验失败:")
         for e in errors:
@@ -275,8 +296,8 @@ def main():
         return 1
 
     write_json(payload)
-    write_strings(ZH_STRINGS, zh_entries)
-    write_strings(EN_STRINGS, en_entries)
+    for loc, e in entries.items():
+        write_strings(strings_path(loc), e)
 
     voices = payload["voices"]
     premium = [v for v in voices if v["tier"] == "premium"]
@@ -284,8 +305,8 @@ def main():
     print("[ok] %s" % SRC_JSON)
     print("     %d 条（旗舰 %d / 基础 %d），%.1f KB" % (
         len(voices), len(premium), len(voices) - len(premium), size / 1024))
-    print("[ok] %s  (%d 条)" % (ZH_STRINGS, len(zh_entries)))
-    print("[ok] %s  (%d 条)" % (EN_STRINGS, len(en_entries)))
+    for loc in sorted(entries):
+        print("[ok] %s  (%d 条)" % (strings_path(loc), len(entries[loc])))
     print("     词条构成: 音色名 %d + 特质 %d" % (len(voices), len(voices)))
     return 0
 
