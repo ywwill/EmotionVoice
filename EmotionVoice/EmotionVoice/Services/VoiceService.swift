@@ -146,8 +146,8 @@ final class VoiceService {
     /// 构造分类的 WHERE 子句（仅语义 code，与语言无关）
     /// - Returns: nil 表示无过滤条件；Expression<Bool>(value: false) 表示永远无匹配
     ///
-    /// 注：搜索不再下推到 SQL —— 文案列已从库里移除，搜索在内存中对本地化后的
-    /// 名 / 特质 / 场景 / 语种做匹配（见 matchesSearch），这样还能顺手支持拼音搜索。
+    /// 注：搜索不再下推到 SQL —— 文案列已从库里移除，搜索在内存中对「当前语言」的
+    /// 名 / 特质 / 场景 / 语种做匹配（见 matchesSearch）。仅做字符串包含匹配，
     private func predicate(category: VoiceCategory?) -> SQLite.Expression<Bool>? {
         guard let category = category else { return nil }
         guard let pred = categoryPredicate(category) else {
