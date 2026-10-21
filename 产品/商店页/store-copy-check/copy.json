@@ -1,0 +1,63 @@
+{
+  "_note": "Emora Mac App Store 最终版 v4：去标签数量 + 繁体 + 四英文区（2026-10-21）",
+  "limits": {
+    "mac-app-store": {
+      "title": [
+        1,
+        30
+      ],
+      "subtitle": [
+        1,
+        30
+      ],
+      "shortDescription": [
+        1,
+        170
+      ],
+      "longDescription": [
+        1,
+        4000
+      ]
+    }
+  },
+  "platforms": {
+    "mac-app-store": {
+      "zh-Hans": {
+        "title": "Emora AI 情感配音：文字转语音、语音合成、方言与朗读",
+        "subtitle": "有声书、播客、视频解说与课件配音，按句调情绪，一键导出",
+        "shortDescription": "写一句「温柔女声，语速适中」，Emora 就照这句话念。按句插入情绪与拟声标签，一键导出 MP3 或 WAV；中文、英文与多种方言都能用。",
+        "longDescription": "Emora 是一款为长内容而生的 AI 配音软件（TTS）：贴入稿件，按句标注情绪、挑音色，导出成片。\n\n■ 一句话定语气\n丰富的语气标签与拟声标签，插在哪一句就只影响哪一句。旁白保持平静，对话带上笑意，结尾留一声叹息。\n\n■ 音色挑得出来\n599 个音色，按语言、性别、年龄、场景筛选，支持名称搜索；每个都能先试听再定，常用的收进收藏夹。\n\n■ 不会调参数，就把它说出来\n一句话下指令——「知性沉稳的讲述风格，富有感染力」，或从温柔女声、新闻播报、有声书等 6 种预设起步；语速、音量、采样率按需微调。\n\n■ 一键导出，记录留存\n导出 MP3 或 WAV；生成记录自动留存，随时回听与重新导出。\n\n适合有声制作：播客主播、有声书与有声小说、电子书朗读、视频配音与解说、课件与广告配音、口播与角色对话、儿童故事与有声读物；也适合睡前讲故事、通勤听书、视频旁白与声音定制。支持中文、英文等多语言，以及粤语、四川话、东北话等方言。\n\n按字数计费，随用随充，不绑定订阅。\n\n下载 Emora，把下一篇稿子读成你想要的样子。"
+      },
+      "zh-Hant": {
+        "title": "Emora AI 情感配音：文字轉語音、語音合成、方言與朗讀",
+        "subtitle": "有聲書、播客、影片解說與教材配音，按句調情緒，一鍵匯出",
+        "shortDescription": "寫一句「溫柔女聲，語速適中」，Emora 就照這句話念。按句插入情緒與擬聲標籤，一鍵匯出 MP3 或 WAV；中文、英文與多種方言都能用。",
+        "longDescription": "Emora 是一款為長內容而生的 AI 配音軟體（TTS）：貼入稿件，按句標註情緒、挑音色，匯出成片。\n\n■ 一句話定語氣\n豐富的語氣標籤與擬聲標籤，插在哪一句就只影響哪一句。旁白保持平靜，對話帶上笑意，結尾留一聲嘆息。\n\n■ 音色挑得出來\n599 個音色，按語言、性別、年齡、場景篩選，支援名稱搜尋；每個都能先試聽再定，常用的收進收藏夾。\n\n■ 不會調參數，就把它說出來\n一句話下指令——「知性沉穩的講述風格，富有感染力」，或從溫柔女聲、新聞播報、有聲書等 6 種預設起步；語速、音量、取樣率按需微調。\n\n■ 一鍵匯出，記錄留存\n匯出 MP3 或 WAV；生成記錄自動留存，隨時回聽與重新匯出。\n\n適合有聲製作：播客主播、有聲書與有聲小說、電子書朗讀、影片配音與解說、教材與廣告配音、口播與角色對話、兒童故事與有聲讀物；也適合睡前說故事、通勤聽書、影片旁白與聲音訂製。支援中文、英文等多語言，以及粵語、四川話、東北話等方言。\n\n按字數計費，隨用隨充，不綁訂閱。\n\n下載 Emora，把下一篇稿子讀成你想要的樣子。"
+      },
+      "en-US": {
+        "title": "Emora AI Voice, Text to Speech",
+        "subtitle": "Audiobook, Podcast & Voiceover",
+        "shortDescription": "Write \"a warm female voice\" and Emora reads it that way. Tag emotion per line, export MP3 or WAV — Mandarin, English and dialects.",
+        "longDescription": "Emora is an AI voice generator — text to speech (TTS) built for long-form scripts: paste your text, tag the emotion line by line, pick a voice, and export the finished audio.\n\n■ Emotion, one line at a time\nDozens of tone and sound tags; a tag only affects the sentence it sits in. Keep the narration calm, let the dialogue smile, end on a sigh.\n\n■ Voices you can actually find\n599 voices, filterable by language, gender, age and use case, each previewable before you commit, with favorites one click away.\n\n■ Say it instead of tuning it\nGive an instruction in plain words — \"a calm, warm storytelling voice\" — or start from 6 presets including newscast, audiobook and ad voiceover. Fine-tune speed, volume and sample rate when you need to.\n\n■ Export and revisit anytime\nExport MP3 or WAV in one click, and every generation stays in history for replay and re-export.\n\nMade for podcast hosts, dubbing, audiobooks, video narration and course material, ad voiceover and character dialogue — or simply read aloud a long article. Supports Mandarin and Chinese dialects including Cantonese and Sichuanese, plus English and French.\n\nPay by character, top up as you go — no subscription. Download Emora and hear your next script the way you meant it."
+      },
+      "en-CA": {
+        "title": "Emora AI Voice, Text to Speech",
+        "subtitle": "Audiobook, Podcast & Voiceover",
+        "shortDescription": "Write \"a warm female voice\" and Emora reads it that way. Tag emotion per line, export MP3 or WAV — Mandarin, English and dialects.",
+        "longDescription": "Emora is an AI voice generator — text to speech (TTS) built for long-form scripts: paste your text, tag the emotion line by line, pick a voice, and export the finished audio.\n\n■ Emotion, one line at a time\nDozens of tone and sound tags; a tag only affects the sentence it sits in. Keep the narration calm, let the dialogue smile, end on a sigh.\n\n■ Voices you can actually find\n599 voices, filterable by language, gender, age and use case, each previewable before you commit, with favorites one click away.\n\n■ Say it instead of tuning it\nGive an instruction in plain words — \"a calm, warm storytelling voice\" — or start from 6 presets including newscast, audiobook and ad voiceover. Fine-tune speed, volume and sample rate when you need to.\n\n■ Export and revisit anytime\nExport MP3 or WAV in one click, and every generation stays in history for replay and re-export.\n\nMade for podcast hosts, dubbing, audiobooks, video narration and course material, ad voiceover and character dialogue — or simply read aloud a long article. Supports Mandarin and Chinese dialects including Cantonese and Sichuanese, plus English and French.\n\nPay by character, top up as you go — no subscription. Download Emora and hear your next script the way you meant it."
+      },
+      "en-GB": {
+        "title": "Emora AI Voice, Text to Speech",
+        "subtitle": "Audiobook, Podcast & Voiceover",
+        "shortDescription": "Write \"a warm female voice\" and Emora reads it that way. Tag emotion per line, export MP3 or WAV — Mandarin, English and dialects.",
+        "longDescription": "Emora is an AI voice generator — text to speech (TTS) built for long-form scripts: paste your text, tag the emotion line by line, pick a voice, and export the finished audio.\n\n■ Emotion, one line at a time\nDozens of tone and sound tags; a tag only affects the sentence it sits in. Keep the narration calm, let the dialogue smile, end on a sigh.\n\n■ Voices you can actually find\n599 voices, filterable by language, gender, age and use case, each previewable before you commit, with favorites one click away.\n\n■ Say it instead of tuning it\nGive an instruction in plain words — \"a calm, warm storytelling voice\" — or start from 6 presets including newscast, audio book and ad voice over. Fine-tune speed, volume and sample rate when you need to.\n\n■ Export and revisit anytime\nExport MP3 or WAV in one click, and every generation stays in history for replay and re-export.\n\nMade for podcast hosts, dubbing, audio books, video narration and course material, ad voice over and character dialogue — or simply read aloud a long article. Supports Mandarin and Chinese dialects including Cantonese and Sichuanese, plus English and French.\n\nPay by character, top up as you go — no subscription. Download Emora and hear your next script the way you meant it."
+      },
+      "en-AU": {
+        "title": "Emora AI Voice, Text to Speech",
+        "subtitle": "Audiobook, Podcast & Voiceover",
+        "shortDescription": "Write \"a warm female voice\" and Emora reads it that way. Tag emotion per line, export MP3 or WAV — Mandarin, English and dialects.",
+        "longDescription": "Emora is an AI voice generator — text to speech (TTS) built for long-form scripts: paste your text, tag the emotion line by line, pick a voice, and export the finished audio.\n\n■ Emotion, one line at a time\nDozens of tone and sound tags; a tag only affects the sentence it sits in. Keep the narration calm, let the dialogue smile, end on a sigh.\n\n■ Voices you can actually find\n599 voices, filterable by language, gender, age and use case, each previewable before you commit, with favorites one click away.\n\n■ Say it instead of tuning it\nGive an instruction in plain words — \"a calm, warm storytelling voice\" — or start from 6 presets including newscast, audio book and ad voice over. Fine-tune speed, volume and sample rate when you need to.\n\n■ Export and revisit anytime\nExport MP3 or WAV in one click, and every generation stays in history for replay and re-export.\n\nMade for podcast hosts, dubbing, audio books, video narration and course material, ad voice over and character dialogue — or simply read aloud a long article. Supports Mandarin and Chinese dialects including Cantonese and Sichuanese, plus English and French.\n\nPay by character, top up as you go — no subscription. Download Emora and hear your next script the way you meant it."
+      }
+    }
+  }
+}

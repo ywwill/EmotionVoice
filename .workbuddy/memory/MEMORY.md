@@ -31,15 +31,52 @@
 - 数据库：SQLite，文件放在用户 Documents 目录 `emotionvoice.sqlite3`（方便调试）
 - 本地化：`zh-Hans.lproj` / `en.lproj` 各一份 `Localizable.strings`，跟随系统语言，无 App 内切换
 
+## 生成弹窗与后台接收（2026-10-21 起：全局承载）
+- **弹窗开关在 `AppState.showGenerationModal`**，不在 VoiceStudioView 的 @State。
+  理由：① 关闭弹窗后接收仍在后台跑，右下角卡片要能从任意页面把弹窗唤回来；
+  ② ContentView 用 `.id(renderedSection)` 换内容，切分区会销毁重建 VoiceStudioView，@State 会丢。
+- **`Views/GenerationOverlay.swift`** 是唯一订阅 `VoiceStudioViewModel` 的全局浮层
+  （生成弹窗 overlay + 后台接收卡片 + `.alert(item:)`），挂在 ContentView 上。
+  ContentView 本体不订阅 VM —— 否则 NSTextView 每次输入都会牵动整窗重建。
+- 后台接收卡片在 `vm.isGenerating && !showGenerationModal` 时出现，数据取 `GenerationStats` 真实量。
+- 卡片位置：**不是全局**，由工作台持有，锚在情感面板「拟声效果」区块的右下角
+  （该 VStack 上加 `.overlay(alignment: .bottomTrailing)`；7 个拟声标签排不满一行，右侧是空的）。
+  全局浮层只留「弹窗 + 失败 alert + 完成信号」—— 这三类切到任何页面都必须出现。
+- ⚠️ **SwiftUI 浮层定位两个坑（都踩过）**：
+  1. `ZStack` 尺寸只等于子视图并集，**不会自动撑满父级**。弹窗在场时靠它内部的
+     `Color(...).ignoresSafeArea()` 撑开，一关掉弹窗、只剩卡片，ZStack 就缩成卡片大小，
+     而 `.overlay { }` 默认 `alignment: .center` → 卡片被摆到屏幕正中（alignment 完全失效）。
+     必须给 ZStack 加 `.frame(maxWidth: .infinity, maxHeight: .infinity)`。
+  2. 固定尺寸的小浮层**不要用 `GeometryReader`**：它会贪婪吃掉全部可用空间，把卡片撑成满屏一条。
+     改用常量写死尺寸（见 `CardLayout`）。
+  已用时用自持 Timer（0.5s），**不能用 `Timer.publish().autoconnect()`**（视图被 10Hz 的 stats 反复重建，
+  Combine 订阅断连重连，计时器走不满一个周期，字节/速率会一直停在 0）。
+- VM 侧：`generationCompletedSignal`（自增计数，onChange 触发"完成后自动重开弹窗"；
+  用计数不用 Bool，连续两次生成才各触发一次）、`generationStartedAt`（卡片与弹窗共用的开始时刻）。
+- ⚠️ **弹窗被"完成信号"重新唤起时必须手动落完成态**：`isCompleted` 原本只由
+  `.onChange(of: stats.progress)` 设置，重开时 progress 已是 1.0，onChange 不会再触发；
+  故 `onAppear` 里判 `vm.generatedAudioURL != nil && !vm.isGenerating` 直接置
+  `isCompleted = true` 并补 `audioDuration = vm.generatedAudioDuration`，否则停在
+  "正在接收音频数据"的空壳界面、时长 00:00。
+
 ## 本地化约定
 - `.localized()` 扩展（`Extension/String+Extension.swift`）：**用中文原文当 key**，
   找不到 key 时 `NSLocalizedString` 原样返回，所以中文界面天然是兜底
 - 动态拼接必须用格式化占位符，不要拼好整串再 `.localized()`：
   ✅ `"%@ · 旗舰音色".localized(name)`　❌ `"\(name) · 旗舰音色".localized()`
-- 音色名/特质文案在 `zh-Hans.lproj` / `en.lproj` 的 **`VoiceCatalog.strings`**
+- 支持三种语言：**zh-Hans / zh-HK（繁体，2026-10-21 起）/ en**，跟随系统语言，无 App 内切换
+  （新增 lproj 要同时改 pbxproj 的 `knownRegions` 和 PBXVariantGroup）。
+- 音色名/特质文案在 `zh-Hans.lproj` / `zh-HK.lproj` / `en.lproj` 的 **`VoiceCatalog.strings`**
   （已通过 PBXVariantGroup 加入 target）：key 为 `voice.<stem>.name` / `voice.<stem>.feature`，
   `<stem>` = 音色 key 去掉 `qwen-audio-3.0-tts-plus-` 前缀（= audio 文件名去扩展名）。
   代码侧用 `VoiceCatalog.localizedVoiceName/Feature(stem:language:)` 强制按语种读取。
+- ⚠️ 音色语种（zh/en）与界面语言是**两件事**：中文音色永远显示中文名，只是字形跟界面语言走。
+  `VoiceCatalog.string` 用 `lprojCandidates(for:)` 挑 lproj——繁体界面 `["zh-HK","zh-Hant","zh-Hans"]`，
+  其余 `["zh-Hans"]`，逐级回退；判定靠 `AppLanguage.prefersTraditionalChinese`。
+  别再把中文写死成 `zh-Hans`。
+- 繁体文案用香港习惯（匯出/檔案/快取/目前/視窗/取樣率/位元率/增值…），字形 台 不写作 臺、
+  神秘 不写作 神祕、`為` 不写作 `爲`。新增简体词条后要同步 zh-HK：可用 OpenCC `s2t` + 香港用词覆写
+  （**别用 `s2hk` 配置**：会漏转 温→温 并把 說→説）。
 
 ## 标签体系（v14 起三类家族）
 - `EmotionCategory`: `.emotion`（语气，胶囊+徽章）/ `.richLanguage`（拟声，虚线 pill）
