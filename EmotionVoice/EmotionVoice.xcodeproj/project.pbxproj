@@ -47,7 +47,6 @@
 		6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209379303EC80500A770BB /* VoiceRow.swift */; };
 		6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937A303EC80500A770BB /* VoiceStudioView.swift */; };
 		6F2093B7303EC80500A770BB /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937C303EC80500A770BB /* Components.swift */; };
-		6FE1A0A22EA0000100F0A001 /* GenerationOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */; };
 		6F2093B8303EC80500A770BB /* EmotionHighlightedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */; };
 		6F2093B9303EC80500A770BB /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937E303EC80500A770BB /* FlowLayout.swift */; };
 		6F2093BA303EC80500A770BB /* Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937F303EC80500A770BB /* Sidebar.swift */; };
@@ -687,6 +686,7 @@
 		6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D893060F34D0005713F /* UserCreditsModel.swift */; };
 		6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
 		6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */; };
+		6FE1A0A22EA0000100F0A001 /* GenerationOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
 		6FF4E271307E24DF00CC4211 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 6FF4E270307E24DF00CC4211 /* KeyboardShortcuts */; };
 		A1B2C3D4E5F60718293A4B5F /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
@@ -741,7 +741,6 @@
 		6F209379303EC80500A770BB /* VoiceRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRow.swift; sourceTree = "<group>"; };
 		6F20937A303EC80500A770BB /* VoiceStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioView.swift; sourceTree = "<group>"; };
 		6F20937C303EC80500A770BB /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
-		6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationOverlay.swift; sourceTree = "<group>"; };
 		6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionHighlightedTextEditor.swift; sourceTree = "<group>"; };
 		6F20937E303EC80500A770BB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		6F20937F303EC80500A770BB /* Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar.swift; sourceTree = "<group>"; };
@@ -1378,6 +1377,7 @@
 		6FCA9D893060F34D0005713F /* UserCreditsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCreditsModel.swift; sourceTree = "<group>"; };
 		6FCA9D8E3060F6D80005713F /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerWaveformView.swift; sourceTree = "<group>"; };
+		6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationOverlay.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60718293A4B5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
@@ -3185,7 +3185,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 7Q3FN28VDH;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -3204,6 +3204,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Emora-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3231,7 +3232,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 7Q3FN28VDH;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -3250,6 +3251,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Emora-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Emora;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
