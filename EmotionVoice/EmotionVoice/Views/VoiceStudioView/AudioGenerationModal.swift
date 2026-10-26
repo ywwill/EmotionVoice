@@ -32,13 +32,6 @@ private func formatSampleRate(_ rate: Int) -> String {
 
 // MARK: - 接收中：波形动画
 
-/// 数据块到达日志的一行
-private struct ChunkLine: Identifiable {
-    let id = UUID()
-    let index: Int
-    let size: Int
-}
-
 /// 持续流动的波形条
 ///
 /// 流式返回拿不到总大小，所以这里不表达"还差多少"，只表达"还在往里堆"。
@@ -457,13 +450,29 @@ struct AudioGenerationModal: View {
     /// 弹窗宽度（对齐设计稿 max-width: 560）
     private static let modalWidth: CGFloat = 560
 
+    // MARK: 数据接收网格
+
+    /// 网格行数（配 11pt 的方块；6 行 × 约 33 列 ≈ 198 个空槽）
+    private static let gridRows = 6
+    /// 「接收完成时大致点亮这么多格」—— 据此反推一格代表多少字节。
+    /// 取可视空槽（≈198）的八成多一点：留一点估算误差的余量，
+    /// 正常情况刚好铺满一屏，偏长了会自动往右滚。改行数时要跟着改它。
+    private static let gridTargetCells = 160
+    /// 一格代表的字节数下限：极短文本也不能把单位算得过小，否则格子会虚增
+    private static let gridMinBytesPerCell = 512
+    /// 单批最多点亮多少格。突发大包（断线重连、切段回流）一次全亮就没有"往里堆放"的过程感了
+    private static let gridMaxCellsPerBatch = 12
+
     /// 接收中的统计心跳（对象持有，避免弹窗重建时计时器被重置）
     @StateObject private var ticker = StatsTicker()
 
     // 状态
-    @State private var isCompleted: Bool = false
+    //
+    // ⚠️ 刻意不设 `isCompleted` 这类本地标志位：完成与否直接由 VM 的 @Published 推导
+    // （见 `hasResult` / `isGenerating`）。本地标志只能在 `onChange` 里翻转，而 onChange
+    // 跑在 body 求值**之后** —— 中间会先渲染一帧「已完成内容 + 未完成装饰」的
+    // 半成品，下一次 tick 再带 0.35s 动画重新跳一次，观感上的"顿一下"就是这么来的。
     @State private var audioName: String = ""
-    @State private var audioDuration: TimeInterval = 0
     @State private var isExporting: Bool = false
     @State private var exportSuccess: Bool = false
 
@@ -480,14 +489,13 @@ struct AudioGenerationModal: View {
     @State private var speed: Double = 0
     @State private var sampleBytes: Int = 0
     @State private var sampleDate: Date = Date()
-    @State private var chunkLog: [ChunkLine] = []
-    /// 完成瞬间冻结下来的统计（供完成条幅使用）
-    @State private var finishedElapsed: TimeInterval = 0
-    @State private var finishedChunkCount: Int = 0
 
-    /// 日志节流：距上一行不足 200ms 时，把新数据块的大小并入该行
-    /// （数据仍是真实到达量，只是不让它把弹窗刷爆）
-    @State private var lastLogDate: Date = .distantPast
+    /// 数据接收网格的数据源（每来一批 WebSocket 数据点亮若干格）
+    @StateObject private var gridModel = DataReceiveGridModel(rows: Self.gridRows)
+    /// 「一格 = 多少字节」，开跑前按本次文本的预估总量算出来（见 `prepareGrid()`）
+    @State private var bytesPerCell: Int = 4096
+    /// 不足一格的余量：攒够一格再点亮，避免小包被反复抹成 0 导致格子虚增
+    @State private var gridRemainder: Int = 0
 
     @State private var remainingCredits: Double = 0
     /// 提示圆点的闪烁开关
@@ -500,7 +508,7 @@ struct AudioGenerationModal: View {
                 .ignoresSafeArea()
                 .onTapGesture {
                     // 接收中不允许点遮罩关闭，避免误触打断观感（关闭按钮仍可用）
-                    if isCompleted { dismiss() }
+                    if hasResult { dismiss() }
                 }
 
             // 弹窗主体
@@ -512,6 +520,9 @@ struct AudioGenerationModal: View {
                 } else {
                     completedContent
                 }
+
+                // 接收可视化：接收中与完成后都不撤走
+                receiveGridBox
 
                 footer
             }
@@ -533,8 +544,12 @@ struct AudioGenerationModal: View {
             }
             .shadow(color: .black.opacity(0.6), radius: 40, x: 0, y: 12)
         }
-        .animation(.easeInOut(duration: 0.35), value: isGenerating)
-        .animation(.easeInOut(duration: 0.35), value: isCompleted)
+        // 状态切换的过渡动画：只留一条。
+        // 早先是 `value: isGenerating` 与 `value: isCompleted` 两条叠在同一个 transaction 里，
+        // 状态翻转时会被拆成前后两段动画，中间要再重跑一次布局。现在两者同源，
+        // 一次更新干净切过去。时长也从 0.35s 压到 0.22s：这是整块内容的大换血，
+        // 拖长了反而显得粘滞。
+        .animation(.easeInOut(duration: 0.22), value: isGenerating)
         // 弹窗与工作台的 NSTextView 共处同一窗口，鼠标从文本域移上来时光标可能还停留在 I-beam。
         // 这里在弹窗出现的当下先复位成箭头，之后由各控件的 hover 接管。
         .onAppear {
@@ -548,24 +563,22 @@ struct AudioGenerationModal: View {
         }
         .onExitCommand { dismiss() }
         .onAppear {
+            // 先按本次文本的预估总量定好「一格 = 多少字节」，并清空上一轮留下的格子
+            prepareGrid()
             audioName = generateDefaultAudioName()
             // 与后台接收卡片共用 VM 记下的开始时刻：中途关掉再回来，已用时不归零
             startedAt = vm.generationStartedAt ?? Date()
             sampleBytes = stats.receivedBytes
             sampleDate = Date()
             refreshCredits()
-            refreshCompletedInfo()
-            // 被「后台接收完成」的信号重新唤起时，stats.progress 已经是 1.0，
-            // onChange(of: stats.progress) 不会再触发一次 —— 这里直接落到完成态，
-            // 否则会停在"正在接收"的空壳界面上（此时 vm.isGenerating 已是 false）。
-            if vm.generatedAudioURL != nil, !vm.isGenerating {
-                // 时长同理：onChange(of: vm.generatedAudioDuration) 不会再触发一次
-                audioDuration = vm.generatedAudioDuration
-                isCompleted = true
-                return
+            if isGenerating {
+                blink = true
+                ticker.start()
+            } else {
+                // 弹窗出现时 VM 已经收工（被「后台接收完成」信号重新唤起的情形）：
+                // 只需补一次完成信息，界面由 `isGenerating` 直接推到完成态，不用再手动落状态
+                refreshCompletedInfo()
             }
-            blink = true
-            ticker.start()
         }
         .onDisappear {
             ticker.stop()
@@ -576,27 +589,33 @@ struct AudioGenerationModal: View {
             tick(now)
         }
         .onChange(of: stats.receivedBytes) { oldValue, newValue in
-            let delta = newValue - oldValue
-            guard delta > 0 else { return }
-            // 段号取真实段数（与 WebSocket 每次 onAudio 一一对应）
-            appendChunkLog(chunkIndex: stats.receivedChunks, size: delta, at: Date())
+            // 新一轮生成会把统计清零：格子也跟着从头堆
+            guard newValue >= oldValue else {
+                prepareGrid()
+                return
+            }
+            feedGrid(bytes: newValue - oldValue)
         }
-        .onChange(of: stats.progress) { _, newProgress in
-            guard newProgress >= 1.0 else { return }
-            finishedElapsed = elapsed
-            finishedChunkCount = stats.receivedChunks
+        .onChange(of: isGenerating) { _, stillGenerating in
+            guard !stillGenerating else { return }
             ticker.stop()
             refreshCompletedInfo()
-            withAnimation { isCompleted = true }
-        }
-        .onChange(of: vm.generatedAudioDuration) { _, newDuration in
-            if newDuration > 0 { audioDuration = newDuration }
         }
     }
 
     // MARK: - 计算属性
 
-    private var isGenerating: Bool { vm.isGenerating && !isCompleted }
+    /// VM 是否已经把成品交出来（音频文件已落盘、 `isGenerating` 已回落）。
+    ///
+    /// 直接读 VM 的两个 @Published —— 它们在 `generateAudio()` 的 `await MainActor.run { ... }`
+    /// 里是连续赋值的，SwiftUI 会合并进**同一次** view 更新，界面也就一帧切到位。
+    ///
+    /// ⚠️ 千万别改回本地 `Bool` + `onChange`：onChange 跑在 body 求值之后，
+    /// 那会先渲染一帧「已完成内容 + 未完成装饰」，下一次事务再跳一次，就是那个"顿一下"。
+    private var hasResult: Bool { vm.generatedAudioURL != nil && !vm.isGenerating }
+
+    /// 是否还在接收中（决定显示哪一块内容）
+    private var isGenerating: Bool { vm.isGenerating && !hasResult }
 
     private var currentVoice: Voice? { vm.voice }
 
@@ -613,7 +632,7 @@ struct AudioGenerationModal: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(
-                        isCompleted
+                        hasResult
                         ? AppColor.statusSuccess.opacity(0.12)
                         : AppColor.accentPrimary.opacity(0.12)
                     )
@@ -621,19 +640,19 @@ struct AudioGenerationModal: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(
-                                isCompleted
+                                hasResult
                                 ? AppColor.statusSuccess.opacity(0.28)
                                 : AppColor.accentPrimary.opacity(0.25),
                                 lineWidth: 1
                             )
                     )
-                Image(systemName: isCompleted ? "checkmark.circle.fill" : "music.quarternote.3")
+                Image(systemName: hasResult ? "checkmark.circle.fill" : "music.quarternote.3")
                     .symbolEffect(.pulse)
-                    .font(.system(size: isCompleted ? 15 : 14, weight: isCompleted ? .bold : .regular))
-                    .foregroundStyle(isCompleted ? AppColor.statusSuccess : AppColor.textPrimary)
+                    .font(.system(size: hasResult ? 15 : 14, weight: hasResult ? .bold : .regular))
+                    .foregroundStyle(hasResult ? AppColor.statusSuccess : AppColor.textPrimary)
             }
 
-            Text(isCompleted ? "音频生成完成".localized() : "正在接收".localized())
+            Text(hasResult ? "音频生成完成".localized() : "正在接收".localized())
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.textPrimary)
                 
@@ -711,36 +730,8 @@ struct AudioGenerationModal: View {
                 StatCell(title: "当前码率".localized(), value: bitrateText)
             }
             .padding(.top, 16)
-
-            // 数据块到达日志（只保留最近 4 条）
-            VStack(alignment: .leading, spacing: 4) {
-                Spacer(minLength: 0)
-                ForEach(chunkLog) { line in
-                    HStack(spacing: 5) {
-                        Text("#\(String(format: "%03d", line.index))")
-                            .foregroundStyle(AppColor.textSecondary)
-                        Text("· +\(formatDataSize(line.size))")
-                        Text("✓ 已写入缓冲区".localized())
-                            .foregroundStyle(AppColor.statusSuccess)
-                    }
-                    .font(.system(size: 11))
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(AppColor.textTertiary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 74)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.22))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.small)
-                    .stroke(AppColor.borderSubtle, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
-            .padding(.top, 14)
         }
-        .padding(EdgeInsets(top: 22, leading: 20, bottom: 20, trailing: 20))
+        .padding(EdgeInsets(top: 22, leading: 20, bottom: 14, trailing: 20))
     }
 
     // MARK: - 状态二：完成
@@ -753,11 +744,40 @@ struct AudioGenerationModal: View {
             // 播放器独立成订阅播放器的子视图：10Hz 的进度刷新只重绘它自己，
             // 不会带着四宫格 / 音色卡 / 积分行一起重算
             if let url = vm.generatedAudioURL {
-                ModalAudioPlayer(audioURL: url, duration: audioDuration)
+                ModalAudioPlayer(audioURL: url, duration: vm.generatedAudioDuration)
             }
             costRow
         }
-        .padding(20)
+        .padding(EdgeInsets(top: 20, leading: 20, bottom: 14, trailing: 20))
+    }
+
+    // MARK: - 数据接收可视化（两种状态都保留）
+
+    /// WebSocket 每来一批数据就点亮若干格：自下而上堆叠，一列满了换右边一列，
+    /// 超出一屏的部分自动往右滚动跟随。
+    ///
+    /// 位置刻意放在 `header` 与 `footer` 之间，而不是塞进 `generatingContent`：
+    /// **接收完成后这组格子不能消失** —— 它是本次生成「收了多少数据」的完整留痕，
+    /// 切到完成态继续保留，用户可以照样左右翻看。
+    private var receiveGridBox: some View {
+        DataReceiveGridView(
+            model: gridModel,
+            cellSize: 11,
+            spacing: 4,
+            cornerRadius: 3.2
+        )
+        .frame(maxWidth: .infinity)
+        // 内边距包在背景色里面，网格自己占满整块面板（不再配说明文字占位置）
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(Color.black.opacity(0.22))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .stroke(AppColor.borderSubtle, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
     }
 
     private var nameRow: some View {
@@ -795,7 +815,7 @@ struct AudioGenerationModal: View {
             StatCell(title: "大小".localized(), value: fileSizeText)
             StatCell(title: "采样率".localized(), value: formatSampleRate(vm.sampleRate))
             StatCell(title: "格式".localized(), value: vm.selectedFormat.uppercased())
-            StatCell(title: "时长".localized(), value: formatClock(audioDuration))
+            StatCell(title: "时长".localized(), value: formatClock(vm.generatedAudioDuration))
         }
     }
 
@@ -992,24 +1012,49 @@ struct AudioGenerationModal: View {
         sampleDate = now
     }
 
-    /// 追加一条数据块日志。
-    ///
-    /// 数据来源是 `stats.receivedBytes`，即 BailianTTSService 每次
-    /// `onAudio(binaryData)` 回调里 `audioChunk.count` 的真实累加值，
-    /// 不是模拟出来的。这里只做一件事：200ms 内到达的多块合并成一行
-    /// （WebSocket 一秒可能来几十上百块，逐块刷会把界面刷爆）；
-    /// 段号用 `stats.receivedChunks`，是真实段数，不受合并影响。
-    private func appendChunkLog(chunkIndex: Int, size: Int, at date: Date) {
-        guard size > 0 else { return }
+    // MARK: - 数据接收网格
 
-        if date.timeIntervalSince(lastLogDate) >= 0.2 {
-            chunkLog.append(ChunkLine(index: chunkIndex, size: size))
-            if chunkLog.count > 4 { chunkLog.removeFirst() }
-            lastLogDate = date
-        } else if let last = chunkLog.indices.last {
-            let merged = chunkLog[last].size + size
-            chunkLog[last] = ChunkLine(index: chunkIndex, size: merged)
+    /// 开跑前定好「一格代表多少字节」。
+    ///
+    /// 单位是算出来的，不是拍一个常数 —— 写死的话，短台词只亮几个格、长篇又会
+    /// 瞬间糊成一片。每一步都用真实参数：
+    /// 1. 字数 → 时长：沿用 VM 里算进度的同一套经验值（每秒约 12 字，最少 2.5 秒）；
+    /// 2. 时长 → 字节数：WAV 按 采样率 × 2 字节（16-bit 单声道），有损格式按 ~128 kbps
+    ///    （与 `AudioDuration.estimate` 的口径一致）；
+    /// 3. 预估总字节 ÷ 目标格数 = 一格代表多少字节，并兜一个下限。
+    private func prepareGrid() {
+        let seconds = max(2.5, Double(vm.plainText.count) / 12.0)
+        let bytesPerSecond: Double
+        switch vm.selectedFormat.lowercased() {
+        case "mp3", "m4a", "aac", "mp4", "ogg":
+            bytesPerSecond = 16_000                     // ~128 kbps
+        default:
+            bytesPerSecond = Double(vm.sampleRate) * 2  // 16-bit 单声道 PCM
         }
+        let unit = Int(ceil(seconds * bytesPerSecond / Double(Self.gridTargetCells)))
+        bytesPerCell = max(Self.gridMinBytesPerCell, unit)
+        gridRemainder = 0
+        gridModel.reset()
+    }
+
+    /// 来了一批真实数据，换算成格子点亮。
+    ///
+    /// 两条例外口径：
+    /// - 至少 1 格：「每来一批就多一格」是这块可视化存在的意义，哪怕不足一格也要看得见；
+    /// - 至多 `gridMaxCellsPerBatch` 格：切段回流 / 重连时可能一口气涌进来一大截，
+    ///   一次全点亮就失去了"往里堆放"的过程感。
+    private func feedGrid(bytes: Int) {
+        guard bytes > 0, bytesPerCell > 0 else { return }
+
+        gridRemainder += bytes
+        var cells = gridRemainder / bytesPerCell
+        if cells > 0 {
+            gridRemainder -= cells * bytesPerCell
+        } else {
+            // 不足一格：先把这一批记成 1 格，余量留着（不透支）
+            cells = 1
+        }
+        gridModel.receive(min(cells, Self.gridMaxCellsPerBatch))
     }
 
     private func refreshCredits() {
@@ -1022,15 +1067,27 @@ struct AudioGenerationModal: View {
     ///
     /// 文件大小要读磁盘属性、积分要跑一遍字数统计，放在 body 里现算的话
     /// 播放期间每 0.1s 就要重来一次，白烧 CPU。
+    ///
+    /// ⚠️ 这次调用就发生在「接收中 → 完成」的那一次 view 更新里，属于热路径：
+    /// 磁盘 I/O 挪到后台队列，先用已经到手的网络字节数把文本填上（同一数量级，
+    /// 只是少了容器头那几十字节）—— 界面不会闪一下"—"，主线程也不挨一次磁盘抖动。
     private func refreshCompletedInfo() {
         refreshCredits()
         consumedPoints = vm.estimatedPoints
-        if let url = vm.generatedAudioURL,
-           let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-           let size = attrs[.size] as? Int64 {
-            fileSizeText = formatDataSize(Int(size))
-        } else {
-            fileSizeText = formatDataSize(stats.receivedBytes)
+
+        let fallback = formatDataSize(stats.receivedBytes)
+        fileSizeText = fallback
+
+        guard let url = vm.generatedAudioURL else { return }
+        DispatchQueue.global(qos: .utility).async {
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let size = attrs[.size] as? Int64 else { return }
+            let exact = formatDataSize(Int(size))
+            DispatchQueue.main.async {
+                // 期间可能已经开跑新一轮：只在本轮的 URL 没变时才回填
+                guard self.vm.generatedAudioURL == url else { return }
+                self.fileSizeText = exact
+            }
         }
     }
 

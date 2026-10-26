@@ -685,6 +685,7 @@
 		6FCA9D8A3060F34D0005713F /* DeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D883060F34D0005713F /* DeviceInfo.swift */; };
 		6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D893060F34D0005713F /* UserCreditsModel.swift */; };
 		6FCA9D8F3060F6D80005713F /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
+		6FD0A7C12EA2000100F0A001 /* DataReceiveGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */; };
 		6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */; };
 		6FE1A0A22EA0000100F0A001 /* GenerationOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */; };
 		6FEE97FB3027062400C39C26 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 6FEE97FA3027062400C39C26 /* SQLite */; };
@@ -1376,6 +1377,7 @@
 		6FCA9D883060F34D0005713F /* DeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfo.swift; sourceTree = "<group>"; };
 		6FCA9D893060F34D0005713F /* UserCreditsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCreditsModel.swift; sourceTree = "<group>"; };
 		6FCA9D8E3060F6D80005713F /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
+		6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataReceiveGridView.swift; sourceTree = "<group>"; };
 		6FD84144307E142E00CFC97F /* PlayerWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerWaveformView.swift; sourceTree = "<group>"; };
 		6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationOverlay.swift; sourceTree = "<group>"; };
 		6FEE97EB302705C600C39C26 /* Emora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Emora.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1551,6 +1553,7 @@
 				6F209370303EC80500A770BB /* StatsView */,
 				6F20937C303EC80500A770BB /* Components.swift */,
 				6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */,
+				6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */,
 				6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */,
 				6F20937E303EC80500A770BB /* FlowLayout.swift */,
 				6F20937F303EC80500A770BB /* Sidebar.swift */,
@@ -3020,6 +3023,7 @@
 				6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */,
 				6F2093B7303EC80500A770BB /* Components.swift in Sources */,
 				6FE1A0A22EA0000100F0A001 /* GenerationOverlay.swift in Sources */,
+				6FD0A7C12EA2000100F0A001 /* DataReceiveGridView.swift in Sources */,
 				6F2DAF8D30624B920086FD6F /* HistoryView.swift in Sources */,
 				6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */,
 				6F2093B8303EC80500A770BB /* EmotionHighlightedTextEditor.swift in Sources */,

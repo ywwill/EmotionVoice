@@ -1,187 +1,101 @@
 # EmotionVoice 项目长期约定
 
 ## 技术栈
-- macOS 原生 App，Swift + SwiftUI + Swift 5
-- 依赖：SQLite.swift、supabase-swift、keychain-swift（SPM）
-- 服务端：Supabase Edge Functions（Deno），代码在仓库根 `supabase/functions/`
+macOS 原生 App，Swift + SwiftUI（Swift 5）。依赖 SQLite.swift、supabase-swift、keychain-swift（SPM）。
+服务端 Supabase Edge Functions（Deno），代码在仓库根 `supabase/functions/`。
 
 ## TTS 链路（2026-10-18 起：客户端 → Supabase Edge Function → 阿里云百炼）
-- **App 里不再有任何百炼密钥**：`RegionConfig.swift` 只剩区域判断（`edgeRegionCode` → CN/INTL），
-  API Key / WorkspaceId / 模型名都在 function secrets 里。
-- 端点由 `Services/TTSEndpoint.swift` 拼：
-  `wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，
-  握手头 `Authorization`/`apikey`（publishable key）+ `x-app-secret`（`kSupabaseAppSecret`，
-  对应函数侧 `APP_SECRET`，也可走 query `?secret=`）。
-- **客户端协议只有一条消息**：`{"action":"synthesize", text, voice, emotion?, rate, volume,
-  sample_rate, format, instruction?}`。run-task / 控制类标签切段 / continue-task / finish-task
-  全在 `supabase/functions/bailian-tts/index.ts` 里。
-- 上游 JSON 事件被**原样转发**（`task-started`/`result-generated`/`task-finished`/`task-failed`），
-  二进制音频帧透传 —— 客户端收包逻辑与直连时一致，这是刻意设计的兼容点。
-- ⚠️ 协议在服务端后连接断开无法"重连续传"，`receive()` 失败必须直接上抛（已改，别再加重连）。
-- ⚠️ **出站 WS 带 header**：Supabase 线上运行时（Deno < 2.5）**不支持**
-  `new WebSocket(url, { headers })` —— 会把第二个参数当 subprotocol 校验，
-  options 对象转 "[object Object]" 非法 → 构造时抛 `Invalid protocol value`
-  （客户端看到的是"服务器错误: Invalid protocol value"）。
-  函数里用 `dialUpstream()` 两级拨号：先试原生 `{ headers }`，捕获异常后回退 `npm:ws@8`。
-  `?ws=npm` 可强制回退路径；日志会打印 `拨号方式: deno-native | npm:ws`。
-  别假设线上 Deno 能力跟本地（2.9）一致。
-- 边缘函数 `Deno.upgradeWebSocket(req, { idleTimeout: 0 })` 后必须
-  `EdgeRuntime.waitUntil(closed)`，否则 worker 提前回收。
-- 部署：`supabase/deploy.sh`（本机 CLI 账号无权访问该项目 + 无 Docker，需用户自己跑）。
-- 数据库：SQLite，文件放在用户 Documents 目录 `emotionvoice.sqlite3`（方便调试）
-- 本地化：`zh-Hans.lproj` / `en.lproj` 各一份 `Localizable.strings`，跟随系统语言，无 App 内切换
+- App 内**无百炼密钥**：`RegionConfig.swift` 只剩区域判断（`edgeRegionCode` → CN/INTL），Key/Workspace/模型名都在 function secrets。
+- 端点 `Services/TTSEndpoint.swift`：`wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，
+  握手头 `Authorization`/`apikey`（publishable key）+ `x-app-secret`（`kSupabaseAppSecret` ↔ 函数 `APP_SECRET`，也可 `?secret=`）。
+- 客户端只发一条消息：`{"action":"synthesize", text, voice, emotion?, rate, volume, sample_rate, format, instruction?}`；
+  run-task/切段/continue-task/finish-task 全在 `supabase/functions/bailian-tts/index.ts`。
+- 上游 JSON 事件（task-started/result-generated/task-finished/task-failed）与二进制音频帧**原样转发**，客户端收包逻辑与直连一致。
+- ⚠️ 服务端断开后无法"重连续传"，`receive()` 失败必须直接上抛（别加重连）。
+- ⚠️ Supabase 线上 Deno(<2.5) **不支持** `new WebSocket(url, { headers })`（报 `Invalid protocol value`）；
+  函数用 `dialUpstream()` 两级拨号：先原生 `{headers}`，异常回退 `npm:ws@8`；`?ws=npm` 强制回退，日志打印"拨号方式"。
+- `Deno.upgradeWebSocket(req,{idleTimeout:0})` 后必须 `EdgeRuntime.waitUntil(closed)`。
+- 部署 `supabase/deploy.sh`（本机 CLI 无权访问该项目 + 无 Docker，需用户自己跑）。
+- DB：SQLite，文件在用户 Documents `emotionvoice.sqlite3`。
 
-## 生成弹窗与后台接收（2026-10-21 起：全局承载）
-- **弹窗开关在 `AppState.showGenerationModal`**，不在 VoiceStudioView 的 @State。
-  理由：① 关闭弹窗后接收仍在后台跑，右下角卡片要能从任意页面把弹窗唤回来；
-  ② ContentView 用 `.id(renderedSection)` 换内容，切分区会销毁重建 VoiceStudioView，@State 会丢。
-- **`Views/GenerationOverlay.swift`** 是唯一订阅 `VoiceStudioViewModel` 的全局浮层
-  （生成弹窗 overlay + 后台接收卡片 + `.alert(item:)`），挂在 ContentView 上。
-  ContentView 本体不订阅 VM —— 否则 NSTextView 每次输入都会牵动整窗重建。
-- 后台接收卡片在 `vm.isGenerating && !showGenerationModal` 时出现，数据取 `GenerationStats` 真实量。
-- 卡片位置：**不是全局**，由工作台持有，锚在情感面板「拟声效果」区块的右下角
-  （该 VStack 上加 `.overlay(alignment: .bottomTrailing)`；7 个拟声标签排不满一行，右侧是空的）。
-  全局浮层只留「弹窗 + 失败 alert + 完成信号」—— 这三类切到任何页面都必须出现。
-- ⚠️ **SwiftUI 浮层定位两个坑（都踩过）**：
-  1. `ZStack` 尺寸只等于子视图并集，**不会自动撑满父级**。弹窗在场时靠它内部的
-     `Color(...).ignoresSafeArea()` 撑开，一关掉弹窗、只剩卡片，ZStack 就缩成卡片大小，
-     而 `.overlay { }` 默认 `alignment: .center` → 卡片被摆到屏幕正中（alignment 完全失效）。
-     必须给 ZStack 加 `.frame(maxWidth: .infinity, maxHeight: .infinity)`。
-  2. 固定尺寸的小浮层**不要用 `GeometryReader`**：它会贪婪吃掉全部可用空间，把卡片撑成满屏一条。
-     改用常量写死尺寸（见 `CardLayout`）。
-  已用时用自持 Timer（0.5s），**不能用 `Timer.publish().autoconnect()`**（视图被 10Hz 的 stats 反复重建，
-  Combine 订阅断连重连，计时器走不满一个周期，字节/速率会一直停在 0）。
-- VM 侧：`generationCompletedSignal`（自增计数，onChange 触发"完成后自动重开弹窗"；
-  用计数不用 Bool，连续两次生成才各触发一次）、`generationStartedAt`（卡片与弹窗共用的开始时刻）。
-- ⚠️ **弹窗被"完成信号"重新唤起时必须手动落完成态**：`isCompleted` 原本只由
-  `.onChange(of: stats.progress)` 设置，重开时 progress 已是 1.0，onChange 不会再触发；
-  故 `onAppear` 里判 `vm.generatedAudioURL != nil && !vm.isGenerating` 直接置
-  `isCompleted = true` 并补 `audioDuration = vm.generatedAudioDuration`，否则停在
-  "正在接收音频数据"的空壳界面、时长 00:00。
+## 生成弹窗与后台接收（2026-10-21：全局承载）
+- 开关在 `AppState.showGenerationModal`（不放 VoiceStudioView 的 @State：关弹窗后接收继续跑；ContentView 用 `.id(renderedSection)` 会销毁重建子视图）。
+- `Views/GenerationOverlay.swift` 是唯一订阅 `VoiceStudioViewModel` 的全局浮层（弹窗 + 后台接收卡片 + `.alert`），挂 ContentView 上；ContentView 本体不订阅 VM（否则 NSTextView 每次输入牵动整窗重建）。
+- 后台接收卡片锚在情感面板「拟声效果」区块右下角（该 VStack `.overlay(alignment:.bottomTrailing)`）；全局浮层只留弹窗/失败 alert/完成信号。
+- ⚠️ 浮层定位两坑：① `ZStack` 尺寸=子视图并集，不撑满父级 → 卡片被摆到正中，必须 `.frame(maxWidth:.infinity,maxHeight:.infinity)`；② 固定尺寸小浮层**不要用 GeometryReader**（贪婪吃满空间），用常量（`CardLayout`）。
+- 计时用自持 Timer（0.5s），**不能用 `Timer.publish().autoconnect()`**（视图被 10Hz stats 重建 → 订阅断连，速率停在 0）。
+- VM：`generationCompletedSignal`（自增计数，onChange 触发"完成后自动重开弹窗"）、`generationStartedAt`。
+- ⚠️ **完成态判定不要用「本地 Bool + onChange」中转**（2026-10-26 起）：VM 的 `generatedAudioURL` /
+  `generatedAudioDuration` / `isGenerating` 是在同一个 `MainActor.run` 里连续赋值的，因此直接用
+  `hasResult = generatedAudioURL != nil && !isGenerating` 推导能在一次 view 更新里切到位；
+  若改成 `@State isCompleted` 在 `onChange` 里翻（onChange 跑在 body 求值之后），就会先渲染一帧
+  「已完成内容 + 未完成装饰」，下一次事务再带动画跳一次 —— 表现就是"切换时卡顿一下"。
+  同理，派生展示值（时长等）直接读 VM，别在 onChange 里拷一份 @State（会晚一帧闪默认值）。
 
-## 本地化约定
-- `.localized()` 扩展（`Extension/String+Extension.swift`）：**用中文原文当 key**，
-  找不到 key 时 `NSLocalizedString` 原样返回，所以中文界面天然是兜底
-- 动态拼接必须用格式化占位符，不要拼好整串再 `.localized()`：
-  ✅ `"%@ · 旗舰音色".localized(name)`　❌ `"\(name) · 旗舰音色".localized()`
-- 支持三种语言：**zh-Hans / zh-HK（繁体，2026-10-21 起）/ en**，跟随系统语言，无 App 内切换
-  （新增 lproj 要同时改 pbxproj 的 `knownRegions` 和 PBXVariantGroup）。
-- 音色名/特质文案在 `zh-Hans.lproj` / `zh-HK.lproj` / `en.lproj` 的 **`VoiceCatalog.strings`**
-  （已通过 PBXVariantGroup 加入 target）：key 为 `voice.<stem>.name` / `voice.<stem>.feature`，
-  `<stem>` = 音色 key 去掉 `qwen-audio-3.0-tts-plus-` 前缀（= audio 文件名去扩展名）。
-  代码侧用 `VoiceCatalog.localizedVoiceName/Feature(stem:language:)` 强制按语种读取。
-- ⚠️ 音色语种（zh/en）与界面语言是**两件事**：中文音色永远显示中文名，只是字形跟界面语言走。
-  `VoiceCatalog.string` 用 `lprojCandidates(for:)` 挑 lproj——繁体界面 `["zh-HK","zh-Hant","zh-Hans"]`，
-  其余 `["zh-Hans"]`，逐级回退；判定靠 `AppLanguage.prefersTraditionalChinese`。
-  别再把中文写死成 `zh-Hans`。
-- 繁体文案用香港习惯（匯出/檔案/快取/目前/視窗/取樣率/位元率/增值…），字形 台 不写作 臺、
-  神秘 不写作 神祕、`為` 不写作 `爲`。新增简体词条后要同步 zh-HK：可用 OpenCC `s2t` + 香港用词覆写
-  （**别用 `s2hk` 配置**：会漏转 温→温 并把 說→説）。
+## 本地化
+- `.localized()`（`Extension/String+Extension.swift`）**用中文原文当 key**，找不到原样返回；动态拼接必须用格式占位符：`"%@ · 旗舰音色".localized(name)`。
+- 三语：zh-Hans / zh-HK（繁体，2026-10-21）/ en，跟随系统。新增 lproj 要改 pbxproj `knownRegions` + PBXVariantGroup。
+- 音色文案在 `<lproj>/VoiceCatalog.strings`（key `voice.<stem>.name`/`.feature`，stem = key 去 `qwen-audio-3.0-tts-plus-` 前缀）。
+- ⚠️ 音色语种（zh/en）≠ 界面语言：中文音色永远中文名，字形跟界面走。`VoiceCatalog.string` 用 `lprojCandidates(for:)`：繁体 `["zh-HK","zh-Hant","zh-Hans"]`，其余 `["zh-Hans"]`，靠 `AppLanguage.prefersTraditionalChinese`；别写死 `zh-Hans`。
+- 繁体用香港习惯（匯出/檔案/快取/目前/取樣率/位元率/增值；台不写臺、神秘不写神祕、為不写爲）。同步可用 OpenCC `s2t` + 香港覆写（**别用 `s2hk`**：漏转 温→温、說→説）。
 
-## 标签体系（v14 起三类家族）
-- `EmotionCategory`: `.emotion`（语气，胶囊+徽章）/ `.richLanguage`（拟声，虚线 pill）
-  / `.interrupt`（中断，**不画胶囊**，只有灰色徽章 🔇 中断，tag = `break`）。
-- **中断标签 API 不支持**：`toTTSAPIString()` 会整段丢掉；生成链路必须走
-  `Array.toTTSSegments()` —— 以中断标记为界切成多个独立请求（中断段 emotion=nil），
-  逐段 `synthesizeStream` 后用 `AudioConcatenator.merge()` 按序拼接
-  （WAV 解析 header 重写总 header，否则 RIFF/data size 停在第一段；mp3 直接字节拼）。
-- ⚠️ **段落样式取自段落首字符**：语气/中断标签是 attachment、不带段落样式，
-  一旦落在段首整段行距会塌回系统默认。必须设 `defaultParagraphStyle` +
-  `typingAttributes`（见 `EmotionTokenTextView.bodyParagraphStyle`）。
+## 标签体系（v14 三类家族）
+- `EmotionCategory`: `.emotion`（语气，胶囊+徽章）/ `.richLanguage`（拟声，虚线 pill，按情感着色，未命中走确定性色相哈希回退）/ `.interrupt`（不画胶囊，灰徽章，tag=`break`）。
+- **中断标签 API 不支持**：`toTTSAPIString()` 丢弃；生成走 `Array.toTTSSegments()` 按中断标记切多请求（中断段 emotion=nil），逐段 `synthesizeStream` 后 `AudioConcatenator.merge()` 拼接（WAV 重写 header 总长，mp3 字节拼）。
+- ⚠️ 段落样式取自段落首字符：attachment 不带段落样式，落在段首会塌回默认 → 必须设 `defaultParagraphStyle` + `typingAttributes`。
 
-## 音色目录（Voice Catalog）
-- 唯一数据源：`EmotionVoice/EmotionVoice/Voices/basic_voices.json`（**v4 schema**）
-- **铁律：JSON 只存语言无关的语义 code 与稳定 key，任何文案（名/特质）外置到 `VoiceCatalog.strings`**
-  - 数据字段：`idx`(便捷整数 id，旗舰 1/2、基础 3 起；也是 DB 主键)、`key`、`tier`、`lang`、
-    `gender`、`age`、`scene`、`audio`
-  - 本地化 key：`voice.<stem>.name` / `voice.<stem>.feature`，stem = `key` 去 `qwen-audio-3.0-tts-plus-`
-    前缀（= audio 文件名去扩展名）
-  - `tier`: premium|basic　`lang`: zh|en　`gender`: female|male|unknown
-  - `scene`: daily|companion|reading|customer_service|social|anime|news|live_stream|
-    classic_audiobook|sports|audiobook|radio|knowledge|comedy|business|assistant|speech
-- 筛选一律基于 code 列（`tier`/`lang_code`/`scene_key`/`age`/`gender_code`），
-  禁止用中文字符串做 WHERE 匹配——否则切语言就失效；**搜索下沉内存**
-  （按本地化名/特质/场景名/语种名匹配，顺带支持拼音搜索）
-- 改了 JSON 后跑 `python3 tools/gen_basic_voices.py`（幂等，文案来自已提交 strings）；
-  加新语言只需新增一个 `.lproj/VoiceCatalog.strings`，JSON / DB 都不用动
-- `DatabaseManager`：voices 表**零文案列**（`idx` 主键、`key` 唯一 + 6 个 code 列 + `audio` + `is_favorite`）
-- **数据库策略：不做真正迁移，永久采用「结构版本不符就 DROP 全部表重建」**
-  （`resetDatabaseIfSchemaChanged`：改了 `createTables()` 任何列就把 `currentSchemaVersion` +1，
-  启动时比对 `UserDefaults` 存的版本，不符则删 audio_items/voices/consumption_records/purchaseRecords 四表重建）
-  - 用户明确**不需要迁移**；接受上线后 bump 版本会清空本地全部表数据——
-    隐含前提：audio_items / consumption_records / purchaseRecords 要么是本地可再生缓存，
-    要么有服务端兜底，而非唯一真相源
-  - 与音色数据同步正交：`currentFingerprintVersion` + `voiceCountKey`（UserDefaults）只管
-    `voices` 表内容是否需从 `basic_voices.json` 刷新；结构重建时会一并清掉这两个键强制重刷
+## EmotionTokenEditor 标签 UI（语气胶囊版 v13，已取代 10-14 下划线版）
+- 语气 = 整段同色胶囊（fill 13%、1px 内描边 42%、圆角 9、内边距 8×6）+ emoji/名称徽章压左上角（10.5pt 粗体、底色=编辑器背景、仅首块）；
+  拟声 = 虚线 pill（12pt、圆角 6、内边距 7×1.5、悬停正中浮 ×），嵌在胶囊内不打断语气。
+- **绘制顺序铁律**：胶囊 → **徽章** → `super.draw`。徽章必须提前（super.draw 后裁剪收窄到 textContainer，容器上沿外的徽章会被裁）。配套 `tokenView.drawsBackground = false`；`textContainerInset.height = 28`、`bodyAttributes.lineSpacing = 28`。
+- 语气 marker cell 是 5×1 不可见占位（`toneMarkerWidth`）：这 5pt 是相邻作用域唯一物理间距，靠 `resolveCapsuleSeams` 切出 `capsuleSeamGap = 2`。几何见 `toneCapsuleGeometries()`（绘制与命中共用）；拟声 pill 左右内缩 `soundEdgeInset = 3`。
+- 悬停区 = 字形 ∪ × ∪ 徽章 ∪ 胶囊；小手光标不含胶囊（正文保持 I 型）。× 仅可编辑时绘制（悬停/选中实心，空闲 alpha 0.35）。
+- 外观感知配色：`nonisolated(unsafe) var kEmotionAttachmentIdentity` + `EmotionTokenStyle.resolved(for:dark:)` 读 `effectiveAppearance` 解析暗/亮；`EmotionTokenStyle.default` 只描述几何。
+- 几何陷阱：`boundingRect(forGlyphRange:)` 高度是整行高（只有 x/width 可信）；同行判据用 `lineRect.minY`；行首尾要夹进容器；空作用域补兜底胶囊。
+- 离屏测试用 internal `debugToneCapsuleGeometry()`。
+
+## 音色目录
+- 唯一数据源 `EmotionVoice/EmotionVoice/Voices/basic_voices.json`（v4 schema）。**铁律：JSON 只存语言无关 code + 稳定 key，文案外置 strings**。
+  字段 `idx`(旗舰 1/2、基础 3 起，DB 主键)、`key`、`tier`(premium|basic)、`lang`(zh|en)、`gender`(female|male|unknown)、`age`、`scene`、`audio`。
+  scene 取值：daily|companion|reading|customer_service|social|anime|news|live_stream|classic_audiobook|sports|audiobook|radio|knowledge|comedy|business|assistant|speech。
+- 筛选基于 code 列（`tier`/`lang_code`/`scene_key`/`age`/`gender_code`），禁止中文字符串 WHERE；搜索下沉内存（本地化名/特质/场景/语种，支持拼音）。
+- 改 JSON 后跑 `python3 tools/gen_basic_voices.py`（幂等）。加语言只需新增 `.lproj/VoiceCatalog.strings`。
+- `DatabaseManager` voices 表零文案列。
+- **DB 策略：不做迁移，永久"结构版本不符就 DROP 全表重建"**（`resetDatabaseIfSchemaChanged`：改 `createTables()` 就 bump `currentSchemaVersion`，启动比对 UserDefaults，不符删 audio_items/voices/consumption_records/purchaseRecords 重建）。用户明确不需要迁移，接受清空本地数据（前提：这些表要么可再生缓存、要么有服务端兜底）。`currentFingerprintVersion` + `voiceCountKey` 只管 voices 内容刷新，重建时一并清掉。
 
 ## 快捷键（KeyboardShortcuts 包）
-- 播放快捷键用 `sindresorhus/KeyboardShortcuts`（SPM），代码在
-  `Views/HistoryView/PlaybackKeyboardShortcuts.swift`：
-  `@MainActor` 单例 `PlaybackShortcutsController` + 7 个 `KeyboardShortcuts.Name`
-  （空格 / ← / → / ⇧← / ⇧→ / Home / End，`initial:` 给默认值）
-- **该包用 Carbon 热键（`RegisterEventHotKey`），不是 NSEvent monitor，会吞掉按键事件**：
-  事件在派发到 App 之前就被截走，所以"在回调里判断一下再决定做不做"救不回输入框
-  （等回调跑起来空格已被吃掉，搜索框打不出空格）。
-  挡输入框必须**反向做**：监听 `NSText.didBeginEditingNotification`/`didEndEditingNotification`，
-  开始编辑 → `KeyboardShortcuts.disable(all)`，结束 → `enable` 回来。
-- 同理：没在播（`player.playingKey == nil`）时 disable 掉 ←→/Home/End，把方向键还给列表滚动/行导航。
-- 包回调本身已在主线程（包内部自己 `MainActor.assumeIsolated`），但从非隔离闭包调 @MainActor 方法
-  仍要在闭包边界再套一层 `MainActor.assumeIsolated` 才能过编译。
-- 热键是 App 内全局（`GetEventDispatcherTarget()`），不会抢别的应用的键。
+- `Views/HistoryView/PlaybackKeyboardShortcuts.swift`：`@MainActor` 单例 `PlaybackShortcutsController` + 7 个 `Name`（空格/←/→/⇧←/⇧→/Home/End）。
+- ⚠️ 该包用 Carbon 热键（`RegisterEventHotKey`）**会吞事件**，"回调里再判断"救不回输入框。挡输入框要反向做：监听 `NSText.didBeginEditing/didEndEditing` → `KeyboardShortcuts.disable(all)`/`enable`。
+- 没在播（`player.playingKey == nil`）时 disable ←→/Home/End，把方向键还给列表。
+- 包回调已在主线程，但从非隔离闭包调 @MainActor 方法仍需 `MainActor.assumeIsolated`。
 
-## 积分体系（2026-10-16 起：全链路 Double，最多 2 位小数）
-- **记账单位**：`CreditManager` 是唯一权威（`balance` 走 UserDefaults + Supabase 同步），
-  `CreditsService`（Services）是门面，`CreditService`（Store）是旧校验封装。
-- **精度铁律**：所有余额/消耗都过 `CreditPrecision.normalize`（`(v*100).rounded()/100`）；
-  浮点比较统一加 `1e-9` 容差。**禁止再引入 `Int(ceil(...))` 这类向上取整**——
-  用户明确要求按实际消耗计费，短文本就是零点几分。
-- **计费公式**：`字符数 / 100 * rate`（普通 rate=2，复刻 rate=5），**没有起扣门槛**。
-  字符数用 `TextSplitter.calculateCharCount`（CJK 一个字算 2）。
-- **云端约束**：`user_credits.credits` 必须是 `numeric(10,2)`，否则小数写不进去。
-- 展示统一用全局 `formatCredits(_: Double)`（整数不给小数位，否则最多 2 位）。
+## 积分体系（全链路 Double，最多 2 位小数）
+- 权威 `CreditManager`（`balance` 走 UserDefaults + Supabase）；`CreditsService` 是门面，`CreditService` 旧校验封装。
+- 精度：一律过 `CreditPrecision.normalize`（`(v*100).rounded()/100`），比较加 1e-9 容差。**禁止 `Int(ceil())` 向上取整**。
+- 计费 `字符数/100*rate`（普通 2、复刻 5），无起扣门槛；字符数用 `TextSplitter.calculateCharCount`（CJK 算 2）。
+- 云端 `user_credits.credits` 必须 `numeric(10,2)`。展示统一 `formatCredits(_:)`。
+
+## 数据接收网格（Views/DataReceiveGridView.swift）
+- 用 `Canvas` 自绘（几百个 View 会拖垮布局）； `DataReceiveGridModel.receive(n)` 真实接收入口，
+  `clock` 只在落地动画 + 余晖期间跑，播完自停。`rows`/`cellSize` 由调用方给。
+- ⚠️ **横向铺满铁律**：列步进与行步进必须拆开 —— 列数取 `floor((可用宽+期望间距)/(格宽+期望间距))`
+  （保证真实列间距 ≥ 期望值），列间距 = (可用宽 − n×格宽)/(n−1)，做到首列贴左、末列贴右；
+  超宽时画布宽 = n×列步进 − 列间距。早年用 `ceil(宽度/步进)` 会让最右一列被容器切掉一角。
+- ⚠️ 自动跟随的 `scrollTo` 锚点 View **必须零宽**（`.frame(width: 0)`）：占 1pt 就会让内容永远比可视区宽，
+  跟随时整块内容被往左拽，左边第一格被切。
+- ⚠️ 「最新一格」的高亮环画在格子**外面**（外扩 1pt + 线宽一半 0.6pt ≈ 1.6pt），所以画布四周必须预留
+  `haloOutset = 2`：排列方块的可用宽度 = 可视宽 − 2×2，画布高 = 网格高 + 2×2，否则落在顶行 / 最右一列的
+  最新格子上边或右边的白环会被画布裁掉。改动 `haloRingInset` 或描边 `lineWidth` 都要同步看这个值。
+- 生成弹窗里挂的是 **rows=6**（2026-10-26）/ cellSize=11 / spacing=4（可用宽 498 → 33 列 ≈ 198 空槽），
+  一格代表的字节数由 `prepareGrid()` 按本次文本（字数 → 时长 → 字节 → ÷ `gridTargetCells`）算出来，不写死常数。
+  ⚠️ 改行数必须同步改 `gridTargetCells`（≈ 空槽数 × 0.82，即每格字节数跟着变），否则一批到底时要么铺不满要么滚太远。
+- ⚠️ 网格面板（`receiveGridBox`）挂在 `header` / `footer` 之间的**公共层**，不在 `generatingContent` 里：
+  生成完成后这组格子要留着当接收留痕。新一轮生成靠 `stats.receivedBytes` 掉回 0 触发 `prepareGrid()` 清盘。
+- ⚠️ `onPreferenceChange(TailFrameKey)` 里**只在 `followTail` 真正翻转时才写 @State**：`tailMinX` 每帧都可能变
+  （上层任何布局动画都会让它逐帧漂移），无条件写会把 GeometryReader+Canvas+ScrollView 整个 body 每帧重算一遍。
+- ⚠️ 底槽绘制要攒成一条 `Path` 一次 `fill`，别逐格 fill（5 行 × 33 列 = 165 次绘制调用 × 每帧）。
 
 ## 构建与验证
-- 本机 `xcodebuild` 会被沙箱挡住包解析（`sandbox-exec: Operation not permitted`）
-- 替代方案：用 `swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0
-  -sdk $(xcrun --sdk macosx --show-sdk-path) -I <DerivedData>/Build/Products/Debug @filelist`
-  （`-disable-sandbox` 必须加，否则 SwiftUI 宏插件服务报错）
-- 改代码前先对 HEAD 跑一次同样命令拿基线，再对比，避免被既有报错干扰
-- 已知既有问题：`CreditsService.swift` 有 4 条 Swift6 actor 隔离报错；
-  `PackageCardView.swift` 是未加入 target 的孤儿文件，`CreditsPackage` 类型不存在
-
-## EmotionTokenEditor 标签 UI（2026-10-16 起：语气胶囊版 v13，已取代 10-14 的下划线版）
-- 语气标签 = **作用域整段同色胶囊**（fill 13%、1px 内描边 42%、圆角 9、内边距 8×6）
-  + **emoji/名称徽章压在胶囊左上角**（10.5pt 粗体、底色取编辑器背景、只在首块出现）；
-  拟声 = 虚线 pill（12pt、圆角 6、内边距 7×1.5、悬停正中浮 ×），嵌在胶囊内不打断语气。
-- **绘制顺序铁律**（`EmotionTokenTextView.draw(_:)`）：胶囊 → **徽章** → `super.draw`。
-  ⚠️ 徽章必须在 `super.draw` **之前**：实测 super.draw 返回后裁剪被收窄到文本容器区域
-  （container origin 起），徽章画在容器上沿之外（container y 为负）会整块被裁掉。
-  徽章提前画是安全的——它不与任何字形相交（底边比首行字形顶端还高 1.5pt）。
-  配套：`tokenView.drawsBackground = false`（NSTextView 默认背景会盖掉胶囊）。
-  `textContainerInset.height = 28`、`bodyAttributes.lineSpacing = 28`。
-- 语气标记 cell 是 **5×1 的不可见占位**（`toneMarkerWidth = 5`）：这 5pt 是相邻两个语气作用域
-  之间唯一的物理间距，靠它 `resolveCapsuleSeams` 才切得出 `capsuleSeamGap = 2` 的净间隙。
-  胶囊/徽章全由文本视图自绘（几何见 `toneCapsuleGeometries()`，绘制与命中同一份）。
-  拟声 pill 绘制时左右各内缩 `soundEdgeInset = 3`（advance 不变），给胶囊留收尾空间。
-- 悬停区 = 字形 ∪ × ∪ 徽章 ∪ 整段胶囊；小手光标**不含**胶囊（正文要保持 I 型）。
-- 几何陷阱：`boundingRect(forGlyphRange:)` 高度是整行高，只有 x/width 可信；
-  同一行判据用 `lineRect.minY`（不是 rect.minY，胶囊 28.5 vs pill 17 差 7pt）；
-  行首/行尾片段要夹进容器边界；空作用域要补兜底胶囊。详见该目录 README。
-- 离屏几何测试可调 internal `EmotionTokenTextView.debugToneCapsuleGeometry()`。
-
-## EmotionTokenEditor 标签 UI（2026-10-14 优化）
-- 插入的标签（EmotionToken）**按情感着色**：基础色来自 `EmotionTokenStyle.colorMap`
-  （英文 tag → NSColor，对齐 Constants 的 emotions/richLanguageTags 与 AppColor 情感色）；
-  未命中的 tag 走「确定性色相回退」`NSColor(hue:saturation:brightness:)`，色相由字符串哈希算出，**进程稳定**（不用 Swift 随机化 hash）。
-- **标签家族** `EmotionCategory`（emotion / richLanguage）贯穿：
-  `EmotionToken.category` → `EmotionTokenEditor.insertTokenCategory` → `EmotionTokenTextView`。
-  `richLanguage`（拟声类）用**虚线描边**与「语气类」实线区分。
-- **外观感知配色**：文件级 `nonisolated(unsafe) var kEmotionAttachmentIdentity`（基础色+家族），
-  绘制时由 `EmotionTokenStyle.resolved(for:dark:)` 结合 `controlView.effectiveAppearance`
-  实时解析出暗/亮两套配色，**解决了 README 里 light mode 待改进**（不再写死单一琥珀色）。
-- `EmotionTokenStyle.default` 只描述**几何**，绘制用 `resolved` 沿用其几何只覆盖颜色——保证 `cellSize()` 与 `drawPill()` 尺寸一致。
-- **× 删除按钮交互（第二波优化，已接入 hover tracking）**：
-  - 文件级 `nonisolated(unsafe) var kEmotionAttachmentHovered: NSTextAttachment?`（单例悬停指针，替代原未生效的 `kEmotionAttachmentDeleteHoverStates` 字典）。
-  - `EmotionTokenTextView` 在 `isEditable` 时加 `NSTrackingArea(.mouseMoved, .activeInActiveApp, .inVisibleRect)`，override `mouseMoved/mouseExited` 做命中测试（`textContainerOrigin` 修正坐标）+ 设 `kEmotionAttachmentHovered` + 指针手型光标（悬停 tag 用 pointingHand，否则 iBeam）。
-  - cell 行为：`×` **仅在可编辑时绘制**；悬停/选中时实心高亮，空闲时 alpha 0.35 弱提示；pill 在悬停/选中时抬升填充；选中态描边加粗到 1.5。只读（预览）场景不加追踪区、不画 ×，标签完全静止。
-- `EmotionTokenPayload` 已含 `category` 字段（Codable 默认 .emotion，向后兼容旧附件）。
+- 本机 `xcodebuild` 被沙箱挡包解析。替代：`swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0 -sdk $(xcrun --sdk macosx --show-sdk-path) -I <DerivedData>/Build/Products/Debug @filelist`（`-disable-sandbox` 必加，否则 SwiftUI 宏插件服务报错）。
+- 改代码前先对 HEAD 跑一次同命令拿基线。
+- 已知既有问题：`CreditsService.swift` 4 条 Swift6 actor 隔离报错；`PackageCardView.swift` 是未入 target 的孤儿文件（`CreditsPackage` 不存在）。
