@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmotionVoice · iOS 设计稿 v2</title>
+<style>
+/* ============================================================
+   EmotionVoice iOS Design Spec v2
+   设计语言：Aurora Pop
+   雾紫中性底 + 紫 / 玫瑰 / 薄荷 / 暖橙 四色强调；渐变优先，活力优先
+   输出：iPhone 15 Pro 逻辑分辨率 393 × 852pt（@3x）
+   ============================================================ */
+
+/* ---------- 基础尺度 ---------- */
+:root{
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-xxl:26px; --r-full:999px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+
+  /* 装饰四色（跨主题共用；只用于渐变 / 发光 / 网格点亮，不承载正文） */
+  --pop-v:#8A5BFF;   /* 紫 */
+  --pop-p:#FF5FA2;   /* 玫瑰 */
+  --pop-m:#2ED9BF;   /* 薄荷 */
+  --pop-o:#FFB457;   /* 暖橙 */
+  --credit-a:#FF9838; --credit-b:#FF5FA2;
+  --grad-pop:linear-gradient(115deg,var(--pop-v) 0%,var(--pop-p) 55%,var(--pop-o) 100%);
+  --grad-pop-alt:linear-gradient(115deg,var(--pop-v) 0%,var(--pop-m) 100%);
+  --grad-credit:linear-gradient(135deg,var(--credit-a) 0%,var(--credit-b) 100%);
+
+  --page-bg:#F6F3FD; --page-panel:#FFFFFF; --page-line:rgba(88,63,178,.13);
+  --page-text:#1B1533; --page-text-2:#5C5780; --page-text-3:#736D8F;
+}
+
+/* ---------- 深浅色令牌 ---------- */
+html[data-theme="dark"]{
+  --bg:#12101F;            /* 主背景 */
+  --bg-grouped:#0B0916;    /* 分组底色 */
+  --surface:#1B1731;       /* 卡片底 */
+  --surface-2:#221D3D;     /* 次级块底 */
+  --surface-3:#2B2549;     /* 输入框 / 浮起块 */
+  --bar:rgba(23,19,40,.78);
+  --text-1:#F5F2FF;
+  --text-2:#ADA5CC;
+  --text-3:#8E86B0;
+  --line:rgba(255,255,255,.09);
+  --line-2:rgba(255,255,255,.17);
+  --fill:rgba(255,255,255,.06);
+  --fill-2:rgba(255,255,255,.11);
+  --cta-a:#7C4DFF; --cta-b:#E23C86; --cta-fg:#FFFFFF;
+  --grad-cta:linear-gradient(135deg,#7C4DFF 0%,#E23C86 100%);
+  --accent:#B79AFF; --accent-glow:#D3C2FF; --accent-soft:rgba(139,92,255,.24);
+  --success:#3ED99A; --warn:#FFC24B; --danger:#FF6B7E; --info:#5BA8FF;
+  --shadow:0 22px 50px rgba(0,0,0,.55);
+  --slot:rgba(255,255,255,.06);
+  --page-bg:#0B0916; --page-panel:#15122A; --page-line:rgba(255,255,255,.11);
+  --page-text:#F5F2FF; --page-text-2:#ADA5CC; --page-text-3:#8E86B0;
+}
+html[data-theme="light"]{
+  --bg:#FFFFFF;
+  --bg-grouped:#F5F1FE;
+  --surface:#FFFFFF;
+  --surface-2:#F7F4FE;
+  --surface-3:#EDE8FB;
+  --bar:rgba(255,255,255,.84);
+  --text-1:#1B1533;
+  --text-2:#5C5780;
+  --text-3:#736D8F;
+  --line:rgba(88,63,178,.11);
+  --line-2:rgba(88,63,178,.20);
+  --fill:rgba(109,59,245,.055);
+  --fill-2:rgba(109,59,245,.10);
+  --cta-a:#5B2EDB; --cta-b:#CE2B72; --cta-fg:#FFFFFF;
+  --grad-cta:linear-gradient(135deg,#5B2EDB 0%,#CE2B72 100%);
+  --accent:#6D3BF5; --accent-glow:#A78BFF; --accent-soft:rgba(109,59,245,.12);
+  --success:#0FA36B; --warn:#B87200; --danger:#E0344B; --info:#2E7BE0;
+  --shadow:0 18px 42px rgba(78,44,160,.16);
+  --slot:rgba(109,59,245,.10);
+  --page-bg:#F6F3FD; --page-panel:#FFFFFF; --page-line:rgba(88,63,178,.13);
+  --page-text:#1B1533; --page-text-2:#5C5780; --page-text-3:#736D8F;
+}
+
+/* ---------- 页面外壳（评审区内） ---------- */
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--page-bg);color:var(--page-text);font-family:var(--font);
+  transition:background .25s ease,color .25s ease}
+.topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--page-panel) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--page-line)}
+.topbar-in{max-width:1600px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:650;letter-spacing:-.2px}
+.brand .mark{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  background:var(--grad-pop);color:#fff;font-size:13px;font-weight:800;
+  box-shadow:0 4px 12px rgba(124,77,255,.35)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--page-line);background:transparent;color:var(--page-text-2);
+  padding:7px 13px;border-radius:var(--r-full);font:inherit;font-size:13px;font-weight:550;cursor:pointer;transition:.16s}
+.tabs button:hover{color:var(--page-text);border-color:var(--page-line-2,var(--page-line))}
+.tabs button[aria-selected="true"]{background:var(--page-text);color:var(--page-bg);border-color:transparent}
+.theme-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--page-text-2)}
+.switch{width:52px;height:29px;border-radius:999px;background:var(--page-line);border:1px solid var(--page-line);
+  position:relative;cursor:pointer;transition:.2s}
+.switch i{position:absolute;top:2.5px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:var(--page-panel);box-shadow:0 1px 4px rgba(0,0,0,.25);transition:.22s cubic-bezier(.3,1.4,.5,1);display:grid;place-items:center;font-size:11px}
+html[data-theme="dark"] .switch i{transform:translateX(23px)}
+.wrap{max-width:1600px;margin:0 auto;padding:28px 24px 80px}
+.screen-head{margin:0 0 22px}
+.screen-head h2{margin:0 0 6px;font-size:22px;letter-spacing:-.4px}
+.screen-head p{margin:0;font-size:13.5px;color:var(--page-text-2);line-height:1.6;max-width:960px}
+.screen{display:none}
+.screen.active{display:block}
+.stage{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start}
+figure.frame{margin:0;width:393px}
+figure.frame .cap{margin-top:14px;font-size:13px;font-weight:600;color:var(--page-text)}
+figure.frame .cap em{display:block;margin-top:5px;font-style:normal;font-weight:400;font-size:12.5px;
+  color:var(--page-text-2);line-height:1.6}
+
+/* ---------- 手机外壳 ---------- */
+.phone{width:393px;height:852px;border-radius:54px;background:#000;padding:11px;position:relative;
+  box-shadow:0 30px 70px rgba(0,0,0,.30),0 0 0 1px rgba(0,0,0,.06);flex:none}
+html[data-theme="dark"] .phone{box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08)}
+.viewport{position:relative;width:371px;height:830px;border-radius:44px;overflow:hidden;
+  background:var(--bg-grouped);display:flex;flex-direction:column;color:var(--text-1);font-family:var(--font)}
+.island{position:absolute;top:0;left:50%;transform:translateX(-50%);width:124px;height:36px;
+  background:#000;border-radius:0 0 19px 19px;z-index:60}
+html[data-theme="light"] .island{background:#0A0714}
+.statusbar{height:50px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 30px 5px;font-size:15px;font-weight:650;letter-spacing:.2px;z-index:40;
+  background:var(--bar);backdrop-filter:saturate(180%) blur(22px)}
+.statusbar .right{display:flex;align-items:center;gap:5px}
+.battery{width:25px;height:12.5px;border:1.4px solid currentColor;border-radius:3.6px;opacity:.95;position:relative;padding:1.6px}
+.battery::after{content:"";position:absolute;right:-3.6px;top:3.6px;width:2px;height:5px;background:currentColor;border-radius:0 2px 2px 0}
+.battery i{display:block;height:100%;width:76%;background:currentColor;border-radius:2px}
+.signal{display:flex;align-items:flex-end;gap:1.6px;height:11px}
+.signal s{display:block;width:3px;background:currentColor;border-radius:1px;text-decoration:none}
+.signal s:nth-child(1){height:4px}.signal s:nth-child(2){height:6.5px}
+.signal s:nth-child(3){height:9px}.signal s:nth-child(4){height:11px}
+
+/* ---------- 通用 iOS 组件 ---------- */
+.bar{position:relative;z-index:30;background:var(--bar);backdrop-filter:saturate(180%) blur(22px)}
+.bar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:.5px;background:var(--line)}
+.navs{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 8px}
+.navs .title{font-size:17px;font-weight:650;letter-spacing:-.3px}
+.navs .side{display:flex;align-items:center;gap:4px;min-width:64px}
+.navs .side.r{justify-content:flex-end}
+.largetitle{padding:2px 20px 6px;font-size:34px;font-weight:750;letter-spacing:-.6px;flex:none}
+.scroll{flex:1;overflow:hidden;background:var(--bg-grouped)}
+.body-scroll{padding-bottom:8px}
+.tabbar{height:83px;flex:none;display:flex;align-items:flex-start;padding-top:9px;background:var(--bar);
+  backdrop-filter:saturate(180%) blur(22px);position:relative}
+.tabbar::before{content:"";position:absolute;left:0;right:0;top:0;height:.5px;background:var(--line)}
+.tabbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-3)}
+.tabbar .tb.on{color:var(--accent)}
+.tabbar .tb span{font-size:10px;font-weight:550;letter-spacing:.1px}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;z-index:80;
+  border-radius:3px;background:var(--text-1);opacity:.85}
+
+/* 卡片 / 分组 */
+.group{margin:0 0 22px}
+.group-title{margin:0 0 7px;padding:0 32px;font-size:13px;font-weight:600;color:var(--text-2);text-transform:none}
+.card{margin:0 16px;background:var(--surface);border-radius:var(--r-lg);border:.5px solid var(--line);overflow:hidden}
+.card.pad{padding:14px 16px}
+.rows{background:var(--surface);border-radius:var(--r-lg);margin:0 16px;border:.5px solid var(--line);overflow:hidden}
+.roww{display:flex;align-items:center;gap:12px;padding:12px 16px;background:transparent;position:relative}
+.roww+.roww::before{content:"";position:absolute;left:16px;right:0;top:0;height:.5px;background:var(--line)}
+.roww .rt{flex:1;min-width:0}
+.roww .t1{font-size:16px;color:var(--text-1);letter-spacing:-.2px}
+.roww .t2{font-size:13px;color:var(--text-2);margin-top:2px}
+.roww .val{font-size:16px;color:var(--text-3)}
+.roww .chev{color:var(--text-3);opacity:.55;display:flex}
+.roww .lead{width:29px;height:29px;border-radius:7px;display:grid;place-items:center;font-size:15px;color:#fff;flex:none}
+.avatar{border-radius:11px;display:grid;place-items:center;color:#fff;font-weight:650;flex:none;
+  background:linear-gradient(145deg,var(--pop-v),var(--pop-p));letter-spacing:0}
+.meta-line{font-size:12px;color:var(--text-3);font-family:var(--mono)}
+.sec-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:650;margin:0 0 8px;color:var(--text-1)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:var(--r-full);
+  background:var(--surface-3);border:.5px solid var(--line);color:var(--text-2);font-size:13px;font-weight:500;white-space:nowrap;flex:none}
+.chip b{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-3);
+  background:var(--fill-2);padding:1px 6px;border-radius:var(--r-full)}
+.chip.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent)}
+.chip.on b{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
+.btnrow{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 18px;
+  border-radius:var(--r-md);font-size:16px;font-weight:600;letter-spacing:-.2px;border:none;cursor:default}
+.btn.pri{background:var(--grad-cta);color:var(--cta-fg);flex:1;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--cta-b) 34%,transparent)}
+.btn.sec{background:var(--surface-3);color:var(--text-1);border:.5px solid var(--line-2)}
+.btn.sm{height:34px;padding:0 14px;font-size:13.5px;border-radius:var(--r-sm)}
+.btn.grow{flex:1}
+.pill-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--r-full);
+  background:var(--surface-3);border:.5px solid var(--line);color:var(--text-1);font-size:13px;font-weight:550}
+.seg{display:flex;background:var(--surface-3);border-radius:9px;padding:2px;gap:2px}
+.seg div{flex:1;text-align:center;font-size:13.5px;font-weight:600;padding:6px 0;color:var(--text-2);border-radius:7px}
+.seg div.on{background:var(--surface);color:var(--text-1);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+html[data-theme="dark"] .seg div.on{background:var(--surface-2)}
+.slider{display:flex;align-items:center;gap:10px}
+.slider .track{flex:1;height:4px;border-radius:2px;background:var(--fill-2);position:relative}
+.slider .track i{position:absolute;left:0;top:0;bottom:0;width:33%;border-radius:2px;background:var(--accent)}
+.slider .track b{position:absolute;top:50%;left:33%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;
+  background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.25);border:.5px solid var(--line)}
+.switchctl{width:51px;height:31px;border-radius:999px;background:var(--accent);position:relative;flex:none}
+.switchctl.off{background:var(--fill-2)}
+.switchctl i{position:absolute;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 5px rgba(0,0,0,.2);right:2px}
+.switchctl.off i{right:auto;left:2px}
+.badge-star{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:650;font-family:var(--mono);
+  padding:2px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.searchbar{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:10px;
+  background:var(--fill);color:var(--text-3);font-size:16px}
+.searchbar .ph{flex:1;font-size:16px;color:var(--text-3)}
+.badge-dot{width:7px;height:7px;border-radius:50%;flex:none}
+
+/* 情感标签：胶囊 / 徽章 / 拟声 pill */
+.editor{padding:14px 16px 18px;font-size:17px;line-height:26px;color:var(--text-1)}
+.editor .para{margin:0 0 14px;position:relative;padding-top:20px}
+.editor .para:first-child{padding-top:22px}
+.capsule{--fill:color-mix(in srgb,var(--c) 14%,transparent);
+  --stroke:color-mix(in srgb,var(--c) 42%,transparent);
+  background:var(--fill);border:1px solid var(--stroke);border-radius:9px;padding:6px 8px;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;position:relative}
+html[data-theme="light"] .capsule{--fill:color-mix(in srgb,var(--c) 15%,#fff);
+  --stroke:color-mix(in srgb,var(--c) 42%,#fff)}
+.badge{position:absolute;top:-14px;left:6px;display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:750;letter-spacing:.1px;padding:2px 5px 2px 6px;border-radius:6px;
+  background:var(--surface);border:1px solid color-mix(in srgb,var(--c) 50%,transparent);
+  color:var(--c);z-index:3;line-height:1.2}
+html[data-theme="light"] .badge{color:color-mix(in srgb,var(--c) 62%,#241338)}
+.badge .x{width:13px;height:13px;display:grid;place-items:center;font-size:10px;color:var(--text-3)}
+.sfx{position:relative;display:inline-block;font-size:13px;font-weight:550;padding:1.5px 7px;margin:0 3px;
+  border-radius:6px;border:1px dashed color-mix(in srgb,var(--c) 55%,transparent);
+  color:color-mix(in srgb,var(--c) 88%,transparent);background:color-mix(in srgb,var(--c) 10%,transparent)}
+html[data-theme="light"] .sfx{color:color-mix(in srgb,var(--c) 70%,#241338);background:color-mix(in srgb,var(--c) 12%,#fff)}
+.sfx .x{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:15px;height:15px;border-radius:50%;
+  display:grid;place-items:center;background:color-mix(in srgb,var(--c) 92%,transparent);color:#1a1207;font-size:10px;opacity:.95}
+.caret{display:inline-block;width:2px;height:20px;background:var(--pop-p);vertical-align:-4px;animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* Sheet */
+.sheet-scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:40}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg-grouped);z-index:45;
+  border-radius:12px 12px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.28);overflow:hidden}
+.sheet.full{top:10px;border-radius:12px 12px 0 0}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--text-3);opacity:.5;margin:6px auto 4px;flex:none}
+.sheet-nav{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.sheet-nav .t{font-size:17px;font-weight:650}
+.sheet-body{flex:1;overflow:hidden}
+
+/* ---------- 居中弹窗（生成 / 接收 / 完成） ---------- */
+.dlg-scrim{position:absolute;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;
+  padding:0 30px;background:rgba(34,18,72,.44);backdrop-filter:blur(7px) saturate(115%)}
+html[data-theme="dark"] .dlg-scrim{background:rgba(6,4,16,.60)}
+.dlg{width:331px;flex:none;border-radius:26px;background:var(--surface);overflow:hidden;
+  border:.5px solid var(--line-2);box-shadow:0 26px 64px rgba(38,16,80,.36);
+  animation:popIn .38s cubic-bezier(.2,1.24,.36,1) both;display:flex;flex-direction:column}
+html[data-theme="dark"] .dlg{box-shadow:0 26px 70px rgba(0,0,0,.62)}
+@keyframes popIn{from{transform:scale(.9) translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.dlg-top{height:5px;flex:none;background:var(--grad-pop)}
+.dlg-top.ok{background:var(--grad-pop-alt)}
+.dlg-hd{display:flex;align-items:center;gap:11px;padding:15px 16px 12px}
+.dlg-ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;color:#fff;
+  background:var(--grad-cta);box-shadow:0 5px 14px color-mix(in srgb,var(--cta-b) 34%,transparent)}
+.dlg-ico.ok{background:var(--grad-pop-alt)}
+.dlg-hd .t{font-size:17px;font-weight:680;letter-spacing:-.3px}
+.dlg-hd .s{font-size:12px;color:var(--text-3);margin-top:2px}
+.dlg-chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 12px}
+.dlg-chip{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-2);
+  background:var(--surface-3);border:.5px solid var(--line);border-radius:5px;padding:2px 6px}
+.dlg-chip.hi{color:var(--cta-fg);background:var(--grad-credit);border-color:transparent}
+.dlg-big{display:flex;align-items:flex-end;justify-content:space-between;padding:2px 16px 0}
+.dlg-big .n{font-size:38px;font-weight:700;font-family:var(--mono);letter-spacing:-1.4px;line-height:1}
+.dlg-big .u{font-size:14px;color:var(--text-2);margin-left:5px;font-weight:550}
+.dlg-big .r{font-size:13px;font-family:var(--mono);font-weight:650;color:var(--success);padding-bottom:3px}
+.dlg-rowline{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-size:11.5px;color:var(--text-3)}
+.dlg-gridbox{margin:12px 16px 0;border-radius:var(--r-md);background:var(--surface-2);
+  border:.5px solid var(--line);padding:11px 12px}
+.dlg-cap{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--text-3);margin-bottom:8px}
+.dlg-note{display:flex;align-items:center;gap:6px;padding:11px 16px 0;font-size:11px;color:var(--text-3);line-height:1.45}
+.dlg-foot{display:flex;gap:8px;padding:13px 16px 16px}
+.dlg-foot .btn{height:44px;font-size:15.5px;border-radius:var(--r-md)}
+.dlg-foot .btn.ghost{background:transparent;border:.5px solid var(--line-2);color:var(--text-2)}
+.dlg-foot .btn.stop{background:transparent;border:.5px solid color-mix(in srgb,var(--danger) 45%,transparent);color:var(--danger)}
+
+/* ---------- 音色库：分类按钮 + 分类 Sheet 回显 ---------- */
+.filtbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.filtbtn{display:flex;align-items:center;gap:7px;height:38px;padding:0 12px;border-radius:11px;flex:1;min-width:0;
+  background:var(--surface-3);border:.5px solid var(--line);color:var(--text-1);font-size:14.5px;font-weight:600}
+.filtbtn .lb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filtbtn .num{font-family:var(--mono);font-size:12.5px;font-weight:650;color:var(--text-3);flex:none}
+.filtbtn .chev{display:flex;color:var(--text-3);opacity:.7;flex:none}
+.filtbtn .clr{width:19px;height:19px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--accent) 26%,transparent);color:var(--accent)}
+.filtbtn.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 46%,transparent);color:var(--accent)}
+.filtbtn.on .num,.filtbtn.on .chev{color:var(--accent);opacity:1}
+.favbtn{display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border-radius:11px;flex:none;
+  background:var(--surface-3);border:.5px solid var(--line);color:var(--text-2);
+  font-size:13.5px;font-weight:600;font-family:var(--mono)}
+.favbtn.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 46%,transparent);color:var(--accent)}
+.resultbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 20px 9px}
+.res-cnt{font-size:12px;color:var(--text-3);font-family:var(--mono)}
+.res-sel{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--accent);font-weight:600}
+
+/* Sheet 内的已选回显 */
+.roww .nm{flex:1;min-width:0;font-size:15.5px;color:var(--text-1)}
+.roww .tick{width:17px;height:17px;display:flex;align-items:center;justify-content:center;flex:none;
+  color:var(--accent);opacity:0;transition:opacity .15s}
+.roww.sel{background:var(--accent-soft)}
+.roww.sel .nm{color:var(--accent);font-weight:650}
+.roww.sel .val{color:var(--accent)}
+.roww.sel .tick{opacity:1}
+.roww.sel.flash{animation:selFlash .5s ease-out 1}
+@keyframes selFlash{0%{background:color-mix(in srgb,var(--accent) 40%,transparent)}
+  100%{background:var(--accent-soft)}}
+.selbar{display:flex;align-items:center;gap:8px;margin:2px 16px 10px;padding:9px 11px;border-radius:12px;
+  background:var(--accent-soft);border:.5px solid color-mix(in srgb,var(--accent) 38%,transparent);
+  font-size:13px;color:var(--accent);font-weight:550}
+.selbar b{font-weight:700}
+.selbar-x{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--accent) 24%,transparent);color:var(--accent)}
+.tail-clip{height:44px;overflow:hidden;margin:0 16px}
+
+/* 键盘 accessory */
+.accessory{flex:none;background:var(--bar);backdrop-filter:blur(22px);border-top:.5px solid var(--line);padding:6px 0 6px}
+html[data-theme="dark"] .accessory{background:rgba(28,31,36,.92)}
+.accessory .strip{display:flex;gap:8px;padding:0 12px 8px;overflow:hidden}
+.keyboard{flex:none;height:216px;background:var(--surface-3);border-top:.5px solid var(--line);padding:8px 3px 22px;
+  display:flex;flex-direction:column;gap:8px}
+html[data-theme="dark"] .keyboard{background:#1F1A38}
+.keyrow{display:flex;gap:6px;justify-content:center}
+.key{flex:1;height:38px;border-radius:5px;background:var(--surface);display:grid;place-items:center;
+  font-size:14px;color:var(--text-1);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+html[data-theme="dark"] .key{background:#4A3C7E;box-shadow:0 1px 0 rgba(0,0,0,.4)}
+.key.space{flex:5}
+.key.fn{background:var(--surface-3);font-size:12px;color:var(--text-2)}
+html[data-theme="dark"] .key.fn{background:#342B57}
+
+/* 接收网格 */
+.recvgrid{padding:14px 16px;background:color-mix(in srgb,var(--surface) 60%,transparent);border-top:.5px solid var(--line)}
+.gridwrap{overflow:hidden}
+.gridwrap .row{display:flex;gap:4px;margin-bottom:4px}
+.gcell{width:11px;height:11px;border-radius:3.2px;background:var(--slot);flex:none}
+.gcell.lit{background:var(--grad-pop)}
+.gcell.hot{box-shadow:0 0 0 1.6px color-mix(in srgb,var(--pop-o) 70%,transparent);
+  background:linear-gradient(160deg,var(--pop-o),var(--pop-p))}
+
+/* 波形 */
+.bars{display:flex;align-items:center;gap:4px;height:84px;overflow:hidden}
+.bars s{display:block;width:3px;border-radius:2px;background:var(--fill-2);text-decoration:none;flex:none}
+.bars s.done{background:linear-gradient(180deg,var(--pop-p),var(--pop-v))}
+@keyframes breathe{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.stream{display:flex;align-items:flex-end;gap:6px;height:92px;justify-content:space-between;padding:0 2px}
+.stream s{display:block;width:6px;border-radius:3px;background:linear-gradient(180deg,var(--pop-p),var(--pop-v));
+  transform-origin:bottom;animation:breathe 1.1s ease-in-out infinite}
+@keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+.indet{height:6px;border-radius:3px;background:var(--fill-2);overflow:hidden;position:relative}
+.indet i{position:absolute;top:0;bottom:0;width:38%;border-radius:3px;
+  background:linear-gradient(90deg,transparent,var(--pop-p) 45%,var(--pop-v),transparent);animation:indet 1.35s linear infinite;filter:saturate(120%)}
+@keyframes indet{0%{transform:translateX(-105%)}100%{transform:translateX(300%)}}
+@keyframes pulseRing{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.4);opacity:0}}
+@keyframes dotblink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes floatIn{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.floatIn{animation:floatIn .35s cubic-bezier(.3,1.3,.5,1) both}
+
+/* ---------- 评审页：信息架构板 ---------- */
+.ia-panel{background:var(--page-panel);border:1px solid var(--page-line);border-radius:var(--r-xl);padding:18px 20px}
+.ia-head{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--page-text-3);font-weight:700;margin-bottom:12px}
+.ia-cap{margin-top:14px;font-size:12.5px;color:var(--page-text-3)}
+.ia-list{display:flex;flex-direction:column;gap:6px}
+.ia-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--page-bg);
+  border:1px solid var(--page-line);font-size:14px;font-weight:550}
+.ia-ico{width:20px;color:var(--page-text-2);font-size:14px}
+.ia-note{margin-left:auto;font-size:11.5px;color:var(--page-text-3)}
+.ia-arrow{align-self:center;font-size:24px;color:var(--page-text-3)}
+.ia-tree{display:flex;flex-direction:column;gap:10px}
+.ia-branch{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--page-bg);border:1px solid var(--page-line)}
+.ia-branch.ghost{background:transparent;border-style:dashed}
+.ia-chip{flex:none;min-width:74px;text-align:center;padding:6px 10px;border-radius:9px;background:var(--page-text);
+  color:var(--page-bg);font-size:12.5px;font-weight:650}
+.ia-sub{font-size:12.5px;color:var(--page-text-2);line-height:1.65}
+.ia-rules{margin:0;padding-left:18px;font-size:13px;line-height:1.75;color:var(--page-text-2)}
+.ia-rules li{margin-bottom:9px}
+.ia-rules b{color:var(--page-text)}
+.ia-block{margin-top:36px}
+.ia-block h3{margin:0 0 12px;font-size:15px}
+.ia-flow{display:flex;gap:16px;flex-wrap:wrap}
+.ia-flow-col{flex:1;min-width:260px;background:var(--page-panel);border:1px solid var(--page-line);border-radius:var(--r-lg);padding:14px 16px}
+.ia-flow-h{font-size:12px;font-weight:700;color:var(--page-text-3);letter-spacing:.06em;margin-bottom:8px}
+.ia-flow-row{font-size:12.5px;line-height:1.9;color:var(--page-text-2)}
+.token-block{margin-top:36px;display:flex;gap:16px;flex-wrap:wrap}
+.token-card{flex:1;min-width:260px;background:var(--page-panel);border:1px solid var(--page-line);border-radius:var(--r-xl);padding:18px 20px}
+.token-card h4{margin:0 0 12px;font-size:14px}
+.sw-grid{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:118px}
+.sw i{display:block;height:44px;border-radius:10px;border:1px solid var(--page-line);margin-bottom:6px}
+.sw span{display:block;font-size:11px;font-family:var(--mono);color:var(--page-text-2);line-height:1.5}
+.sw b{display:block;font-size:11.5px;color:var(--page-text)}
+.type-row{display:flex;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px dashed var(--page-line)}
+.type-row .nm{width:150px;flex:none;font-size:12px;color:var(--page-text-3)}
+.radius-row,.space-row{display:flex;flex-wrap:wrap;gap:10px}
+.radius-demo{width:56px;text-align:center;font-size:11px;color:var(--page-text-3)}
+.radius-demo i{display:block;height:44px;background:var(--page-text);opacity:.85}
+.emo-grid{display:flex;flex-wrap:wrap;gap:6px}
+.emo{width:88px;border-radius:8px;padding:6px 8px;font-size:11px;font-family:var(--mono);color:#fff}
+table.spec{width:100%;border-collapse:collapse;font-size:12.5px}
+table.spec th,table.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--page-line);vertical-align:top}
+table.spec th{color:var(--page-text-3);font-weight:650}
+table.spec td{color:var(--page-text-2)}
+table.spec b{color:var(--page-text);font-weight:600}
+
+/* 统计格 / 播放器 / 浮条 */
+.stat-grid{display:flex;gap:8px}
+.stat-cell{flex:1;background:var(--surface-2);border:.5px solid var(--line);border-radius:var(--r-sm);padding:9px 10px}
+.stat-cell .k{font-size:10.5px;color:var(--text-3)}
+.stat-cell .v{font-size:13.5px;font-weight:650;font-family:var(--mono);margin-top:3px;letter-spacing:-.2px}
+.playbtn{width:52px;height:52px;border-radius:50%;background:var(--grad-cta);
+  color:var(--cta-fg);display:grid;place-items:center;flex:none;box-shadow:0 6px 20px color-mix(in srgb,var(--cta-b) 34%,transparent)}
+.mini-bars{display:flex;align-items:center;gap:3px;height:48px;overflow:hidden;flex:1}
+.mini-bars s{display:block;width:3px;border-radius:2px;background:var(--fill-2);text-decoration:none;flex:none}
+.mini-bars s.done{background:linear-gradient(180deg,var(--pop-m),var(--pop-v))}
+.playhead{position:relative;width:2px;height:48px;background:var(--pop-p);border-radius:2px;flex:none}
+.playhead::before{content:"";position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--pop-p)}
+.floatbar{position:absolute;left:16px;right:16px;top:100px;z-index:44;display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line-2);
+  box-shadow:var(--shadow);overflow:hidden}
+.floatbar .sweep{position:absolute;left:0;bottom:0;height:2px;width:40%;
+  background:linear-gradient(90deg,transparent,var(--pop-p),var(--pop-v),transparent);animation:indet 1.6s linear infinite}
+.bignum{font-size:34px;font-weight:700;font-family:var(--mono);letter-spacing:-1px;line-height:1.1}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--pop-p);position:relative;flex:none}
+.pulse-dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--pop-p);
+  animation:pulseRing 1.5s ease-out infinite}
+.blink-dot{width:6px;height:6px;border-radius:50%;background:var(--pop-m);animation:dotblink 1.1s ease-in-out infinite;flex:none}
+.namefield{display:flex;align-items:center;gap:8px;background:var(--surface-3);border:.5px solid var(--line);
+  border-radius:var(--r-sm);padding:9px 12px}
+.namefield input{background:none;border:none;color:var(--text-1);font:inherit;font-size:16px;flex:1;outline:none;width:100%}
+.fmt-badge{font-family:var(--mono);font-size:11px;font-weight:650;color:var(--cta-fg);
+  background:var(--grad-cta);border-radius:4px;padding:2px 6px}
+.gcells{display:flex;gap:4px;margin-bottom:4px}
+.toast{position:absolute;left:16px;right:16px;top:58px;z-index:70;display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line-2);box-shadow:var(--shadow)}
+
+/* helper */
+.hr{height:.5px;background:var(--line);margin:0}
+.sp{flex:1}
+.center{text-align:center}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="mark">E</span> EmotionVoice · iOS 设计稿 <span style="font-weight:400;color:var(--page-text-3);font-size:12.5px">v1 · 393×852pt</span></div>
+    <div class="tabs" id="tabs"></div>
+    <div class="theme-toggle">
+      <span>浅色</span>
+      <div class="switch" id="themeSwitch" role="switch" aria-label="切换深浅色"><i id="switchKnob">☀︎</i></div>
+      <span>深色</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap" id="wrap">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-wave" viewBox="0 0 24 24"><g fill="currentColor"><rect x="2" y="9" width="2.6" height="6" rx="1.3"/><rect x="6.3" y="5.5" width="2.6" height="13" rx="1.3"/><rect x="10.7" y="2" width="2.6" height="20" rx="1.3"/><rect x="15.1" y="6.5" width="2.6" height="11" rx="1.3"/><rect x="19.4" y="10" width="2.6" height="4" rx="1.3"/></g></symbol>
+  <symbol id="i-personwave" viewBox="0 0 24 24"><circle cx="8.6" cy="8" r="3.3" fill="currentColor"/><path d="M3.2 19.2a5.4 5.4 0 0 1 10.8 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M16.4 9a4.6 4.6 0 0 1 0 6.2M19.4 6.4a8.4 8.4 0 0 1 0 11.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.6A2.6 2.6 0 0 1 5.6 4h3.1c.7 0 1.35.28 1.82.78L11.6 5.9h6.8A2.6 2.6 0 0 1 21 8.5v9.9a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 18.4V6.6Z" fill="currentColor"/></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24"><path d="M12 2.2A9.8 9.8 0 1 0 12 21.8 9.8 9.8 0 0 0 12 2.2Zm0 4.3a2.85 2.85 0 1 1 0 5.7 2.85 2.85 0 0 1 0-5.7Zm0 12.3a5.5 5.5 0 0 1-4.15-1.87c.12-1.86 2.14-3.03 4.15-3.03s4.03 1.17 4.15 3.03A5.5 5.5 0 0 1 12 18.8Z" fill="currentColor"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 5 16 12l-6.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M14.5 5 8 12l6.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9.5 12 16l6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.6 19.4 12 7 19.4V4.6Z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6.6 4.5h3.9v15H6.6zM13.5 4.5h3.9v15h-3.9z" fill="currentColor"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.2S3.8 15.4 3.8 9.7A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 8.2 2.1c0 5.7-8.2 10.5-8.2 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-heart-f" viewBox="0 0 24 24"><path d="M12 20.4S3.5 15.5 3.5 9.7A4.5 4.5 0 0 1 12 7.5a4.5 4.5 0 0 1 8.5 2.2c0 5.8-8.5 10.7-8.5 10.7Z" fill="currentColor"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.6" cy="10.6" r="6.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.4 15.4 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6" fill="currentColor" opacity=".22"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.6v12.8M5.6 12h12.8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></symbol>
+  <symbol id="i-ellipsis" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5.6" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.4" cy="12" r="1.9"/></g></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3.8v10.6M8.2 7.4 12 3.6l3.8 3.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.4 14.4v3.8a2.4 2.4 0 0 0 2.4 2.4h8.4a2.4 2.4 0 0 0 2.4-2.4v-3.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3.4 8.4 7h2.2v7h2.8V7h2.2L12 3.4Z" fill="currentColor"/><path d="M5.6 12.6v6a2 2 0 0 0 2 2h8.8a2 2 0 0 0 2-2v-6h-2v5.4H7.6v-5.4h-2Z" fill="currentColor"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5.4 7.6h13.2M9.6 7.6V5.4h4.8v2.2M7.4 7.6l1 11.2a1.8 1.8 0 0 0 1.8 1.6h3.6a1.8 1.8 0 0 0 1.8-1.6l1-11.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4.4 19.6h3.2L19 8.2a2.26 2.26 0 0 0-3.2-3.2L4.4 16.4v3.2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.4" y="8.4" width="11" height="11" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15.4 5.4H6.6A2.2 2.2 0 0 0 4.4 7.6v8.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.6 9.8 17.4 19 7.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.4V12l3.4 2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.6 17.4a8.8 8.8 0 1 1 14.8 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 17.2 15.8 9.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><path d="M12 5.2V2.4L7.6 6.4 12 10.4V7.6a5.4 5.4 0 1 1-5.4 5.4H4.2A7.8 7.8 0 1 0 12 5.2Z" fill="currentColor"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M11.4 6.4 6 12l5.4 5.6V14.6c3.6 0 5.6 1 6.6 3.4-.6-4.6-2.8-7-6.6-7V6.4Z" fill="currentColor"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="7.9" r="1.15" fill="currentColor"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2.6l1.9 5.1 5.1 1.9-5.1 1.9L12 16.6l-1.9-5.1L5 9.6l5.1-1.9L12 2.6Z" fill="currentColor"/><path d="M18.6 14.4l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4Z" fill="currentColor"/></symbol>
+  <symbol id="i-sfx" viewBox="0 0 24 24"><g fill="currentColor"><rect x="2" y="10" width="2.6" height="4" rx="1.3"/><rect x="6.4" y="6.6" width="2.6" height="10.8" rx="1.3"/><rect x="10.8" y="3.4" width="2.6" height="17.2" rx="1.3"/></g><path d="M17.8 9.2h5M20.3 6.7v5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-break" viewBox="0 0 24 24"><path d="M6.6 7.4h11.2M6.6 12h8M6.6 16.6h11.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7.6h16M4 16.4h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9.6" cy="7.6" r="2.4" fill="var(--surface,#fff)" stroke="currentColor" stroke-width="1.8"/><circle cx="15.4" cy="16.4" r="2.4" fill="var(--surface,#fff)" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8.2 7h11.4M8.2 12h11.4M8.2 17h11.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><g fill="currentColor"><circle cx="4.6" cy="7" r="1.3"/><circle cx="4.6" cy="12" r="1.3"/><circle cx="4.6" cy="17" r="1.3"/></g></symbol>
+  <symbol id="i-diamond" viewBox="0 0 24 24"><path d="M12 2.6 21 9.4 12 21.4 3 9.4 12 2.6Z" fill="currentColor"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.4l2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8L12 3.4Z" fill="currentColor"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M9.6 17.6V6.4l9-1.8v11.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><g fill="currentColor"><circle cx="6.8" cy="17.8" r="2.8"/><circle cx="15.8" cy="15.8" r="2.8"/></g></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="currentColor"/><path d="M8 12.3l2.7 2.7L16.2 9.5" fill="none" stroke="var(--bg,#fff)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow-rc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="currentColor"/><path d="M8.4 12h6.4M12.6 9.4l2.6 2.6-2.6 2.6" fill="none" stroke="var(--bg,#fff)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.4 3.4c0 .6-.06 1.16-.18 1.7l2 1.56-2 3.46-2.38-.96a7.9 7.9 0 0 1-2.92 1.7L14.5 22h-4l-.42-2.54a7.9 7.9 0 0 1-2.92-1.7l-2.38.96-2-3.46 2-1.56A8.2 8.2 0 0 1 4.6 12c0-.58.06-1.15.18-1.7l-2-1.56 2-3.46 2.38.96a7.9 7.9 0 0 1 2.92-1.7L10.5 2h4l.42 2.54a7.9 7.9 0 0 1 2.92 1.7l2.38-.96 2 3.46-2 1.56c.12.55.18 1.1.18 1.7Z" fill="currentColor"/></symbol>
+  <symbol id="i-back-arrow" viewBox="0 0 24 24"><path d="M15 4.6 7.6 12 15 19.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 3.6V8h-4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3.6" y="3.6" width="7" height="7" rx="2"/><rect x="13.4" y="3.6" width="7" height="7" rx="2"/><rect x="3.6" y="13.4" width="7" height="7" rx="2"/><rect x="13.4" y="13.4" width="7" height="7" rx="2"/></g></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.4 3.6h7l4.2 4.2v12.6H6.4V3.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.2 3.8v4.2h4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.8 8.8 0 1 0 11 11Z" fill="currentColor"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.6 12h16.8M12 3.2c2.6 2.4 3.9 5.4 3.9 8.8S14.6 18.4 12 20.8c-2.6-2.4-3.9-5.4-3.9-8.8S9.4 5.6 12 3.2Z" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+</svg>
+
+<!-- ============ 1. 信息架构 ============ -->
+<section class="screen active" data-label="信息架构">
+  <div class="screen-head">
+    <h2>信息架构：macOS 侧边栏 → iOS 标签栏</h2>
+    <p>功能 1:1 对齐，只重组容器。macOS 是「220pt 侧边栏 + 1500×900 内容区」的单窗口多分区；iOS 改为 <b>3 个标签 + 导航栈</b>，标签栏只放三个高频主任务 —— <b>创作 / 音色库 / 项目</b>，二级内容用 push / sheet 承载。macOS 的 5 个分区里，「语音合成 / 音色库 / 我的项目」各自成为独立标签；<b>「积分中心」整个搬进「设置」</b>（设置页顶部就是购买入口），<b>设置入口 = 三个标签导航栏右上角的齿轮</b>，push 进当前标签的导航栈。</p>
+  </div>
+  <div class="stage">
+    <div class="ia-panel" style="flex:1;min-width:280px">
+      <div class="ia-head">macOS（现状）</div>
+      <div class="ia-list">
+        <div class="ia-item"><span class="ia-ico">⌂</span>首页<span class="ia-note">已移除入口</span></div>
+        <div class="ia-item"><span class="ia-ico">≈</span>语音合成<span class="ia-note">默认首屏</span></div>
+        <div class="ia-item"><span class="ia-ico">☻</span>音色库</div>
+        <div class="ia-item"><span class="ia-ico">▤</span>我的项目</div>
+        <div class="ia-item"><span class="ia-ico">◆</span>积分中心</div>
+        <div class="ia-item"><span class="ia-ico">⚙</span>设置</div>
+      </div>
+      <div class="ia-cap">单窗口 · 最小尺寸 1500 × 900 · 强制深色</div>
+    </div>
+    <div class="ia-arrow">→</div>
+    <div class="ia-panel" style="flex:1.5;min-width:420px">
+      <div class="ia-head">iOS（方案）</div>
+      <div class="ia-tree">
+        <div class="ia-branch"><span class="ia-chip">≈ 创作</span>
+          <div class="ia-sub">工作台：文本编辑器 + 情感标签 + 参数 Sheet + 生成弹窗</div></div>
+        <div class="ia-branch"><span class="ia-chip">☻ 音色库</span>
+          <div class="ia-sub">搜索 + <b>分类按钮</b>（回显所选）→ 全部分类 Sheet（单选 · 5 维度 29 项 · 已选打 ✓）<br>+ 卡片流（上拉追加替代分页栏）</div></div>
+        <div class="ia-branch"><span class="ia-chip">▤ 项目</span>
+          <div class="ia-sub">列表 `.searchable` + 多选 + push「播放详情」</div></div>
+        <div class="ia-branch ghost"><span class="ia-chip" style="opacity:.55">⚙ 设置</span>
+          <div class="ia-sub">三个标签导航栏右上角齿轮 push<br>顶部账户卡：余额 + <b>购买积分</b>（→ 购买 Sheet）<br><b>积分记录 · 128 条 → 二级列表页</b><br>语音合成：默认格式 / 采样率<br>关于：版本</div></div>
+        <div class="ia-branch ghost"><span class="ia-chip" style="opacity:.55">浮层</span>
+          <div class="ia-sub">生成弹窗（居中 331pt）· 参数 / 购买 / 分类 Sheet · 后台接收条（跨 3 个标签）</div></div>
+      </div>
+      <div class="ia-cap">标签栏 3 项：创作 / 音色库 / 项目 · iPhone 竖屏 · iPad 可用 NavigationSplitView 复用两栏</div>
+    </div>
+    <div class="ia-panel" style="flex:1.2;min-width:300px">
+      <div class="ia-head">iOS 适配原则</div>
+      <ul class="ia-rules">
+        <li><b>去掉 hover / 光标 / tooltip</b>：所有 hover 才出现的 ×、描边、背景一律改为常显或按压态；23 个语气的 description 从 tooltip 改为标签面板里的副行。</li>
+        <li><b>去掉快捷键</b>：空格 / ←→ / Home·End 全局热键与底栏键帽提示全部移除，改为屏上控件。</li>
+        <li><b>文件面板 → 分享面板</b>：`NSSavePanel` 换 `fileExporter` + `UIActivityViewController`；删除「在 Finder 中显示」。</li>
+        <li><b>popover → sheet</b>：4 处说明弹窗（语气 / 中断 / 拟声 / 指令指南）改为 sheet 或可折叠面板。</li>
+        <li><b>桌面专属项直接删</b>：主题 / 语言交给 iOS 系统设置，导出走分享面板没有常驻目录，缓存交给系统，设备标识随 Keychain —— 设置页只留账户 + 语音合成 + 关于。</li>
+        <li><b>编辑器重做</b>：`NSTextView` → `UITextView`；键盘避让 + inputAccessoryView 承载标签栏。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ia-block">
+    <h3>导航与弹层层级</h3>
+    <div class="ia-flow">
+      <div class="ia-flow-col"><div class="ia-flow-h">标签栏（常驻 3 项）</div>
+        <div class="ia-flow-row">创作 → 参数 Sheet（medium）<br>创作 → 生成弹窗（居中，两态切换）<br>创作 → 音色选择 Sheet<br>任一 → ⚙ 设置</div></div>
+      <div class="ia-flow-col"><div class="ia-flow-h">Push（有返回）</div>
+        <div class="ia-flow-row">项目 → 播放详情<br>项目 → 编辑名称 Alert<br>任一标签 → ⚙ 设置 → 积分记录<br>设置 → 采样率 / 默认格式选择</div></div>
+      <div class="ia-flow-col"><div class="ia-flow-h">跨层浮层</div>
+        <div class="ia-flow-row">后台接收条：任意标签可见<br>Toast：购买结果顶部落下<br>Alert：无法生成 / 生成失败</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. 创作工作台 ============ -->
+<section class="screen" data-label="创作工作台">
+  <div class="screen-head">
+    <h2>创作工作台（对应 macOS「语音合成」）</h2>
+    <p>macOS 的左右两栏（左 980pt 编辑区 + 右 350pt 参数栏）在 iPhone 上收成单列：<b>导航栏常驻积分 / 顶部音色行 / 文本卡（主内容）/ 参数摘要条 / 底部生成条</b>。右侧三张参数卡（音色切换、音频控制、语音指令）合并成一张 medium detent 的<b>参数 Sheet</b>；23 个语气 + 7 个拟声从常驻网格改为<b>键盘 accessory 上的横向标签条</b>，编辑 Focusing 时才出现。</p>
+  </div>
+  <div class="stage">
+
+    <!-- Frame A -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="title">创作</div>
+        <div class="side r" style="gap:14px"><span class="pill-btn" style="background:var(--accent-soft);border-color:transparent;color:var(--accent);font-family:var(--mono);font-weight:650"><svg width="11" height="11" style="display:block"><use href="#i-diamond"/></svg>1,280.00</span><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+
+      <div class="scroll">
+        <!-- 音色行 -->
+        <div class="card" style="margin:10px 16px 10px">
+          <div class="roww" style="padding:11px 14px">
+            <div class="avatar" style="width:40px;height:40px;font-size:17px;border-radius:11px">心</div>
+            <div class="rt">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:16px;font-weight:600;letter-spacing:-.2px">龙安灵心</span>
+                <span class="badge-star">⭐ 旗舰</span>
+              </div>
+              <div class="t2" style="font-size:12.5px">温柔知性 · 日常对话 · 26 岁</div>
+            </div>
+            <span class="pill-btn">更换<svg width="11" height="11" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+        </div>
+
+        <!-- 参数摘要 -->
+        <div style="padding:0 16px 10px">
+          <div class="card" style="margin:0;display:flex;align-items:center;gap:10px;padding:10px 14px">
+            <svg width="16" height="16" style="display:block;color:var(--accent)"><use href="#i-sliders"/></svg>
+            <span style="flex:1;font-size:13px;color:var(--text-2);font-family:var(--mono)">1.0x · 100% · WAV · 22.05 kHz</span>
+            <svg width="13" height="13" style="display:block;color:var(--text-3)"><use href="#i-chev"/></svg>
+          </div>
+        </div>
+
+        <!-- 文本卡 -->
+        <div class="card" style="margin:0 16px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px">
+            <div class="sec-title" style="margin:0"><svg width="13" height="13" style="display:block;color:var(--accent)"><use href="#i-doc"/></svg>文本输入</div>
+            <span class="meta-line" style="font-size:11.5px">128 字</span>
+          </div>
+          <div class="hr"></div>
+          <div class="editor">
+            <div class="para" style="padding-top:24px">
+              <span class="badge" style="--c:#C07EE7">😮 惊叹<span class="x">×</span></span>
+              <span class="capsule" style="--c:#C07EE7">今天真是个好日子，我们终于见面了。</span>
+              <span class="sfx" style="--c:#F39E49">大笑<span class="x">×</span></span>
+            </div>
+            <div class="para" style="padding-top:0">
+              <span class="capsule" style="--c:#C07EE7">我真的好开心啊！</span>
+            </div>
+            <div class="para" style="padding-top:2px">接下来的内容回到默认语气，不带任何情绪基调。<span class="caret" style="margin-left:2px"></span></div>
+            <div class="para" style="padding-top:22px">
+              <span class="badge" style="--c:#51C0D6">😨 颤抖<span class="x">×</span></span>
+              <span class="capsule" style="--c:#51C0D6">可是我、我又有点紧张……</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bar" style="padding:10px 16px 10px;display:flex;align-items:center;gap:14px">
+        <div style="flex:none">
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">预计消耗</div>
+          <div style="font-size:17px;font-weight:650;font-family:var(--mono);letter-spacing:-.4px">≈ 2.40</div>
+        </div>
+        <div style="flex:1;display:flex;gap:8px">
+          <span class="btn sec" style="flex:0 0 auto;padding:0 14px"><svg width="15" height="15" style="display:block"><use href="#i-sparkle"/></svg></span>
+          <span class="btn pri" style="flex:1"><svg width="14" height="14" style="display:block"><use href="#i-wave"/></svg>生成音频</span>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tb on"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>创作 · 默认态<em>顶部依次是音色行、参数摘要、文本卡。情感标签按 macOS 的呈现规则画作<b>整段同色胶囊 + 左上角徽章</b>；「中断」不可见（第 3 段已回到默认语气）。底部生成条常驻，左侧显示预计消耗。</em></figcaption>
+    </figure>
+
+    <!-- Frame B -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="title">创作</div>
+        <div class="side r" style="gap:14px"><span class="pill-btn" style="background:var(--accent-soft);border-color:transparent;color:var(--accent);font-family:var(--mono);font-weight:650"><svg width="11" height="11" style="display:block"><use href="#i-diamond"/></svg>1,280.00</span><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+
+      <div class="scroll">
+        <div class="card" style="margin:10px 16px 10px">
+          <div class="roww" style="padding:9px 14px">
+            <div class="avatar" style="width:34px;height:34px;font-size:15px">心</div>
+            <div class="rt"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:600">龙安灵心</span><span class="badge-star">⭐ 旗舰</span></div></div>
+            <span class="pill-btn" style="font-size:12px">更换</span>
+          </div>
+        </div>
+        <div class="card" style="margin:0 16px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px">
+            <div class="sec-title" style="margin:0"><svg width="13" height="13" style="display:block;color:var(--accent)"><use href="#i-doc"/></svg>文本输入</div>
+            <span class="meta-line" style="font-size:11.5px">128 字</span>
+          </div>
+          <div class="hr"></div>
+          <div class="editor" style="font-size:17px">
+            <div class="para" style="padding-top:24px">
+              <span class="badge" style="--c:#C07EE7">😮 惊叹<span class="x">×</span></span>
+              <span class="capsule" style="--c:#C07EE7">今天真是个好日子，我们终于见面了。</span>
+              <span class="sfx" style="--c:#F39E49">大笑<span class="x">×</span></span>
+            </div>
+            <div class="para" style="padding-top:0"><span class="capsule" style="--c:#C07EE7">我真的好开心啊！<span class="caret" style="margin-left:2px"></span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accessory">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 12px 8px">
+          <div class="seg" style="width:126px;flex:none"><div class="on">语气</div><div>拟声</div></div>
+          <span class="sp"></span>
+          <span class="pill-btn" style="font-size:12.5px"><svg width="12" height="12" style="display:block"><use href="#i-break"/></svg>中断</span>
+          <span style="font-size:15px;font-weight:600;color:var(--accent)">完成</span>
+        </div>
+        <div class="strip">
+          <span class="chip" style="font-size:12.5px">😮 惊叹</span>
+          <span class="chip" style="font-size:12.5px">😢 悲伤</span>
+          <span class="chip" style="font-size:12.5px">😠 愤怒</span>
+          <span class="chip" style="font-size:12.5px">😈 调皮</span>
+          <span class="chip" style="font-size:12.5px">🤫 耳语</span>
+          <span class="chip" style="font-size:12.5px">💤 无聊</span>
+        </div>
+      </div>
+
+      <div class="keyboard">
+        <div class="keyrow">
+          <span class="key">q</span><span class="key">w</span><span class="key">e</span><span class="key">r</span><span class="key">t</span><span class="key">y</span><span class="key">u</span><span class="key">i</span><span class="key">o</span><span class="key">p</span>
+        </div>
+        <div class="keyrow">
+          <span class="key" style="flex:.6;opacity:.5"></span><span class="key">a</span><span class="key">s</span><span class="key">d</span><span class="key">f</span><span class="key">g</span><span class="key">h</span><span class="key">j</span><span class="key">k</span><span class="key">l</span><span class="key" style="flex:.6;opacity:.5"></span>
+        </div>
+        <div class="keyrow">
+          <span class="key fn">⇧</span><span class="key">z</span><span class="key">x</span><span class="key">c</span><span class="key">v</span><span class="key">b</span><span class="key">n</span><span class="key">m</span><span class="key fn">⌫</span>
+        </div>
+        <div class="keyrow">
+          <span class="key fn" style="flex:1.4">123</span><span class="key fn" style="flex:1.4">🌐</span><span class="key space"></span><span class="key fn" style="flex:1.4">换行</span>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tb on"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>创作 · 编辑中（键盘弹起）<em>23 个语气 / 7 个拟声标签改为 accessory 上的横向滚动条，分段切换；「中断」是次级样式，「中断」是次级样式，插入后不可见，只作为作用域边界；。<b>iOS 无 hover</b>：标签 × 改为点选后常显，取消 macOS 的悬停才出现。</em></figcaption>
+    </figure>
+
+    <!-- Frame C -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:66px">
+        <div class="grabber"></div>
+        <div class="sheet-nav" style="height:42px">
+          <span style="color:var(--text-3)"><svg width="19" height="19" style="display:block"><use href="#i-x"/></svg></span>
+          <span class="t">创作参数</span>
+          <span style="color:var(--accent);font-weight:650;font-size:16px">完成</span>
+        </div>
+        <div class="sheet-body" style="overflow:visible">
+          <!-- 音色 -->
+          <div class="group-title">音色</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww">
+              <div class="avatar" style="width:44px;height:44px;font-size:18px">心</div>
+              <div class="rt"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:16.5px;font-weight:600">龙安灵心</span><span class="badge-star">⭐ 旗舰</span></div>
+                <div class="t2" style="font-size:12.5px">温柔知性 · 日常对话 · 26 岁</div></div>
+              <span class="chev"><svg width="16" height="16" style="display:block"><use href="#i-chev"/></svg></span>
+            </div>
+          </div>
+
+          <!-- 音频控制 -->
+          <div class="group-title" style="margin-top:20px">音频控制</div>
+          <div class="card pad" style="margin:0 16px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:15.5px">语速</span>
+              <span style="font-family:var(--mono);font-size:14px;color:var(--text-2)">1.0x</span>
+            </div>
+            <div class="slider" style="margin:8px 0 2px">
+              <span style="font-size:11px;color:var(--text-3);font-family:var(--mono)">0.5x</span>
+              <div class="track"><i style="width:33%"></i><b style="left:33%"></b></div>
+              <span style="font-size:11px;color:var(--text-3);font-family:var(--mono)">2.0x</span>
+            </div>
+            <div class="hr" style="margin:12px 0"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:15.5px">音量</span>
+              <span style="font-family:var(--mono);font-size:14px;color:var(--text-2)">100%</span>
+            </div>
+            <div class="slider" style="margin:8px 0 2px">
+              <span style="font-size:11px;color:var(--text-3);font-family:var(--mono)">0%</span>
+              <div class="track"><i style="width:100%"></i><b style="left:100%"></b></div>
+              <span style="font-size:11px;color:var(--text-3);font-family:var(--mono)">100%</span>
+            </div>
+            <div class="hr" style="margin:12px 0"></div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:15.5px;width:52px">格式</span>
+              <div class="seg" style="flex:1"><div>MP3</div><div class="on">WAV</div></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px">
+            <span style="font-size:15.5px;font-weight:600">采样率</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px">
+            <div style="background:var(--surface-3);border-radius:10px;padding:9px 11px;border:.5px solid var(--line)">
+              <div style="font-size:13.5px;font-family:var(--mono)">8 kHz</div><div style="font-size:11px;color:var(--text-3)">语音通话</div></div>
+            <div style="background:var(--surface-3);border-radius:10px;padding:9px 11px;border:.5px solid var(--line)">
+              <div style="font-size:13.5px;font-family:var(--mono)">16 kHz</div><div style="font-size:11px;color:var(--text-3)">AI 语音</div></div>
+            <div style="background:var(--accent-soft);border-radius:10px;padding:9px 11px;border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);position:relative">
+              <div style="font-size:13.5px;font-family:var(--mono)">22.05 kHz</div><div style="font-size:11px;color:var(--text-2)">网络语音</div>
+              <span style="position:absolute;right:9px;top:10px;color:var(--accent)"><svg width="14" height="14" style="display:block"><use href="#i-check-circle"/></svg></span></div>
+            <div style="background:var(--surface-3);border-radius:10px;padding:9px 11px;border:.5px solid var(--line)">
+              <div style="font-size:13.5px;font-family:var(--mono)">24 kHz</div><div style="font-size:11px;color:var(--text-3)">语音合成</div></div>
+            <div style="background:var(--surface-3);border-radius:10px;padding:9px 11px;border:.5px solid var(--line)">
+              <div style="font-size:13.5px;font-family:var(--mono)">44.1 kHz</div><div style="font-size:11px;color:var(--text-3)">CD 级音频</div></div>
+            <div style="background:var(--surface-3);border-radius:10px;padding:9px 11px;border:.5px solid var(--line)">
+              <div style="font-size:13.5px;font-family:var(--mono)">48 kHz</div><div style="font-size:11px;color:var(--text-3)">专业音频</div></div>
+          </div>
+          <div style="height:14px"></div>
+        </div>
+      </div>
+      <div class="home" style="background:var(--text-1);bottom:8px"></div>
+    </div></div>
+    <figcaption>参数 Sheet · 上半部（medium detent）<em>macOS 右侧三张卡合成一张 Sheet：音色 → 音频控制（语速 0.5–2.0 / 音量 0–100 / 格式 / 采样率 6 档）→ 语音指令。滑杆改用 iOS 原生 UISlider 手感，采样率仍是 2 列打勾网格。</em></figcaption>
+    </figure>
+
+    <!-- Frame D -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:66px">
+        <div class="grabber"></div>
+        <div class="sheet-nav" style="height:42px">
+          <span style="color:var(--text-3)"><svg width="19" height="19" style="display:block"><use href="#i-x"/></svg></span>
+          <span class="t">创作参数</span>
+          <span style="color:var(--accent);font-weight:650;font-size:16px">完成</span>
+        </div>
+        <div class="sheet-body" style="overflow:visible">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 8px">
+            <span style="font-size:15.5px;font-weight:600">语音指令</span>
+            <span style="color:var(--accent)"><svg width="17" height="17" style="display:block"><use href="#i-info"/></svg></span>
+          </div>
+          <div class="card pad" style="margin:0 16px">
+            <div style="display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:12.5px;font-weight:600;margin-bottom:8px">
+              <svg width="13" height="13" style="display:block"><use href="#i-globe"/></svg>语言
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span class="chip" style="font-size:12.5px;padding:5px 10px;background:var(--accent-soft);border-color:transparent;color:var(--accent)">中文</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 10px">英文</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 10px">粤语</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 10px">四川话</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 10px">东北话</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 10px;color:var(--text-3)">展开全部 24 <svg width="10" height="10" style="display:inline;vertical-align:-1px"><use href="#i-chev-d"/></svg></span>
+            </div>
+            <div class="hr" style="margin:12px 0"></div>
+            <div style="display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:12.5px;font-weight:600;margin-bottom:8px">
+              <svg width="13" height="13" style="display:block"><use href="#i-sparkle"/></svg>描述预设
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span class="chip" style="font-size:12.5px;padding:5px 11px">温柔女声</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 11px;background:var(--accent-soft);border-color:transparent;color:var(--accent)">活泼男声</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 11px">新闻播报</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 11px">有声书</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 11px">广告配音</span>
+              <span class="chip" style="font-size:12.5px;padding:5px 11px">教学讲解</span>
+            </div>
+            <div class="hr" style="margin:12px 0"></div>
+            <div style="background:var(--surface-3);border:.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;min-height:96px;font-size:15px;color:var(--text-1);line-height:1.5">
+              中文，年轻活泼的男性声音，语速偏快，语调积极
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+              <span style="font-size:11.5px;color:var(--text-3)">💡 详细描述 = 更好的效果</span>
+              <span style="font-size:11.5px;font-family:var(--mono);color:var(--text-3)">28 / 1000</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;color:var(--warn)">
+              <svg width="12" height="12" style="display:block"><use href="#i-info"/></svg>仅支持中文和英文输入
+            </div>
+          </div>
+          <div style="height:16px"></div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>参数 Sheet · 语音指令<em>24 个语言 chip 在 iPhone 上占 5–6 行，默认收起前 5 个 +「展开全部」。规则同 macOS：选中语言与预设后拼成「中文，&lt;预设文本&gt;」，再次点击同一项 = 取消；上限 1000 字（到 1000 变强调色）。右上 ⓘ 打开「如何编写高质量的声音描述」指南。</em></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ 3. 生成与接收 ============ -->
+<section class="screen" data-label="生成与接收">
+  <div class="screen-head">
+    <h2>生成、接收与后台续跑</h2>
+    <p>macOS 的生成弹窗是 560pt 居中卡片 + 全屏遮罩，iOS 直接沿用这个思路：<b>331pt 居中弹窗 + 虚化遮罩</b>，点「生成音频」当场弹出，不再推 Sheet、不再单开一屏。接收中与完成态<b>共用同一个弹窗</b>，只切换顶部渐变条、图标与内容区。<br>弹窗内部按「7 层信息」填满——音色 × 参数 chips（含本次计费）、实时波形、大字字节数 + 速率、不确定进度条、四宫格（已用时 / 数据块 / 目标大小 / 预计时长）、接收网格、后台接收 / 停止生成，避免大面积留白。macOS 里锚在「拟声效果」右下角的后台接收卡（236pt）在 iOS 上改为<b>浮在内容顶部的全宽条</b>，任何标签页可见。</p>
+  </div>
+  <div class="stage">
+
+    <!-- A 接收中：居中弹窗 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+
+      <!-- 背景：创作工作台（被遮罩虚化） -->
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="title">创作</div>
+        <div class="side r" style="gap:14px"><span class="pill-btn" style="background:var(--accent-soft);border-color:transparent;color:var(--accent);font-family:var(--mono);font-weight:650"><svg width="11" height="11" style="display:block"><use href="#i-diamond"/></svg>1,280.00</span><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+      <div class="scroll">
+        <div class="card" style="margin:10px 16px 10px">
+          <div class="roww" style="padding:11px 14px">
+            <div class="avatar" style="width:40px;height:40px;font-size:17px">心</div>
+            <div class="rt">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:16px;font-weight:600;letter-spacing:-.2px">龙安灵心</span>
+                <span class="badge-star">⭐ 旗舰</span>
+              </div>
+              <div class="t2" style="font-size:12.5px">温柔知性 · 日常对话 · 26 岁</div>
+            </div>
+            <span class="pill-btn">更换<svg width="11" height="11" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+        </div>
+        <div style="padding:0 16px 10px">
+          <div class="card" style="margin:0;display:flex;align-items:center;gap:10px;padding:10px 14px">
+            <svg width="16" height="16" style="display:block;color:var(--accent)"><use href="#i-sliders"/></svg>
+            <span style="flex:1;font-size:13px;color:var(--text-2);font-family:var(--mono)">1.0x · 100% · WAV · 22.05 kHz</span>
+            <svg width="13" height="13" style="display:block;color:var(--text-3)"><use href="#i-chev"/></svg>
+          </div>
+        </div>
+        <div class="card" style="margin:0 16px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px">
+            <div class="sec-title" style="margin:0"><svg width="13" height="13" style="display:block;color:var(--accent)"><use href="#i-doc"/></svg>文本输入</div>
+            <span class="meta-line" style="font-size:11.5px">128 字</span>
+          </div>
+          <div class="hr"></div>
+          <div class="editor">
+            <div class="para" style="padding-top:24px">
+              <span class="badge" style="--c:#C07EE7">😮 惊叹<span class="x">×</span></span>
+              <span class="capsule" style="--c:#C07EE7">今天真是个好日子，我们终于见面了。</span>
+            </div>
+            <div class="para" style="padding-top:0">
+              <span class="capsule" style="--c:#C07EE7">我真的好开心啊！</span>
+            </div>
+            <div class="para" style="padding-top:22px">
+              <span class="badge" style="--c:#51C0D6">😨 颤抖<span class="x">×</span></span>
+              <span class="capsule" style="--c:#51C0D6">可是我、我又有点紧张……</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bar" style="padding:10px 16px 10px;display:flex;align-items:center;gap:14px">
+        <div style="flex:none">
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">预计消耗</div>
+          <div style="font-size:17px;font-weight:650;font-family:var(--mono);letter-spacing:-.4px">≈ 2.40</div>
+        </div>
+        <div style="flex:1;display:flex;gap:8px">
+          <span class="btn sec" style="flex:0 0 auto;padding:0 14px"><svg width="15" height="15" style="display:block"><use href="#i-sparkle"/></svg></span>
+          <span class="btn pri" style="flex:1"><svg width="14" height="14" style="display:block"><use href="#i-wave"/></svg>生成音频</span>
+        </div>
+      </div>
+
+      <!-- 居中弹窗：接收中 -->
+      <div class="dlg-scrim">
+        <div class="dlg">
+          <div class="dlg-top"></div>
+
+          <div class="dlg-hd">
+            <div class="dlg-ico"><svg width="20" height="20" style="display:block"><use href="#i-wave"/></svg></div>
+            <div style="flex:1;min-width:0">
+              <div class="t">正在接收音频</div>
+              <div class="s">龙安灵心 · 温柔知性 · 女 · 26 岁</div>
+            </div>
+            <span style="color:var(--text-3);display:flex"><svg width="19" height="19" style="display:block"><use href="#i-x"/></svg></span>
+          </div>
+
+          <div class="dlg-chips">
+            <span class="dlg-chip">WAV</span>
+            <span class="dlg-chip">22.05 kHz</span>
+            <span class="dlg-chip">1.0x · 100%</span>
+            <span class="dlg-chip">128 字 · 6 句</span>
+            <span class="dlg-chip hi">−2.40 积分</span>
+          </div>
+
+          <div style="padding:2px 16px 0">
+            <div class="stream" style="height:74px;gap:5px">
+              <s style="height:34%;animation-delay:0s"></s><s style="height:58%;animation-delay:.06s"></s><s style="height:26%;animation-delay:.12s"></s>
+              <s style="height:72%;animation-delay:.18s"></s><s style="height:44%;animation-delay:.24s"></s><s style="height:88%;animation-delay:.3s"></s>
+              <s style="height:36%;animation-delay:.36s"></s><s style="height:62%;animation-delay:.42s"></s><s style="height:48%;animation-delay:.48s"></s>
+              <s style="height:94%;animation-delay:.54s"></s><s style="height:30%;animation-delay:.6s"></s><s style="height:66%;animation-delay:.66s"></s>
+              <s style="height:52%;animation-delay:.72s"></s><s style="height:80%;animation-delay:.78s"></s><s style="height:40%;animation-delay:.84s"></s>
+              <s style="height:70%;animation-delay:.9s"></s><s style="height:28%;animation-delay:.96s"></s><s style="height:56%;animation-delay:1.02s"></s>
+              <s style="height:82%;animation-delay:1.08s"></s><s style="height:38%;animation-delay:1.14s"></s><s style="height:60%;animation-delay:1.2s"></s>
+              <s style="height:46%;animation-delay:1.26s"></s><s style="height:74%;animation-delay:1.32s"></s><s style="height:32%;animation-delay:1.38s"></s>
+              <s style="height:58%;animation-delay:1.44s"></s><s style="height:42%;animation-delay:1.5s"></s><s style="height:68%;animation-delay:1.56s"></s>
+            </div>
+          </div>
+
+          <div class="dlg-big">
+            <div style="display:flex;align-items:baseline">
+              <span class="n">128.4</span><span class="u">KB 已接收</span>
+            </div>
+            <div class="r">↑ 84.2 KB/s</div>
+          </div>
+
+          <div style="padding:10px 16px 0"><div class="indet"><i></i></div></div>
+
+          <div class="stat-grid" style="padding:12px 16px 0">
+            <div class="stat-cell"><div class="k">已用时</div><div class="v">00:07</div></div>
+            <div class="stat-cell"><div class="k">数据块</div><div class="v">86 段</div></div>
+            <div class="stat-cell"><div class="k">目标</div><div class="v">≈412 KB</div></div>
+            <div class="stat-cell"><div class="k">时长</div><div class="v">00:24</div></div>
+          </div>
+
+          <div class="dlg-gridbox">
+            <div class="dlg-cap"><span>数据接收网格</span><span>1 格 ≈ 4.6 KB</span></div>
+            <div data-grid="18x5" data-lit="0,0,0,9,18" data-hot-row="3"></div>
+          </div>
+
+          <div class="dlg-note">
+            <span class="pulse-dot"></span>
+            <span>正在持续接收。关闭弹窗不会中断任务，可从顶部浮条随时返回。</span>
+          </div>
+
+          <div class="dlg-foot">
+            <span class="btn sec ghost" style="flex:1"><svg width="15" height="15" style="display:block"><use href="#i-me"/></svg>后台接收</span>
+            <span class="btn sec stop" style="flex:1"><svg width="15" height="15" style="display:block"><use href="#i-x"/></svg>停止生成</span>
+          </div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>接收弹窗 · 进行中<em>不再单开一个 Sheet——点「生成音频」后直接在当前页弹 <b>331pt 居中卡片</b>，背后是虚化的工作台。内容补齐到 7 层：① 音色 × 参数 chips 行（含本次计费 −2.40）② 实时波形 ③ 大字字节数 + 速率 ④ 不确定进度条 ⑤ 四宫格（已用时 / 数据块 / 目标大小 / 预计时长）⑥ 接收网格 ⑦ 后台接收 / 停止生成。<br>目标大小与预计时长由「文本 → 时长 → 字节」估算（与 macOS <code>prepareGrid()</code> 同一公式），所以进度虽然仍是<b>不确定型</b>，却有可读的参照量。<br>✕ 与「后台接收」都只关闭弹窗、不断连接；网格降到 <b>5 行 × 18 列</b>（受卡片宽度限制），最新一格仍带外发光环。</em></figcaption>
+    </figure>
+
+    <!-- B 完成：同一弹窗切换态 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="title">创作</div>
+        <div class="side r"><span class="pill-btn" style="background:var(--accent-soft);border-color:transparent;color:var(--accent);font-family:var(--mono);font-weight:650"><svg width="11" height="11" style="display:block"><use href="#i-diamond"/></svg>1,277.60</span></div>
+      </div>
+      <div class="scroll">
+        <div class="card" style="margin:10px 16px 10px">
+          <div class="roww" style="padding:11px 14px">
+            <div class="avatar" style="width:40px;height:40px;font-size:17px">心</div>
+            <div class="rt">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:16px;font-weight:600;letter-spacing:-.2px">龙安灵心</span>
+                <span class="badge-star">⭐ 旗舰</span>
+              </div>
+              <div class="t2" style="font-size:12.5px">温柔知性 · 日常对话 · 26 岁</div>
+            </div>
+            <span class="pill-btn">更换<svg width="11" height="11" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+        </div>
+        <div class="card" style="margin:0 16px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px">
+            <div class="sec-title" style="margin:0"><svg width="13" height="13" style="display:block;color:var(--accent)"><use href="#i-doc"/></svg>文本输入</div>
+            <span class="meta-line" style="font-size:11.5px">128 字</span>
+          </div>
+          <div class="hr"></div>
+          <div class="editor">
+            <div class="para" style="padding-top:24px">
+              <span class="badge" style="--c:#C07EE7">😮 惊叹<span class="x">×</span></span>
+              <span class="capsule" style="--c:#C07EE7">今天真是个好日子，我们终于见面了。</span>
+            </div>
+            <div class="para" style="padding-top:0"><span class="capsule" style="--c:#C07EE7">我真的好开心啊！</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 居中弹窗：完成态 -->
+      <div class="dlg-scrim">
+        <div class="dlg">
+          <div class="dlg-top ok"></div>
+
+          <div class="dlg-hd">
+            <div class="dlg-ico ok"><svg width="21" height="21" style="display:block"><use href="#i-check-circle"/></svg></div>
+            <div style="flex:1;min-width:0">
+              <div class="t">音频生成完成</div>
+              <div class="s">用时 00:07 · 412 KB · 86 个数据块</div>
+            </div>
+            <span style="color:var(--text-3);display:flex"><svg width="19" height="19" style="display:block"><use href="#i-x"/></svg></span>
+          </div>
+
+          <div style="padding:0 16px">
+            <div class="namefield">
+              <span style="flex:1;font-size:15.5px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">今天真是个好日子，我们终于…</span>
+              <span class="fmt-badge">WAV</span>
+            </div>
+          </div>
+
+          <div class="stat-grid" style="padding:10px 16px 0">
+            <div class="stat-cell"><div class="k">大小</div><div class="v">412 KB</div></div>
+            <div class="stat-cell"><div class="k">采样率</div><div class="v">22.05k</div></div>
+            <div class="stat-cell"><div class="k">格式</div><div class="v">WAV</div></div>
+            <div class="stat-cell"><div class="k">时长</div><div class="v">00:24</div></div>
+          </div>
+
+          <div class="card pad" style="margin:10px 16px 0;padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:13px">
+              <div class="playbtn" style="width:48px;height:48px"><svg width="19" height="19" style="display:block"><use href="#i-pause"/></svg></div>
+              <div style="flex:none">
+                <div style="font-size:15px;font-family:var(--mono);font-weight:650">00:08</div>
+                <div style="font-size:12px;font-family:var(--mono);color:var(--text-3)">00:24</div>
+              </div>
+              <div class="sp"></div>
+              <div style="display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:11.5px">
+                <span class="badge-dot" style="background:var(--success)"></span>正在播放</div>
+            </div>
+            <div style="display:flex;margin-top:10px"><div class="mini-bars">
+              <s class="done" style="height:40%"></s><s class="done" style="height:66%"></s><s class="done" style="height:30%"></s>
+              <s class="done" style="height:78%"></s><s class="done" style="height:52%"></s><s class="done" style="height:90%"></s>
+              <s class="done" style="height:44%"></s><s class="done" style="height:70%"></s><s class="done" style="height:34%"></s>
+              <s class="done" style="height:60%"></s><s class="done" style="height:82%"></s><s class="done" style="height:38%"></s>
+              <s style="height:56%"></s><s style="height:74%"></s><s style="height:42%"></s><s style="height:64%"></s>
+              <s style="height:32%"></s><s style="height:80%"></s><s style="height:46%"></s><s style="height:58%"></s>
+              <s style="height:36%"></s><s style="height:68%"></s><s style="height:50%"></s><s style="height:28%"></s>
+              <s style="height:72%"></s><s style="height:40%"></s><s style="height:62%"></s><s style="height:34%"></s>
+              <s style="height:76%"></s><s style="height:48%"></s><s style="height:54%"></s>
+            </div><div class="playhead" style="margin-left:-1px"></div></div>
+          </div>
+
+          <div class="dlg-gridbox">
+            <div class="dlg-cap"><span>本次共接收 90 格</span><span>1 格 ≈ 4.6 KB</span></div>
+            <div data-grid="18x5" data-lit="18,18,18,18,18" data-hot-row="-1"></div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="color:var(--credit-b)"><svg width="14" height="14" style="display:block"><use href="#i-diamond"/></svg></span>
+              <span style="font-size:12px;color:var(--text-3)">本次消耗积分</span>
+              <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--credit-b)">−2.40</span>
+            </div>
+            <span style="font-size:11.5px;font-family:var(--mono);color:var(--text-3)">剩余 1,277.60</span>
+          </div>
+
+          <div class="dlg-foot">
+            <span class="btn sec ghost" style="flex:0 0 50px;padding:0"><svg width="17" height="17" style="display:block"><use href="#i-share"/></svg></span>
+            <span class="btn sec" style="flex:1"><svg width="15" height="15" style="display:block"><use href="#i-export"/></svg>导出</span>
+            <span class="btn pri" style="flex:1.25">完成</span>
+          </div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>接收弹窗 · 完成态<em>同一个弹窗原地切换：顶部渐变条转<b>紫 → 薄荷</b>、图标换成勾选、标题改「音频生成完成」。内容保持同一密度——名称可编辑行 + 四宫格 + 播放器（波形可点拖定位）+ 铺满的接收网格 + 计费行 + 分享 / 导出 / 完成。<br><b>没有「再次生成」</b>，与 macOS 一致：重生成要回工作台再点一次。<br>iOS 差异：分享 = <code>UIActivityViewController</code>，导出 = <code>fileExporter</code>（替代 macOS 的 NSSavePanel + Finder 定位），点「完成」才把名称写进 SQLite。</em></figcaption>
+    </figure>
+
+    <!-- C 后台接收 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"></div><div class="title">项目</div>
+        <div class="side r" style="gap:14px"><span style="color:var(--accent)"><svg width="20" height="20" style="display:block"><use href="#i-search"/></svg></span><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+      <div class="scroll" style="position:relative">
+        <div class="floatbar">
+          <span class="pulse-dot"></span>
+          <div style="flex:1">
+            <div style="font-size:14.5px;font-family:var(--mono);font-weight:650">128.4 KB<span style="font-size:11px;color:var(--text-3);font-weight:400"> 已接收</span></div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-top:1px">正在接收 · 00:07</div>
+          </div>
+          <span style="color:var(--accent);font-size:13px;font-weight:600;display:flex;align-items:center;gap:3px">查看<svg width="12" height="12" style="display:block"><use href="#i-chev"/></svg></span>
+          <div class="sweep"></div>
+        </div>
+        <div class="group-title" style="margin:16px 0 8px"></div>
+        <div class="rows">
+          <div class="roww"><div class="avatar" style="width:44px;height:44px;font-size:18px">心</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">今天真是个好日子，我们终于见面了…</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安灵心 · 00:24 · 412 KB</div></div>
+            <span class="badge-dot" style="background:var(--success)"></span></div>
+          <div class="roww"><div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#5BC8FF,#2E7BE0)">风</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">各位听众晚上好，欢迎收听…</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安鲁风 · 01:12 · 1.2 MB</div></div></div>
+          <div class="roww"><div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#C77DFF,#7A3FF2)">芷</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">别忘了给自己留一点时间。</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙柏清芷 · 00:09 · 158 KB</div></div></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>后台接收条（跨页面）<em>Sheet 被下拉关闭后任务继续跑，顶部浮条替代 macOS 锚定区块的 236pt 卡片；点「查看」回到同一个居中弹窗（不重开任务，也不重新初始化不稳定 TGFlow）。<b>iOS 差异</b>：hover 放大/描边变深改为按压反馈；任务完成时会由完成信号自动召回 Sheet。</em></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ 4. 音色库 ============ -->
+<section class="screen" data-label="音色库">
+  <div class="screen-head">
+    <h2>音色库</h2>
+    <p>分类体系<b>完全照 Swift 源码</b>（<code>Models/Voice.swift</code> 的 <code>VoiceCategory</code> / <code>VoiceCategoryDimension</code>）：<b>29 个分类 case</b>，按 5 个维度分组 —— 旗舰（1）/ 语言（2）/ 适用场景（17）/ 角色（4）/ 年龄阶段（5）；再加上视图层单独渲染的「收藏」「全部」，一共 <b>31 项</b>。<br><br>
+      macOS 把这 31 项排成两行 FlowLayout（横向约 1400pt），iPhone 只有 371pt，横滚两行既看不全也不好点，所以 iOS <b>取消横向 chip 模块</b>，改成一个<b>分类按钮</b>：默认显示「全部分类 · 599」，点一下弹出全部分类 Sheet。<br><br>
+      <b>选中结果必须回显在两个地方</b>：① 音色库列表的按钮变成所选分类本身（图标换成该分类 emoji + 名称 + 命中数 + ✕）；② 再次打开 Sheet 时，上次所选的那一整行右侧打 ✓、底色转强调，顶部还有一条「当前选择」吸顶条可一键清除 —— <b>来回进出 Sheet 不会丢选择</b>。<br><br>
+      以下 7 条交互规则全部来自源码，iOS 不改语义：① 分类是<b>单选</b>——<code>selectCategory</code> 互斥，选中新项即取消旧项，再点一次同一个才回「全部」；② 分类与「仅收藏」互斥（选分类会清收藏筛选，反之亦然）；③ 每行数字恒为<b>全量统计</b>（<code>reloadChipCounts</code> 始终用空搜索词），不随搜索框输入变化；④ <b>搜索时忽略当前分类</b>，在全库范围内匹配；⑤ 搜索只命中 4 个字段（当前语言的音色名 / 特质描述 / 场景名 / 语种名）；⑥ 排序固定为「旗舰优先 → 展示名字典序」，<b>没有排序控件，也没有语速/音调范围滑杆</b>（<code>RangeSlider.swift</code> 是未挂载的孤儿文件）；⑦ macOS 分页 pageSize = 列数 × 4，iOS 改为上拉追加。</p>
+  </div>
+  <div class="stage">
+
+    <!-- A 列表：分类按钮态（未筛选） -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"></div><div class="title">音色库</div>
+        <div class="side r"><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+      <div class="scroll">
+        <div style="padding:2px 16px 10px">
+          <div class="searchbar"><svg width="15" height="15" style="display:block"><use href="#i-search"/></svg><span class="ph">搜索音色名 / 特质 / 场景 / 语种</span></div>
+        </div>
+        <div class="filtbar">
+          <div class="filtbtn">
+            <span style="display:flex;color:var(--text-2);flex:none"><svg width="17" height="17" style="display:block"><use href="#i-list"/></svg></span>
+            <span class="lb">全部分类</span>
+            <span class="num">599</span>
+            <span class="chev"><svg width="14" height="14" style="display:block"><use href="#i-chev-d"/></svg></span>
+          </div>
+          <div class="favbtn"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg>12</div>
+        </div>
+        <div class="resultbar">
+          <span class="res-cnt">共 599 个 · 旗舰优先，再按名称排序</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px">
+          <!-- card 1 试听中 -->
+          <div style="background:var(--surface);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:12px;padding:12px;box-shadow:0 6px 16px var(--accent-soft)">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px">心</div>
+              <div class="sp"></div>
+              <span class="badge-star" style="font-size:10px">⭐ 旗舰</span>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">龙安灵心</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:2px;height:28px;line-height:1.35">温柔知性的女声，适合有声阅读</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">25 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">女</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent)"><svg width="12" height="12" style="display:block"><use href="#i-pause"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent)"><svg width="13" height="13" style="display:block"><use href="#i-heart-f"/></svg></span>
+              <span style="display:flex;align-items:flex-end;gap:2px;height:14px">
+                <s style="display:block;width:2px;height:8px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .1s infinite"></s>
+                <s style="display:block;width:2px;height:14px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .2s infinite"></s>
+                <s style="display:block;width:2px;height:6px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .3s infinite"></s>
+                <s style="display:block;width:2px;height:12px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .4s infinite"></s>
+              </span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+          <!-- card 2 -->
+          <div style="background:var(--surface);border:.5px solid var(--line);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px;background:linear-gradient(145deg,#74B9FF,#3B74D9)">风</div>
+              <div class="sp"></div>
+              <div class="rt" style="text-align:right;font-size:11px;color:var(--text-2);height:30px;line-height:1.35">沉稳磁性的男声，适合新闻播报</div>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">龙安鲁风</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;height:28px;line-height:1.35">低沉有力 · 中年成熟</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">42 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">男</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="12" height="12" style="display:block"><use href="#i-play"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+          <!-- card 3 -->
+          <div style="background:var(--surface);border:.5px solid var(--line);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px;background:linear-gradient(145deg,#FF8FC5,#E23C86)">童</div>
+              <div class="sp"></div>
+              <div class="rt" style="text-align:right;font-size:11px;color:var(--text-2);height:30px;line-height:1.35">稚气可爱的童声</div>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">龙小童</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;height:28px;line-height:1.35">活泼稚嫩 · 动画配音</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">8 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">女</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="12" height="12" style="display:block"><use href="#i-play"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+          <!-- card 4 -->
+          <div style="background:var(--surface);border:.5px solid var(--line);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px;background:linear-gradient(145deg,#5FE0C0,#12A88C)">A</div>
+              <div class="sp"></div>
+              <div class="rt" style="text-align:right;font-size:11px;color:var(--text-2);height:30px;line-height:1.35">Clear and warm English female</div>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">Ada</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;height:28px;line-height:1.35">标准美式发音 · 助手音色</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">29 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">女</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="12" height="12" style="display:block"><use href="#i-play"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:20px 0 8px;color:var(--text-3);font-size:12px">
+          <span style="width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2);border-top-color:var(--accent);display:inline-block"></span>
+          上拉加载更多
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>音色库 · 列表（未筛选）<em><b>横向 chip 模块已整体删除</b>，搜索框下方只剩一行：<b>分类按钮（占据主宽度）</b>+ <b>收藏按钮</b>。未筛选时按钮文案为「全部分类 · 599」，图标是中性列表图标；点按钮任意位置 → 弹出全部分类 Sheet。<br>右侧「♥ 12」对应源码的 <code>toggleFavoritesFilter</code>，与所选分类互斥（开收藏会清分类，选分类会关收藏）。<br>卡片字段照 <code>VoiceCard</code>：头像末字 / 旗舰徽章 / 名称 / 「年龄 + 性别」meta / 2 行特质 / 试听 / 收藏 / 使用；第一张卡是<b>试听中</b>（播放键与波形转强调色）。注：源码的 <code>sceneTag</code> 写了但没有挂载，卡上不显示场景。</em></figcaption>
+    </figure>
+
+    <!-- B 分类 Sheet：默认（全部音色打勾） -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:66px">
+        <div class="grabber"></div>
+        <div class="sheet-nav" style="height:42px">
+          <span style="color:var(--text-3);font-size:16px">重置</span>
+          <span class="t" style="font-size:16.5px">全部分类</span>
+          <span style="color:var(--accent);font-weight:650;font-size:16px">完成</span>
+        </div>
+        <div class="sheet-body" style="overflow:hidden">
+
+          <div class="group-title" style="margin-top:6px">视图级筛选</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww sel"><span class="nm">全部音色</span><span class="val">599</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span style="color:var(--accent);display:flex"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span><span class="nm">仅看收藏</span><span class="val">12</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">旗舰</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">⭐ 旗舰音色</span><span class="val">2</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">语言</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">🌐 中文</span><span class="val">591</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🌍 英文</span><span class="val">8</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">适用场景</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">💬 日常对话</span><span class="val">316</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">💝 情感陪伴</span><span class="val">145</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎧 客服</span><span class="val">18</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📖 有声阅读</span><span class="val">18</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎈 社交互动</span><span class="val">17</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎌 动漫配音</span><span class="val">16</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📰 新闻播报</span><span class="val">12</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🛒 电商直播</span><span class="val">12</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🏯 古风有声书</span><span class="val">10</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🏆 体育解说</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📚 有声书配音</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🌙 深夜电台</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">💡 知识分享</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">😄 娱乐搞笑</span><span class="val">4</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">💼 商务汇报</span><span class="val">1</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🤖 智能助手</span><span class="val">1</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎤 演讲朗诵</span><span class="val">1</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">角色</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">🦸 动漫角色</span><span class="val">16</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📡 直播角色</span><span class="val">12</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👘 古风角色</span><span class="val">10</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎙️ 电台角色</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">年龄阶段</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">👶 儿童</span><span class="val">63</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🧒 青少年</span><span class="val">14</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🧑 青年</span><span class="val">467</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👨 中年</span><span class="val">49</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👴 老年</span><span class="val">6</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>全部分类 Sheet · 默认态<em>从未筛选状态进入时，<b>「全部音色」这一行本身就带 ✓ 并转为强调底色</b>（和 macOS chip 的选中态语义一致），右侧数量是榜单全量统计。<br>每行高度 44、右侧行尾永远预留 17pt 的勾号位（未选中时透明度 0），避免打勾时文字横向跳动。Sheet 用 medium detent 起步、可上拉到 large；下拉即关闭，<b>关闭不取消选择</b>，只有「重置」才清空。</em></figcaption>
+    </figure>
+
+    <!-- C 分类 Sheet：记住上次的选择 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:66px">
+        <div class="grabber"></div>
+        <div class="sheet-nav" style="height:42px">
+          <span style="color:var(--accent);font-size:16px">重置</span>
+          <span class="t" style="font-size:16.5px">全部分类</span>
+          <span style="color:var(--accent);font-weight:650;font-size:16px">完成</span>
+        </div>
+        <div class="sheet-body" style="overflow:hidden">
+          <!-- 吸顶：当前选择 -->
+          <div class="selbar">
+            <span style="display:flex;color:var(--accent);flex:none"><svg width="15" height="15" style="display:block"><use href="#i-check-circle"/></svg></span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">当前选择 · <b>💝 情感陪伴</b> · 145 个</span>
+            <span class="selbar-x"><svg width="12" height="12" style="display:block"><use href="#i-x"/></svg></span>
+          </div>
+          <!-- 已被滚动：上方还剩 视图级筛选 / 旗舰 / 语言 三组，此为「语言」组的尾部 -->
+          <div class="tail-clip">
+            <div class="rows" style="margin:0;transform:translateY(-46px)">
+              <div class="roww"><span class="nm">🌐 中文</span><span class="val">591</span>
+                <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+              <div class="roww"><span class="nm">🌍 英文</span><span class="val">8</span>
+                <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            </div>
+          </div>
+
+          <div class="group-title">适用场景</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">💬 日常对话</span><span class="val">316</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww sel flash"><span class="nm">💝 情感陪伴</span><span class="val">145</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎧 客服</span><span class="val">18</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📖 有声阅读</span><span class="val">18</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎈 社交互动</span><span class="val">17</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎌 动漫配音</span><span class="val">16</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">角色</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">🦸 动漫角色</span><span class="val">16</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">📡 直播角色</span><span class="val">12</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👘 古风角色</span><span class="val">10</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🎙️ 电台角色</span><span class="val">7</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+          <div class="group-title">年龄阶段</div>
+          <div class="rows" style="margin:0 16px">
+            <div class="roww"><span class="nm">👶 儿童</span><span class="val">63</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🧒 青少年</span><span class="val">14</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">🧑 青年</span><span class="val">467</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👨 中年</span><span class="val">49</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+            <div class="roww"><span class="nm">👴 老年</span><span class="val">6</span>
+              <span class="tick"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>全部分类 Sheet · 回显上次选择<em>带着「💝 情感陪伴」再次打开 Sheet 时，<b>三处同时告知当前选择</b>：① 顶部<b>吸顶条</b>「当前选择 · 情感陪伴 · 145 个」，右侧 ✕ 一键清除并回到全部；② Sheet <b>自动滚动</b>到该项（图中已经滚动，上方还剩「视图级筛选 / 旗舰 / 语言」三组，列表头露出一角即表示上面还有内容）；③ 该行右侧 <b>✓ + 强调底色</b>，首次出现时高亮闪一下 0.4s。<br>单选互斥：点「🧑 青年」会立刻清掉情感陪伴的 ✓，不需要先取消。已选项不与折叠/搜索冲突 —— 数字恒为全量统计。</em></figcaption>
+    </figure>
+
+    <!-- D 选中分类后的列表：按钮回显 + 一键清除 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"></div><div class="title">音色库</div>
+        <div class="side r"><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span></div>
+      </div>
+      <div class="scroll">
+        <div style="padding:2px 16px 10px">
+          <div class="searchbar"><svg width="15" height="15" style="display:block"><use href="#i-search"/></svg><span class="ph">搜索音色名 / 特质 / 场景 / 语种</span></div>
+        </div>
+        <div class="filtbar">
+          <div class="filtbtn on">
+            <span style="font-size:15px;flex:none;line-height:1">💝</span>
+            <span class="lb">情感陪伴</span>
+            <span class="num">145</span>
+            <span class="clr"><svg width="11" height="11" style="display:block"><use href="#i-x"/></svg></span>
+            <span class="chev"><svg width="14" height="14" style="display:block"><use href="#i-chev-d"/></svg></span>
+          </div>
+          <div class="favbtn"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg>12</div>
+        </div>
+        <div class="resultbar">
+          <span class="res-sel"><svg width="12" height="12" style="display:block"><use href="#i-check"/></svg>情感陪伴 · 145 个</span>
+          <span class="res-cnt">点 ✕ 取消筛选</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px">
+          <div style="background:var(--surface);border:.5px solid var(--line);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px">心</div>
+              <div class="sp"></div>
+              <span class="badge-star" style="font-size:10px">⭐ 旗舰</span>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">龙安灵心</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:2px;height:28px;line-height:1.35">温柔知性的女声，适合有声阅读</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">25 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">女</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="12" height="12" style="display:block"><use href="#i-play"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+          <div style="background:var(--surface);border:.5px solid var(--line);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px;background:linear-gradient(145deg,#FF8FC5,#E23C86)">柔</div>
+              <div class="sp"></div>
+              <div class="rt" style="text-align:right;font-size:11px;color:var(--text-2);height:30px;line-height:1.35">甜美轻柔，适合情感陪伴场景</div>
+            </div>
+            <div style="font-size:14.5px;font-weight:650;margin-top:9px">龙柔</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;height:28px;line-height:1.35">甜腻轻柔 · 情感陪伴</div>
+            <div style="display:flex;gap:6px;margin-top:7px">
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">24 岁</span>
+              <span class="meta-line" style="font-size:10px;background:var(--surface-3);padding:1px 5px;border-radius:4px">女</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="12" height="12" style="display:block"><use href="#i-play"/></svg></span>
+              <span style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:.5px solid var(--line-2);color:var(--text-2)"><svg width="13" height="13" style="display:block"><use href="#i-heart"/></svg></span>
+              <span class="sp"></span>
+              <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--grad-cta);color:var(--cta-fg)"><svg width="15" height="15" style="display:block"><use href="#i-arrow-rc"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:20px 0 8px;color:var(--text-3);font-size:12px">
+          <span style="width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2);border-top-color:var(--accent);display:inline-block"></span>
+          上拉加载更多 · 已显示 20 / 145
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>选中分类后的列表<em>按钮本身变成所选分类：<b>emoji + 名称 + 命中数</b>，整体转强调底色并长出 ✕ —— 不用另起一行 banner，筛选状态一眼可见。<br>✕ = 源码里「再点一次同一个 chip 取消」，一次性回到全部；点按钮其他区域仍是打开 Sheet 换分类。<br>结果行的数字<b>不随搜索变化</b>（<code>reloadChipCounts</code> 恒用空搜索词做全量统计）；而<b>搜索时会忽略当前分类</b>（<code>reloadCurrentPage</code> 里 <code>isSearching</code> 把 category 置 nil），在全库 599 个里匹配名称 / 特质 / 场景名 / 语种名 四项。</em></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ 5. 项目与播放 ============ -->
+<section class="screen" data-label="项目与播放">
+  <div class="screen-head">
+    <h2>我的项目 → 播放详情</h2>
+    <p>macOS 是「左 340pt 列表 + 右详细信息」两栏同屏；iOS 改为 push 导航栈，列表页用 <code>.searchable</code>，点任意行「选中即播放」并 push 详情。右键 popover 菜单（批量操作 / 编辑名称 / 导出 / 复制 / 删除）改为<b>左滑 Swipe Actions</b> + 右上角「选择」进入多选；底部状态栏的<b>快捷键键帽全部移除</b>，只保留播放状态。</p>
+  </div>
+  <div class="stage">
+
+    <!-- A 列表 + 滑动操作 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="side r" style="gap:14px"><span style="color:var(--accent);display:flex"><svg width="20" height="20" style="display:block"><use href="#i-gear"/></svg></span><span style="color:var(--accent);font-size:16px;font-weight:600">选择</span></div>
+      </div>
+      <div class="largetitle" style="padding-top:0">项目</div>
+      <div class="scroll">
+        <div style="padding:0 16px 8px">
+          <div class="searchbar"><svg width="15" height="15" style="display:block"><use href="#i-search"/></svg><span class="ph">搜索音频名称</span></div>
+        </div>
+        <div class="rows" style="margin:0 12px">
+          <div class="roww" style="padding:10px 12px;background:var(--surface-2)">
+            <div class="avatar" style="width:44px;height:44px;font-size:18px">心</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">今天真是个好日子，我们终于见面了…</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安灵心 · 00:24 · 412 KB</div></div>
+            <span style="display:flex;align-items:flex-end;gap:2px;height:14px">
+              <s style="display:block;width:2px;height:8px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .05s infinite"></s>
+              <s style="display:block;width:2px;height:13px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .15s infinite"></s>
+              <s style="display:block;width:2px;height:6px;background:var(--accent);border-radius:1px;text-decoration:none;animation:breathe 1s .25s infinite"></s>
+            </span>
+          </div>
+          <!-- swipe-open row -->
+          <div style="position:relative;overflow:hidden;border-radius:8px;margin:4px 0">
+            <div style="position:absolute;inset:0;display:flex;justify-content:flex-end">
+              <span style="width:70px;background:var(--success);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px"><svg width="16" height="16" style="display:block"><use href="#i-pencil"/></svg>重命名</span>
+              <span style="width:70px;background:var(--info);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px"><svg width="16" height="16" style="display:block"><use href="#i-copy"/></svg>复制</span>
+              <span style="width:70px;background:var(--danger);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px"><svg width="16" height="16" style="display:block"><use href="#i-trash"/></svg>删除</span>
+            </div>
+            <div class="roww" style="padding:10px 12px;background:var(--surface);transform:translateX(-210px)">
+              <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#74B9FF,#3B74D9)">风</div>
+              <div class="rt"><div class="t1" style="font-size:15.5px">各位听众晚上好，欢迎收听…</div>
+                <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安鲁风 · 01:12 · 1.2 MB</div></div>
+            </div>
+          </div>
+          <div class="roww" style="padding:10px 12px">
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#FF8FC5,#E23C86)">芷</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">别忘了给自己留一点时间。</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙柏清芷 · 00:09 · 158 KB</div></div>
+          </div>
+          <div class="roww" style="padding:10px 12px">
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#FFC7A8,#E2703C)">欢</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">新品上线啦，快来抢先体验！</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安欢语 · 00:31 · 540 KB</div></div>
+          </div>
+          <div class="roww" style="padding:10px 12px">
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#5FE0C0,#12A88C)">A</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">Welcome to EmotionVoice.</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">Ada · 00:18 · 320 KB</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:18px 0;color:var(--text-3);font-size:12px">
+          <span style="width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2);border-top-color:var(--accent);display:inline-block"></span>加载中…
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>项目列表 · 播放中 + 左滑操作<em>第一行是<b>正在播放</b>行（头像波形动 + 底色抬高）。macOS 靠 hover 才出现的「更多」popover，iOS 改为左滑：重命名 / 复制 / 删除（删除为红色 destructive）。搜索命中范围仍是本地已加载数据，与 macOS 一致。</em></figcaption>
+    </figure>
+
+    <!-- B 多选 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"></div>
+        <div class="side r"><span style="color:var(--accent);font-size:16px;font-weight:650">完成</span></div>
+      </div>
+      <div class="largetitle" style="padding-top:0">项目</div>
+      <div class="scroll">
+        <div style="padding:0 16px 8px"><div class="searchbar"><svg width="15" height="15" style="display:block"><use href="#i-search"/></svg><span class="ph">搜索音频名称</span></div></div>
+        <div class="rows" style="margin:0 12px">
+          <div class="roww" style="padding:10px 12px">
+            <span style="width:23px;height:23px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--cta-fg)"><svg width="14" height="14" style="display:block"><use href="#i-check"/></svg></span>
+            <div class="avatar" style="width:44px;height:44px;font-size:18px">心</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">今天真是个好日子，我们终于见面了…</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安灵心 · 00:24 · 412 KB</div></div>
+          </div>
+          <div class="roww" style="padding:10px 12px;background:var(--surface-2)">
+            <span style="width:23px;height:23px;border-radius:50%;border:1.5px solid var(--line-2)"></span>
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#74B9FF,#3B74D9)">风</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">各位听众晚上好，欢迎收听…</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安鲁风 · 01:12 · 1.2 MB</div></div>
+          </div>
+          <div class="roww" style="padding:10px 12px">
+            <span style="width:23px;height:23px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--cta-fg)"><svg width="14" height="14" style="display:block"><use href="#i-check"/></svg></span>
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#FF8FC5,#E23C86)">芷</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">别忘了给自己留一点时间。</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙柏清芷 · 00:09 · 158 KB</div></div>
+          </div>
+          <div class="roww" style="padding:10px 12px">
+            <span style="width:23px;height:23px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--cta-fg)"><svg width="14" height="14" style="display:block"><use href="#i-check"/></svg></span>
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;background:linear-gradient(145deg,#FFC7A8,#E2703C)">欢</div>
+            <div class="rt"><div class="t1" style="font-size:15.5px">新品上线啦，快来抢先体验！</div>
+              <div class="meta-line" style="font-size:11.5px;margin-top:3px">龙安欢语 · 00:31 · 540 KB</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bar" style="padding:8px 16px 10px;display:flex;align-items:center;gap:14px">
+        <span style="background:var(--accent);color:var(--cta-fg);font-family:var(--mono);font-weight:700;font-size:13px;padding:4px 9px;border-radius:var(--r-full)">3</span>
+        <span style="font-size:13px;color:var(--text-2)">已选择</span>
+        <span class="sp"></span>
+        <span style="font-size:14.5px;color:var(--accent);font-weight:600">全选</span>
+        <span style="width:1px;height:22px;background:var(--line-2)"></span>
+        <span style="color:var(--accent)"><svg width="19" height="19" style="display:block"><use href="#i-share"/></svg></span>
+        <span style="color:var(--danger)"><svg width="19" height="19" style="display:block"><use href="#i-trash"/></svg></span>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>项目 · 多选模式<em>入口从 macOS 菜单里的「批量操作」搬到导航栏「选择」；底部工具条用 safeAreaInset 挂在标签栏之上：已选数量胶囊 + 全选 / 取消全选 / 分享（UIActivityViewController）/ 批量删除。删除未选时与 macOS 一样置灰禁用。</em></figcaption>
+    </figure>
+
+    <!-- C 播放详情 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"><span style="color:var(--accent);display:flex;align-items:center;gap:4px"><svg width="19" height="19" style="display:block"><use href="#i-back-arrow"/></svg>项目</span></div>
+        <div class="title" style="font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px">今天真是个好日子…</div>
+        <div class="side r"><span style="color:var(--accent)"><svg width="19" height="19" style="display:block"><use href="#i-share"/></svg></span></div>
+      </div>
+      <div class="scroll">
+        <div class="card pad" style="margin:12px 16px 0;padding:14px 16px 10px">
+          <div class="bars" data-bars="44" data-progress="0.34"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px">
+            <span style="font-size:13px;font-family:var(--mono);color:var(--text-2)">00:08</span>
+            <span style="font-size:13px;font-family:var(--mono);color:var(--text-3)">−00:16</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:22px;padding:16px 16px 4px">
+          <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text-2)"><svg width="30" height="30" style="display:block"><use href="#i-back"/></svg></span>
+          <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text-2)"><svg width="24" height="24" style="display:block"><use href="#i-back"/></svg></span>
+          <span class="playbtn" style="width:64px;height:64px"><svg width="26" height="26" style="display:block"><use href="#i-pause"/></svg></span>
+          <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text-2);transform:scaleX(-1)"><svg width="24" height="24" style="display:block"><use href="#i-back"/></svg></span>
+          <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text-2);transform:scaleX(-1)"><svg width="30" height="30" style="display:block"><use href="#i-back"/></svg></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px 0">
+          <span class="pill-btn" style="height:34px"><svg width="13" height="13" style="display:block;color:var(--accent)"><use href="#i-speed"/></svg><span style="color:var(--accent);font-family:var(--mono);font-weight:650">1x</span><svg width="10" height="10" style="display:block;color:var(--accent)"><use href="#i-chev-d"/></svg></span>
+          <span class="sp"></span>
+          <span style="font-size:12px;color:var(--text-3)">剩余约 00:16</span>
+          <span class="sp"></span>
+          <span class="pill-btn" style="height:34px"><svg width="13" height="13" style="display:block"><use href="#i-restart"/></svg><span style="font-size:12.5px">从头播放</span></span>
+        </div>
+        <div class="card pad" style="margin:14px 16px 0;padding:6px 4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr">
+            <div style="padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:5px;color:var(--text-3);font-size:11px"><svg width="12" height="12" style="display:block"><use href="#i-clock"/></svg>时长</div>
+              <div style="font-size:16px;font-family:var(--mono);font-weight:650;margin-top:3px">00:24</div></div>
+            <div style="padding:10px 16px;border-left:.5px solid var(--line)">
+              <div style="display:flex;align-items:center;gap:5px;color:var(--text-3);font-size:11px"><svg width="12" height="12" style="display:block"><use href="#i-wave"/></svg>格式</div>
+              <div style="font-size:16px;font-family:var(--mono);font-weight:650;margin-top:3px">WAV</div></div>
+            <div style="padding:10px 16px;border-top:.5px solid var(--line)">
+              <div style="display:flex;align-items:center;gap:5px;color:var(--text-3);font-size:11px"><svg width="12" height="12" style="display:block"><use href="#i-diamond"/></svg>积分</div>
+              <div style="font-size:16px;font-family:var(--mono);font-weight:650;margin-top:3px">2.40</div></div>
+            <div style="padding:10px 16px;border-top:.5px solid var(--line);border-left:.5px solid var(--line)">
+              <div style="display:flex;align-items:center;gap:5px;color:var(--text-3);font-size:11px"><svg width="12" height="12" style="display:block"><use href="#i-personwave"/></svg>音色</div>
+              <div style="font-size:16px;font-family:var(--mono);font-weight:650;margin-top:3px">龙安灵心</div></div>
+          </div>
+        </div>
+        <div class="card pad" style="margin:12px 16px 0;padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="meta-line" style="font-size:11.5px">128 字 · 6 句</span>
+            <span class="pill-btn" style="padding:5px 10px;font-size:12px"><svg width="12" height="12" style="display:block"><use href="#i-copy"/></svg>复制</span>
+          </div>
+          <div style="font-size:14.5px;line-height:1.62;color:var(--text-1);margin-top:10px">
+            今天真是个好日子，我们终于见面了。我真的好开心啊！接下来的内容回到默认语气，不带任何情绪基调。可是我、我又有点紧张……
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 20px 0;color:var(--text-2);font-size:12px">
+          <span class="badge-dot" style="background:var(--success)"></span>正在播放 · 1x
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>播放详情（Push）<em>波形整卡可点击/拖动定位（44pt 触摸高度）；右侧时间可点切换「总时长 ⇄ −剩余」。macOS 的四列 meta 条在 iPhone 上折成 2×2；底部状态栏去掉三组键帽提示，只留播放状态；倍速菜单 0.5–2x 六档保留。</em></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ 6. 设置与账户 ============ -->
+<section class="screen" data-label="设置与账户">
+  <div class="screen-head">
+    <h2>设置与账户（原「我的 / 积分中心」并入）</h2>
+    <p>标签栏<b>只保留 3 个主任务</b>——创作 / 音色库 / 项目；macOS 的「积分中心」不再单独占一个标签，而是整块<b>搬进设置页</b>，<b>设置入口 = 三个标签导航栏右上角的齿轮</b>（push 进当前标签的导航栈，返回键回到该标签）。<br><br>
+      设置页顶部就是<b>购买入口</b>：一张账户卡（当前余额 + 永久有效 + 计费规则 + 「购买积分」主按钮），点卡上的按钮直接弹出购买 Sheet；下面一行是<b>「积分记录 · 128 条 ›」</b>，点进去是独立的二级列表页。<br><br>
+      按你的要求，macOS 设置里的<b>主题 / 语言 / 导出目录 / 自动清理缓存 / 设备标识 五组全部删除</b>（iOS 的外观与语言由系统设置接管，导出走分享面板没有常驻目录，缓存交给系统，设备标识随 Keychain 走），设置页只留：<b>账户（购买 + 记录）· 语音合成（默认格式 / 采样率）· 关于（版本）</b>。<br><br>
+      计费规则与 macOS 完全一致：<b>2 积分 / 100 字符</b>（中日韩按 2 字符、英文数字标点按 1 字符计），余额与流水一律 Double、最多 2 位小数，无起扣门槛。原 macOS 的分页条改为 iOS 的<b>上拉追加</b>。</p>
+  </div>
+  <div class="stage">
+
+    <!-- A 设置主页 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"><span style="color:var(--accent);display:flex;align-items:center;gap:3px"><svg width="19" height="19" style="display:block"><use href="#i-back-arrow"/></svg>项目</span></div>
+        <div class="title">设置</div>
+        <div class="side"></div>
+      </div>
+      <div class="scroll">
+        <!-- 顶部：购买入口 -->
+        <div style="margin:14px 16px 18px;background:var(--surface);border:.5px solid var(--line);border-radius:var(--r-xl);padding:20px 18px 18px;position:relative;overflow:hidden">
+          <div style="position:absolute;right:-76px;top:-76px;width:216px;height:216px;border-radius:50%;
+            background:radial-gradient(circle, var(--accent-soft) 0%, transparent 68%)"></div>
+          <div style="display:flex;align-items:center;gap:8px;position:relative">
+            <span style="font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);font-weight:650">当前余额</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-2)">
+              <span class="badge-dot" style="background:var(--success)"></span>永久有效</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-top:6px;position:relative">
+            <span style="font-size:46px;font-weight:750;font-family:var(--mono);letter-spacing:-1.8px;color:var(--accent)">1,280.00</span>
+            <span style="font-size:19px;font-weight:600;color:var(--text-2)">积分</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:8px;position:relative;font-size:12px;color:var(--text-3)">
+            <svg width="12" height="12" style="display:block"><use href="#i-info"/></svg>2 积分 / 100 字符 · 中日韩按 2 字符计
+          </div>
+          <div class="btn pri" style="height:42px;margin-top:14px;width:100%;font-size:15.5px;position:relative">
+            <svg width="15" height="15" style="display:block"><use href="#i-diamond"/></svg>购买积分</div>
+        </div>
+
+        <div class="rows" style="margin:0 16px">
+          <div class="roww">
+            <span class="lead" style="background:linear-gradient(145deg,#FFB457,#F2703A)"><svg width="15" height="15" style="display:block"><use href="#i-clock"/></svg></span>
+            <span style="font-size:16px;flex:1">积分记录</span>
+            <span style="font-size:16px;color:var(--text-3);font-family:var(--mono)">128 条</span>
+            <span class="chev"><svg width="15" height="15" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+        </div>
+
+        <div class="group-title" style="margin-top:22px">语音合成</div>
+        <div class="rows">
+          <div class="roww">
+            <span class="lead" style="background:linear-gradient(145deg,#FFB457,#F2703A)"><svg width="15" height="15" style="display:block"><use href="#i-doc"/></svg></span>
+            <span style="font-size:16px;flex:1">默认格式</span>
+            <span style="font-size:16px;color:var(--text-3);font-family:var(--mono)">WAV</span>
+            <span class="chev"><svg width="15" height="15" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+          <div class="roww">
+            <span class="lead" style="background:linear-gradient(145deg,#74B9FF,#3B74D9)"><svg width="15" height="15" style="display:block"><use href="#i-wave"/></svg></span>
+            <span style="font-size:16px;flex:1">采样率</span>
+            <span style="font-size:16px;color:var(--text-3);font-family:var(--mono)">22.05 kHz</span>
+            <span class="chev"><svg width="15" height="15" style="display:block"><use href="#i-chev"/></svg></span>
+          </div>
+        </div>
+        <div style="padding:6px 32px 0;font-size:12px;color:var(--text-3);line-height:1.5">与工作台里的值双向同步，改动即写入 UserDefaults。</div>
+
+        <div class="group-title">关于</div>
+        <div class="rows">
+          <div class="roww"><span style="font-size:16px;flex:1">版本</span><span style="font-size:16px;color:var(--text-3);font-family:var(--mono)">1.0.0 (1)</span></div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>设置 · 主页（从齿轮 push）<em>顶部这张<b>账户卡就是购买入口</b>：余额数字沿用 macOS 的大字等宽（这里保留两位小数 1,280.00，与 <code>CreditManager</code> 的 Double 一致），下面「2 积分 / 100 字符」是 macOS 那个计费规则 popover 的常置版。<br>「购买积分」是整枚主按钮（135° 紫→玫瑰渐变），点它弹出购买 Sheet；旁边的手势：整张卡可点 = 同上。<br>中间单独一行是<b>「积分记录 · 128 条 ›」</b>，点击进入二级列表页。<br>已按需求删除：主题 / 语言 / 导出目录 / 自动清理缓存 / 设备标识。</em></figcaption>
+    </figure>
+
+    <!-- B 购买 Sheet（账户卡按钮唤起） -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:20px">
+        <div class="grabber"></div>
+        <div class="sheet-nav">
+          <span style="color:var(--text-3)"><svg width="19" height="19" style="display:block"><use href="#i-x"/></svg></span>
+          <span class="t">购买积分</span>
+          <span style="width:19px"></span>
+        </div>
+        <div class="sheet-body" style="overflow:hidden">
+          <div style="margin:10px 16px 16px;display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r-lg);
+            background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)">
+            <span style="width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)">
+              <svg width="22" height="22" style="display:block"><use href="#i-info"/></svg></span>
+            <div>
+              <div style="font-size:16px;font-weight:650;color:var(--warn)">积分不足</div>
+              <div style="font-size:12.5px;color:var(--text-2);margin-top:2px">当前余额 <span style="font-family:var(--mono);font-weight:700;color:var(--warn)">0.40</span> 积分</div>
+            </div>
+          </div>
+          <div style="padding:0 20px 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-weight:650">选择套餐</div>
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);border:.5px solid var(--line)">
+              <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,#57C08A 18%,transparent)">🌱</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14.5px;color:var(--accent);font-family:var(--mono);font-weight:650">60 积分 <span style="color:var(--text-3);font-family:var(--font);font-weight:400">· 适合尝鲜体验</span></div>
+                <div style="font-size:15px;font-weight:700;margin-top:2px">¥6</div>
+              </div>
+              <span class="btn sec" style="height:34px;padding:0 16px;font-size:13.5px;background:var(--surface-3)">购买</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 32%,transparent)">
+              <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,#F2A03D 22%,transparent)">⭐</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14.5px;color:var(--accent);font-family:var(--mono);font-weight:650">400 积分 <span style="color:var(--text-2);font-family:var(--font);font-weight:400">· 个人创作首选</span></div>
+                <div style="font-size:15px;font-weight:700;margin-top:2px">¥30</div>
+              </div>
+              <span class="btn pri" style="height:34px;padding:0 16px;font-size:13.5px">购买</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);border:.5px solid var(--line)">
+              <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,#FF7A6B 20%,transparent)">🔥</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14.5px;color:var(--accent);font-family:var(--mono);font-weight:650">900 积分 <span style="color:var(--text-3);font-family:var(--font);font-weight:400">· 高频使用推荐</span></div>
+                <div style="font-size:15px;font-weight:700;margin-top:2px">¥60</div>
+              </div>
+              <span class="btn sec" style="height:34px;padding:0 16px;font-size:13.5px;background:var(--surface-3)">购买</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);border:.5px solid var(--line)">
+              <span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,#918DF5 20%,transparent)">💎</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14.5px;color:var(--accent);font-family:var(--mono);font-weight:650">1500 积分 <span style="color:var(--text-3);font-family:var(--font);font-weight:400">· 专业创作者</span></div>
+                <div style="font-size:15px;font-weight:700;margin-top:2px">¥98</div>
+              </div>
+              <span class="btn sec" style="height:34px;padding:0 16px;font-size:13.5px;background:var(--surface-3)">购买</span>
+            </div>
+          </div>
+          <div style="padding:14px 20px 0;font-size:11.5px;color:var(--text-3);line-height:1.6">购买后积分永久有效，到账可能延迟；未到账时App 会在下次启动自动补发。</div>
+        </div>
+      </div>
+      <div class="home" style="bottom:8px"></div>
+    </div></div>
+    <figcaption>购买 Sheet（large detent）<em>两个入口共用同一张 Sheet：设置页顶部账户卡的「购买积分」按钮，以及<b>积分不足时从工作台「生成」直接弹出</b>；原「我的」页那排横向套餐卡（4 张 196pt）已取消，套餐统一收在这里。<br>购买流程沿用 StoreKit 2 的 <code>PurchaseAction</code>（必须带 UI 上下文，否则 iPhone 上会把确认弹窗挂不上窗口报成「用户取消」）。Toast 结果提示改为顶部浮层，成功 4s / 失败 8s 自动消失。</em></figcaption>
+    </figure>
+
+    <!-- C 积分记录 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"><span style="color:var(--accent);display:flex;align-items:center;gap:3px"><svg width="19" height="19" style="display:block"><use href="#i-back-arrow"/></svg>设置</span></div>
+        <div class="title">积分记录</div>
+        <div class="side"></div>
+      </div>
+      <div class="scroll">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;padding:6px 20px 8px">
+          <span style="font-size:12.5px;color:var(--text-3);font-family:var(--mono)">共 128 条</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text-3)">
+            <span style="font-family:var(--mono);color:var(--success);font-weight:650">+1,460.00</span>
+            <span style="color:var(--line-2)">/</span>
+            <span style="font-family:var(--mono);color:var(--danger);font-weight:650">−180.00</span></span>
+        </div>
+        <div class="rows" style="margin:0 16px">
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);font-size:14px;font-weight:700">↑</span>
+            <div class="rt"><div style="font-size:15px">购买 400 积分</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">2026/10/26 14:22</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--success)">+400.00</span>
+          </div>
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);font-size:14px;font-weight:700">↓</span>
+            <div class="rt"><div style="font-size:15px">龙安灵心</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">00:24 · 2026/10/26 11:08</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--danger)">−2.40</span>
+          </div>
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);font-size:14px;font-weight:700">↓</span>
+            <div class="rt"><div style="font-size:15px">龙安鲁风</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">01:12 · 2026/10/25 20:41</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--danger)">−7.20</span>
+          </div>
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);font-size:14px;font-weight:700">↓</span>
+            <div class="rt"><div style="font-size:15px">龙小童</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">00:38 · 2026/10/25 18:02</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--danger)">−3.80</span>
+          </div>
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);font-size:14px;font-weight:700">↑</span>
+            <div class="rt"><div style="font-size:15px">购买 60 积分</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">2026/10/24 09:17</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--success)">+60.00</span>
+          </div>
+          <div class="roww" style="padding:11px 14px">
+            <span style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);font-size:14px;font-weight:700">↑</span>
+            <div class="rt"><div style="font-size:15px">购买 1000 积分</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">2026/10/22 21:05</div></div>
+            <span style="font-size:15px;font-family:var(--mono);font-weight:650;color:var(--success)">+1000.00</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:18px 0 10px;color:var(--text-3);font-size:12px">
+          <span style="width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2);border-top-color:var(--accent);display:inline-block"></span>
+          上拉加载更多 · 已显示 6 / 128
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>积分记录 · 二级页<em>把 macOS 的 5 列表格（类型 / 详情 / 时长 / 积分 / 时间）拆成 iOS 两行行：左侧色圆 = 类型（绿 ↑ 充值 / 红 ↓ 消费，取自 <code>recordColor(for:)</code>），主标题 = 详情，副标题 = 时长 · 时间（仅消费记录有音频时长），右侧等于宽数字（绿 + / 红 −，保留两位小数）。<br>顶部一行「共 128 条」+ 累计充值 / 累计消耗，替代 macOS 右下角那组分页按钮，滚动到底自动追加下一页。</em></figcaption>
+    </figure>
+
+    <!-- D 二级选择页 -->
+    <figure class="frame">
+    <div class="phone"><div class="viewport">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span class="right"><span class="signal"><s></s><s></s><s></s><s></s></span><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg><div class="battery"><i></i></div></span></div>
+      <div class="bar navs">
+        <div class="side"><span style="color:var(--accent);display:flex;align-items:center;gap:3px"><svg width="19" height="19" style="display:block"><use href="#i-back-arrow"/></svg>设置</span></div>
+        <div class="title">采样率</div>
+        <div class="side"></div>
+      </div>
+      <div class="scroll">
+        <div class="group-title" style="margin-top:16px">音频质量</div>
+        <div class="rows">
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">8 kHz</div>
+              <div style="font-size:13px;color:var(--text-3);margin-top:2px">语音通话</div></div>
+            <span style="color:var(--accent);visibility:hidden"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">16 kHz</div>
+              <div style="font-size:13px;color:var(--text-3);margin-top:2px">AI 语音</div></div>
+            <span style="color:var(--accent);visibility:hidden"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">22.05 kHz</div>
+              <div style="font-size:13px;color:var(--text-2);margin-top:2px">网络语音</div></div>
+            <span style="color:var(--accent)"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">24 kHz</div>
+              <div style="font-size:13px;color:var(--text-3);margin-top:2px">语音合成</div></div>
+            <span style="color:var(--accent);visibility:hidden"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">44.1 kHz</div>
+              <div style="font-size:13px;color:var(--text-3);margin-top:2px">CD 级音频</div></div>
+            <span style="color:var(--accent);visibility:hidden"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="roww">
+            <div class="rt"><div style="font-size:16.5px;font-family:var(--mono)">48 kHz</div>
+              <div style="font-size:13px;color:var(--text-3);margin-top:2px">专业音频</div></div>
+            <span style="color:var(--accent);visibility:hidden"><svg width="17" height="17" style="display:block"><use href="#i-check"/></svg></span>
+          </div>
+        </div>
+        <div style="padding:8px 32px 0;font-size:12px;color:var(--text-3);line-height:1.5">更高的采样率意味着更大的文件。WAV 每秒字节数 = 采样率 × 2。</div>
+      </div>
+      <div class="tabbar">
+        <div class="tb"><svg width="23" height="23"><use href="#i-wave"/></svg><span>创作</span></div>
+        <div class="tb"><svg width="23" height="23"><use href="#i-personwave"/></svg><span>音色库</span></div>
+        <div class="tb on"><svg width="23" height="23"><use href="#i-folder"/></svg><span>项目</span></div>
+        <div class="home"></div>
+      </div>
+    </div></div>
+    <figcaption>二级选择页（Mac picker 的 iOS 化）<em>「默认格式」（MP3 / WAV 两项）套用同一个模板：单勾选 + 右侧打勾 + 副标题说明。省掉了 macOS 那套 220/280pt 宽下拉菜单。<br>macOS 设置里的外观 / 语言两个 <code>Picker</code> 已按需求删除，所以二级选择页现在只有「默认格式 / 采样率」两处。</em></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ 8. 设计系统 ============ -->
+<section class="screen" data-label="设计系统">
+  <div class="screen-head">
+    <h2>设计系统：Aurora Pop · iOS 版</h2>
+    <p>v2 换掉了 macOS 的「冷调中性底 + 琥珀金」，改为 <b>Aurora Pop</b>：雾紫中性底（浅色 #F5F1FE / 深色 #0B0916）+ <b>紫 · 玫瑰 · 薄荷 · 暖橙</b> 四色强调，渐变优先。中性面全部走 iOS 语义色（背景 / 分组背景 / 卡片三级）并做系统动态色；右上角开关可整体切换浅色 / 深色，所有手机稿与色板同步变化。</p>
+  </div>
+
+  <div class="token-block" style="margin-top:18px">
+    <div class="token-card">
+      <h4>颜色令牌（浅色 / 深色）</h4>
+      <div class="sw-grid" id="swatches"></div>
+      <div style="margin-top:14px;font-size:12.5px;color:var(--page-text-2);line-height:1.7">
+        中性底色统一偏紫（浅色 —bg-grouped <b>#F5F1FE</b>，深色 —bg <b>#12101F</b>），比原来的纯灰更年轻，但明度结构不变，三级文字仍在 4.5:1 以上（浅色 <b>#736D8F</b> 4.9:1 / 深色 <b>#8E86B0</b> 5.1:1）。<br>
+        承载文字的强调色与承载面积的渐变色<b>拆成两套</b>：文字强调浅色 <b>#6D3BF5</b>（白底 5.9:1）、深色 <b>#B79AFF</b>（底 8.2:1）；按钮渐变走深一档的紫→玫瑰（浅色 #5B2EDB→#CE2B72，白字 4.5–7:1），把更亮的 #8A5BFF / #FF5FA2 留给装饰、发光与接收网格。
+      </div>
+    </div>
+    <div class="token-card" style="max-width:400px">
+      <h4>四色强调 · 分工</h4>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:10px;flex:none;background:linear-gradient(145deg,#8A5BFF,#6D3BF5)"></span>
+          <div style="font-size:12.5px;line-height:1.5;color:var(--page-text-2)"><b style="color:var(--page-text)">紫 #8A5BFF</b><br>主色：CTA 起点、选中态、强调图标</div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:10px;flex:none;background:linear-gradient(145deg,#FF5FA2,#E23C86)"></span>
+          <div style="font-size:12.5px;line-height:1.5;color:var(--page-text-2)"><b style="color:var(--page-text)">玫瑰 #FF5FA2</b><br>CTA 终点、进行中点、播放头、网格高亮</div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:10px;flex:none;background:linear-gradient(145deg,#2ED9BF,#12A88C)"></span>
+          <div style="font-size:12.5px;line-height:1.5;color:var(--page-text-2)"><b style="color:var(--page-text)">薄荷 #2ED9BF</b><br>成功 / 完成态顶部条、速率 ↑、已播波形</div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:10px;flex:none;background:linear-gradient(145deg,#FFB457,#FF9838)"></span>
+          <div style="font-size:12.5px;line-height:1.5;color:var(--page-text-2)"><b style="color:var(--page-text)">暖橙 #FFB457</b><br>积分 / 计费（与 #FF5FA2 组成 credit 渐变）</div></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--page-text-2);line-height:1.7">主渐变 <code>--grad-pop</code> = 115° 紫 → 玫瑰 → 橙，用于品牌标、接收网格点亮、弹窗顶部条；<code>--grad-cta</code> = 135° 深紫 → 玫瑰，只用于可点按钮。</div>
+    </div>
+    <div class="token-card" style="max-width:340px">
+      <h4>字体</h4>
+      <div class="type-row"><span class="nm">大标题 34 / Bold</span><span style="font-size:26px;font-weight:750;letter-spacing:-.6px">项目</span></div>
+      <div class="type-row"><span class="nm">标题 17 / Semibold</span><span style="font-size:17px;font-weight:650">创作</span></div>
+      <div class="type-row"><span class="nm">区块标题 15.5 / Semibold</span><span style="font-size:15.5px;font-weight:650">采样率</span></div>
+      <div class="type-row"><span class="nm">正文 16–17</span><span style="font-size:16px">列表主标题</span></div>
+      <div class="type-row"><span class="nm">副标题 13 / Regular</span><span style="font-size:13px;color:var(--page-text-2)">温柔知性 · 日常对话</span></div>
+      <div class="type-row"><span class="nm">脚注 12 / Regular</span><span style="font-size:12px;color:var(--page-text-2)">龙安灵心 · 00:24 · 412 KB</span></div>
+      <div class="type-row"><span class="nm">标注 11 / Mono</span><span style="font-size:11px;font-family:var(--mono);color:var(--page-text-2)">128 字 · 6 句</span></div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--page-text-2);line-height:1.7">所有数值（积分、时长、采样率、文件大小、字节数）统一用 SF Mono 等宽，同 macOS。</div>
+    </div>
+    <div class="token-card" style="max-width:340px">
+      <h4>圆角与间距</h4>
+      <div class="radius-row" id="radii"></div>
+      <div style="margin-top:14px;font-size:12.5px;color:var(--page-text-2);line-height:1.7">
+        基准 4pt；页面左右边距 16pt，列表 inset 16pt，卡片间距 12–16pt；所有可点元素 ≥ 44×44pt（含卡片右上角的 26pt 圆形「使用」按钮要外扩热区）。
+      </div>
+    </div>
+  </div>
+
+  <div class="token-block">
+    <div class="token-card">
+      <h4>情感标签色板（30 个 tag，沿用 macOS）</h4>
+      <div class="emo-grid" id="emoGrid"></div>
+      <div style="margin-top:14px;font-size:12.5px;color:var(--page-text-2);line-height:1.7">
+        语气胶囊：填充 14%、1px 内描边 42%、圆角 9、内边距 6×8；拟声 pill：虚线描边 + 10% 底，圆角 6。<b>情感色沿用 macOS 的 30 色 mapping，不随主色改动</b>；浅色模式下统一向 #1B1533 压暗到 62%，保证在白底可读。
+      </div>
+    </div>
+    <div class="token-card" style="max-width:420px">
+      <h4>组件规范（pt）</h4>
+      <table class="spec">
+        <tr><th>组件</th><th>规格</th></tr>
+        <tr><td><b>标签栏</b></td><td>高 83（49 内容 + 34 Home 指示区）；图标 23pt，标签 10pt；选中色 = 强调色</td></tr>
+        <tr><td><b>导航栏</b></td><td>紧凑 44；大标题 34/750，左右 20</td></tr>
+        <tr><td><b>Sheet</b></td><td>参数 / 购买 / 筛选专用；large detent ≈ 90% 高，medium ≈ 60%；grabber 36×5；圆角 12（顶）</td></tr>
+        <tr><td><b>居中弹窗</b></td><td>宽 331（= 393 − 2×30 边距 − 1），圆角 26，顶部 5px 渐变条；进入 animation: popIn .38s<br>遮罩 rgba(34,18,72,.44) + blur 7px；内容为「7 层」固定结构，高度自适应 520–600</td></tr>
+        <tr><td><b>主按钮</b></td><td>高 44，圆角 12，135° 紫→玫瑰渐变 + 白字 + 同色投影；次按钮 Surface-3 底 + 描边；危险次按钮仅描边</td></tr>
+        <tr><td><b>列表行</b></td><td>最小高 44；默认 16 左右 padding；行分隔线 inset 16</td></tr>
+        <tr><td><b>分类按钮</b></td><td>高 38，圆角 11，Surface-3 底 + 描边；未选 = 列表图标 +「全部分类」+ 全量数字 + ⌄；<br>已选 = 该分类 emoji + 名称 + 命中数 + 19pt ✕ + ⌄，整枚转强调底 / 强调字；右侧收藏按钮同高、宽度自适应</td></tr>
+        <tr><td><b>分类 Sheet 回显</b></td><td>有已选项时顶部出现吸顶条「当前选择 · X · N 个」+ 20pt ✕ 清除；列表自动滚动到该项并在首次出现时高亮 0.5s；<br>已选行 = 强调底 + 强调字 + 右侧 17pt ✓（所有行右侧恒留 17pt 勾位，未选时 opacity 0，避免横跳）</td></tr>
+        <tr><td><b>接收网格</b></td><td>弹窗内 18 列 × 5 行（受 275pt 内容宽限制）；格 11×11，圆角 3.2，间距 4；外发光环需预留 2pt</td></tr>
+        <tr><td><b>滑杆</b></td><td>轨道高 4，滑块 26 圆形（原生 UISlider 手感）</td></tr>
+        <tr><td><b>触摸目标</b></td><td>最小 44×44；试听/收藏按钮 28 视觉 + 44 热区</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="token-block">
+    <div class="token-card">
+      <h4>无障碍与平台差异检查表</h4>
+      <table class="spec">
+        <tr><th style="width:34%">项目</th><th>iOS 处理</th></tr>
+        <tr><td><b>对比度</b></td><td>正文 ≥ 4.5:1；三级文字浅色 #736D8F（4.9:1）/ 深色 #8E86B0（5.1:1）；文字强调浅色 #6D3BF5（5.9:1）、深色 #B79AFF（8.2:1）；CTA 白字在渐变两端分别达到 7.0:1 与 4.5:1（浅色）/ 4.2:1（深色）</td></tr>
+        <tr><td><b>动态字体</b></td><td>列表行支持 Dynamic Type 放大到 XXL；接收网格与波形固定 pt，不参与缩放</td></tr>
+        <tr><td><b>VoiceOver</b></td><td>每个情感标签读「语气：惊叹」；音色卡整卡合并为一个可访问元素（名称 + 特质 + 已选中）</td></tr>
+        <tr><td><b>减弱动态效果</b></td><td>波形呼吸、接收网格落地动画在数据网格里降级为无动画（respect Reduce Motion）</td></tr>
+        <tr><td><b>removed API</b></td><td>NSCursor / NSSavePanel / NSWorkspace / NSPasteboard / Carbon 热键 → 换取 UIFeedback / fileExporter / UIActivityViewController / UIPasteboard</td></tr>
+        <tr><td><b>Bounce back</b></td><td>iOS 会被挂起：生成中的 WebSocket 需申请后台任务或明确提示「请在返回前台前保持屏幕常亮」</td></tr>
+      </table>
+    </div>
+    <div class="token-card" style="max-width:420px">
+      <h4>待你确认的 5 个决策点</h4>
+      <ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.85;color:var(--page-text-2)">
+        <li><b>已定稿：标签栏 3 个</b>（创作 / 音色库 / 项目），「积分中心」并入设置页顶部。若日后觉得余额不够显眼，可在「创作」导航栏的余额胶囊上加一个「充值 ›」尾随入口，不必再起第 4 个标签。</li>
+        <li><b>情感标签是 accessory 滚动条还是 Bottom Sheet？</b>现方案是键盘 accessory（边写边插最快），也可换成独立 Sheet。</li>
+        <li><b>音色网格是否保留 2 列？</b>可选紧凑单列列表，更能装下两行特质描述。</li>
+        <li><b>是否给 iOS 补上「音色详情 / 场景标签」？</b>macOS 版两者都没有（sceneTag 有样式但没挂载）。</li>
+        <li><b>是否需要 iPad 适配？</b>若有，两个标签页可直接升级为 NavigationSplitView 复用 macOS 的两栏。</li>
+        <li><b>完成态是否留在弹窗里？</b>现方案是同一个居中弹窗切换为完成态（含播放器 + 分享/导出/完成）；若觉得挤，可改成完成后自动 dismiss 并 push 到「项目」里的播放详情页。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- @@SCREENS@@ -->
+
+</div>
+
+<script>
+(function(){
+  var screens=[].slice.call(document.querySelectorAll('.screen'));
+  var tabs=document.getElementById('tabs');
+  screens.forEach(function(s,i){
+    var b=document.createElement('button');
+    b.textContent=s.dataset.label;
+    b.setAttribute('aria-selected', i===0?'true':'false');
+    b.onclick=function(){show(i)};
+    tabs.appendChild(b);
+  });
+  function show(i){
+    screens.forEach(function(s,j){s.classList.toggle('active',i===j)});
+    [].forEach.call(tabs.children,function(b,j){b.setAttribute('aria-selected', i===j?'true':'false')});
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  show(0);
+  // 波形（确定性包络，与 macOS 同一公式）
+  [].forEach.call(document.querySelectorAll('[data-bars]'),function(el){
+    var n=parseInt(el.dataset.bars,10)||40;
+    var prog=parseFloat(el.dataset.progress||'0');
+    for(var i=0;i<n;i++){
+      var t=i/(n-1);
+      var h=0.42+0.34*Math.sin(t*11.3)+0.16*Math.sin(t*29.7+1.4);
+      h=Math.max(0.12,Math.min(1,h));
+      var s=document.createElement('s');
+      s.style.height=(h*100)+'%';
+      if(t<=prog) s.className='done';
+      el.appendChild(s);
+    }
+  });
+  // 数据接收网格
+  [].forEach.call(document.querySelectorAll('[data-grid]'),function(el){
+    var rc=el.dataset.grid.split('x'), cols=parseInt(rc[0],10), rows=parseInt(rc[1],10);
+    var lit=(el.dataset.lit||'').split(',').map(Number);
+    var hotRow=el.dataset.hotRow!=null?parseInt(el.dataset.hotRow,10):-1;
+    for(var r=0;r<rows;r++){
+      var line=document.createElement('div'); line.className='gcells';
+      var n=lit[r]||0;
+      for(var c=0;c<cols;c++){
+        var cell=document.createElement('i'); cell.className='gcell';
+        if(c<n){ cell.className+=' lit'; if(r===hotRow && c===n-1) cell.className+=' hot'; }
+        line.appendChild(cell);
+      }
+      el.appendChild(line);
+    }
+  });
+  // 设计系统：色板 / 圆角 / 情感色
+  var tokens=[
+    ['主背景','#FFFFFF','#12101F'],['分组背景','#F5F1FE','#0B0916'],['卡片 Surface','#FFFFFF','#1B1731'],
+    ['次级块','#F7F4FE','#221D3D'],['输入框 / 浮起','#EDE8FB','#2B2549'],
+    ['主文字','#1B1533','#F5F2FF'],['次文字','#5C5780','#ADA5CC'],['三级文字','#736D8F','#8E86B0'],
+    ['强调（文字 / 图标）','#6D3BF5','#B79AFF'],
+    ['CTA 渐变 A','#5B2EDB','#7C4DFF'],['CTA 渐变 B','#CE2B72','#E23C86'],['CTA 文字','#FFFFFF','#FFFFFF'],
+    ['装饰 紫','#8A5BFF','#8A5BFF'],['装饰 玫瑰','#FF5FA2','#FF5FA2'],['装饰 薄荷','#2ED9BF','#2ED9BF'],['装饰 暖橙','#FFB457','#FFB457'],
+    ['积分渐变','#FF9838','#FF9838'],
+    ['成功','#0FA36B','#3ED99A'],['错误','#E0344B','#FF6B7E'],['警告','#B87200','#FFC24B'],['信息','#2E7BE0','#5BA8FF'],
+    ['分隔线','#E7E1F7','#322B52']
+  ];
+  var tBox=document.getElementById('swatches');
+  if(tBox){
+    tokens.forEach(function(t){
+      var d=document.createElement('div'); d.className='sw'; d.style.width='128px';
+      d.innerHTML='<span style="display:flex;gap:2px"><i style="flex:1;background:'+t[1]+'"></i>'+
+        '<i style="flex:1;background:'+t[2]+'"></i></span><b>'+t[0]+'</b>'+
+        '<span>'+t[1]+'<br>'+t[2]+'</span>';
+      tBox.appendChild(d);
+    });
+  }
+  var radii=[['xs 6','6px'],['sm 8','8px'],['md 12','12px'],['lg 16','16px'],['xl 20','20px'],['xxl 26','26px'],['full','999px']];
+  var rBox=document.getElementById('radii');
+  if(rBox){
+    radii.forEach(function(r){
+      var d=document.createElement('div'); d.className='radius-demo';
+      d.innerHTML='<i style="border-radius:'+r[1]+'"></i>'+r[0];
+      rBox.appendChild(d);
+    });
+  }
+  var emo=[['兴奋','excited','#F2CC36'],['调皮','mischievously','#31B99E'],['共情','empathetic','#64C760'],['好奇','curious','#45C485'],
+    ['惊叹','amazed','#C07EE7'],['严肃','serious','#C9CCCF'],['ASMR','asmr','#DF86C1'],['耳语','whispers','#9A9ED6'],
+    ['呐喊','deep and loud shouting','#E0493E'],['大喊','shouting','#E65673'],['极快','very fast','#F6EF28'],['极慢','very slowly','#8C79D8'],
+    ['讽刺','sarcastic','#8EB238'],['轻蔑','scornful','#AE6C3D'],['不情愿','reluctantly','#8978B0'],['无聊','bored','#7889A1'],
+    ['疲惫','tired','#4F8492'],['颤抖','trembling','#51C0D6'],['惊恐','panicked','#D83177'],['愤怒','angry','#EB7633'],
+    ['低沉','like dracula','#9F4197'],['哭泣','crying','#98CAEB'],['悲伤','sad','#6697D6'],
+    ['大笑','laughing','#F39E49'],['咯咯笑','giggles','#E694A8'],['叹息','sighing','#C9A9D1'],['倒吸气','gasp','#8ED7D1'],
+    ['清嗓','clears throat','#C6BA8B'],['咳嗽','cough','#A27967'],['哼声','snorts','#AE4329']];
+  var eBox=document.getElementById('emoGrid');
+  if(eBox){
+    emo.forEach(function(e){
+      var hex=e[2], r=parseInt(hex.substr(1,2),16), g=parseInt(hex.substr(3,2),16), b=parseInt(hex.substr(5,2),16);
+      var lum=(0.299*r+0.587*g+0.114*b)/255;
+      var d=document.createElement('div'); d.className='emo'; d.title=e[1];
+      d.style.background=hex; d.style.color=lum>0.62?'#2A1240':'#FFFFFF';
+      d.textContent=e[0]; eBox.appendChild(d);
+    });
+  }
+  var sw=document.getElementById('themeSwitch'), knob=document.getElementById('switchKnob');
+  sw.onclick=function(){
+    var dark=document.documentElement.getAttribute('data-theme')==='dark';
+    document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+    knob.textContent=dark?'☀︎':'☾';
+  };
+})();
+</script>
+</body>
+</html>
