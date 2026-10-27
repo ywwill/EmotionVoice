@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(AppKit)
 import AppKit
+#endif
 
 extension View {
 
@@ -39,18 +41,26 @@ extension View {
     /// 这里刻意用 `set()` 而不是 `push()` / `pop()`：push/pop 要求 enter 与 exit 严格配对，
     /// 一旦在悬浮状态下视图被移除（弹窗关闭、列表刷新、条件分支切换），exit 就不会触发，
     /// 残留的手型会一直压在光标栈上，导致之后整屏都停在手型。`set()` 无需配对，语义直接。
+    ///
+    /// iOS 没有指针，直接原样返回（这样调用方不用到处写 `#if os(iOS)`）。
     func pointingHandCursor() -> some View {
-        self.onHover { hovering in
+        #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+        return self.onHover { hovering in
             if hovering {
                 NSCursor.pointingHand.set()
             } else {
                 NSCursor.arrow.set()
             }
         }
+        #else
+        return self
+        #endif
     }
 }
 
-// MARK: - 光标区域屏蔽
+// MARK: - 光标区域屏蔽（仅 macOS：iOS 没有光标矩形这套东西）
+
+#if canImport(AppKit) && !targetEnvironment(macCatalyst)
 
 /// 覆盖层（overlay）显示期间，屏蔽下层 AppKit 视图注册的光标区域。
 ///
@@ -117,3 +127,12 @@ extension View {
         }
     }
 }
+
+#else
+
+extension View {
+    /// iOS 无光标矩形概念，直接原样返回（保持调用方签名一致）
+    func suppressesCursorRects(_ active: Bool) -> some View { self }
+}
+
+#endif

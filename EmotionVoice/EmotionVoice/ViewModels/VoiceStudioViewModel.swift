@@ -8,7 +8,9 @@
 import Foundation
 import SwiftUI
 import Combine
+#if canImport(AppKit)
 import AppKit
+#endif
 
 // MARK: - 生成过程的实时接收统计
 

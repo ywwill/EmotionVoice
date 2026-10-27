@@ -8,7 +8,9 @@
 import Foundation
 import SwiftUI
 import Combine
+#if canImport(AppKit)
 import AppKit
+#endif
 
 // MARK: - 历史记录视图模型
 
@@ -134,6 +136,11 @@ class HistoryViewModel: ObservableObject {
         return player.isPlaying(url: url)
     }
 
+    /// 导出音频。
+    ///
+    /// ⚠️ macOS 走 `NSSavePanel`（有常驻导出目录）；iOS 没有常驻目录，
+    /// 导出统一交给分享面板 / `fileExporter`，所以这里整段只在 macOS 编译。
+    #if os(macOS)
     func exportAudio(_ audio: AudioItem) {
         guard let sourceURL = audio.absoluteURL as URL? else { return }
 
@@ -168,6 +175,7 @@ class HistoryViewModel: ObservableObject {
             }
         }
     }
+    #endif
 
     private func filterAndDisplay() {
         let filtered: [AudioItem]

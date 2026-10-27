@@ -14,6 +14,9 @@ import Combine
 #if canImport(AppKit)
 import AppKit
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// 基础音色试听播放器（单例）
 ///
@@ -67,12 +70,22 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private override init() {
         super.init()
         // 监听 App 退出，保证资源释放
+        // iOS 没有 NSApplication，用 UIApplication 的等价通知
+        #if canImport(UIKit) && !os(macOS)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+        #elseif canImport(AppKit)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleAppTerminate),
             name: NSApplication.willTerminateNotification,
             object: nil
         )
+        #endif
     }
 
     deinit {

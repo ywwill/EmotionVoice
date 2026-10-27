@@ -95,7 +95,29 @@ macOS 原生 App，Swift + SwiftUI（Swift 5）。依赖 SQLite.swift、supabase
   （上层任何布局动画都会让它逐帧漂移），无条件写会把 GeometryReader+Canvas+ScrollView 整个 body 每帧重算一遍。
 - ⚠️ 底槽绘制要攒成一条 `Path` 一次 `fill`，别逐格 fill（5 行 × 33 列 = 165 次绘制调用 × 每帧）。
 
+## iOS 版（iOSEmora target，2026-10-27 起）
+- 同工程两个 target：`Emora`(macOS) / `iOSEmora`(iOS, bundle id com.emotion.voice.ios, 部署 18.6, device family 1,2)。
+- iOS **独有代码统一放仓库根 `iOS/`**（App / DesignSystem / Layout / Views/{Studio,Library,Projects,Generation,Settings}）；
+  复用的 macOS 逻辑文件原地加进 iOSEmora target（不复制），靠 `#if canImport(AppKit)` / `#if os(macOS)` 做平台隔离。
+- 信息架构：macOS 220pt 侧边栏 6 分区 → iOS 3 标签（创作/音色库/项目）+ 导航栈；「积分中心」并入设置页，
+  设置入口 = 三个标签导航栏右上齿轮 push 进当前标签栈。桌面专属项（主题/语言/导出目录/缓存/设备标识）全部删除。
+- iPhone Duo 适配 = 折叠屏展开态宽屏：`iOS/Layout/ScreenMetrics.swift` 按可视宽度分档（<375 / 375–699 / 700–1023 / ≥1024）
+  派生 pageMargin、contentMaxWidth、voiceGridColumns(2/2/3/4)、metaColumns、usesTwoColumnStudio、dialogWidth=min(w-61,420)。
+  全局**只用一次** GeometryReader（`ScreenMetricsReader`），向下注入 `\.screenMetrics`。
+- iOS 无 `NSTextAttachmentCell`：情感标签走「纯文本 + 位置标记 + U+FFFC 占位附件 + 自绘 overlay」（`TokenCapsuleOverlay`）。
+- pbxproj 用 `tools/add_ios_target_files.py` 幂等维护（新增 24 + 复用 36 = 66 sources，8 SPM product，603 resources）。
+  ⚠️ PBXBuildFile ID ≠ XCSwiftPackageProductDependency ID（相邻但不同），写错 Xcode 会在算依赖图时崩
+  `-[PBXBuildFile productName]`；脚本已改为从 Emora 的 Frameworks 阶段动态反查 productRef。
+- ⚠️ iOS 侧 `import SwiftUI` **不隐式导出 Combine**：用 `@Published`/`ObservableObject` 的文件必须显式 `import Combine`。
+
 ## 构建与验证
-- 本机 `xcodebuild` 被沙箱挡包解析。替代：`swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0 -sdk $(xcrun --sdk macosx --show-sdk-path) -I <DerivedData>/Build/Products/Debug @filelist`（`-disable-sandbox` 必加，否则 SwiftUI 宏插件服务报错）。
+- 真构建：`bash tools/ios_build.sh`（+ `mac` 参数顺带回归 macOS）—— 三个 workaround 都是受限 shell 的沙箱问题，
+  Xcode GUI 直接 Build 不需要：① `IDEPackageSupportDisableManifestSandbox`（SwiftPM manifest 沙箱，脚本写入并在退出时恢复）
+  ② `OTHER_SWIFT_FLAGS='$(inherited) -disable-sandbox'`（宏插件服务；**必须 $(inherited)**，否则覆盖 SPM 包的
+  `-package-name`，supabase-swift 报 ambiguous implicit access level）③ `ONLY_ACTIVE_ARCH=YES`。
+  当前状态：iOSEmora 与 Emora 均 BUILD SUCCEEDED，iOS 代码 0 error / 0 warning。
+- 快速类型检查（不依赖 SPM 真包）：`bash tools/ios_typecheck/typecheck.sh`（`swiftc -typecheck -disable-sandbox`，
+  SPM 服务用 `Shims.swift` 同签名替身）。
+- macOS 侧的同类命令：`swiftc -typecheck -disable-sandbox -swift-version 5 -target arm64-apple-macos14.0 -sdk $(xcrun --sdk macosx --show-sdk-path) -I <DerivedData>/Build/Products/Debug @filelist`。
 - 改代码前先对 HEAD 跑一次同命令拿基线。
 - 已知既有问题：`CreditsService.swift` 4 条 Swift6 actor 隔离报错；`PackageCardView.swift` 是未入 target 的孤儿文件（`CreditsPackage` 不存在）。
