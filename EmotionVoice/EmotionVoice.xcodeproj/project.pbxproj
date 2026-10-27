@@ -661,6 +661,13 @@
 		6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8730624B920086FD6F /* SummaryCard.swift */; };
 		6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */; };
 		6F2DB01C3062649F0086FD6F /* AudioPlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */; };
+		6F3AE7A9309055FE007975DD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A5309055FE007975DD /* Assets.xcassets */; };
+		6F3AE7AA309055FE007975DD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A6309055FE007975DD /* ContentView.swift */; };
+		6F3AE7AB309055FE007975DD /* iOSEmoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */; };
+		6F3AE7AC30905628007975DD /* Const.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090EE303EC80500A770BB /* Const.swift */; };
+		6F3AE7AD3090562F007975DD /* Func.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090EF303EC80500A770BB /* Func.swift */; };
+		6F3AE7AE30905634007975DD /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
+		6F3AE7AF3090563B007975DD /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090E3303EC80500A770BB /* DatabaseManager.swift */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
 		6F6702983081F0CE0001A3BE /* AudioConcatenator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */; };
 		6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001000 /* PlayerTextMetrics.swift */; };
@@ -1356,6 +1363,10 @@
 		6F2DAF8730624B920086FD6F /* SummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryCard.swift; sourceTree = "<group>"; };
 		6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerDetailView.swift; sourceTree = "<group>"; };
 		6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRowItem.swift; sourceTree = "<group>"; };
+		6F3AE79A309055CE007975DD /* iOSEmora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSEmora.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6F3AE7A5309055FE007975DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6F3AE7A6309055FE007975DD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSEmoraApp.swift; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
 		6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
 		6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConcatenator.swift; sourceTree = "<group>"; };
@@ -1392,6 +1403,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6F3AE797309055CE007975DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6FEE97E8302705C600C39C26 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -2210,6 +2228,16 @@
 			path = HistoryView;
 			sourceTree = "<group>";
 		};
+		6F3AE7A8309055FE007975DD /* iOSEmora */ = {
+			isa = PBXGroup;
+			children = (
+				6F3AE7A5309055FE007975DD /* Assets.xcassets */,
+				6F3AE7A6309055FE007975DD /* ContentView.swift */,
+				6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */,
+			);
+			path = iOSEmora;
+			sourceTree = "<group>";
+		};
 		6FCA9CE63060D7680005713F /* Store */ = {
 			isa = PBXGroup;
 			children = (
@@ -2236,6 +2264,7 @@
 			children = (
 				6F9DEF56308754520048ED6F /* Emora-Info.plist */,
 				6F209387303EC80500A770BB /* EmotionVoice */,
+				6F3AE7A8309055FE007975DD /* iOSEmora */,
 				6FEE97EC302705C600C39C26 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -2244,6 +2273,7 @@
 			isa = PBXGroup;
 			children = (
 				6FEE97EB302705C600C39C26 /* Emora.app */,
+				6F3AE79A309055CE007975DD /* iOSEmora.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2264,6 +2294,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6F3AE799309055CE007975DD /* iOSEmora */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6F3AE7A4309055D0007975DD /* Build configuration list for PBXNativeTarget "iOSEmora" */;
+			buildPhases = (
+				6F3AE796309055CE007975DD /* Sources */,
+				6F3AE797309055CE007975DD /* Frameworks */,
+				6F3AE798309055CE007975DD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = iOSEmora;
+			packageProductDependencies = (
+			);
+			productName = iOSEmora;
+			productReference = 6F3AE79A309055CE007975DD /* iOSEmora.app */;
+			productType = "com.apple.product-type.application";
+		};
 		6FEE97EA302705C600C39C26 /* Emora */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6FEE97F6302705C700C39C26 /* Build configuration list for PBXNativeTarget "Emora" */;
@@ -2299,9 +2348,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2660;
+				LastSwiftUpdateCheck = 2710;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					6F3AE799309055CE007975DD = {
+						CreatedOnToolsVersion = 27.1;
+					};
 					6FEE97EA302705C600C39C26 = {
 						CreatedOnToolsVersion = 26.6;
 					};
@@ -2330,11 +2382,20 @@
 			projectRoot = "";
 			targets = (
 				6FEE97EA302705C600C39C26 /* Emora */,
+				6F3AE799309055CE007975DD /* iOSEmora */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		6F3AE798309055CE007975DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F3AE7A9309055FE007975DD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6FEE97E9302705C600C39C26 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2948,6 +3009,19 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6F3AE796309055CE007975DD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F3AE7AE30905634007975DD /* TextSplitter.swift in Sources */,
+				6F3AE7AA309055FE007975DD /* ContentView.swift in Sources */,
+				6F3AE7AF3090563B007975DD /* DatabaseManager.swift in Sources */,
+				6F3AE7AD3090562F007975DD /* Func.swift in Sources */,
+				6F3AE7AB309055FE007975DD /* iOSEmoraApp.swift in Sources */,
+				6F3AE7AC30905628007975DD /* Const.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6FEE97E7302705C600C39C26 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3060,6 +3134,83 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		6F3AE7A2309055D0007975DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7Q3FN28VDH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.emotion.voice.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6F3AE7A3309055D0007975DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7Q3FN28VDH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.emotion.voice.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		6FEE97F4302705C700C39C26 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -3279,6 +3430,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6F3AE7A4309055D0007975DD /* Build configuration list for PBXNativeTarget "iOSEmora" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6F3AE7A2309055D0007975DD /* Debug */,
+				6F3AE7A3309055D0007975DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		6FEE97E6302705C600C39C26 /* Build configuration list for PBXProject "EmotionVoice" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
