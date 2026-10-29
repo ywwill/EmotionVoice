@@ -252,10 +252,6 @@ struct ProjectsView: View {
                 .padding(.vertical, 4)
                 .background(Capsule(style: .continuous).fill(c.accent))
 
-            Text("已选择".localized())
-                .font(.system(size: 13))
-                .foregroundStyle(c.textSecondary)
-
             Spacer(minLength: 0)
 
             Button {

@@ -513,8 +513,8 @@ final class VoiceStudioViewModel: ObservableObject {
                     self.generationStartedAt = nil
                     self.stats.reset()
                     self.alertItem = AlertItem(
-                        title: "生成失败".localized(),
-                        message: error.localizedDescription
+                        title: "生成失败，请重新尝试".localized(),
+                        message: ""
                     )
                     Log(message: "TTS 生成失败: \(error.localizedDescription)")
                     completion(false)

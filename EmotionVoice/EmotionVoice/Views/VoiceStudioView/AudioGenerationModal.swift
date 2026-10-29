@@ -284,10 +284,31 @@ private struct ModalAudioPlayer: View {
     @State private var scrubProgress: Double = 0
     @State private var isHovering = false
     @State private var hoverRatio: CGFloat = 0
+    /// 尚未真正播放 / 已停止时，用户在波形上点选的位置。
+    /// 没有底层播放器实例时 `seek` 无处可落，这里先记下，作为播放头与时间显示的依据；
+    /// 真正点播放时再定位到这个位置开始，避免"点了播放头又弹回 0"。
+    @State private var manualProgress: Double = 0
 
     private var isPlaying: Bool { player.isPlaying(url: audioURL) }
-    private var displayProgress: Double { isScrubbing ? scrubProgress : player.progress }
-    private var displayTime: Double { isScrubbing ? scrubProgress * duration : player.currentTime }
+
+    /// 底层播放器是否已为此音频加载（播放中或暂停中）。
+    /// 只有在这个状态下 `player.progress` / `player.currentTime` 才是可信的进度；
+    /// 否则（从未播放 / 已停止 / 已播完）调用 `seek` 没有播放器可操作，进度得靠 `manualProgress`。
+    private var hasLoadedPlayer: Bool {
+        player.playingKey == audioURL.path && (player.isPlaying || player.isPaused)
+    }
+
+    private var displayProgress: Double {
+        if isScrubbing { return scrubProgress }
+        if hasLoadedPlayer { return player.progress }
+        return manualProgress
+    }
+
+    private var displayTime: Double {
+        if isScrubbing { return scrubProgress * duration }
+        if hasLoadedPlayer { return player.currentTime }
+        return manualProgress * duration
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -388,7 +409,13 @@ private struct ModalAudioPlayer: View {
                         isScrubbing = true
                         hoverRatio = p
                         scrubProgress = p
-                        player.seek(to: p * duration)
+                        // 有底层播放器（播放/暂停态）就实时 seek；还没播放过则只记手动位置，
+                        // 等真正点播放时再定位，避免 "seek 无播放器可操作" 导致播放头弹回 0
+                        if hasLoadedPlayer {
+                            player.seek(to: p * duration)
+                        } else {
+                            manualProgress = p
+                        }
                     }
                     .onEnded { _ in
                         isScrubbing = false
@@ -411,10 +438,12 @@ private struct ModalAudioPlayer: View {
 
     private func togglePlayback() {
         if player.isPlaying(url: audioURL) {
-            player.stop()
+            // 真·暂停：保留播放器与当前进度，播放头停在暂停处（b）而不是弹回点击位置（a）。
+            // 之前这里误用 stop()，会清空进度并让播放头回退到 manualProgress，触发"暂停后跳回 a"的 bug。
+            player.pause()
             return
         }
-        // 暂停中且还是同一个文件 → 继续播
+        // 暂停中且还是同一个文件 → 从暂停处继续播
         if player.isPaused && player.playingKey == audioURL.path {
             player.resume()
             return
@@ -431,7 +460,12 @@ private struct ModalAudioPlayer: View {
             Log(message: "AudioGenerationModal: 音频文件过小，可能不完整")
             return
         }
-        if !player.play(url: audioURL, identifier: audioURL.path) {
+        if player.play(url: audioURL, identifier: audioURL.path) {
+            // 用户在波形上先点了某个位置（还没真正播放过）→ 从那个位置开始放
+            if manualProgress > 0 {
+                player.seek(to: manualProgress * duration)
+            }
+        } else {
             Log(message: "AudioGenerationModal: 播放失败")
         }
     }
@@ -503,13 +537,9 @@ struct AudioGenerationModal: View {
 
     var body: some View {
         ZStack {
-            // 遮罩
+            // 遮罩：仅做视觉压暗。点击弹窗外不再收起界面（关闭按钮 / Esc 仍可关）。
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    // 接收中不允许点遮罩关闭，避免误触打断观感（关闭按钮仍可用）
-                    if hasResult { dismiss() }
-                }
 
             // 弹窗主体
             VStack(spacing: 0) {

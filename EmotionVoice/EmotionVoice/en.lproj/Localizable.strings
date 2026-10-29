@@ -181,7 +181,7 @@
 "哼声" = "Humming";
 "控制类标签用于设定语音的情感或风格" = "Control tags set the emotion or style of the voice";
 "将标签写在文本中，标签会作用于其后的所有文本" = "Write tags in the text; they apply to all text following them";
-"直到遇到下一个控制类标签，或因句子较长被自动切分为止" = "Until encountering the next control tag, or when a long sentence is auto-split";
+"直到遇到下一个控制类标签，或被中断标签提前结束" = "Until the next control-type tag is encountered, or it is terminated prematurely by an interrupting tag.";
 "在当前位置插入一段拟声效果" = "Insert a sound effect at the current position";
 "不影响前后文本的情感风格" = "Does not affect the emotion or style of surrounding text";
 "中断" = "Interrupt";
@@ -361,6 +361,7 @@
 "已取消购买" = "Purchase cancelled";
 "等待确认，到账后自动发放" = "Pending approval — credits arrive once approved";
 "购买失败" = "Purchase failed";
+"生成失败，请重新尝试" = "Generation failed, please try again";
 "积分不足" = "Insufficient Credits";
 "选择套餐" = "Plan";
 "%d kbps" = "%d kbps";
@@ -368,3 +369,5 @@
 "下一页" = "Next";
 "%d - %d · 共 %d 个" = "%d–%d of %d";
 "查看" = "Show";
+"全选" = "Select All";
+"取消全选" = "Deselect All";

@@ -50,7 +50,7 @@ struct HistoryView: View {
             viewModel.loadInitialData()
         }
         .alert("编辑名称", isPresented: $showRenameAlert) {
-            TextField("音频名称", text: $renameText)
+            TextField("", text: $renameText)
             Button("取消", role: .cancel) {
                 audioToRename = nil
                 renameText = ""
@@ -63,7 +63,7 @@ struct HistoryView: View {
                 renameText = ""
             }
         } message: {
-            Text("请输入新的音频名称")
+            Text("")
         }
     }
 
@@ -198,10 +198,6 @@ struct HistoryView: View {
                         .padding(.horizontal, 6)
                         .background(AppColor.accentPrimary)
                         .clipShape(Capsule())
-
-                    Text("已选择")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppColor.textSecondary)
                 }
 
                 Spacer()

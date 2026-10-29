@@ -25,7 +25,7 @@ struct ContentView: View {
     /// 让位给侧边栏滑动动画的时长。
     /// 取 spring(response: 0.36) 的约 2/3：此时位移已完成 ~90%，
     /// 剩下几像素的回弹与内容替换的掉帧重叠也看不出来。
-    private static let contentSwapDelay: Duration = .milliseconds(240)
+    private static let contentSwapDelay: Duration = .milliseconds(100)
 
     var body: some View {
         HStack(spacing: 0) {
@@ -35,7 +35,7 @@ struct ContentView: View {
             mainContent
         }
         .background(AppColor.bgPrimary)
-        .frame(minWidth: 1500, minHeight: 900)
+        .frame(minWidth: 1000, minHeight: 800)
         // 生成弹窗 / 后台接收卡片挂在这一层：
         // 弹窗关闭后接收仍在后台跑，提示必须能跨页面存在（见 GenerationOverlay）
         .overlay { GenerationOverlay() }
