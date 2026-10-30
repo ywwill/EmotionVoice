@@ -73,6 +73,8 @@ final class VoiceService {
     private init() {}
 
     func displayName(forKey key: String) -> String? { nil }
+    func voice(forKey key: String) -> Voice? { nil }
+    func invalidateVoiceCache() {}
     func fetchAll() -> [Voice] { [] }
     func fetch(by category: VoiceCategory) -> [Voice] { [] }
     func count(category: VoiceCategory?, searchText: String) -> Int { 0 }

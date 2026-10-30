@@ -103,7 +103,7 @@ struct VoiceCardGrid: View {
     private var metaRow: some View {
         HStack(spacing: 6) {
             if let age = voice.age, age > 0 {
-                metaChip(String(format: "%d 岁".localized(), age))
+                metaChip("%d 岁".localized(age))
             }
             metaChip(voice.localizedGender)
         }

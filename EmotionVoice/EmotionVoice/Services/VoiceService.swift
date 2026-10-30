@@ -18,9 +18,28 @@ final class VoiceService {
 
     private let db = DatabaseManager.shared
 
+    private init() {
+        // 音色表被重建后缓存必须失效，否则会一直读到旧对象（尤其是 isFavorite）
+        NotificationCenter.default.addObserver(
+            forName: .voicesDidReload,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.invalidateVoiceCache()
+        }
+    }
+
     /// key -> 展示名 的缓存。列表行与播放详情过去是 `fetchAll().first(where:)`，
     /// 每次 body 求值都做一次全表扫描 + 全量排序；播放详情 10Hz 重绘时这会把主线程打满。
     private let nameCache = NSCache<NSString, NSString>()
+
+    /// key -> Voice 对象 的缓存（`NSCache` 只装类，故包一层）。
+    ///
+    /// ⚠️ `VoiceStudioViewModel.voice` 过去是 `fetchAll().first(where:)`，
+    /// 而它是 SwiftUI body 里的计算属性 —— 每一次 body 求值（打字、切标签、任何
+    /// `@Published` 写入）都会全表扫描 + 全量排序一遍。音色表约 100 行时单次几毫秒，
+    /// 但叠在每一帧上就是肉眼可见的卡顿。
+    private let voiceCache = NSCache<NSString, VoiceBox>()
 
     // MARK: - 按 key 取展示名（带缓存）
 
@@ -49,6 +68,24 @@ final class VoiceService {
             Log(message: "VoiceService.fetchAll error: \(error)")
             return []
         }
+    }
+
+    /// 按 key 取单个音色（带缓存）。
+    ///
+    /// 给 SwiftUI body 里的计算属性用：命中缓存后是常数时间，不再每次重绘全表扫描。
+    func voice(forKey key: String) -> Voice? {
+        guard !key.isEmpty else { return nil }
+        let cacheKey = key as NSString
+        if let hit = voiceCache.object(forKey: cacheKey) { return hit.value }
+        guard let voice = fetchByKeys([key]).first else { return nil }
+        voiceCache.setObject(VoiceBox(voice), forKey: cacheKey)
+        return voice
+    }
+
+    /// 音色数据变了（表重建 / 收藏变更）后清空缓存
+    func invalidateVoiceCache() {
+        voiceCache.removeAllObjects()
+        nameCache.removeAllObjects()
     }
 
     /// 按分类获取
@@ -255,10 +292,19 @@ final class VoiceService {
             guard let row else { return false }
             let newValue = !row[db.voiceIsFavorite]
             try db.db.run(db.voices.filter(db.voiceKey == key).update(db.voiceIsFavorite <- newValue))
+            invalidateVoiceCache()
             return newValue
         } catch {
             Log(message: "VoiceService.toggleFavorite error: \(error)")
             return false
         }
     }
+}
+
+// MARK: - 缓存装箱
+
+/// `NSCache` 只接受类，`Voice` 是结构体，故包一层
+private final class VoiceBox {
+    let value: Voice
+    init(_ value: Voice) { self.value = value }
 }

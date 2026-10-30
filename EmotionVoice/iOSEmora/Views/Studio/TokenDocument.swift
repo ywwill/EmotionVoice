@@ -111,31 +111,93 @@ enum TokenDocument {
     static func adjust(marks: [EmotionMark], editedRange: NSRange, replacementLength: Int) -> [EmotionMark] {
         let delta = replacementLength - editedRange.length
         guard delta != 0 || editedRange.length > 0 else { return marks }
+        guard !marks.isEmpty else { return marks }
 
-        return marks.compactMap { mark in
-            if mark.location > editedRange.location && mark.location < editedRange.upperBound {
-                return nil
+        return marks.compactMap { mark -> EmotionMark? in
+            // 拟声：占 1 个真实字符（U+FFFC），字符没了标记就该跟着没（与 macOS 一致）
+            if mark.token.category == .richLanguage {
+                if mark.location > editedRange.location && mark.location < editedRange.upperBound {
+                    return nil
+                }
+                if mark.location >= editedRange.upperBound {
+                    var m = mark
+                    m.location = max(editedRange.location, mark.location + delta)
+                    return m
+                }
+                return mark
             }
-            if mark.location >= editedRange.upperBound {
+
+            // 语气 / 中断：零宽的**作用域边界**，不占字符，所以规则要反过来 ——
+            //
+            // ① 落在插入点上的**不右移**（早年是 `>= upperBound` 就平移，于是每敲一个字
+            //    标记就被推到光标后面一格，最后永远停在文末、作用域恒为空
+            //    → 表现就是「选完标签一输入，标签就没了」）。新输入的文本应当归它管。
+            // ② 落在替换区间内部的**夹回区间起点**，而不是删除：零宽标记没有「依附的字符」，
+            //    静默删掉会让用户以为标签自己消失了（拼音输入整段替换命中时尤其容易触发）。
+            if mark.location <= editedRange.location { return mark }
+            if mark.location < editedRange.upperBound {
                 var m = mark
-                m.location = max(editedRange.location, mark.location + delta)
+                m.location = editedRange.location
                 return m
             }
-            return mark
+            var m = mark
+            m.location = max(editedRange.location, mark.location + delta)
+            return m
         }
     }
 
     // MARK: - 作用域
 
-    /// 语气标记的作用域终点（不含）：遇到下一个「语气」或「中断」标记为止，否则到文末。
+    /// 位置序（同一位置按插入先后）。作用域边界与接缝收敛都依赖这个顺序。
+    ///
+    /// ⚠️ 直接用 `sorted { $0.location < $1.location }` 不够：Swift 的 `sorted` 不保证稳定，
+    /// 而「两个语气标签插在同一个位置」是合法操作（先插的作用域在前），顺序乱了会让
+    /// 两个作用域都一路撑到文末 —— 表现就是两段胶囊完全重叠。
+    static func orderedMarks(_ marks: [EmotionMark]) -> [EmotionMark] {
+        marks.enumerated().sorted { a, b in
+            a.element.location == b.element.location
+                ? a.offset < b.offset
+                : a.element.location < b.element.location
+        }.map { $0.element }
+    }
+
+    /// 位置序里第 `index` 个标记的作用域终点（不含）：下一个「语气 / 中断」标记的位置，否则文末。
     ///
     /// 拟声标记不终止语气作用域 —— 它只是在当前位置插一个声音事件。
-    static func scopeEnd(of mark: EmotionMark, in marks: [EmotionMark], docLength: Int) -> Int {
-        for other in marks where other.id != mark.id && other.location > mark.location {
+    static func scopeEnd(at index: Int, in ordered: [EmotionMark], docLength: Int) -> Int {
+        guard index < ordered.count else { return docLength }
+        var end = docLength
+        var j = index + 1
+        while j < ordered.count {
+            let other = ordered[j]
+            // ⚠️ 用「位置序里的下一个」而不是 `other.location > mark.location`：
+            // 后者会把同位置的后一个标记漏掉，两段作用域就都撑到文末、完全重叠。
             if other.token.category == .emotion || other.token.category == .interrupt {
-                return other.location
+                end = other.location
+                break
             }
+            j += 1
         }
-        return docLength
+        return min(max(end, ordered[index].location), docLength)
+    }
+
+    /// 作用域 `[start, end)` 被拟声占位符切成的一段段连续区间。
+    ///
+    /// 语气胶囊必须按这个结果分段画 —— 拟声 pill 是实心块，胶囊要在那里**断开**，
+    /// 不能垫在 pill 底下（否则虚线 pill 就压在同色背景上，看不清边界）。
+    static func scopePieces(start: Int, end: Int, soundLocations: Set<Int>) -> [NSRange] {
+        guard end > start else { return [] }
+        var pieces: [NSRange] = []
+        var cursor = start
+        var loc = start
+        while loc < end {
+            if soundLocations.contains(loc) {
+                if loc > cursor { pieces.append(NSRange(location: cursor, length: loc - cursor)) }
+                cursor = loc + 1   // 占位符本身不进胶囊
+            }
+            loc += 1
+        }
+        if cursor < end { pieces.append(NSRange(location: cursor, length: end - cursor)) }
+        return pieces
     }
 }

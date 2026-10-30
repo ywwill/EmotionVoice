@@ -233,5 +233,13 @@ final class DatabaseManager {
                 try db.run(voices.filter(voiceKey == key).update(voiceIsFavorite <- true))
             }
         }
+
+        // 音色表内容变了 → 通知 VoiceService 清掉 key->Voice / key->展示名 缓存
+        NotificationCenter.default.post(name: .voicesDidReload, object: nil)
     }
+}
+
+extension Notification.Name {
+    /// 音色表被重建（结构版本变更 / 内容刷新）后发出
+    static let voicesDidReload = Notification.Name("EmotionVoice.voicesDidReload")
 }

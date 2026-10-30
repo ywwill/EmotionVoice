@@ -112,7 +112,7 @@ struct StudioParamSheet: View {
         var parts: [String] = []
         if !v.localizedDesc.isEmpty { parts.append(v.localizedDesc) }
         if !v.localizedScene.isEmpty { parts.append(v.localizedScene) }
-        if let age = v.age, age > 0 { parts.append(String(format: "%d 岁".localized(), age)) }
+        if let age = v.age, age > 0 { parts.append("%d 岁".localized(age)) }
         return parts.joined(separator: " · ")
     }
 

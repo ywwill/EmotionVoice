@@ -313,8 +313,7 @@ struct PlayerDetailView: View {
     private var textCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(String(format: "%d 字 · %d 句".localized(),
-                            item.text.count, sentenceCount))
+                Text("%d 字 · %d 句".localized(item.text.count, sentenceCount))
                     .font(.system(size: 11.5))
                     .foregroundStyle(c.textTertiary)
                 Spacer(minLength: 0)

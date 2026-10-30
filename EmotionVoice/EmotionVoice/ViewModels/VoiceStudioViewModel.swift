@@ -240,7 +240,9 @@ final class VoiceStudioViewModel: ObservableObject {
 
     /// 当前音色
     var voice: Voice? {
-        VoiceService.shared.fetchAll().first(where: { $0.key == selectedVoiceKey })
+        // ⚠️ 这是 SwiftUI body 里的计算属性：任何一次 body 求值都会跑一次。
+        // 早先是 `fetchAll().first(where:)` —— 全表扫描 + 全量排序，叠在每一帧上就是卡顿。
+        VoiceService.shared.voice(forKey: selectedVoiceKey)
     }
 
     // MARK: - 操作

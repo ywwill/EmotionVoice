@@ -406,8 +406,7 @@ struct GenerationDialog: View {
                 dialogChip(vm.selectedFormat.uppercased())
                 dialogChip(String(format: "%.2f kHz", Double(vm.sampleRate) / 1000.0))
                 dialogChip(String(format: "%.1fx · %d%%", vm.rate, Int(vm.volume.rounded())))
-                dialogChip(String(format: "%d 字 · %d 句".localized(),
-                                  vm.plainText.count, sentenceCount))
+                dialogChip("%d 字 · %d 句".localized(vm.plainText.count, sentenceCount))
                 dialogChipCost("−\(formatCredits(chargedPoints)) 积分".localized())
             }
             .padding(.horizontal, 16)
@@ -475,7 +474,7 @@ struct GenerationDialog: View {
         var parts = [v.localizedName]
         if !v.localizedDesc.isEmpty { parts.append(v.localizedDesc) }
         parts.append(v.localizedGender)
-        if let age = v.age, age > 0 { parts.append(String(format: "%d 岁".localized(), age)) }
+        if let age = v.age, age > 0 { parts.append("%d 岁".localized(age)) }
         return parts.joined(separator: " · ")
     }
 
