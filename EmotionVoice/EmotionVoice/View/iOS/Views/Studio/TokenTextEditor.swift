@@ -128,6 +128,7 @@ struct TokenTextEditor: UIViewRepresentable {
         overlay.config.isDark = isDark
         // 行距必须同步给绘制层：TextKit 把它算进了行片段矩形，绘制前要减掉还原成字高
         overlay.config.lineSpacing = Self.lineSpacing
+        overlay.config.pillSpacing = Self.pillSpacing
         overlay.config.onRemove = { [weak coordinator = context.coordinator] id in
             coordinator?.removeMark(id: id)
         }
@@ -244,7 +245,8 @@ struct TokenTextEditor: UIViewRepresentable {
         var index = 0
         for ch in chars {
             if String(ch) == TokenDocument.placeholder, let token = soundAt[index] {
-                let attachment = SoundPlaceholderAttachment(width: Self.pillWidth(for: token),
+                // 占位附件比可见的 pill 左右各多留 `pillSpacing`，否则 pill 会贴着相邻文字
+                let attachment = SoundPlaceholderAttachment(width: Self.pillWidth(for: token) + pillSpacing * 2,
                                                             height: pillHeight,
                                                             baselineOffset: -3)
                 result.append(NSAttributedString(attachment: attachment))
@@ -263,6 +265,8 @@ struct TokenTextEditor: UIViewRepresentable {
 
     /// 拟声占位附件的高度（与 `TokenCapsuleOverlay.Config.pillHeight` 保持一致）
     static let pillHeight: CGFloat = 20
+    /// 拟声 pill 左右各留的间距（与 `TokenCapsuleOverlay.Config.pillSpacing` 保持一致）
+    static let pillSpacing: CGFloat = 8
     private static let pillFont = UIFont.systemFont(ofSize: 12, weight: .medium)
 
     static func pillWidth(for token: EmotionToken) -> CGFloat {
@@ -331,7 +335,7 @@ struct TokenTextEditor: UIViewRepresentable {
 
             if category == .richLanguage {
                 let attachment = SoundPlaceholderAttachment(
-                    width: TokenTextEditor.pillWidth(for: token),
+                    width: TokenTextEditor.pillWidth(for: token) + TokenTextEditor.pillSpacing * 2,
                     height: TokenTextEditor.pillHeight,
                     baselineOffset: -3)
                 let attr = NSMutableAttributedString(attachment: attachment)

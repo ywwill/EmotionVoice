@@ -1340,7 +1340,6 @@
 		6FB270A630942B15007BD00D /* iOSEmoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB270A530942B15007BD00D /* iOSEmoraApp.swift */; };
 		6FB270A730942B15007BD00D /* iOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB270A430942B15007BD00D /* iOSContentView.swift */; };
 		6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE53060D7680005713F /* StoreKitManager.swift */; };
-		6FCA9CE83060D7680005713F /* CreditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE33060D7680005713F /* CreditService.swift */; };
 		6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE23060D7680005713F /* CreditManager.swift */; };
 		6FCA9CEA3060D7680005713F /* DeviceIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */; };
 		6FCA9CED3060D7C50005713F /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9CEC3060D7C50005713F /* KeychainSwift */; };
@@ -2074,7 +2073,6 @@
 		6FB270A430942B15007BD00D /* iOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSContentView.swift; sourceTree = "<group>"; };
 		6FB270A530942B15007BD00D /* iOSEmoraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSEmoraApp.swift; sourceTree = "<group>"; };
 		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
-		6FCA9CE33060D7680005713F /* CreditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditService.swift; sourceTree = "<group>"; };
 		6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentifier.swift; sourceTree = "<group>"; };
 		6FCA9CE53060D7680005713F /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
 		6FCA9D863060F3340005713F /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
@@ -2261,42 +2259,21 @@
 			path = VoiceStudioView;
 			sourceTree = "<group>";
 		};
-		6F209380303EC80500A770BB /* Views */ = {
+		6F209380303EC80500A770BB /* View */ = {
 			isa = PBXGroup;
 			children = (
-				6F20937B303EC80500A770BB /* VoiceStudioView */,
-				6F209376303EC80500A770BB /* VoicesLibraryView */,
-				6F209361303EC80500A770BB /* CreditsView */,
-				6F20936E303EC80500A770BB /* SettingsView */,
-				6F2DAF8830624B920086FD6F /* HistoryView */,
-				6F209370303EC80500A770BB /* StatsView */,
-				6F20937C303EC80500A770BB /* Components.swift */,
-				6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */,
-				6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */,
-				6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */,
-				6F20937E303EC80500A770BB /* FlowLayout.swift */,
-				6F20937F303EC80500A770BB /* Sidebar.swift */,
+				6FA18FE6309476E600C90900 /* macOS */,
+				6FA18FE5309476E200C90900 /* iOS */,
 			);
-			path = Views;
+			path = View;
 			sourceTree = "<group>";
 		};
 		6F209387303EC80500A770BB /* EmotionVoice */ = {
 			isa = PBXGroup;
 			children = (
-				6F2090F0303EC80500A770BB /* Helper */,
-				6F2090E4303EC80500A770BB /* Database */,
-				6FCA9CE63060D7680005713F /* Store */,
-				6FCA9D853060F3210005713F /* Supabase */,
-				6F20935A303EC80500A770BB /* Services */,
-				6F2090E9303EC80500A770BB /* DesignSystem */,
-				6F209D20303EC88F00A770BB /* Voices */,
-				6F2090ED303EC80500A770BB /* Extension */,
-				6F2090F6303EC80500A770BB /* Models */,
-				6F20935E303EC80500A770BB /* ViewModels */,
-				6F209380303EC80500A770BB /* Views */,
+				6FA18FE43094769F00C90900 /* Shared */,
+				6F209380303EC80500A770BB /* View */,
 				6F209381303EC80500A770BB /* Assets.xcassets */,
-				6F209382303EC80500A770BB /* ContentView.swift */,
-				6F209383303EC80500A770BB /* EmotionVoiceApp.swift */,
 				6F209386303EC80500A770BB /* Localizable.strings */,
 				A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */,
 			);
@@ -2932,12 +2909,6 @@
 		6F3AE7A8309055FE007975DD /* iOSEmora */ = {
 			isa = PBXGroup;
 			children = (
-				6FB270A530942B15007BD00D /* iOSEmoraApp.swift */,
-				6FB270A430942B15007BD00D /* iOSContentView.swift */,
-				6F3AEA3630907A20007975DD /* App */,
-				6F3AEA3A30907A20007975DD /* DesignSystem */,
-				6F3AEA3C30907A20007975DD /* Layout */,
-				6F3AEA5330907A20007975DD /* Views */,
 			);
 			path = iOSEmora;
 			sourceTree = "<group>";
@@ -3034,11 +3005,61 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		6FA18FE43094769F00C90900 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				6F2090E9303EC80500A770BB /* DesignSystem */,
+				6F209D20303EC88F00A770BB /* Voices */,
+				6F2090F0303EC80500A770BB /* Helper */,
+				6F2090E4303EC80500A770BB /* Database */,
+				6FCA9D853060F3210005713F /* Supabase */,
+				6FCA9CE63060D7680005713F /* Store */,
+				6F20935E303EC80500A770BB /* ViewModels */,
+				6F2090F6303EC80500A770BB /* Models */,
+				6F20935A303EC80500A770BB /* Services */,
+				6F2090ED303EC80500A770BB /* Extension */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		6FA18FE5309476E200C90900 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6FB270A530942B15007BD00D /* iOSEmoraApp.swift */,
+				6FB270A430942B15007BD00D /* iOSContentView.swift */,
+				6F3AEA3630907A20007975DD /* App */,
+				6F3AEA3A30907A20007975DD /* DesignSystem */,
+				6F3AEA3C30907A20007975DD /* Layout */,
+				6F3AEA5330907A20007975DD /* Views */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		6FA18FE6309476E600C90900 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				6F209383303EC80500A770BB /* EmotionVoiceApp.swift */,
+				6F20937C303EC80500A770BB /* Components.swift */,
+				6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */,
+				6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */,
+				6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */,
+				6F20937E303EC80500A770BB /* FlowLayout.swift */,
+				6F20937F303EC80500A770BB /* Sidebar.swift */,
+				6F209382303EC80500A770BB /* ContentView.swift */,
+				6F20937B303EC80500A770BB /* VoiceStudioView */,
+				6F209376303EC80500A770BB /* VoicesLibraryView */,
+				6F209361303EC80500A770BB /* CreditsView */,
+				6F20936E303EC80500A770BB /* SettingsView */,
+				6F2DAF8830624B920086FD6F /* HistoryView */,
+				6F209370303EC80500A770BB /* StatsView */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
 		6FCA9CE63060D7680005713F /* Store */ = {
 			isa = PBXGroup;
 			children = (
 				6FCA9CE23060D7680005713F /* CreditManager.swift */,
-				6FCA9CE33060D7680005713F /* CreditService.swift */,
 				6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */,
 				6FCA9CE53060D7680005713F /* StoreKitManager.swift */,
 			);
@@ -4511,7 +4532,6 @@
 				5B2C3D4E5F6A7B8C9D0E1F2A /* PurchaseRecord.swift in Sources */,
 				6F209396303EC80500A770BB /* Voice.swift in Sources */,
 				6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */,
-				6FCA9CE83060D7680005713F /* CreditService.swift in Sources */,
 				6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */,
 				6FCA9D8A3060F34D0005713F /* DeviceInfo.swift in Sources */,
 				6FCA9D8B3060F34D0005713F /* UserCreditsModel.swift in Sources */,

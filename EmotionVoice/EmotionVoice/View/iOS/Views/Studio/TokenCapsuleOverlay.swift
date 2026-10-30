@@ -42,6 +42,12 @@ final class TokenCapsuleOverlay: UIView {
         /// 行片段矩形会被撑到 45pt 上下，画出来就是一条和整行一样高的色块。
         var pillHeight: CGFloat = 20
         var pillFont = UIFont.systemFont(ofSize: 12, weight: .medium)
+        /// 拟声 pill 左右各留出的间距：占位附件实际占 `pill 宽 + 2×spacing`，
+        /// 虚线框只画在中间那一段 —— 没有它 pill 会直接贴在相邻文字 / 语气胶囊上。
+        var pillSpacing: CGFloat = 8
+        /// 语气胶囊与 pill 之间要留出的**可见**间隙（`pillSpacing` 里分给它这么多，
+        /// 剩下的才是胶囊相对文字的内边距）。比 `capsuleSeamGap` 大，pill 才不会看着贴着胶囊。
+        var pillSeamGap: CGFloat = 4
 
         /// 空作用域（标签后面还没有文字 / 标签在文末）时兜底胶囊的最小宽度。
         /// ⚠️ 没有这个兜底，在文末点一个语气标签会画出一条 0 宽的胶囊 —— 徽章也没处安放，
@@ -136,6 +142,7 @@ final class TokenCapsuleOverlay: UIView {
             guard let m = Self.pillRect(charRange: NSRange(location: loc, length: 1),
                                         layoutManager: lm, container: tc,
                                         pillHeight: config.pillHeight,
+                                        pillSpacing: config.pillSpacing,
                                         lineSpacing: config.lineSpacing,
                                         fallbackLineHeight: config.fallbackLineHeight) else { continue }
             let r = m.rect.offsetBy(dx: inset.left, dy: inset.top)
@@ -182,7 +189,10 @@ final class TokenCapsuleOverlay: UIView {
         }
 
         // 3) 接缝收敛：相邻两段之间留 gap，拟声 pill 单方面不让位
-        resolveSeams(&boxes, gap: config.capsuleSeamGap, minPad: config.capsuleSeamMinPadding)
+        resolveSeams(&boxes,
+                     gap: config.capsuleSeamGap,
+                     pillGap: config.pillSeamGap,
+                     minPad: config.capsuleSeamMinPadding)
 
         // 4) 先画胶囊（含徽章），再画 pill，保证 pill 压在最上层
         var grouped: [(mark: EmotionMark, rects: [CGRect])] = []
@@ -201,6 +211,7 @@ final class TokenCapsuleOverlay: UIView {
             if let m = Self.pillRect(charRange: NSRange(location: loc, length: 1),
                                      layoutManager: lm, container: tc,
                                      pillHeight: config.pillHeight,
+                                     pillSpacing: config.pillSpacing,
                                      lineSpacing: config.lineSpacing,
                                      fallbackLineHeight: config.fallbackLineHeight) {
                 drawPill(for: mark, rect: m.rect.offsetBy(dx: inset.left, dy: inset.top))
@@ -226,35 +237,48 @@ final class TokenCapsuleOverlay: UIView {
     ///
     /// 实心（拟声 pill）不让位：那一侧的间隙由胶囊单方面让出来，
     /// 于是胶囊背景在 pill 处自然断开，pill 不会压在同色底上。
-    private func resolveSeams(_ boxes: inout [SeamBox], gap: CGFloat, minPad: CGFloat) {
+    private func resolveSeams(_ boxes: inout [SeamBox], gap: CGFloat, pillGap: CGFloat, minPad: CGFloat) {
         guard boxes.count > 1 else { return }
         boxes.sort { a, b in
             if abs(a.lineMinY - b.lineMinY) > 1 { return a.lineMinY < b.lineMinY }
             return a.rect.minX < b.rect.minX
         }
+        let trigger = max(gap, pillGap)
         for i in 0..<(boxes.count - 1) {
             let j = i + 1
             // 不同行之间不存在水平接缝
             guard abs(boxes[i].lineMinY - boxes[j].lineMinY) <= 1 else { continue }
-            guard boxes[i].rect.maxX > boxes[j].rect.minX - gap else { continue }
+            guard boxes[i].rect.maxX > boxes[j].rect.minX - trigger else { continue }
             let mid = (boxes[i].rect.maxX + boxes[j].rect.minX) / 2
 
             var aMax = mid - gap / 2
             var bMin = mid + gap / 2
             if boxes[j].isSolid {
-                aMax = boxes[j].rect.minX - gap
+                aMax = boxes[j].rect.minX - pillGap
             } else if boxes[i].isSolid {
-                bMin = boxes[i].rect.maxX + gap
+                bMin = boxes[i].rect.maxX + pillGap
             }
 
             if !boxes[i].isSolid {
-                let floorX = boxes[i].textRect.maxX + minPad
-                let target = min(boxes[i].rect.maxX, max(aMax, floorX))
+                // ⚠️ 邻居是 pill（实心）时**不能用 minPad 兜底**：那会把胶囊边缘推进 pill 里 3pt，
+                // 虚线框底下就透出一块胶囊底色。pill 不需要「给文字留内边距」，直接严格停在它左边。
+                let target: CGFloat
+                if boxes[j].isSolid {
+                    target = min(boxes[i].rect.maxX, aMax)
+                } else {
+                    let floorX = boxes[i].textRect.maxX + minPad
+                    target = min(boxes[i].rect.maxX, max(aMax, floorX))
+                }
                 boxes[i].rect.size.width = max(target - boxes[i].rect.minX, 4)
             }
             if !boxes[j].isSolid {
-                let ceilX = boxes[j].textRect.minX - minPad
-                let target = max(boxes[j].rect.minX, min(bMin, ceilX))
+                let target: CGFloat
+                if boxes[i].isSolid {
+                    target = max(boxes[j].rect.minX, bMin)
+                } else {
+                    let ceilX = boxes[j].textRect.minX - minPad
+                    target = max(boxes[j].rect.minX, min(bMin, ceilX))
+                }
                 let right = boxes[j].rect.maxX
                 let clampedMin = min(target, right - 4)
                 boxes[j].rect.origin.x = clampedMin
@@ -471,6 +495,7 @@ final class TokenCapsuleOverlay: UIView {
                          layoutManager lm: NSLayoutManager,
                          container tc: NSTextContainer,
                          pillHeight: CGFloat,
+                         pillSpacing: CGFloat,
                          lineSpacing: CGFloat,
                          fallbackLineHeight: CGFloat) -> (rect: CGRect, lineMinY: CGFloat)? {
         let gRange = lm.glyphRange(forCharacterRange: charRange, actualCharacterRange: nil)
@@ -480,9 +505,11 @@ final class TokenCapsuleOverlay: UIView {
                                    layoutManager: lm, container: tc,
                                    lineSpacing: lineSpacing,
                                    fallbackHeight: fallbackLineHeight)
-        let rect = CGRect(x: raw.minX,
+        // 占位附件比 pill 宽 `2 × pillSpacing`，虚线框只画在中间那一段
+        let width = max(raw.width - pillSpacing * 2, 4)
+        let rect = CGRect(x: raw.minX + pillSpacing,
                           y: box.midY - pillHeight / 2,
-                          width: raw.width,
+                          width: width,
                           height: pillHeight)
         return (rect, box.minY)
     }
@@ -526,7 +553,18 @@ final class SoundPlaceholderAttachment: NSTextAttachment {
         self.wantedHeight = height
         self.baselineOffset = baselineOffset
         super.init(data: nil, ofType: nil)
+        // ⚠️ 附件不挂图时，iOS 会自己补一个「文稿」占位图标，正好落在拟声 pill 的虚线框里。
+        // 挂一张透明图把它顶掉：尺寸仍由 `attachmentBounds` 决定，画出来什么都没有。
+        self.image = Self.blankImage
     }
+
+    /// 1×1 全透明图（只用来顶掉系统占位图标，实际尺寸不看它）
+    private static let blankImage: UIImage? = {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1), format: format).image { _ in }
+    }()
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
