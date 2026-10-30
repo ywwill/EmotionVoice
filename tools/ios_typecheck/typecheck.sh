@@ -23,10 +23,8 @@ LIST=$(mktemp)
 trap 'rm -f "$LIST"' EXIT
 
 {
-  # ---- iOS 端新代码 ----
-  find "$ROOT/iOS" -name "*.swift" | sort
-  echo "$IOSENTRY/ContentView.swift"
-  echo "$IOSENTRY/iOSEmoraApp.swift"
+  # ---- iOS 端新代码（iOS/ 目录已迁到 EmotionVoice/iOSEmora）----
+  find "$IOSENTRY" -name "*.swift" | sort
 
   # ---- 复用的既有逻辑（不含依赖 SPM 包的 6 个服务）----
   echo "$E/Models/AudioItem.swift"

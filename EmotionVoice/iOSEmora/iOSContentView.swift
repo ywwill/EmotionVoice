@@ -13,7 +13,3 @@ struct ContentView: View {
         RootTabView()
     }
 }
-
-#Preview {
-    ContentView()
-}

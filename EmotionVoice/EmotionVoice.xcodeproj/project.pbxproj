@@ -661,9 +661,6 @@
 		6F2DAF8E30624B920086FD6F /* SummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DAF8730624B920086FD6F /* SummaryCard.swift */; };
 		6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */; };
 		6F2DB01C3062649F0086FD6F /* AudioPlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */; };
-		6F3AE7A9309055FE007975DD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A5309055FE007975DD /* Assets.xcassets */; };
-		6F3AE7AA309055FE007975DD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A6309055FE007975DD /* ContentView.swift */; };
-		6F3AE7AB309055FE007975DD /* iOSEmoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */; };
 		6F3AE7AC30905628007975DD /* Const.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090EE303EC80500A770BB /* Const.swift */; };
 		6F3AE7AD3090562F007975DD /* Func.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2090EF303EC80500A770BB /* Func.swift */; };
 		6F3AE7AE30905634007975DD /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9D8E3060F6D80005713F /* TextSplitter.swift */; };
@@ -1339,6 +1336,9 @@
 		6FB000000000000000001004 /* PlayerTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001004 /* PlayerTranscriptView.swift */; };
 		6FB000000000000000001005 /* PlaybackStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001005 /* PlaybackStatusBar.swift */; };
 		6FB000000000000000001006 /* PlaybackKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */; };
+		6FB270A230942711007BD00D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F209381303EC80500A770BB /* Assets.xcassets */; };
+		6FB270A630942B15007BD00D /* iOSEmoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB270A530942B15007BD00D /* iOSEmoraApp.swift */; };
+		6FB270A730942B15007BD00D /* iOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB270A430942B15007BD00D /* iOSContentView.swift */; };
 		6FCA9CE73060D7680005713F /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE53060D7680005713F /* StoreKitManager.swift */; };
 		6FCA9CE83060D7680005713F /* CreditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE33060D7680005713F /* CreditService.swift */; };
 		6FCA9CE93060D7680005713F /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCA9CE23060D7680005713F /* CreditManager.swift */; };
@@ -2034,9 +2034,6 @@
 		6F2DB0193062649F0086FD6F /* AudioPlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerDetailView.swift; sourceTree = "<group>"; };
 		6F2DB01A3062649F0086FD6F /* AudioRowItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRowItem.swift; sourceTree = "<group>"; };
 		6F3AE79A309055CE007975DD /* iOSEmora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSEmora.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6F3AE7A5309055FE007975DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		6F3AE7A6309055FE007975DD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSEmoraApp.swift; sourceTree = "<group>"; };
 		6F3AEA3330907A20007975DD /* IOSUIState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSUIState.swift; sourceTree = "<group>"; };
 		6F3AEA3430907A20007975DD /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		6F3AEA3530907A20007975DD /* TabRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabRouter.swift; sourceTree = "<group>"; };
@@ -2074,6 +2071,8 @@
 		6FA000000000000000001004 /* PlayerTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTranscriptView.swift; sourceTree = "<group>"; };
 		6FA000000000000000001005 /* PlaybackStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusBar.swift; sourceTree = "<group>"; };
 		6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackKeyboardShortcuts.swift; sourceTree = "<group>"; };
+		6FB270A430942B15007BD00D /* iOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSContentView.swift; sourceTree = "<group>"; };
+		6FB270A530942B15007BD00D /* iOSEmoraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSEmoraApp.swift; sourceTree = "<group>"; };
 		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		6FCA9CE33060D7680005713F /* CreditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditService.swift; sourceTree = "<group>"; };
 		6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentifier.swift; sourceTree = "<group>"; };
@@ -2933,9 +2932,8 @@
 		6F3AE7A8309055FE007975DD /* iOSEmora */ = {
 			isa = PBXGroup;
 			children = (
-				6F3AE7A5309055FE007975DD /* Assets.xcassets */,
-				6F3AE7A6309055FE007975DD /* ContentView.swift */,
-				6F3AE7A7309055FE007975DD /* iOSEmoraApp.swift */,
+				6FB270A530942B15007BD00D /* iOSEmoraApp.swift */,
+				6FB270A430942B15007BD00D /* iOSContentView.swift */,
 				6F3AEA3630907A20007975DD /* App */,
 				6F3AEA3A30907A20007975DD /* DesignSystem */,
 				6F3AEA3C30907A20007975DD /* Layout */,
@@ -3198,7 +3196,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6F3AE7A9309055FE007975DD /* Assets.xcassets in Resources */,
 				6F3AE7D93090797A007975DD /* longxuanzhufeng.m4a in Resources */,
 				6F3AE7DA3090797A007975DD /* longxiaqueshan.m4a in Resources */,
 				6F3AE7DB3090797A007975DD /* loongryanma.m4a in Resources */,
@@ -3272,6 +3269,7 @@
 				6F3AE81F3090797A007975DD /* longxinruixuan.m4a in Resources */,
 				6F3AE8203090797A007975DD /* longweijuquan.m4a in Resources */,
 				6F3AE8213090797A007975DD /* longchengyuhui.m4a in Resources */,
+				6FB270A230942711007BD00D /* Assets.xcassets in Resources */,
 				6F3AE8223090797A007975DD /* longxuanyixiao.m4a in Resources */,
 				6F3AE8233090797A007975DD /* longshuocanmu.m4a in Resources */,
 				6F3AE8243090797A007975DD /* longxiushuoche.m4a in Resources */,
@@ -4430,6 +4428,8 @@
 				6F3AEA5B30907A20007975DD /* CategoryFilterSheet.swift in Sources */,
 				6F3AEA5C30907A20007975DD /* OptionPickerView.swift in Sources */,
 				6F3AEA5D30907A20007975DD /* EmotionAccessoryBar.swift in Sources */,
+				6FB270A630942B15007BD00D /* iOSEmoraApp.swift in Sources */,
+				6FB270A730942B15007BD00D /* iOSContentView.swift in Sources */,
 				6F3AEA5E30907A20007975DD /* CreditRecordsView.swift in Sources */,
 				6F3AEA5F30907A20007975DD /* AuroraComponents.swift in Sources */,
 				6F3AEA6030907A20007975DD /* PurchaseSheet.swift in Sources */,
@@ -4446,10 +4446,8 @@
 				6F3AEA6B30907A20007975DD /* GenerationDialog.swift in Sources */,
 				6F3AEA6C30907A20007975DD /* TokenDocument.swift in Sources */,
 				6F3AE7AE30905634007975DD /* TextSplitter.swift in Sources */,
-				6F3AE7AA309055FE007975DD /* ContentView.swift in Sources */,
 				6F3AE7AF3090563B007975DD /* DatabaseManager.swift in Sources */,
 				6F3AE7AD3090562F007975DD /* Func.swift in Sources */,
-				6F3AE7AB309055FE007975DD /* iOSEmoraApp.swift in Sources */,
 				6F3AE7AC30905628007975DD /* Const.swift in Sources */,
 				6F3AE7B53090797A007975DD /* AppColor.swift in Sources */,
 				6F3AE7B63090797A007975DD /* AppFont.swift in Sources */,
@@ -4612,6 +4610,7 @@
 				DEVELOPMENT_TEAM = 7Q3FN28VDH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -4651,6 +4650,7 @@
 				DEVELOPMENT_TEAM = 7Q3FN28VDH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Emora;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
