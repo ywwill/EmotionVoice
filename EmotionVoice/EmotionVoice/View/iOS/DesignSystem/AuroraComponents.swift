@@ -53,6 +53,9 @@ struct PrimaryButton: View {
     var systemImage: String? = nil
     var height: CGFloat = 44
     var isFullWidth: Bool = true
+    /// 固定宽度（给了就不再撑满，也不再按内容长短变化）。
+    /// 底部条里几个按钮并排时用得着：主操作不该跟着旁边的数字长短伸缩。
+    var width: CGFloat? = nil
     var isEnabled: Bool = true
     let action: () -> Void
 
@@ -65,11 +68,15 @@ struct PrimaryButton: View {
                 }
                 Text(title)
                     .font(.system(size: 15.5, weight: .semibold))
+                    // ⚠️ 固定宽度下，长语种（英文 Generate Audio）要比中文长不少 ——
+                    // 不缩放就会被切掉尾巴
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(c.ctaForeground)
-            .frame(maxWidth: isFullWidth ? .infinity : nil)
+            .frame(minWidth: width, maxWidth: width ?? (isFullWidth ? .infinity : nil))
             .frame(height: height)
-            .padding(.horizontal, isFullWidth ? 0 : 16)
+            .padding(.horizontal, (width != nil || isFullWidth) ? 0 : 16)
             .background(
                 RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
                     .fill(c.ctaGradient)

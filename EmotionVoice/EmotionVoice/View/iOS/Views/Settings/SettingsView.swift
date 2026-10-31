@@ -25,10 +25,12 @@ struct SettingsView: View {
     /// 积分记录总条数（首屏取一次，进入二级页后再由二级页自己翻页）
     @State private var recordCount: Int = 0
 
+    /// 语音合成两项**就地弹 sheet**（`defaultFormat` / `sampleRate`），不再 push 二级页
+    @State private var optionSheet: SettingsOptionKind?
+
     private var versionText: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(short) (\(build))"
+        return "\(short)"
     }
 
     var body: some View {
@@ -56,6 +58,12 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             recordCount = CreditsService.shared.fetchCreditRecords(page: 1).totalCount
+        }
+        .sheet(item: $optionSheet) { kind in
+            OptionPickerSheet(kind: kind)
+                .presentationDetents([.height(OptionPickerSheet.preferredDetentHeight(for: kind)),
+                                      .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -159,7 +167,7 @@ struct SettingsView: View {
 
     private var synthBlock: some View {
         VStack(spacing: 0) {
-            Button { router.push(.defaultFormat) } label: {
+            Button { optionSheet = .defaultFormat } label: {
                 NavigationRow(title: "默认格式".localized(),
                               iconSystemName: "doc.fill",
                               iconGradient: [Color(hex: 0xFFB457), Color(hex: 0xF2703A)],
@@ -167,7 +175,7 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
 
-            Button { router.push(.sampleRate) } label: {
+            Button { optionSheet = .sampleRate } label: {
                 NavigationRow(title: "采样率".localized(),
                               iconSystemName: "waveform",
                               iconGradient: [Color(hex: 0x74B9FF), Color(hex: 0x3B74D9)],

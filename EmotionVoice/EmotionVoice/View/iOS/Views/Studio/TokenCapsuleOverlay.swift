@@ -17,21 +17,22 @@
 //  两个标签挨在一起时前一个的徽章会横穿到后一个的胶囊 / 徽章上 ——
 //  这就是「两个语气标签连在一起会重叠」。现在同一行的徽章从左到右依次让位。
 //
-//  ⚠️ 空作用域（标签后面还没有文字 / 下一个边界就在同一个位置）**只画徽章、不铺胶囊**。
-//  早年给空作用域补一条 34pt 宽的兜底胶囊，而锚点是「前一个字符的右边缘」——
-//  在文末插一个语气再插中断时，那条胶囊会一直压在之后输入的正文上，
-//  接缝收敛也救不回来（两段之间没有物理空隙，谁都没有可让位的空间）。
+//  ⚠️ 空作用域（标签后面还没有文字 / 下一个边界紧挨着）**只画徽章、不铺胶囊**。
+//  早年给空作用域补一条 34pt 宽的兜底胶囊，它会一直压在之后输入的正文上。
 //
-//  ⚠️ 中断的锚点取**插入符矩形**（零长字符区间），不是「前一个字符的右边缘」。
-//  后者在两个位置会拿到上一行的坐标：① 前一个字符是换行符（它的字形矩形是整行宽，
-//  maxX 直接顶到容器右边缘）；② 前一个字符是折行前的末字。锚点一旦落到上一行，
-//  徽章飘到上一行行尾、`applyInterruptGaps` 还会拿这个 x 去切下一行的胶囊 ——
-//  表现就是「中断后面的语气标签底色只剩一条细丝 / 整行没底色」。
+//  ⚠️ 每个标记都在文档里占一个占位：语气 / 中断占 `TokenTextEditor.toneSpacing = 14pt`
+//  的空白，拟声占 pill 宽。胶囊的左右内边距就是从这段**物理空隙**里出的。
+//  早年用来补偿零宽空缺的 `applyInterruptGaps` / `applyNeighborGaps` 都已删掉 ——
+//  它们会把 pad 吃成负数，正是「文字紧贴标签边缘」的来源。
 //
-//  ⚠️ `applyInterruptGaps` 的左右两支都**只切与中断锚点同一行**的那一段。
-//  中断标记不占字符位，锚点 x 是「这一行上的某个横坐标」，把它无差别地套到
-//  下一行的胶囊上，就会把那一行整段推成一个贴着右边缘的细条 ——
-//  这正是「语气标签换行后背景色没了」的根因。
+//  ⚠️ 但相邻两个标签之间**只有一份** 14pt 空隙，要同时付前一个的右内边距和后一个的
+//  左内边距，剩下的自然缝只有 2pt（再被两条描边吃掉一半）→ 看着就是首尾重叠。
+//  `resolveSeams` 因此还留了一支「语气 ↔ 语气」，带 `capsuleMinPad` 地板地再让一次。
+//
+//  ⚠️ 徽章锚点取 `location + 1`（占位符之后那个位置，也就是接下来要打字的地方），
+//  并且用**插入符矩形**（零长字符区间）而不是「前一个字符的右边缘」：
+//  后者在两个位置会拿到**上一行**的坐标（前一个字符是换行符 / 折行前的末字），
+//  锚点一旦落到上一行，徽章就飘到上一行行尾 —— 表现就是「中断后面的标签底色没了」。
 //
 
 import UIKit
@@ -44,20 +45,31 @@ final class TokenCapsuleOverlay: UIView {
         var editable: Bool = true
         /// 当前深浅色（决定情感色是否压暗）
         var isDark: Bool = false
-        /// 语气胶囊：填充 14% / 1px 内描边 42% / 圆角 9 / 内边距 6×8
+        /// 语气胶囊：填充 14% / 1px 内描边 42% / 圆角 9。
+        ///
+        /// ⚠️ 左右内边距 `capsulePadX = 6` 是从**标记自带的占位宽度**里出的：
+        /// 每个语气 / 中断标记在文档里占 `TokenTextEditor.toneSpacing = 14pt` 的空白，
+        /// 相邻两个标签于是天然有 14pt 的物理空隙 —— 左右各分 6pt 给胶囊做内边距，
+        /// 剩下 2pt 是两个胶囊之间能看到的缝。两者必须满足 `capsulePadX × 2 < toneSpacing`，
+        /// 否则胶囊会重新重叠（曾经的「相邻标签叠出一条更深色带」）。
         var capsuleFillAlpha: CGFloat = 0.14
         var capsuleStrokeAlpha: CGFloat = 0.42
         var capsuleCorner: CGFloat = 9
-        var capsulePadX: CGFloat = 8
+        /// 相邻两个**语气胶囊**之间至少要有多少可见缝隙。
+        ///
+        /// ⚠️ 两个相邻标签之间只有**一个** 14pt 占位（`TokenTextEditor.toneSpacing`），
+        /// 而它要同时支付前一个胶囊的右内边距（6pt）与后一个的左内边距（6pt）——
+        /// 剩下 2pt，再被两条 1pt 描边各吃掉 0.5pt，肉眼只剩 1pt：
+        /// 这就是「两个语气标签连在一起，前一个的末尾和后一个的开头重叠」。
+        /// 所以还得再让一次：`resolveSeams` 从两侧各匀一点出来把缝撑到这里。
+        var capsuleSeamGap: CGFloat = 6
+        /// 为缝隙让位时，胶囊在文字两侧**最少**要保留多少内边距。
+        ///
+        /// ⚠️ 这是早年「为了挤出缝隙把 `capsulePadX` 吃到负数」不再重演的关键：
+        /// 让位量到此为止，代价是牺牲缝而不是牺牲文字与边缘的距离。
+        var capsuleMinPad: CGFloat = 3
+        var capsulePadX: CGFloat = 6
         var capsulePadY: CGFloat = 6
-        /// 相邻两段胶囊的接缝灵敏度（重叠超过这个值才去收敛）。
-        /// ⚠️ 它**不是**切出来的缝隙宽度：iOS 的语气标记不占字符位，两段文本之间没有
-        /// 物理空隙可切（见 `resolveSeams` 里语气–语气那一支的说明）。
-        var capsuleSeamGap: CGFloat = 2
-        /// **中断处**的接缝宽度：语气 – 中断 – 语气 之间要真正断开（读起来才有停顿感）。
-        /// macOS 的中断标记是 5×1 可见占位，天然有 5pt 空隙；iOS 的中断标记不占字符位，
-        /// 只能从两侧的内边距里各匀一半出来（`gap / 2` 的字形会露在胶囊外，这是代价）。
-        var interruptSeamGap: CGFloat = 6
         /// 徽章（emoji + 名称）压在胶囊左上角
         var badgeHeight: CGFloat = 15
         var badgeFont = UIFont.systemFont(ofSize: 10.5, weight: .bold)
@@ -75,20 +87,12 @@ final class TokenCapsuleOverlay: UIView {
         /// 虚线框只画在中间那一段 —— 没有它 pill 会直接贴在相邻文字 / 语气胶囊上。
         var pillSpacing: CGFloat = 8
         /// 语气胶囊与 pill 之间要留出的**可见**间隙（`pillSpacing` 里分给它这么多，
-        /// 剩下的才是胶囊相对文字的内边距）。比 `capsuleSeamGap` 大，pill 才不会看着贴着胶囊。
-        var pillSeamGap: CGFloat = 4
-        /// 与「**没有底色**的邻居」之间要补出的可见间隙。
+        /// 剩下的才是胶囊相对文字的内边距）。
         ///
-        /// ⚠️ iOS 的语气标记不占字符位（macOS 是 5×1 的可见占位，天然就有物理空隙），
-        /// 所以胶囊为了实现自己的 `capsulePadX` 内边距，会一路盖到**不属于任何胶囊**的
-        /// 前一段文字上。「插中断 → 输入一段字 → 再插一个语气标签」必现：中断的作用域
-        /// 不画胶囊，那一段字裸着，于是看起来就是
-        /// **「新标签的开始位置压在前一段文字的末尾上、两者之间没有一点空隙」**。
-        /// 见 `applyNeighborGaps`。
-        var uncoveredSeamGap: CGFloat = 3
-        /// 给邻居让位时，最多允许把胶囊边缘推进自己第一段文字里多少 pt。
-        /// 胶囊是**半透明覆盖层**，字形不受影响；这个上限只是防极端排版把整段吃掉。
-        var uncoveredMaxCut: CGFloat = 3
+        /// ⚠️ 这是三道收敛里唯一还需要的一支：pill 是**实心**且位置由自己的占位符决定，
+        /// 语气胶囊又必须画到它旁边（不像「语气 ↔ 语气」两种都由 `toneSpacing` 撑开），
+        /// 所以只能由胶囊单方面让位 —— pill 不让，胶囊单方面退到 `pillInset − pillSeamGap`。
+        var pillSeamGap: CGFloat = 3
 
         /// 空作用域（标签后面还没有文字 / 标签在文末）时徽章的落位锚点高度兜底。
         /// ⚠️ 没有这个兜底，在文末点一个语气标签就没有任何可画的东西 ——
@@ -194,23 +198,26 @@ final class TokenCapsuleOverlay: UIView {
 
         // 2) 语气胶囊：作用域按拟声占位切成多段
         for (i, mark) in ordered.enumerated() where mark.token.category == .emotion {
-            let start = min(max(mark.location, 0), docLength)
-            let end = min(max(TokenDocument.scopeEnd(at: i, in: ordered, docLength: docLength), start), docLength)
+            // ⚠️ 跳过标记自己占的那个占位符：它是一段空白宽度，不是它的正文。
+            // 作用域末尾 `end` 是下一个边界的位置（也就是**下一个占位符的起点**），
+            // 于是 `[start, end)` 之间只有纯文本，胶囊的外扩不会碰到任何邻居的占位。
+            let owner = min(max(mark.location + 1, 0), docLength)
+            let start = min(owner, docLength)
+            let end = min(max(TokenDocument.scopeEnd(at: i, in: ordered, docLength: docLength), owner), docLength)
 
-            var pieces: [TextPiece] = []
+            var pieces: [CGRect] = []
             if end > start {
                 for piece in TokenDocument.scopePieces(start: start, end: end, soundLocations: soundLocations) {
-                    pieces.append(contentsOf: Self.linePieces(charRange: piece,
-                                                              layoutManager: lm, container: tc,
-                                                              lineSpacing: config.lineSpacing,
-                                                              fallbackLineHeight: config.fallbackLineHeight))
+                    pieces.append(contentsOf: Self.lineRects(charRange: piece,
+                                                             layoutManager: lm, container: tc,
+                                                             lineSpacing: config.lineSpacing,
+                                                             fallbackLineHeight: config.fallbackLineHeight))
                 }
             }
             if pieces.isEmpty {
-                // 空作用域（标签后还没文字 / 下一个边界就在同一位置）：
+                // 空作用域（标签后还没文字 / 下一个边界紧挨着）：
                 // ⚠️ 只登记一个徽章，**不画胶囊**。铺一条固定宽度的兜底胶囊会压在
-                // 之后输入的正文上（中断插在语气后面时必现），而接缝收敛救不回来 ——
-                // 两段文本严丝合缝，没有任何可让位的空隙。
+                // 之后输入的正文上，而接缝收敛救不回来 —— 那里没有任何可让位的空隙。
                 let anchor = Self.emptyScopeRect(characterIndex: start,
                                                  layoutManager: lm, container: tc,
                                                  docLength: docLength,
@@ -223,48 +230,47 @@ final class TokenCapsuleOverlay: UIView {
                 continue
             }
 
-            for p in pieces {
-                let capsule = p.rect.insetBy(dx: -config.capsulePadX, dy: -config.capsulePadY)
+            for r in pieces {
+                let capsule = r.insetBy(dx: -config.capsulePadX, dy: -config.capsulePadY)
                     .offsetBy(dx: inset.left, dy: inset.top)
                 let clamped = Self.clampX(capsule,
                                           minX: inset.left,
                                           maxX: inset.left + tc.size.width)
                 boxes.append(SeamBox(rect: clamped,
-                                     textRect: p.rect.offsetBy(dx: inset.left, dy: inset.top),
-                                     lineMinY: p.rect.minY + inset.top,
-                                     isSolid: false, mark: mark, charRange: p.charRange))
+                                     textRect: r.offsetBy(dx: inset.left, dy: inset.top),
+                                     lineMinY: r.minY + inset.top,
+                                     isSolid: false, mark: mark))
             }
 
             // 徽章锚在**第一段**胶囊的左上角（跨行时只在第一行标一次）
-            let first = pieces[0].rect.offsetBy(dx: inset.left, dy: inset.top)
+            let first = pieces[0].offsetBy(dx: inset.left, dy: inset.top)
             badgeItems.append(BadgeItem(mark: mark,
                                         preferredX: first.minX - Self.badgeInsetX,
                                         capsuleTop: first.minY - config.capsulePadY))
         }
 
-        // 2.5) 中断：作用域边界，不画胶囊，只留一个灰徽章（否则它既看不见也删不掉）。
-        //      同一个锚点同时登记成「切口」，交给 `applyInterruptGaps` 把两侧胶囊断开。
-        //      ⚠️ 记的是**矩形**而不是一个 x：切的时候要拿 y 判「是不是同一行」。
-        var interruptAnchors: [UUID: CGRect] = [:]
+        // 2.5) 中断：作用域边界，**不画胶囊**，只留一个灰徽章（否则它既看不见也删不掉）。
+        //      它占的那 14pt 空白自己就是「断开」：前一条胶囊的右内边距、后一条胶囊的
+        //      左内边距都从这里出，中间剩下的就是看得见的停顿 —— 不需要再切一刀。
         for mark in ordered where mark.token.category == .interrupt {
-            let anchor = Self.emptyScopeRect(characterIndex: min(max(mark.location, 0), docLength),
+            let anchor = Self.emptyScopeRect(characterIndex: min(max(mark.location + 1, 0), docLength),
                                              layoutManager: lm, container: tc,
                                              docLength: docLength,
                                              lineSpacing: config.lineSpacing,
                                              fallbackLineHeight: config.fallbackLineHeight)
                 .offsetBy(dx: inset.left, dy: inset.top)
-            interruptAnchors[mark.id] = anchor
             badgeItems.append(BadgeItem(mark: mark,
                                         preferredX: anchor.minX - Self.badgeInsetX,
-                                            capsuleTop: anchor.minY - config.capsulePadY))
+                                        capsuleTop: anchor.minY - config.capsulePadY))
         }
 
-        // 3) 三道缝隙收敛，都只收不放，按「先粗后细」的顺序落：
-        //    ① 先给没有底色的邻居让位，② 再在中断处断开，③ 最后做相邻两段的接缝收敛。
-        applyNeighborGaps(&boxes, gap: config.uncoveredSeamGap, maxCut: config.uncoveredMaxCut)
-        applyInterruptGaps(&boxes, ordered: ordered, anchors: interruptAnchors,
-                         gap: config.interruptSeamGap)
-        resolveSeams(&boxes, gap: config.capsuleSeamGap, pillGap: config.pillSeamGap)
+        // 3) 接缝收敛：
+        //    ① 语气 ↔ 语气：挤一下把可见缝撑到 `capsuleSeamGap`（有一份 14pt 占位可花）；
+        //    ② 语气 ↔ pill：pill 是实心不让，胶囊退到它边上。
+        resolveSeams(&boxes,
+                     pillGap: config.pillSeamGap,
+                     toneGap: config.capsuleSeamGap,
+                     minPad: config.capsuleMinPad)
 
         // 4) 先画胶囊，再画 pill（pill 压在最上层），最后画徽章 ——
         //    徽章在最上层才能保证「×」不被任何底色切掉。
@@ -355,83 +361,6 @@ final class TokenCapsuleOverlay: UIView {
 
     // MARK: 接缝收敛
 
-    /// 中断边界处把两侧胶囊各推开 `gap / 2`，让「停顿」在视觉上真的断开。
-    ///
-    /// ⚠️ 判定完全走**几何**（锚点 x 是否落在某条胶囊的文字左 / 右端点上），
-    /// 不再比对「作用域的 `scopeEnd` == 下一个作用域的 `scopeStart`」—— 那个写法
-    /// 要求中断两侧**都有**语气胶囊才成立，而实际最常见的用法是：
-    /// 「语气 → 输入一段 → 插一个中断 → 继续输入」，中断后面压根没有第二条胶囊，
-    /// `resolveSeams` 因为 `boxes.count <= 1` 直接返回，这条胶囊的 `capsulePadX = 8`
-    /// 就一路盖过中断之后输入的正文 —— 表现就是「中断后面的字压在语气底色上」。
-    /// 逐条盒子单独判定则无论对面有没有胶囊都成立。
-    ///
-    /// ⚠️ iOS 的中断标记**不占字符位**，两段文本之间没有物理空隙。所以分两种情况：
-    ///  * **两侧都有胶囊**：各让 `gap / 2` 造出可见缝隙（接缝两侧的字形各露 `gap / 2`
-    ///    在胶囊外 —— 这是要「看得见的断开」必须付的代价，macOS 靠 5×1 的可见占位
-    ///    天然就有这段空隙）。
-    ///  * **只有一侧有胶囊**（中断后面直接就是正文）：只把那侧的内边距收到 0，
-    ///    停在文字边界上。既不会盖到对面的正文，也不会把字形切在胶囊外面 ——
-    ///    后者看起来就是渲染 bug，不是「停顿」。
-    ///
-    /// ⚠️⚠️ **两条支都必须限定在「中断锚点所在的那一行」**。
-    /// 中断标记不占字符位，锚点只是「某一行上的一个横坐标」。早年不判行，于是：
-    ///  * 中断插在**折行点**（前一个字符是上一行的末字，锚点 x 很大）→
-    ///    右邻语气的第一段其实在**下一行**，却被 `limit = a + gap/2` 从中间劈开，
-    ///    只剩贴着右边缘的一条细丝 —— 这就是「语气标签换行后背景色没了」；
-    ///  * 中断插在**换行符之后**（锚点 x 顶到容器右边缘）→ 同一段误伤更严重，
-    ///    甚至算出负宽度，整段胶囊直接消失。
-    /// 加上「同一行」这个条件后，跨行的情况自然落到「本来就有整行的换行空隙」，
-    /// 不需要再造一条缝。
-    private func applyInterruptGaps(_ boxes: inout [SeamBox],
-                                    ordered: [EmotionMark],
-                                    anchors: [UUID: CGRect],
-                                    gap: CGFloat) {
-        guard !anchors.isEmpty else { return }
-        let half = gap / 2
-
-        // 语气标记 → 它的所有盒段（跨行会切成多段），按盒子出现顺序
-        var segsByMark: [UUID: [Int]] = [:]
-        for (i, b) in boxes.enumerated() where !b.isSolid {
-            if let id = b.mark?.id { segsByMark[id, default: []].append(i) }
-        }
-
-        for (idx, mark) in ordered.enumerated() where mark.token.category == .interrupt {
-            guard let anchor = anchors[mark.id] else { continue }
-            let a = anchor.minX
-            let lineY = anchor.minY
-            /// 只挑出落在中断那一行的盒段（跨行的段之间本来就有整行的空隙，不用再切）
-            func onSameLine(_ i: Int) -> Bool { abs(boxes[i].lineMinY - lineY) <= 1 }
-
-            // 左邻：中断之前最近的语气标记 → 它在**中断所在行**上的最后一段
-            if let lastTone = ordered[..<idx].last(where: { $0.token.category == .emotion }),
-               let last = segsByMark[lastTone.id]?.last(where: onSameLine) {
-                let limit = a - half
-                if limit > boxes[last].rect.minX + 4 {
-                    let right = min(boxes[last].rect.maxX, limit)
-                    boxes[last].rect.size.width = max(right - boxes[last].rect.minX, 4)
-                }
-            }
-
-            // 右邻：中断之后最近的作用域边界；只有它也是语气标记时才有胶囊可让。
-            // ⚠️ `a > minX + 1` 这条别省：中断落在**行首**（折行后 / 换行后 / 文档开头）时
-            //    锚点 x 就等于这一行的左边缘，此时左右之间本来隔着整行的换行空隙，
-            //    再切一次只会把胶囊左端啃掉 `gap / 2`，看着像渲染缺口。
-            if let next = ordered[(idx + 1)...].firstIndex(where: {
-                $0.token.category == .emotion || $0.token.category == .interrupt
-            }), ordered[next].token.category == .emotion,
-               let first = segsByMark[ordered[next].id]?.first(where: onSameLine),
-               a > boxes[first].rect.minX + 1 {
-                let limit = a + half
-                if limit < boxes[first].rect.maxX - 4 {
-                    let right = boxes[first].rect.maxX
-                    let left = max(boxes[first].rect.minX, limit)
-                    boxes[first].rect.origin.x = left
-                    boxes[first].rect.size.width = right - left
-                }
-            }
-        }
-    }
-
     /// 接缝收敛用的盒子：一段胶囊（可让位）或一个拟声 pill（实心，不让位）
     private struct SeamBox {
         var rect: CGRect
@@ -440,130 +369,78 @@ final class TokenCapsuleOverlay: UIView {
         var lineMinY: CGFloat
         var isSolid: Bool
         var mark: EmotionMark?
-        /// 盒子对应的字符区间（`textView` 坐标系）。给「没有底色的邻居」让位时，
-        /// 要靠它找到紧邻的前一个字符在哪一行结束。
-        var charRange: NSRange = NSRange(location: 0, length: 0)
     }
 
-    /// 给**没有底色的邻居**让位。
+    /// 相邻两个语气胶囊之间只有一份 14pt 占位（`TokenTextEditor.toneSpacing`）可花，
+    /// 而它要同时付「前一个的右内边距 + 后一个的左内边距」，余下的缝不够看。
+    /// 这里从两侧各匀出一点，把可见缝撑到 `toneGap`。
     ///
-    /// 语气标记在 iOS 上不占字符位，两段文本在排版上严丝合缝：胶囊为了自己的
-    /// `capsulePadX` 内边距，会一路盖到前一段（恰好不属于任何胶囊）的字上。
-    /// 最典型的复现路径是「语气 → 插中断 → 输入一段字 → 再插一个语气标签」：
-    /// 中断的作用域不画胶囊，中间那段字是裸的，于是新标签的底色就压在它末尾几个字上，
-    /// 两段之间一点空隙都没有 —— macOS 上同一个位置的中断标记是 5×1 的可见占位，
-    /// 天然有物理空隙，所以那边从来没这个问题。
+    /// ⚠️ 每一侧的让位量有下限 `minPad`：最多让到文字与胶囊边缘只剩 `minPad` 为止。
+    /// 早年那版没有这个地板，为了挤出缝隙一路把 `capsulePadX` 吃到 0（甚至负数）——
+    /// 于是每修一次「两个标签要有缝」，就复发一次「标签里的文字紧贴边缘」。
+    /// 现在的取舍是：**让位到此为止** —— 缝不够就宁可缝略窄，也不许把文字顶到边上。
     ///
-    /// ⚠️ 只处理**紧邻位置是被没有底色的文本占着**这一支：
-    ///  * 前一段自己也带胶囊（语气 ↔ 语气）或者旁边就是拟声 pill —— 两边都在比 `rect`，
-    ///    交给 `resolveSeams` 统一收敛。这里抢先收一次只会把两边的容量都啃小；
-    ///  * 行首 —— 前一个字符在上一行，本来隔着一整行的空隙。
-    ///
-    /// ⚠️ 让位方式是「把胶囊左边缘往右顶」，而理想落点（邻居右边缘 + `gap`）恰好就是
-    /// 自己第一段文字的起点（两者之间没有物理空隙），所以代价是胶囊会探进首字的字身框
-    /// 一点点（`maxCut` 封顶）。胶囊是半透明覆盖层，字形照常显示。
-    private func applyNeighborGaps(_ boxes: inout [SeamBox], gap: CGFloat, maxCut: CGFloat) {
-        guard gap > 0, boxes.count > 0, let tv = textView else { return }
-        let lm = tv.layoutManager
-        let tc = tv.textContainer
-        let inset = tv.textContainerInset
+    /// ⚠️ 只处理**不同标记**的胶囊：同一个语气标签被拟声 pill 切成多段时不参与，
+    /// 它们是同一个胶囊的几截，中间本来就该断开由 pill 负责。
+    private func cutToneSeam(_ boxes: inout [SeamBox], i: Int, j: Int, toneGap: CGFloat, minPad: CGFloat) {
+        guard let a = boxes[i].mark, let b = boxes[j].mark, a.id != b.id else { return }
+        let need = boxes[i].rect.maxX + toneGap - boxes[j].rect.minX
+        guard need > 0.5 else { return }
 
-        for i in boxes.indices where !boxes[i].isSolid {
-            let start = boxes[i].charRange.location
-            guard start > 0 else { continue }
-            guard let prev = Self.glyphRunRect(charRange: NSRange(location: start - 1, length: 1),
-                                               layoutManager: lm, container: tc,
-                                               lineSpacing: config.lineSpacing,
-                                               fallbackLineHeight: config.fallbackLineHeight) else { continue }
-            // 不同行：前者在上一行 / 下一个片段上，本来就有整行的空隙
-            guard abs(prev.lineMinY + inset.top - boxes[i].lineMinY) <= 1 else { continue }
-            let prevMaxX = prev.rect.maxX + inset.left
-            // 本来就没压上去
-            guard prevMaxX > boxes[i].rect.minX + 0.5 else { continue }
-            // 那个位置已经有底色了 → 交给 `resolveSeams`
-            if Self.isCovered(x: prevMaxX - 0.75, lineMinY: boxes[i].lineMinY,
-                              excluding: i, in: boxes) { continue }
+        // 每一侧实际还压着多少只属于自己的空间（`rect` 可能已被 `clampX` 挤过）
+        let slackI = boxes[i].rect.maxX - boxes[i].textRect.maxX
+        let slackJ = boxes[j].textRect.minX - boxes[j].rect.minX
+        let giveI = max(min(need / 2, slackI - minPad), 0)
+        let giveJ = max(min(need - giveI, slackJ - minPad), 0)
+        guard giveI > 0 || giveJ > 0 else { return }
 
-            let right = boxes[i].rect.maxX
-            let limit = min(prevMaxX + gap, boxes[i].textRect.minX + maxCut)
-            let left = min(max(boxes[i].rect.minX, limit), right - 4)
-            guard left > boxes[i].rect.minX else { continue }
-            boxes[i].rect.origin.x = left
-            boxes[i].rect.size.width = right - left
+        if giveI > 0, boxes[i].rect.width - giveI >= 4 {
+            boxes[i].rect.size.width -= giveI
+        }
+        if giveJ > 0, boxes[j].rect.width - giveJ >= 4 {
+            boxes[j].rect.origin.x += giveJ
+            boxes[j].rect.size.width -= giveJ
         }
     }
 
-    /// 同一行的 `lineMinY` 上，某个横坐标是否已经被**别的**盒子占着
-    private static func isCovered(x: CGFloat, lineMinY: CGFloat,
-                                  excluding: Int, in boxes: [SeamBox]) -> Bool {
-        for (j, b) in boxes.enumerated() where j != excluding {
-            guard abs(b.lineMinY - lineMinY) <= 1 else { continue }
-            if x >= b.rect.minX, x <= b.rect.maxX { return true }
+    /// 拟声 pill 旁的让位。pill 是实心块且位置由自己的占位符决定，只能由胶囊单方面退。
+    private func cutPillSeam(_ boxes: inout [SeamBox], i: Int, j: Int, pillGap: CGFloat) {
+        guard boxes[i].isSolid != boxes[j].isSolid else { return }
+        guard boxes[i].rect.maxX > boxes[j].rect.minX - pillGap else { return }
+
+        if boxes[i].isSolid {
+            let right = boxes[j].rect.maxX
+            let target = boxes[i].rect.maxX + pillGap
+            let left = min(max(boxes[j].rect.minX, target), right - 4)
+            boxes[j].rect.origin.x = left
+            boxes[j].rect.size.width = right - left
+        } else {
+            let target = boxes[j].rect.minX - pillGap
+            let width = max(target - boxes[i].rect.minX, 4)
+            boxes[i].rect.size.width = width
         }
-        return false
     }
 
-    /// 相邻两段在文档里只隔一个标记位，两侧的 `capsulePadX` 内边距必然互相压进去
-    /// （实测重叠 16pt）。这里按「行 → x」排序后两两收敛，分两种情况：
+    /// 同一行相邻盒子之间的接缝收敛：先按「行 → x」排好，再逐对收。
     ///
-    ///  * **拟声 pill 参与**：pill 是实心块不让位，间隙由胶囊单方面让出来，
-    ///    于是胶囊背景在 pill 处自然断开，pill 不会压在同色底上。
-    ///  * **语气 ↔ 语气**：两侧一起收到文字边界，谁也不让谁。
-    ///
-    /// 中断处的断开不在这里做 —— 见 `applyInterruptGaps`（它连「中断后面根本
-    /// 没有下一条胶囊」的情况也要处理，而那时这里的 `boxes.count` 只有 1）。
-    ///
-    /// ⚠️ 语气–语气那一支**不能照搬 macOS**：macOS 的语气标记是 5×1 的可见占位，
-    /// 两个作用域之间天然有 5pt 物理空隙，可以切出真正的 `capsuleSeamGap` 缝隙；
-    /// iOS 的语气标记**不占字符位**，两段文本在排版上严丝合缝，重叠区中点就是文字边界本身。
-    /// 早年照抄「各让 gap/2，且每侧至少留 `minPad` 内边距」，结果 `minPad` 这块地板
-    /// 把两边都顶过了中线 —— 稳定重叠 `2 × minPad = 6pt`，
-    /// 表现就是「相邻两个语气标签叠出一条更深的色带」。现在直接切在中线，零重叠也零切字。
-    private func resolveSeams(_ boxes: inout [SeamBox],
-                              gap: CGFloat,
-                              pillGap: CGFloat) {
+    /// ⚠️ 早年这里管四支（语气↔语气 / 语气↔中断 / 语气↔裸文本 / 语气↔pill），
+    /// 现在只剩**语气 ↔ 语气**与**语气 ↔ pill** 两支：其余三种的间距都由标记自带的
+    /// 占位宽度在**排版阶段**就给了，绘制层再切一刀只会把刚配对好的内边距重新吃掉。
+    private func resolveSeams(_ boxes: inout [SeamBox], pillGap: CGFloat, toneGap: CGFloat, minPad: CGFloat) {
         guard boxes.count > 1 else { return }
         boxes.sort { a, b in
             if abs(a.lineMinY - b.lineMinY) > 1 { return a.lineMinY < b.lineMinY }
             return a.rect.minX < b.rect.minX
         }
-        let trigger = max(gap, pillGap)
         for i in 0..<(boxes.count - 1) {
             let j = i + 1
             // 不同行之间不存在水平接缝
             guard abs(boxes[i].lineMinY - boxes[j].lineMinY) <= 1 else { continue }
-            guard boxes[i].rect.maxX > boxes[j].rect.minX - trigger else { continue }
-
             if boxes[i].isSolid || boxes[j].isSolid {
-                // ⚠️ 这里**不给胶囊留 minPad 兜底**：那会把胶囊边缘推进 pill 里 3pt，
-                // 虚线框底下就透出一块胶囊底色。pill 不需要「给文字留内边距」。
-                if !boxes[i].isSolid {
-                    let target = min(boxes[i].rect.maxX, boxes[j].rect.minX - pillGap)
-                    boxes[i].rect.size.width = max(target - boxes[i].rect.minX, 4)
-                }
-                if !boxes[j].isSolid {
-                    let target = max(boxes[j].rect.minX, boxes[i].rect.maxX + pillGap)
-                    let right = boxes[j].rect.maxX
-                    let clampedMin = min(target, right - 4)
-                    boxes[j].rect.origin.x = clampedMin
-                    boxes[j].rect.size.width = right - clampedMin
-                }
-                continue
+                cutPillSeam(&boxes, i: i, j: j, pillGap: pillGap)
+            } else {
+                cutToneSeam(&boxes, i: i, j: j, toneGap: toneGap, minPad: minPad)
             }
-
-            let mid = (boxes[i].rect.maxX + boxes[j].rect.minX) / 2
-
-            // 语气 ↔ 语气：中线 = 文字边界，两侧各自收到它
-            // 保险：夹在两段文字之间，极端排版（容器边缘裁剪导致两侧 padding 不等）下也不切字形
-            let cut = min(max(mid, boxes[i].textRect.maxX), boxes[j].textRect.minX)
-
-            let aRight = min(boxes[i].rect.maxX, cut)
-            boxes[i].rect.size.width = max(aRight - boxes[i].rect.minX, 4)
-
-            let bRight = boxes[j].rect.maxX
-            let bLeft = max(boxes[j].rect.minX, min(cut, bRight - 4))
-            boxes[j].rect.origin.x = bLeft
-            boxes[j].rect.size.width = bRight - bLeft
         }
     }
 
@@ -717,13 +594,6 @@ final class TokenCapsuleOverlay: UIView {
         return CGRect(x: line.minX, y: line.minY, width: line.width, height: h)
     }
 
-    /// 一段文字在某几行上的矩形
-    struct TextPiece {
-        var rect: CGRect
-        /// 这一段对应的**字符**区间（`lineFragmentusedRect` 给的是 glyph 区）
-        var charRange: NSRange
-    }
-
     /// 一个字符区间落在各行上的矩形（处理换行：同一作用域跨行会切成多个胶囊）
     ///
     /// ⚠️ 三处都必须兜住，少一处就会出现「某一行的胶囊底色没了」：
@@ -734,16 +604,16 @@ final class TokenCapsuleOverlay: UIView {
     ///     反向的情况（拿到 0 宽）同样要兜，否则画出来是一条看不见的细丝；
     ///  ③ 每一段都保证至少 1pt 宽：胶囊 = 文字矩形外扩 `capsulePadX`，
     ///     所以哪怕这一行零宽，也仍然有一个完整的圆角胶囊。
-    static func linePieces(charRange: NSRange,
-                           layoutManager lm: NSLayoutManager,
-                           container tc: NSTextContainer,
-                           lineSpacing: CGFloat,
-                           fallbackLineHeight: CGFloat) -> [TextPiece] {
+    static func lineRects(charRange: NSRange,
+                          layoutManager lm: NSLayoutManager,
+                          container tc: NSTextContainer,
+                          lineSpacing: CGFloat,
+                          fallbackLineHeight: CGFloat) -> [CGRect] {
         let wanted = lm.glyphRange(forCharacterRange: charRange, actualCharacterRange: nil)
         let glyphRange = NSIntersectionRange(wanted, NSRange(location: 0, length: lm.numberOfGlyphs))
         guard glyphRange.length > 0 else { return [] }
 
-        var result: [TextPiece] = []
+        var result: [CGRect] = []
         lm.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, textContainer, fragRange, _ in
             let inter = NSIntersectionRange(fragRange, glyphRange)
             guard inter.length > 0 else { return }
@@ -765,32 +635,9 @@ final class TokenCapsuleOverlay: UIView {
             // 同一行用统一行高，保证胶囊上下沿齐平
             r.origin.y = box.minY
             r.size.height = box.height
-            let chars = lm.characterRange(forGlyphRange: inter, actualGlyphRange: nil)
-            result.append(TextPiece(rect: r, charRange: chars))
+            result.append(r)
         }
         return result
-    }
-
-    /// 一个字符区间在同一行里的字形矩形 + 行顶（container 坐标系）。
-    ///
-    /// 用于找「紧邻的前一个字符」在哪一行结束 —— 给没有底色的邻居让位时要按这个位置切。
-    /// ⚠️ 必须连带返回**行顶**而不是 `rect.minY`：`boundingRect` 的高度含 `lineSpacing`，
-    /// 拿它的 y 去比行会全部判成同一行。
-    static func glyphRunRect(charRange: NSRange,
-                             layoutManager lm: NSLayoutManager,
-                             container tc: NSTextContainer,
-                             lineSpacing: CGFloat,
-                             fallbackLineHeight: CGFloat) -> (rect: CGRect, lineMinY: CGFloat)? {
-        let wanted = lm.glyphRange(forCharacterRange: charRange, actualCharacterRange: nil)
-        let clipped = NSIntersectionRange(wanted, NSRange(location: 0, length: lm.numberOfGlyphs))
-        guard clipped.length > 0 else { return nil }
-        let raw = lm.boundingRect(forGlyphRange: clipped, in: tc)
-        guard !raw.isNull, !raw.minX.isNaN, raw.width > 0 else { return nil }
-        let box = Self.textLineBox(glyphIndex: clipped.location,
-                                   layoutManager: lm, container: tc,
-                                   lineSpacing: lineSpacing,
-                                   fallbackHeight: fallbackLineHeight)
-        return (raw, box.minY)
     }
 
     /// 空作用域 / 中断的锚点矩形（container 坐标系）。
@@ -915,8 +762,8 @@ final class TokenCapsuleOverlay: UIView {
 
 // MARK: - 拟声占位附件
 
-/// 只为拟声标签占出一块行内矩形，自己不画任何东西（pill 由 overlay 画）。
-final class SoundPlaceholderAttachment: NSTextAttachment {
+/// 只为行内占出一块矩形，自己不画任何东西（pill 由 overlay 画，语气 / 中断只留空）。
+final class InlineSpaceAttachment: NSTextAttachment {
 
     let wantedWidth: CGFloat
     let wantedHeight: CGFloat

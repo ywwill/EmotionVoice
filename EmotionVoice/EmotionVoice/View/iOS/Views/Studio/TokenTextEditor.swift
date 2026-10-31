@@ -105,6 +105,13 @@ struct TokenTextEditor: UIViewRepresentable {
     /// 回调走 `DispatchQueue.main.async`：`textViewDidBegin/EndEditing` 可能发生在
     /// 别的控件的事件处理过程中，同步写 @State 有「渲染过程中改状态」的风险。
     var onEditingChanged: ((Bool) -> Void)? = nil
+    /// 「键盘 + 本编辑器的 accessory」顶边的屏幕 Y（收起时回调 `nil`）。
+    ///
+    /// ⚠️ SwiftUI 自带的键盘避让**不一定把 `inputAccessoryView` 那一截算进去** ——
+    /// 通知里的键盘框有时是纯键盘、有时才带上 accessory（同一条生命周期里还会变），
+    /// 于是底部那条会压进标签条里。这里取「键盘框顶 / accessory 框顶」里更靠上的那个，
+    /// 上层拿它跟自己的内容底边比一下，差多少就让开多少（见 `StudioView.keyboardSeam`）。
+    var onKeyboardTopChanged: ((CGFloat?) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -149,8 +156,12 @@ struct TokenTextEditor: UIViewRepresentable {
         context.coordinator.textView = tv
 
         if showsAccessory {
-            context.coordinator.accessoryContainer.frame = CGRect(x: 0, y: 0, width: tv.bounds.width, height: 116)
+            context.coordinator.accessoryContainer.frame = CGRect(x: 0, y: 0, width: tv.bounds.width, height: AccessoryMetrics.baseHeight)
             tv.inputAccessoryView = context.coordinator.accessoryContainer
+            // accessory 高度变了（副行换行 / 动态类型）→ 底部条跟着重新让位
+            context.coordinator.accessory.onHeightChanged = { [weak coordinator = context.coordinator] _ in
+                coordinator?.remeasureKeyboardTop()
+            }
         }
         return tv
     }
@@ -246,22 +257,20 @@ struct TokenTextEditor: UIViewRepresentable {
         ]
     }
 
-    /// 文档串 → 带拟声附件的富文本
+    /// 文档串 → 带占位附件的富文本（拟声 = pill 宽，语气 / 中断 = 一段空白宽）
     static func attributed(doc: String, marks: [EmotionMark], textColor: UIColor) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let chars = Array(doc)
-        let soundAt = Dictionary(uniqueKeysWithValues: marks
-            .filter { $0.token.category == .richLanguage }
-            .map { ($0.location, $0.token) })
+
+        // ⚠️ 每个标记独占一个占位符，严格一一对应；同位置重复只可能出现在
+        // 位置还没来得及修正的中间态，后来者优先（它才是最后插进去的那个）。
+        var attachAt: [Int: EmotionMark] = [:]
+        for mark in marks { attachAt[mark.location] = mark }
 
         var index = 0
         for ch in chars {
-            if String(ch) == TokenDocument.placeholder, let token = soundAt[index] {
-                // 占位附件比可见的 pill 左右各多留 `pillSpacing`，否则 pill 会贴着相邻文字
-                let attachment = SoundPlaceholderAttachment(width: Self.pillWidth(for: token) + pillSpacing * 2,
-                                                            height: pillHeight,
-                                                            baselineOffset: -3)
-                result.append(NSAttributedString(attachment: attachment))
+            if String(ch) == TokenDocument.placeholder, let mark = attachAt[index] {
+                result.append(NSAttributedString(attachment: Self.placeholder(for: mark.token)))
             } else {
                 result.append(NSAttributedString(string: String(ch)))
             }
@@ -273,12 +282,35 @@ struct TokenTextEditor: UIViewRepresentable {
         return result
     }
 
-    // MARK: 拟声 pill 尺寸
+    /// 一个标记在文档里占的那个占位附件
+    static func placeholder(for token: EmotionToken) -> NSTextAttachment {
+        if token.category == .richLanguage {
+            // 占位附件比可见的 pill 左右各多留 `pillSpacing`，否则 pill 会贴着相邻文字
+            return InlineSpaceAttachment(width: pillWidth(for: token) + pillSpacing * 2,
+                                         height: pillHeight,
+                                         baselineOffset: -3)
+        }
+        // 语气 / 中断：只占一段空白宽度 —— 这段物理空隙就是胶囊左右内边距的来源。
+        // ⚠️ 高度必须 ≤ 正文字高，否则 TextKit 会为它把整行撑高。
+        return InlineSpaceAttachment(width: toneSpacing, height: 12, baselineOffset: -2)
+    }
+
+    // MARK: 占位尺寸
 
     /// 拟声占位附件的高度（与 `TokenCapsuleOverlay.Config.pillHeight` 保持一致）
     static let pillHeight: CGFloat = 20
     /// 拟声 pill 左右各留的间距（与 `TokenCapsuleOverlay.Config.pillSpacing` 保持一致）
     static let pillSpacing: CGFloat = 8
+    /// 语气 / 中断标记占的宽度。
+    ///
+    /// ⚠️ 它同时决定了三件事，改动前先算一遍（`p` = 胶囊 `capsulePadX`）：
+    ///  * 文字距离胶囊左右各 `p`；
+    ///  * 中断两侧天然的断开量；
+    ///  * **相邻两个标签之间只有一份 `toneSpacing` 可花**，却要同时付前一个的右 `p`
+    ///    和后一个的左 `p` —— 剩下的自然缝只有 `toneSpacing − 2p`（现在 14 − 12 = 2pt），
+    ///    不够看，还得由 `TokenCapsuleOverlay.cutToneSeam` 再让一次到 `capsuleSeamGap = 6`。
+    /// 想要更大的左右内边距，得把它和 `capsulePadX` 一起抬，别只动一个。
+    static let toneSpacing: CGFloat = 14
     private static let pillFont = UIFont.systemFont(ofSize: 12, weight: .medium)
 
     static func pillWidth(for token: EmotionToken) -> CGFloat {
@@ -327,10 +359,77 @@ struct TokenTextEditor: UIViewRepresentable {
 
         private var store: TokenEditorStore { parent.store }
 
+        /// 键盘通知订阅（量「键盘 + accessory」顶边用）
+        private var keyboardTokens: [NSObjectProtocol] = []
+
         init(_ parent: TokenTextEditor) {
             self.parent = parent
             super.init()
+            observeKeyboard()
         }
+
+        deinit {
+            let nc = NotificationCenter.default
+            keyboardTokens.forEach { nc.removeObserver($0) }
+        }
+
+        // MARK: 键盘 / accessory 顶边
+
+        private func observeKeyboard() {
+            let nc = NotificationCenter.default
+            let onFrame: (Notification) -> Void = { [weak self] note in
+                // 通知回调是 @Sendable，过一层主队列再碰 @MainActor 状态（与 notifyEditingChanged 一致）
+                DispatchQueue.main.async { self?.measureKeyboardTop(note) }
+            }
+            [UIResponder.keyboardWillChangeFrameNotification,
+             UIResponder.keyboardDidChangeFrameNotification,
+             UIResponder.keyboardDidShowNotification].forEach { name in
+                keyboardTokens.append(nc.addObserver(forName: name, object: nil,
+                                                     queue: .main, using: onFrame))
+            }
+            keyboardTokens.append(
+                nc.addObserver(forName: UIResponder.keyboardWillHideNotification,
+                               object: nil, queue: .main) { [weak self] _ in
+                    DispatchQueue.main.async {
+                        self?.lastKeyboardFrame = nil
+                        self?.parent.onKeyboardTopChanged?(nil)
+                    }
+                })
+        }
+
+        /// 量「键盘 + accessory」最靠上的那条边（屏幕坐标 Y）
+        private func measureKeyboardTop(_ note: Notification) {
+            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            lastKeyboardFrame = frame
+            applyKeyboardFrame(frame)
+        }
+
+        /// accessory 自己变高了也要重算一次（副行换行 / 动态类型），否则底部条还按旧高度让位
+        func remeasureKeyboardTop() {
+            guard let frame = lastKeyboardFrame else { return }
+            DispatchQueue.main.async { [weak self] in self?.applyKeyboardFrame(frame) }
+        }
+
+        private func applyKeyboardFrame(_ frame: CGRect) {
+            let screenH = UIScreen.main.bounds.height
+            // ⚠️ 键盘框不在屏内就直接放弃：收起过程中 accessory 还会短暂挂在键盘窗口里，
+            // 只认 accessory 会让它「没键盘也占一截高度」，底部条凭空飘起来。
+            guard frame.minY > 0, frame.minY < screenH - 1 else { return }
+
+            var top = frame.minY
+            // accessory 自己那一截：它挂在键盘窗口里，转成窗口坐标就是屏幕坐标
+            let container = accessoryContainer
+            if container.window != nil {
+                let rect = container.convert(container.bounds, to: nil)
+                if rect.height > 1, rect.minY > 0, rect.minY < screenH - 1 {
+                    top = min(top, rect.minY)
+                }
+            }
+            parent.onKeyboardTopChanged?(top)
+        }
+
+        /// 最近一次有效的键盘框（accessory 高度变化后要拿它重算一次）
+        private var lastKeyboardFrame: CGRect?
 
         /// 把胶囊层撑到整个可滚动内容区。
         ///
@@ -354,70 +453,65 @@ struct TokenTextEditor: UIViewRepresentable {
 
         // MARK: 标记增删
 
-        /// 在光标处插入一个语气 / 拟声标签
-        func insert(item: EmotionItem, category: EmotionCategory) {
+        /// 在光标处插入一个占位的标记所在的 U+FFFC + 附件，并把光标停到它**之后**。
+        ///
+        /// ⚠️ 光标必须跳过占位符：标记的作用域从 `loc + 1` 开始，停在占位符之前打字，
+        /// 那行字会落在上一段（或者根本不属于这个标签）—— 也就是
+        /// 「选完标签一输入，文本没进胶囊」。
+        ///
+        /// ⚠️ 直接改 `textStorage` 不走 `shouldChangeTextIn`，逗留在它之后的旧标记
+        /// 必须手动补一次 +1 平移，否则「再插一个标签，上一个标签位置就偏了」。
+        private func insertPlaceholder(token: EmotionToken) {
             guard let tv = textView else { return }
             let loc = tv.selectedRange.location
+            guard loc <= (tv.text as NSString).length else { return }
+
+            let attr = NSMutableAttributedString(attachment: TokenTextEditor.placeholder(for: token))
+            attr.addAttributes(TokenTextEditor.bodyAttributes(textColor: UIColor(parent.palette.textPrimary)),
+                               range: NSRange(location: 0, length: attr.length))
+            tv.textStorage.insert(attr, at: loc)
+            tv.selectedRange = NSRange(location: loc + 1, length: 0)
+            // ⚠️ 光标刚从附件旁边移过来，typingAttributes 可能继承了附件那一格的属性；
+            // 不清一次接着打的字会带上奇怪的字号 / 基线下坠。
+            tv.typingAttributes = TokenTextEditor.bodyAttributes(textColor: UIColor(parent.palette.textPrimary))
+
+            let shifted = TokenDocument.adjust(marks: store.marks,
+                                               editedRange: NSRange(location: loc, length: 0),
+                                               replacementLength: 1)
+            store.commit(doc: tv.text, marks: shifted + [EmotionMark(location: loc, token: token)])
+            tvDidChangeContent(tv)
+        }
+
+        /// 在光标处插入一个语气 / 拟声标签
+        func insert(item: EmotionItem, category: EmotionCategory) {
             let token = EmotionToken(label: item.label.localized(),
                                      emoji: item.emoji,
                                      englishTag: item.tag,
                                      category: category)
-
-            var next = store.marks
-
-            if category == .richLanguage {
-                let attachment = SoundPlaceholderAttachment(
-                    width: TokenTextEditor.pillWidth(for: token) + TokenTextEditor.pillSpacing * 2,
-                    height: TokenTextEditor.pillHeight,
-                    baselineOffset: -3)
-                let attr = NSMutableAttributedString(attachment: attachment)
-                attr.addAttributes(TokenTextEditor.bodyAttributes(textColor: UIColor(parent.palette.textPrimary)),
-                                   range: NSRange(location: 0, length: attr.length))
-                tv.textStorage.insert(attr, at: loc)
-                tv.selectedRange = NSRange(location: loc + 1, length: 0)
-                // ⚠️ 占位符占 1 个字符，光标之后的标记要整体 +1。
-                // 直接改 textStorage 不会走 `shouldChangeTextIn`，必须手动补这一步，
-                // 否则前一个标签会往左偏一格 —— 表现就是「再点一个标签，上一个标签位置就错了」。
-                next = TokenDocument.adjust(marks: next,
-                                            editedRange: NSRange(location: loc, length: 0),
-                                            replacementLength: 1)
-            }
-
-            next.append(EmotionMark(location: loc, token: token))
-            store.commit(doc: tv.text, marks: next)
-            tvDidChangeContent(tv)
+            insertPlaceholder(token: token)
         }
 
-        /// 插入「中断」：作用域边界，不占字符，也不画胶囊
+        /// 插入「中断」：作用域边界，一样占一个空白宽度，但不画胶囊（只有灰徽章）
         func insertInterrupt() {
-            guard let tv = textView else { return }
-            let loc = tv.selectedRange.location
             let token = EmotionToken(label: Constants.interruptItem.label.localized(),
                                      emoji: Constants.interruptItem.emoji,
                                      englishTag: Constants.interruptItem.tag,
                                      category: .interrupt)
-            var next = store.marks
-            next.append(EmotionMark(location: loc, token: token))
-            store.commit(doc: tv.text, marks: next)
-            tvDidChangeContent(tv)
+            insertPlaceholder(token: token)
         }
 
-        /// 删除一个标记（点 ×）
+        /// 删除一个标记（点 ×）：连它占的那个占位符一起删
         func removeMark(id: UUID) {
             guard let tv = textView, let mark = store.marks.first(where: { $0.id == id }) else { return }
-            var next = store.marks
-            if mark.token.category == .richLanguage {
-                let maxLen = (tv.text as NSString).length
-                if mark.location < maxLen {
-                    tv.textStorage.deleteCharacters(in: NSRange(location: mark.location, length: 1))
-                    // 同上：删掉占位符后，后面的标记要整体 −1
-                    next = TokenDocument.adjust(marks: next,
-                                                editedRange: NSRange(location: mark.location, length: 1),
-                                                replacementLength: 0)
-                }
+            var others = store.marks.filter { $0.id != id }
+            let maxLen = (tv.text as NSString).length
+            if mark.location < maxLen {
+                tv.textStorage.deleteCharacters(in: NSRange(location: mark.location, length: 1))
+                others = TokenDocument.adjust(marks: others,
+                                              editedRange: NSRange(location: mark.location, length: 1),
+                                              replacementLength: 0)
             }
-            next = next.filter { $0.id != id }
-            store.commit(doc: tv.text, marks: next)
+            store.commit(doc: tv.text, marks: others)
             tvDidChangeContent(tv)
         }
 
@@ -581,15 +675,28 @@ final class AccessoryHost {
     private(set) var hosting: UIHostingController<AnyView>!
     let container: AccessoryContainerView
 
+    /// accessory 高度变化的回调（副行换行 / 动态类型会让内容变高）
+    var onHeightChanged: ((CGFloat) -> Void)?
+
+    private var heightTicket: AnyCancellable?
+
     /// 上次构建 SwiftUI 树时的深浅色。
     /// ⚠️ `hosting.rootView = ...` 会把整棵 accessory 视图树拆掉重建并重新布局，
     /// 而 accessory 挂在键盘上、处在输入的关键路径里 —— 每个键击来一次就是肉眼可见的卡顿。
     private var lastIsDark: Bool = false
 
     init() {
-        container = AccessoryContainerView(frame: CGRect(x: 0, y: 0, width: 320, height: 116))
+        container = AccessoryContainerView(frame: CGRect(x: 0, y: 0, width: 320, height: AccessoryMetrics.baseHeight))
         refresh(palette: AuroraPalette(scheme: .light))
         container.embed(hosting.view)
+        // ⚠️ 高度由 SwiftUI 报回来：写死常量会把多出来的那几 pt 裁掉
+        heightTicket = config.$contentHeight
+            .removeDuplicates()
+            .sink { [weak self] height in
+                guard let self, height > 1 else { return }
+                self.container.contentHeight = height
+                self.onHeightChanged?(height)
+            }
     }
 
     func update(palette: AuroraPalette,
@@ -617,14 +724,33 @@ final class AccessoryHost {
     }
 }
 
-/// 固定 intrinsicContentSize 的容器：inputAccessoryView 靠它决定高度
+/// 高度由 SwiftUI 报回来的容器：inputAccessoryView 靠它决定高度
 final class AccessoryContainerView: UIView {
 
-    private var contentHeight: CGFloat = 116
+    /// ⚠️ setter 里必须 invalidate：键盘系统只在 intrinsic 变化时重新给 accessory 排一次高
+    ///
+    /// ⚠️ 光 invalidate **不够**：容器是手写 frame 建出来的（`translatesAutoresizingMaskIntoConstraints`
+    /// 把 frame 翻成了宽 / 高约束），而键盘只在弹出那一刻量一次高度 —— 于是容器会永远停在初始
+    /// 高度，多出来的那截就是「标签条下面一条空白、离键盘老远」。必须自己改 frame。
+    var contentHeight: CGFloat = AccessoryMetrics.baseHeight {
+        didSet {
+            guard abs(oldValue - contentHeight) > 0.5 else { return }
+            invalidateIntrinsicContentSize()
+            var f = frame
+            guard abs(f.height - contentHeight) > 0.5 else { return }
+            f.size.height = contentHeight
+            frame = f
+            superview?.setNeedsLayout()
+        }
+    }
 
     override var intrinsicContentSize: CGSize {
         CGSize(width: UIView.noIntrinsicMetric, height: contentHeight)
     }
+
+    /// ⚠️ 归零安全区：accessory 挂在键盘窗口里，那边的 bottom inset 会莫名其妙地渗进来，
+    /// SwiftUI 侧一尊重安全区，内容就被顶上去、底下一截空白（看着像「没贴住键盘」）。
+    override var safeAreaInsets: UIEdgeInsets { .zero }
 
     func embed(_ view: UIView) {
         view.translatesAutoresizingMaskIntoConstraints = false

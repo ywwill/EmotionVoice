@@ -7,9 +7,16 @@
 //  macOS 那套把标签塞进 `NSTextStorage` 作为 `NSTextAttachment` 的实现无法直接搬到 iOS
 //  （NSTextAttachmentCell 是 AppKit 专属），所以 iOS 改成「纯文本 + 位置标记」：
 //
-//   * 语气 / 中断：只记录一个**位置**，文本里不留任何字符，视觉上是「从哪里开始生效」的作用域边界；
-//   * 拟声：需要一个实实在在的行内占位，否则 pill 会压在正文上 —— 用一个 1 字符的
-//     `NSTextAttachment`（U+FFFC）占出宽度，胶囊层在那块矩形里画虚线 pill。
+//   * **每个标记都在文档里占一个可见占位**（1 字符的 `NSTextAttachment`，U+FFFC）：
+//     - 拟声：占位撑出 pill 的宽度，虚线 pill 画在那块矩形中间；
+//     - 语气 / 中断：占位只撑出一段**空白宽度**（`TokenTextEditor.toneSpacing`）。
+//
+//  ⚠️ 语气 / 中断**必须**占位，早年做成「纯位置、零宽标记」留下了两个至今修不干净的问题：
+//   * 胶囊 (`capsulePadX`) 只能靠**侵入邻居文本**换空间 —— 于是字体 / kern 稍一变化
+//     就会「紧贴上一段的末尾」，这正是「语气标签里的文本离标签左右没有间距」的根因；
+//   * 相邻两段作用域之间**没有物理空隙**，接缝收敛只能把另一侧的胶囊按到自己的文字边界上，
+//     于是右半边的内边距恒为 0。macOS 侧的同一个标记是 5×1 的可见占位，天然就有这段距离，
+//     从来没这些问题 —— 现在 iOS 与之对齐。
 //
 //  生成时再按位置把标记还原成 `[TTSContentItem]`，交给既有的 `toTTSSegments()` 切段。
 //
@@ -29,10 +36,10 @@ struct EmotionMark: Identifiable, Hashable {
         self.token = token
     }
 
-    /// 该标记在文档里占几个字符（只有拟声占 1 个占位符）
-    var occupiedLength: Int {
-        token.category == .richLanguage ? 1 : 0
-    }
+    /// 该标记在文档里占几个字符：统一 1 个占位符（拟声是 pill、语气 / 中断是一段空白宽度）。
+    ///
+    /// ⚠️ 语气 / 中断早年返回 0（零宽），代价是胶囊拿不到任何左右空间，见文件头的说明。
+    var occupiedLength: Int { 1 }
 }
 
 /// 文档串与结构化内容之间的双向转换
@@ -64,11 +71,8 @@ enum TokenDocument {
             flushText(upTo: loc)
             items.append(.emotion(mark.token))
             cursor = loc
-            // 拟声占位符本身不进正文
-            if mark.token.category == .richLanguage, cursor < chars.count,
-               String(chars[cursor]) == placeholder {
-                cursor += 1
-            }
+            // 每个标记都占 1 个占位符，它本身不进正文
+            if cursor < chars.count, String(chars[cursor]) == placeholder { cursor += 1 }
         }
         flushText(upTo: chars.count)
         return items
@@ -90,11 +94,9 @@ enum TokenDocument {
             case .text(let s):
                 doc += s
             case .emotion(let token):
-                let mark = EmotionMark(location: (doc as NSString).length, token: token)
-                marks.append(mark)
-                if token.category == .richLanguage {
-                    doc += placeholder
-                }
+                // 三类标记都占 1 个占位符，位置就是插入它的那个字符下标
+                marks.append(EmotionMark(location: (doc as NSString).length, token: token))
+                doc += placeholder
             }
         }
         return (doc, marks)
@@ -104,55 +106,40 @@ enum TokenDocument {
 
     /// 文本被替换后修正标记位置。
     ///
-    /// 规则与 macOS 编辑器保持一致：
-    ///  * 落在被替换区间**内部**的标记 → 删除（标记依附的字符没了）；
-    ///  * 位于替换区间之后的标记 → 整体平移 `delta`；
-    ///  * 恰好落在区间起点的标记 → 原地不动。
+    /// ⚠️ 三类标记**都占 1 个真实字符**（`mark.location` 就是那个占位符的下标），
+    /// 所以规则与 macOS 保持一致 —— 占位符被换掉，标记跟着没。
+    /// 零宽版本那条「落在替换区间内部要夹回区间起点」的特殊规则已经用不着了
+    /// （它没有可依附的字符，才需要被拽回起点保命）。
     static func adjust(marks: [EmotionMark], editedRange: NSRange, replacementLength: Int) -> [EmotionMark] {
         let delta = replacementLength - editedRange.length
         guard delta != 0 || editedRange.length > 0 else { return marks }
         guard !marks.isEmpty else { return marks }
 
         return marks.compactMap { mark -> EmotionMark? in
-            // 拟声：占 1 个真实字符（U+FFFC），字符没了标记就该跟着没（与 macOS 一致）
-            if mark.token.category == .richLanguage {
-                // ⚠️ 必须用 `>=` 而不是 `>`：退格删到占位符本身时 `editedRange` 的**起点**
-                // 正好等于标记位置（`range.length == 1`）。早年写成 `>`，于是「光标停在拟声
-                // pill 后面连按退格」会把占位符删掉却留下一枚没有字符可依附的孤儿标记 ——
-                // 表现是虚线框没了、× 还挂在原地，点它报标记找不到。
-                if mark.location >= editedRange.location && mark.location < editedRange.upperBound {
-                    return nil
-                }
-                if mark.location >= editedRange.upperBound {
-                    var m = mark
-                    m.location = max(editedRange.location, mark.location + delta)
-                    return m
-                }
-                return mark
+            // ⚠️ 必须用 `>=` 而不是 `>`：退格删到占位符本身时 `editedRange` 的**起点**
+            // 正好等于标记位置（`range.length == 1`）。写成 `>` 就会留下没有字符可依附的
+            // 孤儿标记 —— 表现是 pill / 徽章还在，点它报标记找不到。
+            if mark.location >= editedRange.location && mark.location < editedRange.upperBound {
+                return nil
             }
-
-            // 语气 / 中断：零宽的**作用域边界**，不占字符，所以规则要反过来 ——
-            //
-            // ① 落在插入点上的**不右移**（早年是 `>= upperBound` 就平移，于是每敲一个字
-            //    标记就被推到光标后面一格，最后永远停在文末、作用域恒为空
-            //    → 表现就是「选完标签一输入，标签就没了」）。新输入的文本应当归它管。
-            // ② 落在替换区间内部的**夹回区间起点**，而不是删除：零宽标记没有「依附的字符」，
-            //    静默删掉会让用户以为标签自己消失了（拼音输入整段替换命中时尤其容易触发）。
-            if mark.location <= editedRange.location { return mark }
-            if mark.location < editedRange.upperBound {
+            // 占位符落在编辑点之后 → 整体平移（标记与它占的那个字符不能错位）
+            if mark.location >= editedRange.upperBound {
                 var m = mark
-                m.location = editedRange.location
+                m.location = max(editedRange.location, mark.location + delta)
                 return m
             }
-            var m = mark
-            m.location = max(editedRange.location, mark.location + delta)
-            return m
+            // 占位符在编辑点之前 → 原地不动。
+            // ⚠️ 这一支同时覆盖「在占位符之后打字」：`editedRange.location` 是 `loc + 1`，
+            // 标记不参与平移，新输入的文本自然落在它的作用域里 —— 也就是
+            // 「选完标签一输入，标签就没了」的反面。
+            return mark
         }
     }
 
     // MARK: - 作用域
 
-    /// 是不是「作用域边界」标记（语气 / 中断）：零宽、自己不占字符位，靠位置划分文本归属。
+    /// 是不是「作用域边界」标记（语气 / 中断）：它们把自己的占位符作为作用域的起点，
+    /// 靠位置划分文本归属（拟声不是边界，它只是在当前位置插一个声音事件）。
     ///
     /// ⚠️ 必须标 `nonisolated`：工程开了 `MainActor` 默认隔离，这个方法既要被
     /// `@MainActor` 的 Coordinator 调，也要被同为 static 的 `boundaryEmptiness` 当**函数值**
@@ -218,8 +205,12 @@ enum TokenDocument {
 
         let chars = Array(doc)
         for (i, mark) in ordered.enumerated() where isBoundary(mark) {
-            let start = min(max(mark.location, 0), chars.count)
-            let end = min(max(scopeEnd(at: i, in: ordered, docLength: chars.count), start), chars.count)
+            // ⚠️ 跳过自己占的那个占位符：它是 14pt 的空白宽度，不是文本。
+            // 作用域的**正文**从 `location + 1` 开始，下一个边界的位置是下一个占位符的
+            // 起点（它也占 1 个字符），所以 `[start, end)` 天然不含任何邻居的占位符。
+            let owner = min(max(mark.location + 1, 0), chars.count)
+            let start = min(owner, chars.count)
+            let end = min(max(scopeEnd(at: i, in: ordered, docLength: chars.count), owner), chars.count)
             var hasText = false
             if end > start {
                 // 只剩占位符 / 空白（含全角空格、换行）也算「文本删完了」

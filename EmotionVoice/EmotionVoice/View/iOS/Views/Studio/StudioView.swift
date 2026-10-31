@@ -63,6 +63,15 @@ struct StudioView: View {
     /// 用户确认才真正走 `startGeneration()`。
     @State private var confirmGenerate = false
 
+    // MARK: 键盘让位（底部条不能压到 accessory）
+
+    /// 「键盘 + accessory」顶边的屏幕 Y（编辑器量出来的；nil = 键盘收起）
+    @State private var keyboardTop: CGFloat? = nil
+    /// 内容区底边的屏幕 Y（`.global` 坐标）
+    @State private var contentBottom: CGFloat = 0
+    /// 底部条还要再往上让多少 pt，才不会压到 accessory
+    @State private var keyboardSeam: CGFloat = 0
+
     var body: some View {
         VStack(spacing: 0) {
             if metrics.usesTwoColumnStudio {
@@ -78,8 +87,24 @@ struct StudioView: View {
             }
 
             generateBar
+                // ⚠️ 键盘弹出时按实测的差值让位：SwiftUI 自带的键盘避让不一定算上
+                // `inputAccessoryView` 那一截，底部条会压进标签条里（见 `updateKeyboardSeam`）
+                .padding(.bottom, keyboardSeam)
         }
         .background(c.backgroundGrouped)
+        // 内容区底边（屏幕坐标 Y）：拿它跟「键盘 + accessory 顶边」比一下就知道压进去多少
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: ContentBottomKey.self,
+                    value: geo.frame(in: .global).maxY - geo.safeAreaInsets.bottom)
+            }
+        }
+        .onPreferenceChange(ContentBottomKey.self) { bottom in
+            contentBottom = bottom
+            // ⚠️ 只在布局量完之后算：拿「键盘还没升起时」的旧底边去减键盘顶边会算出天价
+            withAnimation(.easeOut(duration: 0.2)) { updateKeyboardSeam() }
+        }
         .navigationTitle("创作".localized())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -98,10 +123,29 @@ struct StudioView: View {
                   dismissButton: .default(Text("好".localized())))
         }
         .onAppear(perform: restoreFromViewModel)
+        // ⚠️ 只要离开创作页就收键盘：键盘还在屏上时进二级页，返回后底部那条会错位
+        // （成因与统一收口见 `TabRouter.push`）。这里同时兜住「切标签」这类不走 push 的离开。
+        .onDisappear(perform: finishEditing)
     }
 
     /// 窄屏才让位：宽屏本来就两栏，没有空间压力
     private var collapseChrome: Bool { !metrics.usesTwoColumnStudio && isEditingText }
+
+    // MARK: - 键盘让位
+
+    /// 内容区底边压进「键盘 + accessory」多少，就让开多少 —— 要求**不重叠、距离为 0**。
+    ///
+    /// ⚠️ 差值必须实测，不能写死：SwiftUI 自带的键盘避让带不带 accessory 那一截，
+    /// 同一条生命周期里都会变（通知里的键盘框有时只有键盘本身）。
+    /// ⚠️ 上限 260pt 只是兜底：真量错了（比如拿到键盘升起前的旧底边）不至于把整条顶飞。
+    private func updateKeyboardSeam() {
+        guard let top = keyboardTop, contentBottom > 0 else {
+            keyboardSeam = 0
+            return
+        }
+        let overlap = contentBottom - top
+        keyboardSeam = min(max(overlap, 0), 260)
+    }
 
     // MARK: - 布局
 
@@ -315,6 +359,13 @@ struct StudioView: View {
                                     isDark: scheme == .dark,
                                     onEditingChanged: { editing in
                                         isEditingText = editing
+                                    },
+                                    onKeyboardTopChanged: { top in
+                                        // 与键盘动画同步（升起约 0.25s），否则底部条会先跳一下再跟上
+                                        withAnimation(.easeOut(duration: 0.25)) {
+                                            keyboardTop = top
+                                            if top == nil { keyboardSeam = 0 }
+                                        }
                                     })
                     .frame(width: geo.size.width, height: geo.size.height)
                 }
@@ -420,13 +471,18 @@ struct StudioView: View {
             .fixedSize()
             .lineLimit(1)
 
+            // ⚠️ 「生成音频」改成固定宽之后，多出来的横向空间得有东西吃掉：
+            // 不吃掉的话 HStack 会把它摊给各子视图，固定宽就白设了。
+            Spacer(minLength: 8)
+
             SecondaryButton(title: "", systemImage: "sparkles", height: 44, isFullWidth: false) {
                 paramsPresented = true
             }
             .frame(width: barIconWidth)
             .accessibilityLabel("语音指令".localized())
 
-            PrimaryButton(title: "生成音频".localized(), systemImage: "waveform") {
+            PrimaryButton(title: "生成音频".localized(), systemImage: "waveform",
+                          width: generateButtonWidth) {
                 requestGeneration()
             }
 
@@ -476,6 +532,14 @@ struct StudioView: View {
     /// 「语音指令」图标键的宽度：这一行要挤下「预计消耗 + 图标 + 生成音频 + 完成」四组，
     /// 窄屏（< 375pt）再让 6pt 出来。
     private var barIconWidth: CGFloat { metrics.width < 375 ? 40 : 46 }
+
+    /// 「生成音频」的固定宽度。
+    ///
+    /// ⚠️ 它原来是 `isFullWidth` 撑满剩余宽度 —— 于是「预计消耗」的数字多一位、
+    /// 或者换个屏幕宽度，主操作按钮就跟着变长变短，看着像界面在抖。固定之后
+    /// 这一行只有「完成」在键盘弹出时切换透明度，宽度不再变。
+    /// 窄屏（< 375pt）按 375 算过：343 − 字数 90 − 图标 40 − 完成 66 − 三处间距 30 ≈ 117，取 112。
+    private var generateButtonWidth: CGFloat { metrics.width < 375 ? 112 : 128 }
 
     /// 收键盘。
     ///
@@ -636,4 +700,10 @@ struct StudioView: View {
         appState.showGenerationModal = true
         vm.generate { _ in }
     }
+}
+
+/// 内容区底边（屏幕坐标 Y）—— 键盘让位时拿它跟 accessory 顶边比对
+private struct ContentBottomKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

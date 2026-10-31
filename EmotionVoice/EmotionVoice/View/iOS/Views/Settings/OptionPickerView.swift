@@ -2,21 +2,36 @@
 //  OptionPickerView.swift
 //  iOSEmora
 //
-//  二级选择页（macOS 下拉菜单的 iOS 化）
+//  设置里的「默认格式」「采样率」选项面板 —— **就地 sheet，不再 push 二级页**。
 //
-//  macOS 设置里的「默认格式」「采样率」是 220/280pt 宽的下拉菜单，
-//  iOS 换成 push 的**单勾选列表**：右侧恒留 17pt 勾位 + 副标题说明。
-//  外观 / 语言两个 Picker 已被删除，所以这里只有这两处二级页。
+//  macOS 上这两项是 220/280pt 宽的下拉菜单，iOS 换成半高 sheet 里的单勾选列表：
+//  右侧恒留 17pt 勾位 + 副标题说明，选中即写入 UserDefaults（AppState 的 didSet
+//  负责），与工作台里的值双向同步；右上角「完成」/ 左上角 ✕ 收起。
 //
-//  改动即写入 UserDefaults（AppState 的 didSet 负责），并与工作台里的值双向同步。
+//  ⚠️ 不再走 `Route`，所以导航栈里没有它 —— 收起后直接看到设置行上的新值。
 //
 
 import SwiftUI
 
 /// 选择种类
-enum SettingsOptionKind {
+enum SettingsOptionKind: Identifiable {
     case defaultFormat
     case sampleRate
+
+    var id: String {
+        switch self {
+        case .defaultFormat: return "defaultFormat"
+        case .sampleRate:    return "sampleRate"
+        }
+    }
+
+    /// 行数（sheet 高度按它算，避免固定 detent 在小列表下留一大片空白）
+    var optionCount: Int {
+        switch self {
+        case .defaultFormat: return 2
+        case .sampleRate:    return Constants.sampleRates.count
+        }
+    }
 
     var title: String {
         switch self {
@@ -40,54 +55,86 @@ enum SettingsOptionKind {
     }
 }
 
-struct OptionPickerView: View {
+struct OptionPickerSheet: View {
     @Environment(\.aurora) private var c
     @Environment(\.screenMetrics) private var metrics
+    @Environment(\.dismiss) private var dismiss
 
     @EnvironmentObject private var appState: AppState
 
     let kind: SettingsOptionKind
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                GroupTitle(text: kind.groupTitle, topPadding: 16)
+        VStack(spacing: 0) {
+            SheetNavBar(
+                title: kind.title,
+                leading: {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 19, weight: .medium))
+                            .foregroundStyle(c.textTertiary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("关闭".localized())
+                },
+                trailing: {
+                    Button { dismiss() } label: {
+                        Text("完成".localized())
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(c.accent)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            )
 
+            ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(options.indices, id: \.self) { i in
-                        optionRow(options[i], isLast: i == options.count - 1)
-                        if i != options.count - 1 {
-                            Rectangle()
-                                .fill(c.line)
-                                .frame(height: 0.5)
-                                .padding(.leading, 14)
+                    GroupTitle(text: kind.groupTitle, topPadding: 6)
+
+                    VStack(spacing: 0) {
+                        ForEach(options.indices, id: \.self) { i in
+                            optionRow(options[i])
+                            if i != options.count - 1 {
+                                Rectangle()
+                                    .fill(c.line)
+                                    .frame(height: 0.5)
+                                    .padding(.leading, 14)
+                            }
                         }
                     }
+                    .background(
+                        RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                            .fill(c.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                                    .strokeBorder(c.line, lineWidth: 0.5)
+                            )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous))
+                    .padding(.horizontal, metrics.pageMargin)
+
+                    Text(kind.footnote)
+                        .font(.system(size: 12))
+                        .foregroundStyle(c.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, metrics.pageMargin + 16)
+                        .padding(.top, 8)
+
+                    Spacer(minLength: 20)
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                        .fill(c.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                                .strokeBorder(c.line, lineWidth: 0.5)
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous))
-                .padding(.horizontal, metrics.pageMargin)
-
-                Text(kind.footnote)
-                    .font(.system(size: 12))
-                    .foregroundStyle(c.textTertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, metrics.pageMargin + 16)
-                    .padding(.top, 8)
-
-                Spacer(minLength: 24)
             }
         }
         .background(c.backgroundGrouped)
-        .navigationTitle(kind.title)
-        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// sheet 首选高度：导航栏 + 分组标题 + 行 + 脚注，按行数算出来再夹一下上下限
+    static func preferredDetentHeight(for kind: SettingsOptionKind) -> CGFloat {
+        let raw: CGFloat = 53 + 33 + CGFloat(kind.optionCount) * 48 + 44
+        return max(240, min(raw, 520))
     }
 
     // MARK: 选项
@@ -121,7 +168,7 @@ struct OptionPickerView: View {
         }
     }
 
-    private func optionRow(_ option: Option, isLast: Bool) -> some View {
+    private func optionRow(_ option: Option) -> some View {
         Button(action: option.select) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -163,5 +210,4 @@ struct OptionPickerView: View {
         default:    return ""
         }
     }
-
 }

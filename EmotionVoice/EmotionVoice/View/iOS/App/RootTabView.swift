@@ -63,6 +63,11 @@ struct RootTabView: View {
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                 }
+                // 二级界面隐藏底部 3 个 tab；pop 回一级时恢复。
+                // ⚠️ 用 `router.isTabBarHidden` 这个 Bool 驱动才有动画 ——
+                // 把它写成挂在 destination 上的死植 `.hidden` 会瞬切。
+                .toolbar(router.isTabBarHidden ? .hidden : .visible, for: .tabBar)
+                .animation(TabRouter.tabBarAnimation, value: router.isTabBarHidden)
         }
         .tabItem {
             Label(tab.title, systemImage: tab.icon)
@@ -77,10 +82,6 @@ struct RootTabView: View {
             SettingsView()
         case .creditRecords:
             CreditRecordsView()
-        case .defaultFormat:
-            OptionPickerView(kind: .defaultFormat)
-        case .sampleRate:
-            OptionPickerView(kind: .sampleRate)
         case .player(let item):
             PlayerDetailView(item: item)
         }
@@ -109,7 +110,8 @@ struct RootTabView: View {
                 appState.showGenerationModal = true
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 58)   // 抬到标签栏之上
+            // 抬到标签栏之上；二级界面标签栏已隐藏，贴底即可
+            .padding(.bottom, router.activePath.isEmpty ? 58 : 18)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .zIndex(2)
         }
