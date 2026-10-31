@@ -375,3 +375,117 @@
 "音色：%@\n消耗：%@ 积分" = "Voice: %@\nCost: %@ credits";
 "选择分类" = "Choose Category";
 "复制失败" = "Duplication failed";
+
+// iOS · 标签栏
+"项目" = "Project";
+"正在后台接收" = "Receiving in background";
+
+// iOS · 设置
+"关于" = "About";
+"版本" = "Version";
+"与工作台里的值双向同步，改动即写入 UserDefaults。" = "Two-way synced with the Workbench value — changes are written to UserDefaults immediately.";
+"购买积分" = "Buy Credits";
+"积分记录" = "Credit History";
+"%d 条" = "%d Records";
+
+// iOS · 积分记录
+"上拉加载更多 · 已显示 %d / %d" = "Pull up to load more · Showing %d / %d";
+"还没有积分记录" = "No credit history yet";
+
+// iOS · 选项选择（格式 / 采样率）
+"音频格式" = "Audio Format";
+"MP3 体积更小，WAV 保真度更高。" = "MP3 is smaller; WAV offers higher fidelity.";
+"更高的采样率意味着更大的文件。WAV 每秒字节数 = 采样率 × 2。" = "A higher sample rate means a larger file. WAV bytes per second = sample rate × 2.";
+"压缩率高，体积小，适合分享" = "High compression, small size — great for sharing";
+"无损原始 PCM，适合二次编辑" = "Lossless raw PCM — ideal for further editing";
+
+// iOS · 购买积分
+"购买后积分永久有效，到账可能延迟；未到账时 App 会在下次启动自动补发。" = "Credits never expire after purchase; arrival may be delayed. If not received, the app auto-reissues them on next launch.";
+"确认购买后将从您的 App Store 账户扣款。" = "Your App Store account will be charged after confirming the purchase.";
+"正在获取商品信息…" = "Fetching product info…";
+"%d 积分" = "%d Credits";
+"购买中…" = "Purchasing…";
+"立即购买" = "Buy Now";
+"购买成功，+%@ 积分已到账" = "Purchase successful, +%@ credits added";
+
+// iOS · 创作台标签栏
+"语气" = "Tone";
+"拟声" = "SFX";
+"清空" = "Clear";
+"从插入处一直生效，直到下一个语气标签或中断。" = "Takes effect from where it's inserted until the next tone tag or interrupt.";
+"只在插入处播放一次，不改变周围的语气。" = "Plays once at the insertion point without changing the surrounding tone.";
+
+// iOS · 创作参数
+"创作参数" = "Creation Parameters";
+"音频控制" = "Audio Control";
+"未选择音色" = "No voice selected";
+"语音指令" = "Voice Command";
+"指令" = "Command";
+"当前音色" = "Current Voice";
+"更换音色" = "Change Voice";
+"展开全部 %d" = "Expand All %d";
+"描述预设" = "Description Presets";
+"用一句话描述你想要的声音" = "Describe the voice you want in one sentence";
+"💡 详细描述 = 更好的效果" = "💡 More Details = Better Results";
+"1. 先说语种与方言" = "1. Start with language and dialect";
+"中文，粤语，四川话……" = "Chinese, Cantonese, Sichuan…";
+"2. 再说性别与年龄" = "2. Then gender and age";
+"年轻男性，中年女性，童声……" = "Young male, middle-aged female, child voice…";
+"3. 然后描述音色与节奏" = "3. Then describe timbre and pace";
+"温柔柔和，语速偏快，语调积极……" = "Gentle and soft, slightly fast pace, positive tone…";
+"4. 最后补充场景" = "4. Finally add the scenario";
+"适合新闻播报 / 有声书 / 广告配音……" = "Ideal for news / audiobooks / commercials…";
+"积分不足，还需要 %@ 积分" = "Insufficient credits — %@ more needed";
+"好" = "OK";
+
+// iOS · 音色选择
+"选择音色" = "Select Voice";
+"搜索音色名 / 特质 / 场景 / 语种" = "Search voice name / traits / scenario / language";
+"全部分类" = "All Categories";
+"%@ · %d 个" = "%@ · %d";
+"点 ✕ 取消筛选" = "Tap ✕ to clear filter";
+"点上方按钮可重新选择" = "Tap the button above to reselect";
+"仅看收藏" = "Favorites Only";
+"仅看收藏 · %d 个" = "Favorites Only · %d";
+"共 %d 个 · 旗舰优先，再按名称排序" = "%d total · flagships first, then by name";
+"上拉加载更多" = "Pull up to load more";
+"已显示全部 %d 个音色" = "All %d voices shown";
+"试试换个关键词，或清除筛选条件" = "Try a different keyword, or clear the filters";
+"已切换到「%@」" = "Switched to “%@”";
+
+// iOS · 音色库筛选
+"重置" = "Reset";
+"视图级筛选" = "View-level Filter";
+"全部音色" = "All Voices";
+
+// iOS · 项目
+"重命名" = "Rename";
+"搜索音频名称" = "Search audio name";
+"删除音频" = "Delete Audio";
+"还没有生成的音频" = "No generated audio yet";
+"没有匹配的音频" = "No matching audio";
+"加载中…" = "Loading…";
+"选择" = "Select";
+"结束多选" = "Finish Multi-Select";
+"进入多选" = "Enter Multi-Select";
+"已复制音频" = "Audio Copied";
+"所选音频文件不存在" = "The selected audio file does not exist";
+"确定删除选中的 %d 条音频？删除后无法恢复。" = "Delete the selected %d audio files? This cannot be undone.";
+"确定删除这条音频？删除后无法恢复。" = "Delete this audio? This cannot be undone.";
+"音频名称" = "Audio Name";
+
+// iOS · 播放器
+"暂停" = "Pause";
+"播放" = "Play";
+"剩余约 %@" = "About %@ left";
+"正在播放 · %@" = "Now Playing · %@";
+"待播放" = "Queued";
+
+// iOS · 生成弹窗
+"目标" = "Target";
+"正在持续接收。关闭弹窗不会中断任务，可从顶部浮条随时返回。" = "Still receiving. Closing the popup won't interrupt the task — return anytime from the top banner.";
+"剩余 %@" = "%@ left";
+"−%@ 积分" = "−%@ credits";
+"分享" = "Share";
+"后台接收" = "Background Receiving";
+"停止生成" = "Stop Generating";
