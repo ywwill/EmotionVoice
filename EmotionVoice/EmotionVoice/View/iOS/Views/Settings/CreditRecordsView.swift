@@ -73,7 +73,7 @@ struct CreditRecordsView: View {
 
     private var summaryLine: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(String(format: "共 %d 条".localized(), totalCount))
+            Text("共 %d 条".localized(totalCount))
                 .font(.system(size: 12.5, design: .monospaced))
                 .foregroundStyle(c.textTertiary)
             Spacer(minLength: 0)
@@ -137,7 +137,7 @@ struct CreditRecordsView: View {
     private var appendFooter: some View {
         HStack(spacing: 7) {
             ProgressView().controlSize(.small)
-            Text(String(format: "上拉加载更多 · 已显示 %d / %d".localized(), records.count, totalCount))
+            Text("上拉加载更多 · 已显示 %d / %d".localized(records.count, totalCount))
                 .font(.system(size: 12))
                 .foregroundStyle(c.textTertiary)
         }

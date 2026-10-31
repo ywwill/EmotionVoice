@@ -140,7 +140,7 @@ struct SettingsView: View {
             NavigationRow(title: "积分记录".localized(),
                           iconSystemName: "clock",
                           iconGradient: [Color(hex: 0xFFB457), Color(hex: 0xF2703A)],
-                          value: String(format: "%d 条".localized(), recordCount))
+                          value: "%d 条".localized(recordCount))
         }
         .buttonStyle(.plain)
         .background(

@@ -11,7 +11,7 @@ import SwiftUI
 struct iOSEmoraApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            iOSContentView()
         }
     }
 }

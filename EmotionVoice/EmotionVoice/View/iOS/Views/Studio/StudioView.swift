@@ -8,7 +8,7 @@
 //
 //  ⚠️ iPhone 垂直空间极其紧张：**一切能给编辑器的都要给编辑器**。
 //  键盘 + accessory 吃掉 ~450pt，再减掉导航栏 / 底部生成条，内容区只剩 200~250pt。所以：
-//   ① 音色显示 + 切换 → 导航栏左侧胶囊（`.topBarLeading`），彻底移出内容流；
+//   ① 音色切换 → 导航栏左侧一个 🎭 图标按钮（`.topBarLeading`），彻底移出内容流；
 //   ② 音频参数 → 顶部一条 34pt 摘要条，点开参数 Sheet 才有全量控件；
 //   ③ 文本卡标题行（含字数）也是非必要装饰；
 //   ②③ 在键盘弹出时收成 0 高，字数挪到底部生成条（bottom bar 不会被键盘压住）。
@@ -59,6 +59,9 @@ struct StudioView: View {
     @State private var paramsPresented = false
     @State private var voicePickerPresented = false
     @State private var alertItem: AlertItem? = nil
+    /// 「生成音频」的二次确认。生成要扣积分，误触代价高 —— 前置校验通过后先弹窗，
+    /// 用户确认才真正走 `startGeneration()`。
+    @State private var confirmGenerate = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -324,10 +327,13 @@ struct StudioView: View {
         .frame(maxHeight: .infinity)   // 窄屏独占剩余高度
     }
 
-    /// 标题 + 字数（32.5pt）。键盘弹出时收成 0 高，字数由底部生成条接着显示。
+    /// 标题 + 当前音色 + 字数（32.5pt）。键盘弹出时收成 0 高，字数由底部生成条接着显示。
+    ///
+    /// 窄屏没有侧栏的 `voiceRow`，已选音色名无处常驻 —— 收进这行的中间：
+    /// 既不被工具栏标题挤占，又随手可点换音色。宽屏两栏在侧栏已有 `voiceRow`，这里不重复。
     private var cardHeader: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 8) {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 12.5, weight: .semibold))
@@ -336,10 +342,39 @@ struct StudioView: View {
                         .font(.system(size: 13.5, weight: .semibold))
                         .foregroundStyle(c.textPrimary)
                 }
-                Spacer(minLength: 0)
+
+                if !metrics.usesTwoColumnStudio {
+                    Spacer(minLength: 4)
+                    voiceHeaderChip
+                    Spacer(minLength: 4)
+                } else {
+                    Spacer(minLength: 0)
+                }
+
                 Text("%d 字".localized(editor.charCount))
                     .font(.system(size: 11.5))
                     .foregroundStyle(c.textTertiary)
+
+                Button { clearEditor() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10.5, weight: .semibold))
+                        Text("清空".localized())
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
+                    .foregroundStyle(c.textSecondary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 22)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(c.surface3)
+                            .overlay(Capsule(style: .continuous).strokeBorder(c.line, lineWidth: 0.5))
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(!editor.hasContent)
+                .opacity(editor.hasContent ? 1 : 0.4)
+                .accessibilityLabel("清空文本".localized())
             }
             .padding(.horizontal, 16)
             .frame(height: 32)
@@ -353,50 +388,113 @@ struct StudioView: View {
         .animation(.easeOut(duration: 0.22), value: collapseChrome)
     }
 
+    /// 文本卡标题行中间的「当前音色」：窄屏专用，点开选音色 Sheet。
+    private var voiceHeaderChip: some View {
+        Button { voicePickerPresented = true } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(currentVoice?.localizedName ?? "未选择音色".localized())
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .foregroundStyle(c.accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("当前音色".localized())
+    }
+
     // MARK: 底部生成条
 
     private var generateBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
                 Text("预计消耗".localized())
                     .font(.system(size: 11))
                     .foregroundStyle(c.textTertiary)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("≈ \(formatCredits(estimatedPoints))")
-                        .font(AuroraFont.mono17)
-                        .foregroundStyle(c.textPrimary)
-                    // 卡标题行被收起时，字数改由这里兜住
-                    Text("%d 字".localized(editor.charCount))
-                        .font(.system(size: 11.5, design: .monospaced))
-                        .foregroundStyle(c.textTertiary)
-                }
+                Text("≈ \(formatCredits(estimatedPoints))")
+                    .font(AuroraFont.mono17)
+                    .foregroundStyle(c.textPrimary)
             }
             .fixedSize()
+            .lineLimit(1)
 
             SecondaryButton(title: "", systemImage: "sparkles", height: 44, isFullWidth: false) {
                 paramsPresented = true
             }
-            .frame(width: 52)
+            .frame(width: barIconWidth)
             .accessibilityLabel("语音指令".localized())
 
             PrimaryButton(title: "生成音频".localized(), systemImage: "waveform") {
-                startGeneration()
+                requestGeneration()
             }
+
+            doneButton
         }
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(c.bar)
         .overlay(alignment: .top) { Hairline() }
+        // ⚠️ 二次确认挂在这里而不是 body 根视图：根视图上已经有一个 `.alert(item:)`，
+        // 同一层再挂一个 `.alert` 会互相覆盖（这也是上一版才退而求其次用了
+        // `confirmationDialog` 的原因 —— 挂子视图上就不冲突了）。
+        .alert("确认生成音频".localized(), isPresented: $confirmGenerate) {
+            Button("取消".localized(), role: .cancel) { }
+            Button("确认".localized()) { startGeneration() }
+        } message: {
+            Text(generateConfirmMessage)
+        }
+    }
+
+    /// 底部条右侧的「完成」：收键盘。
+    ///
+    /// ⚠️ 位置是从键盘 accessory 挪过来的：那一排 30 个胶囊里它既不起眼又和
+    /// 插标签的动作混在一起；底部生成条**不会被键盘压住**（这也是字数为什么要挪到这里的原因），
+    /// 挪过来之后「放下键盘」与「开始生成」两个出口并排，拇指不用离开这一行。
+    ///
+    /// ⚠️ UI 必须与「生成音频」拉开差距，否则两个同样大的实心按钮会互相抢：
+    ///  * **生成音频**（`PrimaryButton`）= 渐变实心 + 白字 + 投影 + 吃掉剩余宽度 → 主操作；
+    ///  * **完成** = 只有 1pt 描边、**没有填充也没有投影**、强调色文字、固定 74pt 宽 → 次要动作。
+    private var doneButton: some View {
+        Button { finishEditing() } label: {
+            Text("完成".localized())
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(c.accent)
+                .frame(width: metrics.width < 375 ? 66 : 74, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                        .strokeBorder(c.accent.opacity(0.42), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        // 键盘没弹出时它不是必需操作，压暗一档但保留可点（点一下也没有副作用）
+        .opacity(isEditingText ? 1 : 0.55)
+    }
+
+    /// 「语音指令」图标键的宽度：这一行要挤下「预计消耗 + 图标 + 生成音频 + 完成」四组，
+    /// 窄屏（< 375pt）再让 6pt 出来。
+    private var barIconWidth: CGFloat { metrics.width < 375 ? 40 : 46 }
+
+    /// 收键盘。
+    ///
+    /// ⚠️ 先写 `isEditingText`：顶部横条要从「打字态」恢复到常规态，靠的就是这个值，
+    /// 等 `textViewDidEndEditing` 的异步回调回来才改会让横条慢半拍。
+    private func finishEditing() {
+        isEditingText = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 
     // MARK: 导航栏
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // 左侧：音色（显示 + 切换）。inline 标题居中时左边这块原本是空的，
-        // 挪过来既省掉内容区顶部那一大块，又让「当前音色」在任何滚动位置都可见。
-        ToolbarItem(placement: .topBarLeading) { voiceChip }
+        // 左侧：音色切换入口（纯图标，不占横向空间）。
+        // 音色名与头像一律不进导航栏 —— 窄屏横向空间全留给编辑区，
+        // 当前音色的展示交给宽屏侧栏的 voiceRow 与音色 Sheet 自己。
+        ToolbarItem(placement: .topBarLeading) { voiceSwapButton }
 
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 6) {
@@ -429,33 +527,23 @@ struct StudioView: View {
         }
     }
 
-    /// 导航栏左侧的音色胶囊：头像 + 名称 + 下拉箭头，点开音色 Sheet
-    private var voiceChip: some View {
+    /// 导航栏左侧的音色切换按钮：只放一个 🎭 图标，不带任何文本
+    ///
+    /// ⚠️ 之前这里是「头像 + 音色名 + 下拉箭头」的胶囊，中文名一长就把标题挤没了，
+    /// 而且名称和右侧积分胶囊抢同一条横向空间。改成纯图标后左侧恒定 34pt。
+    private var voiceSwapButton: some View {
         Button { voicePickerPresented = true } label: {
-            HStack(spacing: 6) {
-                VoiceAvatar(text: currentVoice?.localizedAvatar ?? "声",
-                            seed: currentVoice?.key ?? "default",
-                            size: 26,
-                            corner: 8)
-                Text(currentVoice?.localizedName ?? "选择音色".localized())
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(c.textPrimary)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(c.textTertiary)
-            }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: metrics.`class` == .compact ? 116 : 148)
-            .frame(height: 30)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(c.surface3)
-                    .overlay(
-                        Capsule(style: .continuous).strokeBorder(c.line2, lineWidth: 0.5)
-                    )
-            )
-            .contentShape(Capsule(style: .continuous))
+            Text("🎭")
+                .font(.system(size: 19))
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill(c.surface3)
+                        .overlay(
+                            Circle().strokeBorder(c.line2, lineWidth: 0.5)
+                        )
+                )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("更换音色".localized())
@@ -493,11 +581,13 @@ struct StudioView: View {
         editor.replace(doc: made.doc, marks: made.marks)
     }
 
-    private func startGeneration() {
+    /// 点「生成音频」：先收键盘 + 同步内容 + 前置校验，通过后才弹二次确认。
+    ///
+    /// ⚠️ 前置校验放在弹窗**之前**：文本为空 / 没选音色时直接报警，
+    /// 不该让用户先过一道确认再被告知「生成不了」。
+    private func requestGeneration() {
         // 可能还有一个「结束编辑」回调在路上，这里先收键盘，让顶部横条同步恢复
-        isEditingText = false
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                        to: nil, from: nil, for: nil)
+        finishEditing()
         // 字数可能还压在 0.25s 的合并窗口里，生成前先推一次
         editor.flush()
         // 结构性内容先同步进 VM：生成链路读的是 ttsItems / plainText
@@ -514,11 +604,32 @@ struct StudioView: View {
                                   message: "请先选择一个音色".localized())
             return
         }
+        confirmGenerate = true
+    }
 
+    /// 一键清空：正文 + 全部情感标记一起清掉，VM 侧同步清掉（`generate()` 读的是 VM）。
+    ///
+    /// ⚠️ 不加二次确认弹窗：文本内容还在键盘上方可见，误触成本可控，
+    /// 而且根视图已经挂了一个 `.alert(item:)`，同一层再来一个会互相覆盖。
+    private func clearEditor() {
+        editor.clear()
+        vm.ttsItems = []
+        vm.text = ""
+    }
+
+    /// 二次确认的具体内容：**音色 + 本次要扣的积分**。
+    ///
+    /// ⚠️ 字数不进弹窗 —— 底部条上已经常显「预计消耗」，弹窗里重复一遍只会挤掉重点。
+    private var generateConfirmMessage: String {
+        let name = currentVoice?.localizedName ?? "未选择音色".localized()
+        return "音色：%@\n消耗：%@ 积分".localized(name, formatCredits(estimatedPoints))
+    }
+
+    private func startGeneration() {
         let needed = estimatedPoints
         guard CreditManager.shared.hasEnoughCredits(for: .normalTTS(characterCount: TextSplitter.calculateCharCount(vm.plainText))) else {
             uiState.purchaseSheetPresented = true
-            uiState.showToast(.failure(String(format: "积分不足，还需要 %@ 积分".localized(), formatCredits(needed - appState.creditsBalance))))
+            uiState.showToast(.failure("积分不足，还需要 %@ 积分".localized(formatCredits(needed - appState.creditsBalance))))
             return
         }
 

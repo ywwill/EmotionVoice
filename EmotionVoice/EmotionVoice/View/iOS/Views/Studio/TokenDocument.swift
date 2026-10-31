@@ -116,7 +116,11 @@ enum TokenDocument {
         return marks.compactMap { mark -> EmotionMark? in
             // 拟声：占 1 个真实字符（U+FFFC），字符没了标记就该跟着没（与 macOS 一致）
             if mark.token.category == .richLanguage {
-                if mark.location > editedRange.location && mark.location < editedRange.upperBound {
+                // ⚠️ 必须用 `>=` 而不是 `>`：退格删到占位符本身时 `editedRange` 的**起点**
+                // 正好等于标记位置（`range.length == 1`）。早年写成 `>`，于是「光标停在拟声
+                // pill 后面连按退格」会把占位符删掉却留下一枚没有字符可依附的孤儿标记 ——
+                // 表现是虚线框没了、× 还挂在原地，点它报标记找不到。
+                if mark.location >= editedRange.location && mark.location < editedRange.upperBound {
                     return nil
                 }
                 if mark.location >= editedRange.upperBound {
@@ -147,6 +151,15 @@ enum TokenDocument {
     }
 
     // MARK: - 作用域
+
+    /// 是不是「作用域边界」标记（语气 / 中断）：零宽、自己不占字符位，靠位置划分文本归属。
+    ///
+    /// ⚠️ 必须标 `nonisolated`：工程开了 `MainActor` 默认隔离，这个方法既要被
+    /// `@MainActor` 的 Coordinator 调，也要被同为 static 的 `boundaryEmptiness` 当**函数值**
+    /// 传进 `contains(where:)` —— 后者的闭包参数是非隔离的，隔离方法传不进去。
+    nonisolated static func isBoundary(_ mark: EmotionMark) -> Bool {
+        mark.token.category == .emotion || mark.token.category == .interrupt
+    }
 
     /// 位置序（同一位置按插入先后）。作用域边界与接缝收敛都依赖这个顺序。
     ///
@@ -179,6 +192,46 @@ enum TokenDocument {
             j += 1
         }
         return min(max(end, ordered[index].location), docLength)
+    }
+
+    /// 作用域空 / 非空的边界标记分组（语气 / 中断）。
+    ///
+    /// ⚠️ 这里**只判定、不回收** —— 回收时机交给调用方（见 `TokenTextEditor.Coordinator`）。
+    /// 判据历经三版，前两版都会被真实操作打穿：
+    ///  * 「当前作用域为空就回收」→ 刚插入的标签作用域天然为空，等于标签一插就没；
+    ///  * 「本次编辑删过字就回收」→ ① 第二个标签还没输入内容时，回头去删第一个标签里的
+    ///    一个错字，第二个标签会被连带删掉；② 中文改候选词是「先删上屏的字、再插新候选」
+    ///    两步，中间那一帧同样会误伤 —— 也就是
+    ///    **「插入第二个语气标签 → 打字 → 标签消失、文本并进第一个标签」**；
+    ///  * 现在这一版只输出「空 / 非空」两组 id，翻转判定与结算时机全部上移到 Coordinator：
+    ///    只有 **非空 → 空** 翻转过的标记才会被回收。
+    ///
+    /// - Returns: `empty` = 作用域里已经没有文本（含只剩占位符 / 空白）；`nonEmpty` = 还有文本
+    static func boundaryEmptiness(marks: [EmotionMark], doc: String)
+        -> (empty: Set<UUID>, nonEmpty: Set<UUID>) {
+        var empty = Set<UUID>()
+        var nonEmpty = Set<UUID>()
+
+        // 拟声占 1 个字符，字符没了标记由 `adjust()` 负责删；这里只处理零宽的作用域边界。
+        let ordered = orderedMarks(marks)
+        guard ordered.contains(where: isBoundary) else { return (empty, nonEmpty) }
+
+        let chars = Array(doc)
+        for (i, mark) in ordered.enumerated() where isBoundary(mark) {
+            let start = min(max(mark.location, 0), chars.count)
+            let end = min(max(scopeEnd(at: i, in: ordered, docLength: chars.count), start), chars.count)
+            var hasText = false
+            if end > start {
+                // 只剩占位符 / 空白（含全角空格、换行）也算「文本删完了」
+                let text = chars[start..<end]
+                    .filter { String($0) != placeholder }
+                    .map(String.init)
+                    .joined()
+                hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            if hasText { nonEmpty.insert(mark.id) } else { empty.insert(mark.id) }
+        }
+        return (empty, nonEmpty)
     }
 
     /// 作用域 `[start, end)` 被拟声占位符切成的一段段连续区间。

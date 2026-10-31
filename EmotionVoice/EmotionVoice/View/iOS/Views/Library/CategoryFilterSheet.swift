@@ -6,8 +6,11 @@
 //  再加视图层的「全部音色 / 仅看收藏」，一共 31 项。
 //
 //  与 macOS chip 的差异：**单选互斥**（`selectCategory` 语义不变），
-//  但 iOS 上关闭 Sheet 不清除选择，只有「重置」才清空 —— 所以进来时必须把
-//  上次的选择**回显三处**：吸顶条 / 自动滚动定位 / 该行 ✓ + 强调底色。
+//  但 iOS 上关闭 Sheet 不清除选择，只有「重置」才清空 —— 所以进来时要把
+//  上次的选择**回显两处**：自动滚动定位 / 该行紫色 ✓ + 强调底色。
+//
+//  ⚠️ 点一行 = 选中并立刻收起：分类是「选一个就走」的操作，
+//  再让用户点一次「完成」纯属多余（右上的 ✕ 只用于不改选择直接退出）。
 //
 //  ⚠️ 每行右侧恒留 17pt 勾位（未选中时 `Color.clear`），否则打勾会让文字横向跳动。
 //
@@ -34,19 +37,14 @@ struct CategoryFilterSheet: View {
 
     @State private var flashTick = 0
 
-    private var activeLabel: String? {
-        if showFavoritesOnly { return "仅看收藏".localized() }
-        guard let cat = selectedCategory else { return nil }
-        return "\(cat.icon) \(cat.displayName)"
-    }
-
-    private var activeCount: Int {
-        if showFavoritesOnly { return favoriteCount }
-        guard let cat = selectedCategory else { return totalAll }
-        return counts[cat.rawValue] ?? 0
-    }
-
     private var hasSelection: Bool { selectedCategory != nil || showFavoritesOnly }
+
+    /// 选中一行：写回选择 → 让外面刷新列表 → 直接收起（不再需要「完成」）
+    private func commit(_ apply: () -> Void) {
+        apply()
+        onCommit()
+        onDismiss()
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -65,18 +63,18 @@ struct CategoryFilterSheet: View {
                     .buttonStyle(.plain)
                 },
                 trailing: {
+                    // 没有「完成」了：点行即选中并收起，这里只留一个「不改选择直接退出」
                     Button { onDismiss() } label: {
-                        Text("完成".localized())
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(c.accent)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(c.textTertiary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("关闭".localized())
                 }
             )
-
-            if let label = activeLabel {
-                currentSelectionBar(label: label)
-            }
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -88,9 +86,10 @@ struct CategoryFilterSheet: View {
                                    count: totalAll,
                                    checked: selectedCategory == nil && !showFavoritesOnly,
                                    id: Self.allRowID) {
-                                selectedCategory = nil
-                                showFavoritesOnly = false
-                                onCommit()
+                                commit {
+                                    selectedCategory = nil
+                                    showFavoritesOnly = false
+                                }
                             }
                             catRow(icon: nil,
                                    name: "仅看收藏".localized(),
@@ -98,9 +97,10 @@ struct CategoryFilterSheet: View {
                                    checked: showFavoritesOnly,
                                    systemIcon: "heart.fill",
                                    id: Self.favRowID) {
-                                showFavoritesOnly.toggle()
-                                if showFavoritesOnly { selectedCategory = nil }
-                                onCommit()
+                                commit {
+                                    showFavoritesOnly.toggle()
+                                    if showFavoritesOnly { selectedCategory = nil }
+                                }
                             }
                         }
 
@@ -114,9 +114,10 @@ struct CategoryFilterSheet: View {
                                            checked: selectedCategory == cat && !showFavoritesOnly,
                                            id: cat.rawValue) {
                                         // 单选互斥：再点一次同一个才回到「全部」
-                                        selectedCategory = (selectedCategory == cat) ? nil : cat
-                                        showFavoritesOnly = false
-                                        onCommit()
+                                        commit {
+                                            selectedCategory = (selectedCategory == cat) ? nil : cat
+                                            showFavoritesOnly = false
+                                        }
                                     }
                                 }
                             }
@@ -137,41 +138,6 @@ struct CategoryFilterSheet: View {
             }
         }
         .background(c.backgroundGrouped)
-    }
-
-    // MARK: 吸顶「当前选择」
-
-    private func currentSelectionBar(label: String) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 15))
-                .foregroundStyle(c.accent)
-            Text(String(format: "当前选择 · %@ · %d 个".localized(), label, activeCount))
-                .font(.system(size: 12.5))
-                .foregroundStyle(c.textSecondary)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            Button {
-                selectedCategory = nil
-                showFavoritesOnly = false
-                onCommit()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(c.textTertiary)
-                    .frame(width: 20, height: 20)
-                    .background(Circle().fill(c.surface3))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 34)
-        .background(
-            RoundedRectangle(cornerRadius: AuroraRadius.sm, style: .continuous)
-                .fill(c.accentSoft)
-        )
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
     }
 
     // MARK: 行
@@ -232,12 +198,12 @@ struct CategoryFilterSheet: View {
                     .font(.system(size: 13, design: .monospaced))
                     .foregroundStyle(c.textTertiary)
 
-                // 恒留 17pt 勾位
+                // 恒留 17pt 勾位（选中 = 紫色对勾，这是唯一的选中指示）
                 Group {
                     if checked {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(c.accent)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(AuroraDecor.violet)
                     } else {
                         Color.clear
                     }

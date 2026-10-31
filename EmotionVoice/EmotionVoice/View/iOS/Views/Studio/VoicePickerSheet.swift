@@ -48,6 +48,9 @@ struct VoicePickerSheet: View {
     /// 搜索防抖用的 Task（每次键击都全表过滤会很卡）
     @State private var searchTask: Task<Void, Never>? = nil
 
+    /// 列表滚动位置的「重置版本号」：作为 `ScrollView` 的 id，一自增就整体重建、偏移归零
+    @State private var scrollResetID = 0
+
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 10),
               count: metrics.voiceGridColumns)
@@ -237,7 +240,7 @@ struct VoicePickerSheet: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                    Text(String(format: "%@ · %d 个".localized(), cat.displayName, totalCount))
+                    Text("%@ · %d 个".localized(cat.displayName, totalCount))
                         .font(.system(size: 12))
                 }
                 .foregroundStyle(c.accent)
@@ -245,11 +248,11 @@ struct VoicePickerSheet: View {
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
             } else if showFavoritesOnly {
-                Text(String(format: "仅看收藏 · %d 个".localized(), totalCount))
+                Text("仅看收藏 · %d 个".localized(totalCount))
                     .font(.system(size: 12))
                     .foregroundStyle(AuroraDecor.rose)
             } else {
-                Text(String(format: "共 %d 个 · 旗舰优先，再按名称排序".localized(), totalCount))
+                Text("共 %d 个 · 旗舰优先，再按名称排序".localized(totalCount))
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
             }
@@ -284,44 +287,45 @@ struct VoicePickerSheet: View {
     private var grid: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 10) {
-                if didLoad {
-                    ForEach(voices) { voice in
-                        VoiceCardGrid(
-                            voice: voice,
-                            isPreviewing: player.playingKey == voice.key && player.isPlaying,
-                            onPreview: { togglePreview(voice) },
-                            onFavorite: { toggleFavorite(voice) },
-                            onUse: { pick(voice) }
-                        )
-                        // 当前选中项：强调描边（内侧 1.5pt，不盖住卡片内容）
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                                .strokeBorder(voice.key == selectedKey ? c.accent.opacity(0.65) : Color.clear,
-                                              lineWidth: 1.5)
-                        )
-                        .contentShape(Rectangle())
-                        // 卡片空白处点击也等于选中；三个按钮在更内层，优先吃掉自己的点击
-                        .onTapGesture { pick(voice) }
-                        .onAppear {
-                            // 触底追加：最后一张卡出现时拉下一页
-                            if voice.key == voices.last?.key { loadMore() }
+                    if didLoad {
+                        ForEach(voices) { voice in
+                            VoiceCardGrid(
+                                voice: voice,
+                                isPreviewing: player.playingKey == voice.key && player.isPlaying,
+                                onPreview: { togglePreview(voice) },
+                                onFavorite: { toggleFavorite(voice) },
+                                onUse: { pick(voice) }
+                            )
+                            // 当前选中项：强调描边（内侧 1.5pt，不盖住卡片内容）
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                                    .strokeBorder(voice.key == selectedKey ? c.accent.opacity(0.65) : Color.clear,
+                                                  lineWidth: 1.5)
+                            )
+                            .contentShape(Rectangle())
+                            // 卡片空白处点击也等于选中；三个按钮在更内层，优先吃掉自己的点击
+                            .onTapGesture { pick(voice) }
+                            .onAppear {
+                                // 触底追加：最后一张卡出现时拉下一页
+                                if voice.key == voices.last?.key { loadMore() }
+                            }
                         }
+                    } else {
+                        ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
                     }
-                } else {
-                    ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
+                }
+                .pagePadding()
+                .padding(.bottom, 4)
+
+                if didLoad && hasMore {
+                    appendFooter
+                } else if didLoad && voices.isEmpty {
+                    emptyState
+                } else if didLoad {
+                    endFooter
                 }
             }
-            .pagePadding()
-            .padding(.bottom, 4)
-
-            if didLoad && hasMore {
-                appendFooter
-            } else if didLoad && voices.isEmpty {
-                emptyState
-            } else if didLoad {
-                endFooter
-            }
-        }
+            .id(scrollResetID)
     }
 
     // MARK: 底部
@@ -330,7 +334,7 @@ struct VoicePickerSheet: View {
         HStack(spacing: 7) {
             ProgressView()
                 .controlSize(.small)
-            Text(String(format: "上拉加载更多 · 已显示 %d / %d".localized(), voices.count, totalCount))
+            Text("上拉加载更多 · 已显示 %d / %d".localized(voices.count, totalCount))
                 .font(.system(size: 12))
                 .foregroundStyle(c.textTertiary)
         }
@@ -339,7 +343,7 @@ struct VoicePickerSheet: View {
     }
 
     private var endFooter: some View {
-        Text(String(format: "已显示全部 %d 个音色".localized(), totalCount))
+        Text("已显示全部 %d 个音色".localized(totalCount))
             .font(.system(size: 12))
             .foregroundStyle(c.textTertiary)
             .padding(.vertical, 18)
@@ -378,6 +382,7 @@ struct VoicePickerSheet: View {
         vm.reloadCurrentPage()
         voices = vm.displayedVoices
         totalCount = vm.totalCount
+        scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
     }
 
     /// 追加下一页
@@ -385,18 +390,16 @@ struct VoicePickerSheet: View {
         guard didLoad, hasMore, !isAppending else { return }
         isAppending = true
         let next = page + 1
-        vm.currentPage = next
+        // ⚠️ 先写 `page` 再 `syncToVM()`：syncToVM 会把 `page` 灌回 `vm.currentPage`，
+        // 反过来的话新页码会被旧页码覆盖，取回来的还是当前页 → 追加恒为空。
+        page = next
         syncToVM()
         vm.reloadCurrentPage()
-        let fresh = vm.displayedVoices
-        if fresh.isEmpty {
-            isAppending = false
-            return
-        }
         let known = Set(voices.map(\.key))
-        voices.append(contentsOf: fresh.filter { !known.contains($0.key) })
+        let appended = vm.displayedVoices.filter { !known.contains($0.key) }
+        voices.append(contentsOf: appended)
         totalCount = vm.totalCount
-        page = next
+        if appended.isEmpty { page = max(1, next - 1) }
         isAppending = false
     }
 
@@ -421,11 +424,9 @@ struct VoicePickerSheet: View {
     // MARK: - 行为
 
     private func togglePreview(_ voice: Voice) {
-        if player.playingKey == voice.key && player.isPlaying {
-            player.stop()
-        } else {
-            _ = player.play(key: voice.key)
-        }
+        // ⚠️ 不能 `play(key:)`：基础音色的 key 带 `qwen-audio-3.0-tts-plus-` 前缀，
+        // 而 Bundle 里的资源是 `longbaikehui.m4a` 这种短名，按 key 找永远找不到。
+        player.toggle(voice: voice)
     }
 
     private func toggleFavorite(_ voice: Voice) {
@@ -447,7 +448,7 @@ struct VoicePickerSheet: View {
     private func pick(_ voice: Voice) {
         player.stop()
         selectedKey = voice.key
-        uiState.showToast(.success(String(format: "已切换到「%@」".localized(), voice.localizedName)))
+        uiState.showToast(.success("已切换到「%@」".localized(voice.localizedName)))
         dismiss()
     }
 }

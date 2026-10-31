@@ -94,9 +94,6 @@ struct StudioParamSheet: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(c.textTertiary)
                 }
                 .padding(.horizontal, 14)
                 .frame(minHeight: 60)
@@ -281,7 +278,7 @@ struct StudioParamSheet: View {
                             withAnimation(.easeOut(duration: 0.18)) { languagesExpanded = true }
                         } label: {
                             HStack(spacing: 3) {
-                                Text(String(format: "展开全部 %d".localized(), Constants.nlLanguages.count))
+                                Text("展开全部 %d".localized(Constants.nlLanguages.count))
                                     .font(.system(size: 12.5))
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 9, weight: .bold))

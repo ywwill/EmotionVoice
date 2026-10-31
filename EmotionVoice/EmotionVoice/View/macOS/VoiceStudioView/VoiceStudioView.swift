@@ -100,7 +100,7 @@ struct VoiceStudioView: View {
     private var textEditorCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("文本输入区".localized())
+                Text("文本输入".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Text("%d 字".localized(vm.charCount))
@@ -506,12 +506,9 @@ struct VoiceStudioView: View {
                         vm.selectedVoiceKey = v.key
                         appState.selectedVoice = v
                     } onPreview: {
-                        let player = AudioPreviewPlayer.shared
-                        if player.isPlaying(key: v.key) {
-                            player.stop()
-                        } else {
-                            player.play(key: v.key)
-                        }
+                        // ⚠️ 不能 `play(key:)`：基础音色的 key 带 `qwen-audio-3.0-tts-plus-` 前缀，
+                        // 而 Bundle 里的资源是 `longbaikehui.m4a` 这种短名，按 key 找永远找不到。
+                        AudioPreviewPlayer.shared.toggle(voice: v)
                     }
                 }
             }

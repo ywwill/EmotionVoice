@@ -2982,9 +2982,9 @@
 		6F3AEA5230907A20007975DD /* Studio */ = {
 			isa = PBXGroup;
 			children = (
+				6F3AEA4D30907A20007975DD /* StudioView.swift */,
 				6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */,
 				6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */,
-				6F3AEA4D30907A20007975DD /* StudioView.swift */,
 				6F3AEA4E30907A20007975DD /* TokenCapsuleOverlay.swift */,
 				6F3AEA4F30907A20007975DD /* TokenDocument.swift */,
 				6F3AEA5030907A20007975DD /* TokenTextEditor.swift */,
@@ -2996,11 +2996,11 @@
 		6F3AEA5330907A20007975DD /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				6F3AEA3E30907A20007975DD /* Generation */,
+				6F3AEA5230907A20007975DD /* Studio */,
 				6F3AEA4230907A20007975DD /* Library */,
 				6F3AEA4530907A20007975DD /* Projects */,
+				6F3AEA3E30907A20007975DD /* Generation */,
 				6F3AEA4A30907A20007975DD /* Settings */,
-				6F3AEA5230907A20007975DD /* Studio */,
 			);
 			path = Views;
 			sourceTree = "<group>";

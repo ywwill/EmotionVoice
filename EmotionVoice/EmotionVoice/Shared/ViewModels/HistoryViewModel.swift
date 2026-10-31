@@ -87,7 +87,20 @@ class HistoryViewModel: ObservableObject {
         player.stop()
     }
 
+    /// 删除一条音频：磁盘文件 + 库内记录，并从列表里移除
     func deleteAudio(_ audio: AudioItem) {
+        // ⚠️ 以前这里只改 UI 数组，`ProjectService.deleteAudio` 从来没被调用过 ——
+        // 行看着消失了，文件和库记录都还在，重新进页面 / 重启后又整排冒出来。
+        ProjectService.shared.deleteAudio(id: audio.id)
+        removeAudioItem(audio)
+    }
+
+    /// 只做列表移除（ playback 状态清理 + 刷新）。
+    ///
+    /// ⚠️ 从 `deleteAudio` 里拆出来是为了给动画用：`withAnimation` 的事务里**不能夹磁盘 IO**，
+    /// 否则主线程被卡住，列表渲出来的第一帧是一片空白（左滑「复制」踩过同一个坑）。
+    /// 调用方：先在外面把磁盘 / 库删干净，再把这个纯内存操作包进动画。
+    func removeAudioItem(_ audio: AudioItem) {
         // 如果删除的是正在播放或选中的音频，先停止
         if selectedAudio?.id == audio.id {
             player.stop()
@@ -121,14 +134,40 @@ class HistoryViewModel: ObservableObject {
     /// 复制音频（磁盘文件 + 库内记录），新副本插入列表顶部并自动选中
     func duplicateAudio(_ audio: AudioItem) {
         guard let copy = ProjectService.shared.duplicateAudio(audio) else { return }
+        appendAudioItem(copy)
+    }
 
+    /// 把一个**已经建好的**音频条目纯追加进列表顶部（不碰磁盘、不查库）。
+    ///
+    /// ⚠️ 之所以从 `duplicateAudio` 里拆出来：iOS 的左滑「复制」必须把
+    /// 「复制文件 + 写库」这段**同步磁盘 IO** 放在动画事务之外（见 `ProjectsView.duplicate`）。
+    /// 早年整块 `duplicateAudio` 被 `withAnimation` 包住，主线程在动画事务里被 IO 卡住，
+    /// 列表渲出来的中间帧就是一片空白 —— 这就是「复制后该行先消失、过会儿才回来」。
+    /// 拆开之后动画里只剩一次 `@Published` 写入，SwiftUI 看到的是纯插入。
+    func appendAudioItem(_ item: AudioItem) {
         // 列表按创建时间倒序，新副本最新，置于顶部
-        allLoadedAudios.insert(copy, at: 0)
+        allLoadedAudios.insert(item, at: 0)
         totalCount += 1
         filterAndDisplay()
 
         // 选中新副本，方便用户立即查看
-        selectedAudio = copy
+        selectedAudio = item
+    }
+
+    /// 把一个**已经建好的**音频条目插到 `afterID` 那一条的**下面**（找不到就回顶部）。
+    ///
+    /// ⚠️ iOS 的左滑「复制」用它而不是 `appendAudioItem`：列表默认按创建时间倒序，
+    /// 新条目本来该去顶部，但那样整列表会被往下推一格，再配合一次滚到顶部，
+    /// 用户看到的就是**「我刚操作的那一行不见了」**（其实是被顶出视野了）。
+    /// 就地插入让被操作的行原地不动，副本在它下面长出来。
+    func insertAudioItem(_ item: AudioItem, after afterID: Int64) {
+        let at = allLoadedAudios.firstIndex(where: { $0.id == afterID })
+            .map { min($0 + 1, allLoadedAudios.count) } ?? 0
+        allLoadedAudios.insert(item, at: at)
+        totalCount += 1
+        filterAndDisplay()
+
+        selectedAudio = item
     }
 
     func isPlayingAudio(_ audio: AudioItem) -> Bool {

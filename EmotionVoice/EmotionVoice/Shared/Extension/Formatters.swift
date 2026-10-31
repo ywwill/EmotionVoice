@@ -54,7 +54,8 @@ extension Date {
 
     /// 文件名风格时间戳 "yyyy-MM-dd_HH-mm-ss"
     /// 例：2026-08-16_11-35-42
-    var filenameTimestamp: String {
+    /// ⚠️ `nonisolated`：临时 `DateFormatter` 是纯计算，iOS 的左滑「复制」要在后台线程拼文件名。
+    nonisolated var filenameTimestamp: String {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return f.string(from: self)

@@ -40,6 +40,9 @@ final class TokenEditorStore: ObservableObject {
 
     /// 去掉拟声占位符后的字数（UI 显示用），合并刷新
     @Published private(set) var charCount: Int = 0
+    /// 编辑器里是否还有东西（正文 **或** 标记）。「清空」按钮的可用态靠它 ——
+    /// 只看字数是判不出来的：只插了一个语气标签、还没打字时 `charCount` 是 0。
+    @Published private(set) var hasContent: Bool = false
     /// 外部整体改写内容的版本号
     @Published private(set) var contentRevision: Int = 0
 
@@ -60,12 +63,19 @@ final class TokenEditorStore: ObservableObject {
         contentRevision += 1
     }
 
+    /// 清空编辑器（「清空」按钮）
+    func clear() {
+        replace(doc: "", marks: [])
+    }
+
     /// 立刻把字数推给 UI（结束编辑 / 生成前调用，避免读到 0.25s 前的旧值）
     func flush() {
         flushWork?.cancel()
         flushWork = nil
         let n = TokenDocument.plainText(doc: doc).count
         if charCount != n { charCount = n }
+        let has = !doc.isEmpty || !marks.isEmpty
+        if hasContent != has { hasContent = has }
     }
 
     private func scheduleFlush() {
@@ -124,6 +134,8 @@ struct TokenTextEditor: UIViewRepresentable {
         overlay.textView = tv
         overlay.config.badgeBackground = UIColor(palette.surface2)
         overlay.config.primaryText = UIColor(palette.textPrimary)
+        // 中断徽章走中性灰，与「语气徽章 = 情感色」区分开
+        overlay.config.interruptColor = UIColor(palette.textSecondary)
         overlay.config.editable = isEditable
         overlay.config.isDark = isDark
         // 行距必须同步给绘制层：TextKit 把它算进了行片段矩形，绘制前要减掉还原成字高
@@ -207,8 +219,8 @@ struct TokenTextEditor: UIViewRepresentable {
                                              onInterrupt: { [weak coordinator = context.coordinator] in
                                                  coordinator?.insertInterrupt()
                                              },
-                                             onDone: { [weak coordinator = context.coordinator] in
-                                                 coordinator?.endEditing()
+                                             onClear: { [weak coordinator = context.coordinator] in
+                                                 coordinator?.clearAll()
                                              })
     }
 
@@ -292,6 +304,26 @@ struct TokenTextEditor: UIViewRepresentable {
 
         /// 由 `shouldChangeTextIn` 算好、`textViewDidChange` 时落地的标记
         private var pendingMarks: [EmotionMark]?
+
+        /// 每个边界标记「最近一次结算时，它的作用域里有没有文本」。
+        ///
+        /// ⚠️ **自动回收的唯一判据是「非空 → 空」这一次翻转**。三种候选判据里只有它站得住：
+        ///  * 「当前作用域为空就回收」→ 刚插入的标签作用域天然为空，等于标签一插就没；
+        ///  * 「这次编辑删过字就回收」→ ① 第二个标签还没输入内容时，回头去删第一个标签里的
+        ///    一个错字，第二个标签被连带回收；② 中文改候选词是「先删上屏的字、再插新候选」
+        ///    两步，中间那一帧同样会误伤 —— 这正是
+        ///    **「插第二个语气标签 → 打字 → 标签没了、文本并进第一个标签」**；
+        ///  * `true → false` → 一个**从未有过内容**的标签永远不会被自动回收（上面两种场景
+        ///    都不会触发），而「把标签里的字删光」必然翻转一次，
+        ///    所以「删完了标签还赖着不走」也不会再现。
+        private var scopeHadText: [UUID: Bool] = [:]
+        /// 已经翻转过、等着结算的标记（输入停下来之后统一回收）
+        private var pendingRemoval: Set<UUID> = []
+
+        private var pruneTask: Task<Void, Never>? = nil
+
+        /// 停手多久之后结算（这段时间足够「删一句话 → 又打回来」跑完）
+        private static let pruneDelayNs: UInt64 = 350_000_000
 
         private var store: TokenEditorStore { parent.store }
 
@@ -389,8 +421,22 @@ struct TokenTextEditor: UIViewRepresentable {
             tvDidChangeContent(tv)
         }
 
-        func endEditing() {
-            textView?.resignFirstResponder()
+        /// 清空全部内容（正文 + 标记）
+        func clearAll() {
+            guard let tv = textView else { return }
+            // 标记都要丢弃了，待结算的空作用域一起作废
+            pruneTask?.cancel()
+            pruneTask = nil
+            pendingRemoval = []
+            scopeHadText = [:]
+            // 走 textStorage 直接替换：`tv.text = ""` 不会触发 `shouldChangeTextIn`，
+            // 而这里标记本来就要全部丢弃，不需要走 adjust
+            tv.textStorage.replaceCharacters(in: NSRange(location: 0, length: (tv.text as NSString).length),
+                                             with: "")
+            tv.selectedRange = NSRange(location: 0, length: 0)
+            // replace() 会 bump contentRevision → updateUIView 重建 attributedText 并重绘胶囊层
+            store.clear()
+            tvDidChangeContent(tv)
         }
 
         /// 把开始 / 结束编辑回推给 SwiftUI（异步：这两个回调可能发生在别的控件的事件处理中）
@@ -400,6 +446,11 @@ struct TokenTextEditor: UIViewRepresentable {
         }
 
         private func tvDidChangeContent(_ tv: UITextView) {
+            // ⚠️ 作用域状态先结算：`store` 是唯一权威，标记留不留与绘制层无关。
+            // 放在最前面，保证任何一条改内容的路径（打字 / 插标签 / 删标签 / 结算兜底）
+            // 都会走同一遍判定 —— 早年只挂在 `textViewDidChange` 上，于是「插完标签
+            // 立刻结算」这类时序错位会让同一段操作跑出两种结果。
+            refreshScopeStates()
             guard let overlay else { return }
             let previous = overlay.config.marks
             overlay.config.marks = store.marks
@@ -424,10 +475,86 @@ struct TokenTextEditor: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            // ⚠️ 这里刻意不碰 SwiftUI：内容只进 store，字数等 0.25s 后再回推
-            store.commit(doc: textView.text, marks: pendingMarks ?? store.marks)
+            let marks = pendingMarks ?? store.marks
             pendingMarks = nil
+            // ⚠️ 这里刻意不碰 SwiftUI：内容只进 store，字数等 0.25s 后再回推
+            store.commit(doc: textView.text, marks: marks)
             tvDidChangeContent(textView)
+        }
+
+        // MARK: 空作用域结算
+
+        /// 重算每个边界标记作用域里的文本，并处理「非空 → 空」的翻转。
+        ///
+        /// ⚠️ **每次内容变化都要跑一遍**（打字 / 插标签 / 删标签 / 清空），
+        /// 且只比对「上一次结算的状态」与「现在的状态」—— 既不带「这次删没删东西」的时序信息，
+        /// 也不需要延后采快照。掺进来的那些时序条件会让同一段操作在不同节奏下
+        /// 得到不同结果（打得快就没事、慢一点标签就被吃掉）。
+        private func refreshScopeStates() {
+            let marks = store.marks
+            guard !marks.isEmpty else {
+                scopeHadText = [:]
+                pendingRemoval = []
+                pruneTask?.cancel()
+                pruneTask = nil
+                return
+            }
+            let nonEmpty = TokenDocument.boundaryEmptiness(marks: marks, doc: store.doc).nonEmpty
+
+            var next: [UUID: Bool] = [:]
+            next.reserveCapacity(marks.count)
+            var flipped: Set<UUID> = []
+            for mark in marks where TokenDocument.isBoundary(mark) {
+                let hasText = nonEmpty.contains(mark.id)
+                next[mark.id] = hasText
+                if hasText {
+                    // 又有内容了（改候选词重新上屏 / 删完又重打）→ 撤销待回收
+                    pendingRemoval.remove(mark.id)
+                } else if scopeHadText[mark.id] == true {
+                    // 有 → 无：这次真的被删空了
+                    flipped.insert(mark.id)
+                }
+            }
+            scopeHadText = next
+            guard !flipped.isEmpty else {
+                if !pendingRemoval.isEmpty { schedulePrune() }
+                return
+            }
+            pendingRemoval.formUnion(flipped)
+            schedulePrune()
+        }
+
+        /// 排一次结算。每次新的编辑都会把它顶掉，所以实际只在**输入停下来**之后跑一次。
+        ///
+        /// ⚠️ 用 `Task` 而不是 `DispatchWorkItem`：GCD 的逃逸闭包是 `@Sendable`，
+        /// Swift 6 下没法在里面直接调 `@MainActor` 方法（工程里已有若干同类报错）。
+        /// `Task` 会继承调用点的 actor 隔离，这里正好是主线程。
+        private func schedulePrune() {
+            pruneTask?.cancel()
+            pruneTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: Self.pruneDelayNs)
+                guard !Task.isCancelled else { return }
+                self?.settlePrune()
+            }
+        }
+
+        private func settlePrune() {
+            pruneTask = nil
+            guard let tv = textView, !pendingRemoval.isEmpty else { return }
+            // 拼音候选还在选：此刻的文本不是最终形态，等 composition 落地后再判
+            if tv.markedTextRange != nil {
+                schedulePrune()
+                return
+            }
+            let current = store.marks
+            guard !current.isEmpty else { pendingRemoval = []; return }
+            let stillEmpty = TokenDocument.boundaryEmptiness(marks: current, doc: tv.text).empty
+            let doomed = pendingRemoval.intersection(stillEmpty)
+            pendingRemoval = []
+            guard !doomed.isEmpty else { return }
+            for id in doomed { scopeHadText.removeValue(forKey: id) }
+            store.commit(doc: tv.text, marks: current.filter { !doomed.contains($0.id) })
+            tvDidChangeContent(tv)
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
@@ -469,10 +596,10 @@ final class AccessoryHost {
                 isDark: Bool,
                 onPick: @escaping (EmotionItem, EmotionCategory) -> Void,
                 onInterrupt: @escaping () -> Void,
-                onDone: @escaping () -> Void) {
+                onClear: @escaping () -> Void) {
         config.onPick = onPick
         config.onInterrupt = onInterrupt
-        config.onDone = onDone
+        config.onClear = onClear
         guard isDark != lastIsDark else { return }
         lastIsDark = isDark
         refresh(palette: palette)

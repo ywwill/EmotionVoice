@@ -2,7 +2,11 @@
 //  EmotionAccessoryBar.swift
 //  iOSEmora
 //
-//  键盘 accessory：23 个语气 + 7 个拟声 + 中断 + 完成。
+//  键盘 accessory：23 个语气 + 7 个拟声 + 中断 + 清空。
+//
+//  ⚠️ 「完成」（收键盘）**不在这里** —— 它落在底部那条生成条上、与「生成音频」同一行。
+//  accessory 那一排按钮太多，主操作（收键盘）混在 30 个胶囊里找不着；而生成条
+//  永远露在最底下、也不会被键盘压住，手不用离开键盘区就能点到。
 //
 //  macOS 把标签铺成常驻网格，iPhone 上没有这个空间，改为「编辑聚焦时才出现的横向滚动条」。
 //  23 个语气的 description 在 macOS 里是 tooltip，iOS 没有 hover，改为标签面板里的副行。
@@ -24,7 +28,8 @@ final class EditorAccessoryConfig: ObservableObject {
 
     var onPick: ((EmotionItem, EmotionCategory) -> Void)?
     var onInterrupt: (() -> Void)?
-    var onDone: (() -> Void)?
+    /// 清空输入框（与 StudioView 文本卡标题行的「清空」同一个动作）
+    var onClear: (() -> Void)?
 }
 
 struct EmotionAccessoryBar: View {
@@ -41,8 +46,9 @@ struct EmotionAccessoryBar: View {
                                 ))
                 .frame(width: 126)
 
-                Spacer(minLength: 0)
-
+                // ⚠️ 「中断」紧跟在「语气 / 拟声」分段控件右边：它跟标签是同一类操作
+                // （往文本里插标记），右边整条空白之后才轮到「清空」这类整篇动作 ——
+                // 早年把两个不同类的动作挤在一起，视觉上像是同一组。
                 Button {
                     config.onInterrupt?()
                 } label: {
@@ -63,16 +69,24 @@ struct EmotionAccessoryBar: View {
                 }
                 .buttonStyle(.plain)
 
+                Spacer(minLength: 0)
+
                 Button {
-                    config.onDone?()
+                    config.onClear?()
                 } label: {
-                    Text("完成".localized())
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(c.accent)
-                        .frame(width: 44, height: 34)
-                        .contentShape(Rectangle())
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(c.textSecondary)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle()
+                                .fill(c.surface3)
+                                .overlay(Circle().strokeBorder(c.line, lineWidth: 0.5))
+                        )
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("清空".localized())
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 8)

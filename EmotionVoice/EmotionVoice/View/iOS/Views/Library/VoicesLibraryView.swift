@@ -46,6 +46,10 @@ struct VoicesLibraryView: View {
 
     @State private var sheetPresented = false
 
+    /// 列表滚动位置的「重置版本号」：作为 `ScrollView` 的 id，
+    /// 一自增就整体重建 ScrollView，contentOffset 随之归零
+    @State private var scrollResetID = 0
+
     /// 搜索防抖用的 Task（每次键击都全表过滤会很卡）
     @State private var searchTask: Task<Void, Never>? = nil
 
@@ -62,40 +66,53 @@ struct VoicesLibraryView: View {
         VStack(spacing: 0) {
             searchBar
             filterBar
-            resultBar
 
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 10) {
-                    if didLoad {
-                        ForEach(voices) { voice in
-                            VoiceCardGrid(
-                                voice: voice,
-                                isPreviewing: player.playingKey == voice.key && player.isPlaying,
-                                onPreview: { togglePreview(voice) },
-                                onFavorite: { toggleFavorite(voice) },
-                                onUse: { useVoice(voice) }
-                            )
-                            .onAppear {
-                                // 触底追加：最后一张卡出现时拉下一页
-                                if voice.key == voices.last?.key { loadMore() }
+                        if didLoad {
+                            ForEach(voices) { voice in
+                                VoiceCardGrid(
+                                    voice: voice,
+                                    isPreviewing: player.playingKey == voice.key && player.isPlaying,
+                                    onPreview: { togglePreview(voice) },
+                                    onFavorite: { toggleFavorite(voice) },
+                                    onUse: { useVoice(voice) }
+                                )
+                                .onAppear {
+                                    // 触底追加：最后一张卡出现时拉下一页
+                                    if voice.key == voices.last?.key { loadMore() }
+                                }
                             }
+                        } else {
+                            ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
                         }
-                    } else {
-                        ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
+                    }
+                    .pagePadding()
+                    .padding(.bottom, 4)
+
+                    if didLoad && hasMore {
+                        appendFooter
+                    } else if didLoad && voices.isEmpty {
+                        emptyState
+                    } else if didLoad {
+                        endFooter
                     }
                 }
-                .pagePadding()
-                .padding(.bottom, 4)
-
-                if didLoad && hasMore {
-                    appendFooter
-                } else if didLoad && voices.isEmpty {
-                    emptyState
-                } else if didLoad {
-                    endFooter
-                }
+                // ⚠️ 筛选一变就换 id → ScrollView 整体重建 → 滚动偏移归零。
+                // 早先试过 `scrollTo(顶部锚点)`：它在布局前按**旧 contentSize** 算偏移，
+                // 行数变少时算出的偏移仍超出新范围，于是「滚不动」——
+                // 表现就是「滚动过再点收藏 → 列表一片空白，而数据其实早就换好了」。
+                .id(scrollResetID)
+                // ⚠️ 换 id 等于「整块内容被替换」，不给过渡就是硬切。配一条
+                //    「新内容淡入 + 轻微上浮 / 旧内容淡出」，切分类时才看得出来是换了数据。
+                //    （`scrollResetID` 只在 reload 里自增，loadMore 追加不触发，
+                //     所以上拉加载不会整屏闪一下。）
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .offset(y: 10)),
+                    removal: .opacity
+                ))
+                .animation(.easeOut(duration: 0.24), value: scrollResetID)
             }
-        }
         .background(c.backgroundGrouped)
         .navigationTitle("音色库".localized())
         .navigationBarTitleDisplayMode(.inline)
@@ -150,54 +167,43 @@ struct VoicesLibraryView: View {
         .padding(.bottom, 8)
     }
 
+    /// 分类按钮：整块胶囊都是热区，点哪儿都弹分类 Sheet。
+    ///
+    /// ⚠️ 早年只有中间那个 `Button` 的 label 能点（右边一小截 chevron 区、左侧留白都点不动），
+    ///    命中率很低。改成「外层容器 + `contentShape(Rectangle())` + `onTapGesture`」：
+    ///    视觉一点没变（背景 / 圆角 / 描边都在外层），但整条胶囊都响应。
+    ///
+    /// ⚠️ 分类选完后**不再出现 ×**：分类是「选一个就走」的单选操作，
+    ///    清除筛选在 Sheet 里点「全部音色 / 重置」即可；按钮上再挂一个 ×
+    ///    既挤掉类名，又容易被看成「删掉这个分类」。
     private var filterButton: some View {
         HStack(spacing: 0) {
-            Button {
-                sheetPresented = true
-            } label: {
-                HStack(spacing: 7) {
-                    if let cat = selectedCategory {
-                        Text(cat.icon)
-                            .font(.system(size: 15))
-                        Text(cat.displayName)
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                        Text("\(vm.countForCategory(cat))")
-                            .font(.system(size: 12.5, design: .monospaced))
-                            .foregroundStyle(c.accent.opacity(0.75))
-                    } else {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(c.textSecondary)
-                        Text("全部分类".localized())
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                        Text("\(vm.totalAll)")
-                            .font(.system(size: 12.5, design: .monospaced))
-                            .foregroundStyle(c.textTertiary)
-                    }
+            HStack(spacing: 7) {
+                if let cat = selectedCategory {
+                    Text(cat.icon)
+                        .font(.system(size: 15))
+                    Text(cat.displayName)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                    Text("\(vm.countForCategory(cat))")
+                        .font(.system(size: 12.5, design: .monospaced))
+                        .foregroundStyle(c.accent.opacity(0.75))
+                } else {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(c.textSecondary)
+                    Text("全部分类".localized())
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                    Text("\(vm.totalAll)")
+                        .font(.system(size: 12.5, design: .monospaced))
+                        .foregroundStyle(c.textTertiary)
                 }
-                .foregroundStyle(c.textPrimary)
-                .padding(.leading, 12)
-                .padding(.trailing, 6)
-                .frame(height: 36)
             }
-            .buttonStyle(.plain)
-
-            if selectedCategory != nil {
-                Button {
-                    selectedCategory = nil
-                    reload()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(c.accent.opacity(0.8))
-                        .frame(width: 18, height: 18)
-                        .background(Circle().fill(c.accent.opacity(0.18)))
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
-            }
+            .foregroundStyle(c.textPrimary)
+            .padding(.leading, 12)
+            .padding(.trailing, 6)
+            .frame(height: 36)
 
             Image(systemName: "chevron.down")
                 .font(.system(size: 12, weight: .semibold))
@@ -214,7 +220,12 @@ struct VoicesLibraryView: View {
                                       lineWidth: 0.5)
                 )
         )
-        .contentShape(Capsule(style: .continuous))
+        // ⚠️ `Rectangle` 而不是 `Capsule`：连圆角外的四个方角也算进热区（多出几 pt 无所谓，
+        //    漏掉一角就会「明明点在按钮上却没反应」）
+        .contentShape(Rectangle())
+        .onTapGesture { sheetPresented = true }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("选择分类".localized())
     }
 
     private var favoriteButton: some View {
@@ -255,19 +266,21 @@ struct VoicesLibraryView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                    Text(String(format: "%@ · %d 个".localized(), cat.displayName, totalCount))
+                    Text("%@ · %d 个".localized(cat.displayName, totalCount))
                         .font(.system(size: 12))
                 }
                 .foregroundStyle(c.accent)
-                Text("点 ✕ 取消筛选".localized())
+                // ⚠️ 分类选完后按钮上不再有 ×（见 `filterButton`），提示语跟着改，
+                //    否则会指引用户去找一个不存在的按钮。
+                Text("点上方按钮可重新选择".localized())
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
             } else if showFavoritesOnly {
-                Text(String(format: "仅看收藏 · %d 个".localized(), totalCount))
+                Text("仅看收藏 · %d 个".localized(totalCount))
                     .font(.system(size: 12))
                     .foregroundStyle(AuroraDecor.rose)
             } else {
-                Text(String(format: "共 %d 个 · 旗舰优先，再按名称排序".localized(), totalCount))
+                Text("共 %d 个 · 旗舰优先，再按名称排序".localized(totalCount))
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
             }
@@ -283,7 +296,7 @@ struct VoicesLibraryView: View {
         HStack(spacing: 7) {
             ProgressView()
                 .controlSize(.small)
-            Text(String(format: "上拉加载更多 · 已显示 %d / %d".localized(), voices.count, totalCount))
+            Text("上拉加载更多 · 已显示 %d / %d".localized(voices.count, totalCount))
                 .font(.system(size: 12))
                 .foregroundStyle(c.textTertiary)
         }
@@ -292,7 +305,7 @@ struct VoicesLibraryView: View {
     }
 
     private var endFooter: some View {
-        Text(String(format: "已显示全部 %d 个音色".localized(), totalCount))
+        Text("已显示全部 %d 个音色".localized(totalCount))
             .font(.system(size: 12))
             .foregroundStyle(c.textTertiary)
             .padding(.vertical, 18)
@@ -324,37 +337,49 @@ struct VoicesLibraryView: View {
         searchText = appState.voiceLibrarySearchText
         showFavoritesOnly = appState.voiceLibraryShowFavoritesOnly
         reload()
-        didLoad = true
+        // 骨架屏 → 真实卡片也算一次「内容切换」，走同一条淡入过渡
+        withAnimation(.easeOut(duration: 0.24)) { didLoad = true }
     }
 
     /// 重新按当前筛选取首页并整体替换
+    ///
+    /// ⚠️ 查库**必须留在动画事务之外**：`vm.reloadCurrentPage()` 是同步的全表过滤，
+    /// 放进 `withAnimation` 会卡住动画的第一帧（与 `ProjectsView.duplicate` 同一个坑）。
+    /// 这里只把最后那几次 `@State` 写入包进动画。
     private func reload() {
         page = 1
         vm.setPageSize(pageSize)
         syncToVM()
         vm.reloadCurrentPage()
-        voices = vm.displayedVoices
-        totalCount = vm.totalCount
+        let fresh = vm.displayedVoices
+        let freshTotal = vm.totalCount
+        withAnimation(.easeOut(duration: 0.24)) {
+            voices = fresh
+            totalCount = freshTotal
+            scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部 + 走过渡动画
+        }
         persist()
     }
 
     /// 追加下一页
+    ///
+    /// ⚠️ **先写 `page` 再 `syncToVM()`**。早年先 `vm.currentPage = next` 再 sync，
+    /// 而 `syncToVM()` 会把本地的 `page` 灌回 `vm.currentPage` —— 下一行就把新页码
+    /// 覆盖成了旧页码，`reloadCurrentPage()` 于是又把当前页取了一遍，
+    /// `fresh` 全是已经显示过的音色，追加恒为空：这就是「上拉加载无效」。
     private func loadMore() {
         guard didLoad, hasMore, !isAppending else { return }
         isAppending = true
         let next = page + 1
-        vm.currentPage = next
+        page = next
         syncToVM()
         vm.reloadCurrentPage()
-        let fresh = vm.displayedVoices
-        if fresh.isEmpty {
-            isAppending = false
-            return
-        }
         let known = Set(voices.map(\.key))
-        voices.append(contentsOf: fresh.filter { !known.contains($0.key) })
+        let appended = vm.displayedVoices.filter { !known.contains($0.key) }
+        voices.append(contentsOf: appended)
         totalCount = vm.totalCount
-        page = next
+        // 空页（页码越界）回退，否则页码会一直空转
+        if appended.isEmpty { page = max(1, next - 1) }
         isAppending = false
     }
 
@@ -386,11 +411,9 @@ struct VoicesLibraryView: View {
     // MARK: - 行为
 
     private func togglePreview(_ voice: Voice) {
-        if player.playingKey == voice.key && player.isPlaying {
-            player.stop()
-        } else {
-            _ = player.play(key: voice.key)
-        }
+        // ⚠️ 不能 `play(key:)`：基础音色的 key 带 `qwen-audio-3.0-tts-plus-` 前缀，
+        // 而 Bundle 里的资源是 `longbaikehui.m4a` 这种短名，按 key 找永远找不到。
+        player.toggle(voice: voice)
     }
 
     private func toggleFavorite(_ voice: Voice) {
@@ -414,6 +437,6 @@ struct VoicesLibraryView: View {
         VoiceStudioViewModel.shared.selectedVoiceKey = voice.key
         player.stop()
         router.selection = .studio
-        uiState.showToast(.success(String(format: "已切换到「%@」".localized(), voice.localizedName)))
+        uiState.showToast(.success("已切换到「%@」".localized(voice.localizedName)))
     }
 }

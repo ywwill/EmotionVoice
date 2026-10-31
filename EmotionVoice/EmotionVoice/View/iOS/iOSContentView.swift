@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  iOSContentView.swift
 //  iOSEmora
 //
 //  iOS 版入口容器。真正的实现全部在仓库根的 `iOS/` 目录：
@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct iOSContentView: View {
     var body: some View {
         RootTabView()
     }

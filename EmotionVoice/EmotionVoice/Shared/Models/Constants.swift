@@ -77,7 +77,7 @@ enum Constants {
                    description: "兴奋激动的语气，带有强烈的热情和期待感。"),
         EmotionItem(label: "调皮", emoji: "😈", tag: "mischievously",
                    description: "调皮的语气，带有戏谑、捉弄的趣味感。"),
-        EmotionItem(label: "共情", emoji: "💚", tag: "empathetic",
+        EmotionItem(label: "共情", emoji: "❤️", tag: "empathetic",
                    description: "共情的语气"),
         EmotionItem(label: "好奇", emoji: "🤔", tag: "curious",
                    description: "好奇的语气"),

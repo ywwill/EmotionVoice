@@ -23,7 +23,7 @@
 "积分消耗" = "Points Consumed";
 "音频生成" = "Audio Generation";
 "音色使用" = "Voice Usage";
-"文本输入区" = "Text Input Area";
+"文本输入" = "Text Input";
 "%d 字" = "%d characters";
 "插入文本或粘贴内容" = "Insert text or paste content";
 "语气控制" = "Tone Control";
@@ -371,3 +371,7 @@
 "查看" = "Show";
 "全选" = "Select All";
 "取消全选" = "Deselect All";
+"确认生成音频" = "Confirm Generation";
+"音色：%@\n消耗：%@ 积分" = "Voice: %@\nCost: %@ credits";
+"选择分类" = "Choose Category";
+"复制失败" = "Duplication failed";

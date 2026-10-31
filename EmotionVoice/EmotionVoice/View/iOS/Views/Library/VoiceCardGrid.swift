@@ -45,6 +45,10 @@ struct VoiceCardGrid: View {
                         radius: 12, x: 0, y: 4)
         )
         .contentShape(Rectangle())
+        // ⚠️ 试听态的描边 / 投影要渐变，硬切会让人以为点错了卡。
+        //    用 `value:` 限定只在这一个布尔变化时动画：不带 `value` 的 `.animation`
+        //    会把卡片里所有属性变化（含 LazyVGrid 复用时的重排）都变成动画。
+        .animation(.easeOut(duration: 0.18), value: isPreviewing)
     }
 
     // MARK: 头部

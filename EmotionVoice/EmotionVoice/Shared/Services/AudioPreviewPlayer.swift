@@ -123,6 +123,31 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         return play(url: url, identifier: key)
     }
 
+    /// 按一个 `Voice` 播放它的试听音频。
+    ///
+    /// ⚠️ **必须走 `voice.audio`，不能走 `voice.key`**。
+    /// 只有旗舰音色的 key 恰好等于文件名（`longanlingxin` → `longanlingxin.m4a`）；
+    /// 基础音色的 key 带 `qwen-audio-3.0-tts-plus-` 前缀，而 Bundle 里的资源名没有 ——
+    /// 用 key 去 `Bundle.main.url(forResource:)` 一律返回 nil，
+    /// 表现就是控制台刷 `audio not found for key=qwen-audio-3.0-tts-plus-xxx` 且点播放没声音。
+    @discardableResult
+    func play(voice: Voice) -> Bool {
+        guard !voice.audio.isEmpty else { return play(key: voice.key) }
+        return play(audioFile: voice.audio, identifier: voice.key)
+    }
+
+    /// 同一个音色的「播放 / 停止」切换（点第二次停）。
+    ///
+    /// 判断与播放都用 `voice.key` 当标识：`playingKey` 存的是 identifier，
+    /// 而这里传入的就是 `voice.key`，所以「正在播 → 停」的判定不会串味。
+    func toggle(voice: Voice) {
+        if playingKey == voice.key && isPlaying {
+            stop()
+        } else {
+            _ = play(voice: voice)
+        }
+    }
+
     /// 根据音频文件名播放预览音频（文件名由 voice.audio 字段提供）
     /// - Parameters:
     ///   - audioFile: 音频文件名（如 "longrongzhihe.m4a"，可含扩展名）
@@ -358,6 +383,35 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         } else {
             play(url: url)
         }
+    }
+
+    /// 带身份标识的播放 / 暂停切换（详情页用它，别自己拼 `isPlaying(url:)`）。
+    ///
+    /// ⚠️ 调用方**必须**用 identifier 而不是 URL 判定当前项：`playingKey` 存的是
+    /// `play(url:identifier:)` 传进来的 identifier，而详情页传的是 `item.fileName`。
+    /// 用 `isPlaying(url:)`（比 `url.path`）去判会得到恒定 false —— 表现就是
+    /// 「播放按钮图标永远是 ▶、点暂停只会从头重播」。
+    func togglePlayback(url: URL, identifier: String) {
+        guard playingKey == identifier else {
+            play(url: url, identifier: identifier)
+            return
+        }
+        if isPlaying {
+            pause()
+        } else if isPaused {
+            resume()
+        } else {
+            play(url: url, identifier: identifier)
+        }
+    }
+
+    /// 把当前播放项的标识换成另一个（内容不变、进度不变）。
+    ///
+    /// 列表页用 `url.path` 起播、详情页用 `item.fileName` 判定 —— 两个页面对同一条音频
+    /// 用的 key 不一样，push 进详情时如果不换标识，详情页会判定「不是我在播」然后从头重播。
+    func reidentify(_ identifier: String) {
+        guard playingKey != nil else { return }
+        playingKey = identifier
     }
 
     /// 设置倍速播放

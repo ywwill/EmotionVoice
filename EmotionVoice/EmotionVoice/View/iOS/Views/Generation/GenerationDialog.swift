@@ -227,7 +227,7 @@ struct GenerationDialog: View {
 
             StatGrid(items: [
                 ("已用时".localized(), formatDuration(ticker.elapsed)),
-                ("数据块".localized(), String(format: "%d 段".localized(), stats.receivedChunks)),
+                ("数据块".localized(), "%d 段".localized(stats.receivedChunks)),
                 ("目标".localized(), "≈\(formatDataSize(estimatedBytes))"),
                 ("时长".localized(), formatDuration(estimatedDuration))
             ])
@@ -305,7 +305,7 @@ struct GenerationDialog: View {
                     .font(AuroraFont.mono15)
                     .foregroundStyle(AuroraDecor.creditB)
                 Spacer(minLength: 0)
-                Text(String(format: "剩余 %@".localized(), formatCredits(remainingCredits)))
+                Text("剩余 %@".localized(formatCredits(remainingCredits)))
                     .font(.system(size: 11.5, design: .monospaced))
                     .foregroundStyle(c.textTertiary)
             }
@@ -380,12 +380,12 @@ struct GenerationDialog: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(hasResult
-                     ? String(format: "本次共接收 %d 格".localized(), gridModel.filledCount)
+                     ? "本次共接收 %d 格".localized(gridModel.filledCount)
                      : "数据接收网格".localized())
                     .font(.system(size: 11))
                     .foregroundStyle(c.textTertiary)
                 Spacer(minLength: 0)
-                Text(String(format: "1 格 ≈ %@".localized(), formatDataSize(bytesPerCell)))
+                Text("1 格 ≈ %@".localized(formatDataSize(bytesPerCell)))
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(c.textTertiary)
             }
@@ -479,10 +479,9 @@ struct GenerationDialog: View {
     }
 
     private var completeSubtitle: String {
-        String(format: "用时 %@ · %@ · %d 个数据块".localized(),
-               formatDuration(ticker.elapsed),
-               formatDataSize(fileSize),
-               stats.receivedChunks)
+        "用时 %@ · %@ · %d 个数据块".localized(formatDuration(ticker.elapsed),
+                                              formatDataSize(fileSize),
+                                              stats.receivedChunks)
     }
 
     private var sentenceCount: Int {

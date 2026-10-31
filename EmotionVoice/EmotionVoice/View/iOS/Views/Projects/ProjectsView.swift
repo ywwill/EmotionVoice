@@ -31,6 +31,9 @@ struct ProjectsView: View {
     @State private var isSelecting = false
     @State private var selectedIDs: Set<Int64> = []
 
+    /// 列表滚动代理：复制后要滚回顶部，让用户看见新行
+    @State private var scrollProxy: ScrollViewProxy? = nil
+
     // MARK: 重命名
 
     @State private var renameTarget: AudioItem? = nil
@@ -52,10 +55,12 @@ struct ProjectsView: View {
     @State private var voiceNames: [String: String] = [:]
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             Section {
                 ForEach(vm.displayedAudios) { audio in
                     row(audio)
+                        .id(audio.id)
                         .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -83,6 +88,10 @@ struct ProjectsView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(c.backgroundGrouped)
+        // ⚠️ 列表的统一转场：行内容的增删（复制插入 / 删除 / 重命名）默认是一帧硬切，
+        // 这里统一给一条 spring，避免「点一下 → 整列表闪一下」。
+        .animation(.spring(response: 0.34, dampingFraction: 0.9),
+                   value: vm.displayedAudios.count)
         .searchable(text: $vm.searchText, prompt: "搜索音频名称".localized())
         .navigationTitle("项目".localized())
         .toolbar { toolbarContent }
@@ -94,13 +103,17 @@ struct ProjectsView: View {
                       document: exportDocument,
                       contentType: exportContentType,
                       defaultFilename: exportFileName) { _ in }
-        .alert("重命名".localized(), isPresented: renamePresented) {
-            TextField("音频名称".localized(), text: $renameText)
-            Button("取消".localized(), role: .cancel) { renameTarget = nil }
-            Button("保存".localized()) { commitRename() }
-        } message: {
-            Text("给这条音频起一个更好记的名字".localized())
+        // ⚠️ 重命名**不用系统 `.alert`**：它的 `TextField` 没有清空按钮，而 Alert 的
+        // 内容槽位里也塞不进自定义视图（塞进去会被排版成一整行按钮）。
+        // 重命名恰恰是最需要「先清一遍再重输」的入口 —— 名字通常是随手起的代号。
+        .overlay {
+            if renameTarget != nil {
+                RenameDialog(text: $renameText,
+                             onCancel: { renameTarget = nil },
+                             onSave: { commitRename() })
+            }
         }
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: renameTarget?.id)
         .alert("删除音频".localized(), isPresented: deletePresented) {
             Button("取消".localized(), role: .cancel) { deleteTarget = nil; deleteMany = false }
             Button("删除".localized(), role: .destructive) { commitDelete() }
@@ -110,6 +123,8 @@ struct ProjectsView: View {
         .task {
             vm.loadInitialData()
             preloadVoiceNames()
+        }
+        .onAppear { scrollProxy = proxy }
         }
     }
 
@@ -213,31 +228,37 @@ struct ProjectsView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // ⚠️ 这里**不放设置入口**：设置已经能从另外两个标签页进（创作 / 音色库），
+        // 项目页右上角要留给「进入多选」这一个动作，两个按钮挤在一起时用户
+        // 分不清哪个是选择、哪个是设置。
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 14) {
-                Button { router.openSettings() } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(c.accent)
-                        .frame(width: 30, height: 44)
-                        .contentShape(Rectangle())
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    isSelecting.toggle()
+                    if !isSelecting { selectedIDs = [] }
                 }
-                .buttonStyle(.plain)
-
-                Button {
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        isSelecting.toggle()
-                        if !isSelecting { selectedIDs = [] }
-                    }
-                } label: {
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: isSelecting ? "checkmark.circle.fill" : "checklist")
+                        .font(.system(size: 17, weight: .semibold))
                     Text(isSelecting ? "完成".localized() : "选择".localized())
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(c.accent)
-                        .frame(height: 44)
-                        .contentShape(Rectangle())
+                        .font(.system(size: 15.5, weight: .semibold))
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(c.accent)
+                .padding(.horizontal, isSelecting ? 11 : 8)
+                .frame(height: 32)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(c.accentSoft)
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(c.accent.opacity(0.28), lineWidth: 0.5)
+                        )
+                )
+                .contentShape(Capsule(style: .continuous))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isSelecting ? "结束多选".localized() : "进入多选".localized())
         }
     }
 
@@ -320,9 +341,61 @@ struct ProjectsView: View {
         vm.isPlayingAudio(audio)
     }
 
+    /// 左滑「复制」。
+    ///
+    /// ⚠️ 三件事各对应一种「该行先消失、留一段空白、过会儿才回来」，缺一件都会复现：
+    ///  ⓿ **等左滑菜单的回弹动画走完再动列表**：SwiftUI 在菜单未被判为「已收起」时改数据，
+    ///     那一行会被重挂载一次 —— 期间它的内容还停在滑开的位置上，视觉上就是整行凭空没了；
+    ///  ① **「复制文件」必须脱离主线程**：这是同步磁盘 IO（音频文件几 MB 起），
+    ///     卡在主线程会把上面的回弹动画冻在半路 ——
+    ///     **「当前行先消失、隔一下才回来」** 就是这么来的（`ProjectService.stageDuplicatedFile`）；
+    ///  ② **列表只能纯插入**：`insertAudioItem` 一次写完 `displayedAudios`，不出现
+    ///     「先删后插」的中间态 —— SwiftUI 一旦在差分里看到 remove + insert，
+    ///     就会把那一行 unmount 再 mount（视觉上闪一下 + 空一帧）。
+    ///
+    /// ⚠️ 副本插在被操作那一行的**下面**（而不是列表顶部）：列表按创建时间倒序，
+    /// 理论上新条目该去顶部，但那会把整列表往下推一格 —— 配合一次滚到顶部，
+    /// 用户看到的就是「刚操作的那行被顶出视野」。就地插入 + 最小滚动（不带 anchor）
+    /// 让原来的行一动不动，只在副本落在屏幕边缘时补一点位移把它露出来。
+    ///
+    /// ⚠️ 用 `Task { @MainActor }` 而不是 `DispatchQueue.main.asyncAfter`：
+    /// `AudioItem` 不是 `Sendable`，扔进 GCD 的逃逸闭包在 Swift 6 下过不了并发检查。
     private func duplicate(_ audio: AudioItem) {
-        vm.duplicateAudio(audio)
-        uiState.showToast(.success("已复制音频".localized()))
+        // 先把要用的值类型抠出来：逃逸闭包里不碰 `AudioItem` 本体
+        let sourceURL = audio.absoluteURL
+        let sourceExtension = audio.fileExtension
+        let sourceID = audio.id
+
+        Task { @MainActor in
+            // ⓿ 等左滑菜单基本收完，别让菜单回弹动画和插入动画抢同一帧
+            try? await Task.sleep(nanoseconds: 260_000_000)
+
+            // ① 重活（磁盘复制）在**后台线程**完成，写库仍然留在主线程
+            let stagedName = await Task.detached(priority: .userInitiated) { () -> String? in
+                ProjectService.stageDuplicatedFile(sourceURL: sourceURL,
+                                                   fileExtension: sourceExtension)
+            }.value
+            guard let newFileName = stagedName,
+                  let copy = ProjectService.shared.finishDuplicate(source: audio,
+                                                                   newFileName: newFileName) else {
+                uiState.showToast(.failure("复制失败".localized()))
+                return
+            }
+
+            // ② 纯插入：一次写入，只有 insert 没有 remove
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+                vm.insertAudioItem(copy, after: sourceID)
+            }
+            uiState.showToast(.success("已复制音频".localized()))
+
+            // ③ 让插入这一帧先提交。不带 anchor 的 `scrollTo` 只会做最小位移，
+            //    副本已经在视野里时就一步都不会走 —— 列表不会跳。
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard vm.displayedAudios.contains(where: { $0.id == copy.id }) else { return }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                scrollProxy?.scrollTo(copy.id)
+            }
+        }
     }
 
     private func beginRename(_ audio: AudioItem) {
@@ -333,23 +406,42 @@ struct ProjectsView: View {
     private func commitRename() {
         guard let target = renameTarget else { return }
         let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty, trimmed != target.shownName {
-            vm.renameAudio(target, newName: trimmed)
-        }
         renameTarget = nil
+        if !trimmed.isEmpty, trimmed != target.shownName {
+            // 行里的名字是行内容的一部分，给它一条动画，别一帧硬切
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                vm.renameAudio(target, newName: trimmed)
+            }
+        }
     }
 
+    /// 删除（单条 / 多选）。
+    ///
+    /// ⚠️ 与「复制」同一个道理：**磁盘删除 + 数据库操作不能夹在动画事务里**，
+    /// 只有「把这一行从数组里拿掉」这一步才包 `withAnimation` —— 早年直接把
+    /// `vm.deleteAudio` 扔进动画，左滑删除会先卡一帧再把行推走。
     private func commitDelete() {
         if deleteMany {
             let ids = selectedIDs
-            for audio in vm.displayedAudios where ids.contains(audio.id) {
-                vm.deleteAudio(audio)
-            }
-            selectedIDs = []
+            let targets = vm.displayedAudios.filter { ids.contains($0.id) }
             deleteMany = false
+            selectedIDs = []
+
+            Task { @MainActor in
+                for audio in targets { ProjectService.shared.deleteAudio(id: audio.id) }
+                guard !targets.isEmpty else { return }
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                    for audio in targets { vm.removeAudioItem(audio) }
+                }
+            }
         } else if let target = deleteTarget {
-            vm.deleteAudio(target)
             deleteTarget = nil
+            Task { @MainActor in
+                ProjectService.shared.deleteAudio(id: target.id)
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                    vm.removeAudioItem(target)
+                }
+            }
         }
     }
 
@@ -397,17 +489,13 @@ struct ProjectsView: View {
 
     // MARK: Alert 绑定
 
-    private var renamePresented: Binding<Bool> {
-        Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
-    }
-
     private var deletePresented: Binding<Bool> {
         Binding(get: { deleteTarget != nil || deleteMany }, set: { if !$0 { deleteTarget = nil; deleteMany = false } })
     }
 
     private var deleteMessage: String {
         if deleteMany {
-            return String(format: "确定删除选中的 %d 条音频？删除后无法恢复。".localized(), selectedIDs.count)
+            return "确定删除选中的 %d 条音频？删除后无法恢复。".localized(selectedIDs.count)
         }
         return "确定删除这条音频？删除后无法恢复。".localized()
     }
@@ -430,6 +518,118 @@ struct ProjectsView: View {
             map[v.key] = v.localizedName
         }
         voiceNames = map
+    }
+}
+
+// MARK: - 重命名弹窗
+
+/// 重命名弹窗。
+///
+/// ⚠️ 不用系统 `.alert`：它的 `TextField` 没有清空按钮，而 Alert 的内容槽位也塞不进
+/// 自定义视图（塞进去会被排版成一整行按钮）。重命名偏偏是最需要「先清一遍再重输」的入口 ——
+/// 名字通常是随手起的代号，改的时候往往是整串重敲，而不是在一串字符里挪光标。
+/// 这里自己画一张和生成弹窗同款的小卡片，输入框右侧挂一个随输入出现的清空按钮。
+struct RenameDialog: View {
+    @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
+
+    /// 待编辑的名字（外面持有，配合「取消即丢弃」）
+    @Binding var text: String
+    var onCancel: () -> Void
+    var onSave: () -> Void
+
+    @FocusState private var focused: Bool
+    @State private var appeared = false
+
+    private var canSave: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        ZStack {
+            c.scrim
+                .ignoresSafeArea()
+                .background(.ultraThinMaterial)
+                .onTapGesture(perform: onCancel)
+
+            card
+                .frame(width: metrics.dialogWidth)
+                .scaleEffect(appeared ? 1 : 0.92)
+                .opacity(appeared ? 1 : 0)
+        }
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: appeared)
+        .onAppear {
+            appeared = true
+            Task { @MainActor in
+                // ⚠️ 键盘要等卡片转场落定再弹：抢在 scale 动画中间 focus，
+                // 输入框会被往上顶的过程中带着整张卡片一起位移，看着像抖了一下。
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                focused = true
+            }
+        }
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            Text("重命名".localized())
+                .font(.system(size: 16.5, weight: .semibold))
+                .foregroundStyle(c.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.top, 18)
+                .padding(.bottom, 12)
+
+            field
+                .padding(.horizontal, 18)
+
+            HStack(spacing: 10) {
+                SecondaryButton(title: "取消".localized(), action: onCancel)
+                PrimaryButton(title: "保存".localized(), isEnabled: canSave, action: onSave)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AuroraRadius.xxl, style: .continuous)
+                .fill(c.surface)
+                .shadow(color: c.shadow, radius: 30, x: 0, y: 14)
+        )
+    }
+
+    /// 输入框 + 清空按钮。
+    ///
+    /// ⚠️ 清空按钮只在有字时出现：空输入框顶着一个灰 ×，既没用又把占位文案挤短一截。
+    private var field: some View {
+        HStack(spacing: 8) {
+            TextField("音频名称".localized(), text: $text)
+                .font(.system(size: 15.5))
+                .foregroundStyle(c.textPrimary)
+                .focused($focused)
+                .submitLabel(.done)
+                .onSubmit { if canSave { onSave() } }
+
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(c.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.combined(with: .scale(scale: 0.7)))
+                .accessibilityLabel("清空".localized())
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 42)
+        .background(
+            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                .fill(c.surface3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                        .strokeBorder(focused ? c.accent.opacity(0.55) : c.line2, lineWidth: 0.5)
+                )
+        )
+        .animation(.easeOut(duration: 0.16), value: text.isEmpty)
     }
 }
 

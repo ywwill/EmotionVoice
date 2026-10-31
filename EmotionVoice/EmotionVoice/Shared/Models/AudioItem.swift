@@ -9,11 +9,13 @@ import Foundation
 
 /// 音频条目磁盘存储目录（相对于 Documents/）
 /// 与 DatabaseManager 的路径约定保持一致，避免散落多处拼接。
-let kGeneratedAudioSubdirectory = "GeneratedAudio"
+/// ⚠️ `nonisolated`：同上，拼路径的那一串要能在后台线程上跑。
+nonisolated let kGeneratedAudioSubdirectory = "GeneratedAudio"
 
 /// 计算音频条目所在的完整目录 URL。
 /// 例：file:///…/Documents/GeneratedAudio
-func generatedAudioDirectoryURL() -> URL {
+/// ⚠️ `nonisolated`：它只拼路径、不碰主线程状态，复制音频文件那段要脱离主线程跑。
+nonisolated func generatedAudioDirectoryURL() -> URL {
     let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     return docs.appendingPathComponent(kGeneratedAudioSubdirectory, isDirectory: true)
 }

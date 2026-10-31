@@ -114,6 +114,10 @@ final class ProjectService {
     func updateAudioDuration(audioId: Int64, duration: Double) {}
     func renameAudio(id: Int64, displayName: String?) {}
     func duplicateAudio(_ source: AudioItem) -> AudioItem? { nil }
+    // 真实实现是 `nonisolated static`（只依赖 FileManager，不碰 SQLite 连接），
+    // 必须能脱离主线程调用 —— iOS 的左滑「复制」把它在 `Task.detached` 里跑。
+    nonisolated static func stageDuplicatedFile(sourceURL: URL, fileExtension: String) -> String? { nil }
+    nonisolated func finishDuplicate(source: AudioItem, newFileName: String) -> AudioItem? { nil }
     func deleteAudio(id: Int64) {}
     func estimatePoints(forText text: String) -> Int { 0 }
 }

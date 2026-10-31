@@ -145,15 +145,31 @@ final class ProjectService {
     /// 新记录显示名为原显示名 + " 副本"（原无自定义显示名则沿用新的时间戳文件名）。
     /// - Parameter source: 要复制的音频
     /// - Returns: 新建的音频条目；源文件不存在或复制/入库失败时返回 nil
+    ///
+    /// ⚠️ 拆成「复制文件（重活）+ 写库」两步是为了让 iOS 的左滑「复制」能把第一步
+    /// 挪出主线程，详见 `stageDuplicatedFile`。
     func duplicateAudio(_ source: AudioItem) -> AudioItem? {
-        let sourceURL = source.absoluteURL
-        guard source.isOnDisk else {
-            Log(message: "ProjectService.duplicateAudio: 源文件不存在 - \(sourceURL.path)")
+        guard let newFileName = Self.stageDuplicatedFile(sourceURL: source.absoluteURL,
+                                                         fileExtension: source.fileExtension) else {
+            return nil
+        }
+        return finishDuplicate(source: source, newFileName: newFileName)
+    }
+
+    /// 复制流程里唯一的重活：挑一个新文件名，把音频文件复制到 `GeneratedAudio/`。
+    ///
+    /// ⚠️ 刻意做成 **`nonisolated static`**：它只依赖 `FileManager`，不碰那个 SQLite 连接，
+    /// 所以能安全地脱离主线程。iOS 的左滑「复制」在主线程上做这一步（同步文件复制，
+    /// 音频文件动辄几 MB，几十毫秒起步）会把左滑菜单的回弹动画卡在半路 ——
+    /// 表现就是**「被复制的那一行先消失、隔一下才回来」**。
+    /// - Returns: 新文件名；源文件不存在 / 复制失败时返回 nil
+    nonisolated static func stageDuplicatedFile(sourceURL: URL, fileExtension: String) -> String? {
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            Log(message: "ProjectService.stageDuplicatedFile: 源文件不存在 - \(sourceURL.path)")
             return nil
         }
 
-        // 新文件名：沿用时间戳命名约定 + 原扩展名，并避免同名冲突
-        let ext = source.fileExtension
+        let ext = fileExtension
         let baseName = Date().filenameTimestamp
         let dir = generatedAudioDirectoryURL()
         var attempt = 0
@@ -170,10 +186,14 @@ final class ProjectService {
         do {
             try FileManager.default.copyItem(at: sourceURL, to: newURL)
         } catch {
-            Log(message: "ProjectService.duplicateAudio: 复制文件失败 - \(error.localizedDescription)")
+            Log(message: "ProjectService.stageDuplicatedFile: 复制文件失败 - \(error.localizedDescription)")
             return nil
         }
+        return newFileName
+    }
 
+    /// 文件就位之后，在库里建一条元数据相同的新记录（只有一次 INSERT，留在主线程即可）。
+    func finishDuplicate(source: AudioItem, newFileName: String) -> AudioItem? {
         // 新显示名：仅当原记录有自定义显示名时追加"副本"
         let newDisplayName: String?
         if let name = source.displayName, !name.isEmpty {
