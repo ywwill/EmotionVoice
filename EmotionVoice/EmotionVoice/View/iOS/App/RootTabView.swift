@@ -51,6 +51,12 @@ struct RootTabView: View {
         .environmentObject(appState)
         .environmentObject(uiState)
         .environmentObject(router)
+        // 后台接收完成（弹窗可能早已被关掉）→ 把弹窗重新唤起到完成态。
+        // ⚠️ 用自增信号而不是 isGenerating：连续两次生成时它能各触发一次，
+        // 而 Bool 只在翻转时触发。
+        .onChange(of: studioVM.generationCompletedSignal) { _, _ in
+            appState.showGenerationModal = true
+        }
     }
 
     // MARK: - 标签
@@ -106,7 +112,7 @@ struct RootTabView: View {
     @ViewBuilder
     private var backgroundBar: some View {
         if studioVM.isGenerating && !appState.showGenerationModal {
-            BackgroundReceiveBar(vm: studioVM) {
+            BackgroundReceiveBar(stats: studioVM.stats) {
                 appState.showGenerationModal = true
             }
             .padding(.horizontal, 16)
@@ -134,20 +140,19 @@ struct RootTabView: View {
 
 private struct BackgroundReceiveBar: View {
     @Environment(\.aurora) private var c
-    @ObservedObject var vm: VoiceStudioViewModel
+    /// ⚠️ 必须**单独订阅** stats：`GenerationStats` 是独立的 ObservableObject，
+    /// 只订阅 vm 的话 vm 不会因为 stats 的 @Published 变化而发 objectWillChange，
+    /// 浮条上的字节数就会一直停在弹窗关闭那一刻。
+    @ObservedObject var stats: GenerationStats
     let onOpen: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 9) {
                 PulseDot(color: c.accent)
-                Text("正在后台接收".localized())
+                Text("已接收: %@".localized(byteText))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(c.textPrimary)
-                Text(autoByteUnit(Double(vm.stats.receivedBytes)).value +
-                     autoByteUnit(Double(vm.stats.receivedBytes)).unit)
-                    .font(.system(size: 12.5, design: .monospaced))
-                    .foregroundStyle(c.textSecondary)
                 Spacer(minLength: 0)
                 Text("查看".localized())
                     .font(.system(size: 13, weight: .semibold))
@@ -166,5 +171,10 @@ private struct BackgroundReceiveBar: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private var byteText: String {
+        let u = autoByteUnit(Double(stats.receivedBytes))
+        return "\(u.value) \(u.unit)"
     }
 }

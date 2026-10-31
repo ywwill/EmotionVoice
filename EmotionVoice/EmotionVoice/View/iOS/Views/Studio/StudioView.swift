@@ -405,27 +405,6 @@ struct StudioView: View {
                 Text("%d 字".localized(editor.charCount))
                     .font(.system(size: 11.5))
                     .foregroundStyle(c.textTertiary)
-
-                Button { clearEditor() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 10.5, weight: .semibold))
-                        Text("清空".localized())
-                            .font(.system(size: 11.5, weight: .medium))
-                    }
-                    .foregroundStyle(c.textSecondary)
-                    .padding(.horizontal, 8)
-                    .frame(height: 22)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(c.surface3)
-                            .overlay(Capsule(style: .continuous).strokeBorder(c.line, lineWidth: 0.5))
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(!editor.hasContent)
-                .opacity(editor.hasContent ? 1 : 0.4)
-                .accessibilityLabel("清空文本".localized())
             }
             .padding(.horizontal, 16)
             .frame(height: 32)
@@ -669,16 +648,6 @@ struct StudioView: View {
             return
         }
         confirmGenerate = true
-    }
-
-    /// 一键清空：正文 + 全部情感标记一起清掉，VM 侧同步清掉（`generate()` 读的是 VM）。
-    ///
-    /// ⚠️ 不加二次确认弹窗：文本内容还在键盘上方可见，误触成本可控，
-    /// 而且根视图已经挂了一个 `.alert(item:)`，同一层再来一个会互相覆盖。
-    private func clearEditor() {
-        editor.clear()
-        vm.ttsItems = []
-        vm.text = ""
     }
 
     /// 二次确认的具体内容：**音色 + 本次要扣的积分**。

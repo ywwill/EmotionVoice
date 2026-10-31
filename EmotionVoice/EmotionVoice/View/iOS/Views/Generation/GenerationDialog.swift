@@ -16,6 +16,7 @@
 import SwiftUI
 import Combine   // @Published / ObservableObject 在 Combine，SwiftUI 不再隐式导出
 import UniformTypeIdentifiers
+import AVFoundation
 
 // MARK: - 计时器
 
@@ -84,9 +85,16 @@ struct GenerationDialog: View {
     @State private var isSharing = false
     @State private var exportData: Data? = nil
 
+    /// 完成态频谱的真实振幅包络（0...1，共 waveformBars 条）
+    @State private var waveform: [CGFloat] = []
+    /// 拖动定位中的临时进度（nil = 跟随播放器）
+    @State private var scrubProgress: CGFloat? = nil
+
     /// 网格目标格数（≈ 空槽数 × 0.82）
     private static let gridTargetCells = 82
     private static let gridMinBytesPerCell = 512
+    /// 完成态频谱条数
+    private static let waveformBars = 56
 
     private var hasResult: Bool { vm.generatedAudioURL != nil && !vm.isGenerating }
 
@@ -104,6 +112,7 @@ struct GenerationDialog: View {
         .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78),
                    value: vm.isGenerating)
         .onAppear(perform: prepare)
+        .task(id: vm.generatedAudioURL) { await loadWaveform() }
         .onChange(of: stats.receivedBytes) { _, _ in feedGrid() }
         .onChange(of: vm.isGenerating) { _, generating in
             if generating {
@@ -130,18 +139,20 @@ struct GenerationDialog: View {
     // MARK: 卡片
 
     private var dialogCard: some View {
-        VStack(spacing: 0) {
-            topBar
+        ZStack(alignment: .top) {
+            topGlow
 
-            header
+            VStack(spacing: 0) {
+                header
 
-            if hasResult {
-                completedContent
-            } else {
-                generatingContent
+                if hasResult {
+                    completedContent
+                } else {
+                    generatingContent
+                }
+
+                footer
             }
-
-            footer
         }
         .background(
             RoundedRectangle(cornerRadius: AuroraRadius.xxl, style: .continuous)
@@ -151,11 +162,25 @@ struct GenerationDialog: View {
         .clipShape(RoundedRectangle(cornerRadius: AuroraRadius.xxl, style: .continuous))
     }
 
-    /// 顶部 5px 渐变条：进行中紫→玫瑰，完成态紫→薄荷
-    private var topBar: some View {
-        Rectangle()
-            .fill(hasResult ? AuroraDecor.popAltGradient : AuroraDecor.popGradient)
-            .frame(height: 5)
+    /// 顶部渐变：3pt 品牌条 + 向下 150pt 淡出的同色晕染（进行中紫→玫瑰，完成态紫→薄荷）
+    ///
+    /// ⚠️ 早期只放一条 5pt 实色条，边缘生硬且「只有顶部一点颜色」，现在改成
+    /// 条 + 大面积淡出，让顶部是一整片渐变而不是一条线。
+    private var topGlow: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(stops: [
+                .init(color: AuroraDecor.violet.opacity(0.42), location: 0),
+                .init(color: hasResult ? AuroraDecor.mint.opacity(0.20) : AuroraDecor.rose.opacity(0.22), location: 0.30),
+                .init(color: hasResult ? AuroraDecor.mint.opacity(0.07) : AuroraDecor.rose.opacity(0.08), location: 0.62),
+                .init(color: .clear, location: 1)
+            ], startPoint: .top, endPoint: .bottom)
+            .frame(height: 150)
+
+            Rectangle()
+                .fill(hasResult ? AuroraDecor.popAltGradient : AuroraDecor.popGradient)
+                .frame(height: 3)
+        }
+        .allowsHitTesting(false)
     }
 
     private var header: some View {
@@ -170,13 +195,9 @@ struct GenerationDialog: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(hasResult ? "音频生成完成".localized() : "正在接收音频".localized())
+                Text(hasResult ? "音频生成完成".localized() : "正在接收".localized())
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(c.textPrimary)
-                Text(hasResult ? completeSubtitle : voiceSubtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(c.textSecondary)
-                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -209,7 +230,7 @@ struct GenerationDialog: View {
                 Text(autoByteUnit(Double(stats.receivedBytes)).value)
                     .font(.system(size: 30, weight: .bold, design: .monospaced))
                     .foregroundStyle(c.textPrimary)
-                Text("\(autoByteUnit(Double(stats.receivedBytes)).unit) 已接收".localized())
+                Text("%@ 已接收".localized(autoByteUnit(Double(stats.receivedBytes)).unit))
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
                 Spacer(minLength: 0)
@@ -301,7 +322,7 @@ struct GenerationDialog: View {
                 Text("本次消耗积分".localized())
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
-                Text("−\(formatCredits(chargedPoints))")
+                Text("\(formatCredits(chargedPoints))")
                     .font(AuroraFont.mono15)
                     .foregroundStyle(AuroraDecor.creditB)
                 Spacer(minLength: 0)
@@ -356,8 +377,8 @@ struct GenerationDialog: View {
                 }
             }
 
-            MiniBars(progress: player.progress, tint: c.accent, trackTint: c.slot)
-                .frame(height: 26)
+            waveformStrip
+                .frame(height: 36)
         }
         .padding(12)
         .background(
@@ -374,28 +395,39 @@ struct GenerationDialog: View {
         .onDisappear { player.stop() }
     }
 
+    // MARK: 频谱
+
+    /// 真实频谱条：振幅来自音频文件本身，可拖动定位
+    private var waveformStrip: some View {
+        GeometryReader { geo in
+            WaveformBars(samples: waveform,
+                         barCount: Self.waveformBars,
+                         progress: scrubProgress ?? CGFloat(min(max(player.progress, 0), 1)))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            scrubProgress = min(max(value.location.x / max(geo.size.width, 1), 0), 1)
+                        }
+                        .onEnded { _ in
+                            let p = Double(scrubProgress ?? 0)
+                            scrubProgress = nil
+                            let total = max(player.duration, vm.generatedAudioDuration)
+                            if total > 0 { player.seek(to: p * total) }
+                        }
+                )
+        }
+    }
+
     // MARK: 网格
 
     private var gridBox: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(hasResult
-                     ? "本次共接收 %d 格".localized(gridModel.filledCount)
-                     : "数据接收网格".localized())
-                    .font(.system(size: 11))
-                    .foregroundStyle(c.textTertiary)
-                Spacer(minLength: 0)
-                Text("1 格 ≈ %@".localized(formatDataSize(bytesPerCell)))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(c.textTertiary)
-            }
-            DataReceiveGridView(model: gridModel,
-                                tint: AuroraDecor.rose,
-                                cellSize: 11,
-                                spacing: 4,
-                                cornerRadius: 3.2)
-            .frame(height: 5 * 11 + 4 * 4 + 4)
-        }
+        DataReceiveGridView(model: gridModel,
+                            tint: AuroraDecor.rose,
+                            cellSize: 11,
+                            spacing: 4,
+                            cornerRadius: 3.2)
+        .frame(height: 5 * 11 + 4 * 4 + 4)
     }
 
     // MARK: chips
@@ -407,7 +439,7 @@ struct GenerationDialog: View {
                 dialogChip(String(format: "%.2f kHz", Double(vm.sampleRate) / 1000.0))
                 dialogChip(String(format: "%.1fx · %d%%", vm.rate, Int(vm.volume.rounded())))
                 dialogChip("%d 字 · %d 句".localized(vm.plainText.count, sentenceCount))
-                dialogChipCost("−\(formatCredits(chargedPoints)) 积分".localized())
+                dialogChipCost("−%@ 积分".localized(formatCredits(chargedPoints)))
             }
             .padding(.horizontal, 16)
         }
@@ -478,12 +510,6 @@ struct GenerationDialog: View {
         return parts.joined(separator: " · ")
     }
 
-    private var completeSubtitle: String {
-        "用时 %@ · %@ · %d 个数据块".localized(formatDuration(ticker.elapsed),
-                                              formatDataSize(fileSize),
-                                              stats.receivedChunks)
-    }
-
     private var sentenceCount: Int {
         vm.plainText.components(separatedBy: CharacterSet(charactersIn: "。！？!?；;\n"))
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -550,9 +576,7 @@ struct GenerationDialog: View {
         if let started = vm.generationStartedAt {
             ticker.start(at: started)
         }
-        if displayName.isEmpty {
-            displayName = String(vm.plainText.prefix(20))
-        }
+        // ⚠️ 名称不再用正文前 20 字兜底：完成态不展示任何合成文本内容
         feedGrid()
     }
 
@@ -571,6 +595,19 @@ struct GenerationDialog: View {
               let data = try? Data(contentsOf: url) else { return }
         exportData = data
         isExporting = true
+    }
+
+    /// 解析完成态频谱（解码在后台线程，只把包络写回主线程）
+    private func loadWaveform() async {
+        guard let url = vm.generatedAudioURL else {
+            waveform = []
+            return
+        }
+        let bars = Self.waveformBars
+        let values = await Task.detached(priority: .utility) {
+            AudioWaveformExtractor.envelope(url: url, barCount: bars)
+        }.value
+        waveform = values
     }
 
     private func commitName() {
@@ -635,48 +672,122 @@ private struct StreamingWaveBars: View {
     }
 }
 
-/// 完成态迷你波形 + 播放头
-private struct MiniBars: View {
-    let progress: Double
-    let tint: Color
-    let trackTint: Color
-    var barCount: Int = 32
+/// 完成态频谱：真实振幅 + 已播/未播双色 + 播放头
+///
+/// ⚠️ 振幅来自 `AudioWaveformExtractor` 扫 PCM 得到的包络，不是公式生成的假波形；
+/// 尚未解析出数据时只画一条底线，不伪造起伏。
+private struct WaveformBars: View {
+    @Environment(\.aurora) private var c
+    let samples: [CGFloat]
+    let barCount: Int
+    let progress: CGFloat
 
     var body: some View {
-        GeometryReader { geo in
-            let h = geo.size.height
+        Canvas { ctx, size in
+            let n = max(samples.isEmpty ? barCount : samples.count, 1)
             let gap: CGFloat = 2
-            let barW = max(2, (geo.size.width - gap * CGFloat(barCount - 1)) / CGFloat(barCount))
-            let cut = geo.size.width * CGFloat(min(max(progress, 0), 1))
-            ZStack(alignment: .leading) {
-                HStack(alignment: .center, spacing: gap) {
-                    ForEach(0..<barCount, id: \.self) { i in
-                        let t = Double(i) / Double(max(barCount - 1, 1))
-                        let v = 0.42 + 0.34 * sin(t * 11.3) + 0.16 * sin(t * 29.7 + 1.4)
-                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                            .fill(trackTint)
-                            .frame(width: barW, height: max(4, CGFloat(min(max(v, 0.12), 1)) * h))
-                    }
-                }
-                HStack(alignment: .center, spacing: gap) {
-                    ForEach(0..<barCount, id: \.self) { i in
-                        let t = Double(i) / Double(max(barCount - 1, 1))
-                        let v = 0.42 + 0.34 * sin(t * 11.3) + 0.16 * sin(t * 29.7 + 1.4)
-                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                            .fill(tint)
-                            .frame(width: barW, height: max(4, CGFloat(min(max(v, 0.12), 1)) * h))
-                    }
-                }
-                .mask(alignment: .leading) {
-                    Rectangle().frame(width: max(cut, 0), height: h)
-                }
-                Rectangle()
-                    .fill(AuroraDecor.rose)
-                    .frame(width: 2, height: h)
-                    .offset(x: min(max(cut, 0), geo.size.width - 2))
+            let barW = max(1.5, (size.width - gap * CGFloat(n - 1)) / CGFloat(n))
+            let cut = size.width * min(max(progress, 0), 1)
+            let played = GraphicsContext.Shading.linearGradient(
+                Gradient(colors: [AuroraDecor.violet, AuroraDecor.rose]),
+                startPoint: .zero,
+                endPoint: CGPoint(x: size.width, y: 0)
+            )
+            let idle = GraphicsContext.Shading.color(c.slot)
+
+            var x: CGFloat = 0
+            for i in 0..<n {
+                let amp = samples.isEmpty ? 0.06 : min(max(samples[i], 0.04), 1)
+                let h = max(3, amp * size.height)
+                let rect = CGRect(x: x, y: (size.height - h) / 2, width: barW, height: h)
+                let path = Path(roundedRect: rect, cornerRadius: min(barW / 2, 1.6))
+                ctx.fill(path, with: x + barW * 0.5 <= cut ? played : idle)
+                x += barW + gap
             }
-            .frame(maxHeight: .infinity, alignment: .center)
+
+            if !samples.isEmpty {
+                let headX = min(max(cut - 1, 0), max(size.width - 2, 0))
+                ctx.fill(Path(CGRect(x: headX, y: 0, width: 2, height: size.height)),
+                         with: .color(AuroraDecor.rose))
+            }
         }
+    }
+}
+
+/// 从音频文件抽取真实振幅包络（峰值 × RMS 混合），结果按「路径 + 大小 + 条数」缓存
+enum AudioWaveformExtractor {
+    private static let cache = NSCache<NSString, NSArray>()
+
+    static func envelope(url: URL, barCount: Int) -> [CGFloat] {
+        let key = cacheKey(url, barCount: barCount)
+        if let hit = cache.object(forKey: key as NSString) as? [NSNumber] {
+            return hit.map { CGFloat($0.doubleValue) }
+        }
+        let values = extract(url: url, barCount: barCount)
+        if !values.isEmpty {
+            cache.setObject(values.map { NSNumber(value: Double($0)) } as NSArray,
+                            forKey: key as NSString)
+        }
+        return values
+    }
+
+    private static func cacheKey(_ url: URL, barCount: Int) -> String {
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
+        return "\(url.path)#\(size)#\(barCount)"
+    }
+
+    private static func extract(url: URL, barCount: Int) -> [CGFloat] {
+        guard barCount > 0,
+              let file = try? AVAudioFile(forReading: url) else { return [] }
+        let totalFrames = Int(file.length)
+        guard totalFrames > 0 else { return [] }
+
+        let per = max(1, totalFrames / barCount)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                            frameCapacity: AVAudioFrameCount(per)) else { return [] }
+
+        var raw: [CGFloat] = []
+        raw.reserveCapacity(barCount)
+
+        for _ in 0..<barCount {
+            do { try file.read(into: buffer, frameCount: AVAudioFrameCount(per)) } catch { break }
+            let n = Int(buffer.frameLength)
+            guard n > 0 else { break }
+
+            let step = max(1, n / 256)
+            var peak: Float = 0
+            var sumSq: Float = 0
+            var count = 0
+            if let f = buffer.floatChannelData {
+                let ch = f[0]
+                for i in stride(from: 0, to: n, by: step) {
+                    let v = ch[i]
+                    let a = abs(v)
+                    if a > peak { peak = a }
+                    sumSq += v * v
+                    count += 1
+                }
+            } else if let s = buffer.int16ChannelData {
+                let ch = s[0]
+                for i in stride(from: 0, to: n, by: step) {
+                    let v = Float(ch[i]) / 32768
+                    let a = abs(v)
+                    if a > peak { peak = a }
+                    sumSq += v * v
+                    count += 1
+                }
+            } else { break }
+
+            guard count > 0 else { break }
+            let rms = sqrt(sumSq / Float(count))
+            // 峰值偏尖、RMS 偏平，混合后视觉更接近听感
+            raw.append(CGFloat(min(max(peak * 0.55 + rms * 1.9, 0.015), 1)))
+        }
+
+        guard let maxV = raw.max(), maxV > 0.001 else { return [] }
+        // 整体归一：真实录音常常整体偏小，抬到 0.9 峰值但保留相对形状
+        return maxV < 0.9 ? raw.map { min($0 * (0.9 / maxV), 1) } : raw
     }
 }
 

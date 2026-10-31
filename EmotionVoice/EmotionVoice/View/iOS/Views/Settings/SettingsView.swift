@@ -98,15 +98,6 @@ struct SettingsView: View {
             }
             .padding(.top, 6)
 
-            HStack(spacing: 5) {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 12))
-                Text("2 积分 / 100 字符 · 中日韩按 2 字符计".localized())
-                    .font(.system(size: 12))
-            }
-            .foregroundStyle(c.textTertiary)
-            .padding(.top, 8)
-
             PrimaryButton(title: "购买积分".localized(), systemImage: "diamond.fill", height: 42) {
                 uiState.purchaseSheetPresented = true
             }
