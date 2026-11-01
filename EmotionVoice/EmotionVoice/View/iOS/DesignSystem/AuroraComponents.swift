@@ -346,6 +346,12 @@ struct AuroraSearchField: View {
     @Environment(\.aurora) private var c
     @Binding var text: String
     var placeholder: String
+    /// 回车键文案，默认「搜索」
+    var submitLabel: SubmitLabel = .search
+    /// 回车提交回调（收键盘由组件内部统一处理）
+    var onSubmit: (() -> Void)? = nil
+
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 7) {
@@ -357,6 +363,14 @@ struct AuroraSearchField: View {
                 .foregroundStyle(c.textPrimary)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .focused($isFocused)
+                .submitLabel(submitLabel)
+                // ⚠️ 回车先收键盘再回调：搜索结果往往铺满整屏，
+                //    键盘不收会让用户看不到列表顶部的命中项。
+                .onSubmit {
+                    isFocused = false
+                    onSubmit?()
+                }
             if !text.isEmpty {
                 Button {
                     text = ""

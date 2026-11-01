@@ -65,6 +65,9 @@ Swift + SwiftUI，两 target：`Emora`(macOS) / `iOSEmora`(iOS 18.6)。SPM：SQL
 - ⚠️ **上拉追加必须先写本地 `page` 再 `syncToVM()`**（反了追加恒为空）；`VoicesLibraryView` 与 `VoicePickerSheet` 两份一致；空页回退 `page = max(1, next-1)`。
 - ⚠️ 筛选/搜索变化后必须滚回顶部（`ScrollViewReader` + 顶部 0 高锚点），否则内容变短偏移仍在原处 → 一片空白。
 - 音色 Sheet 复用 `VoicesLibraryViewModel`；筛选是 Sheet 私有 @State，**不写回 `AppState.voiceLibrary*`**；分类列表就地替换内容区，不嵌第二层 `.sheet`。
+- ⚠️ **搜索框回车**：`AuroraSearchField` 内 `.submitLabel(.search)` + `@FocusState`（`.onSubmit` 里 `isFocused = false` 收键盘，再回调），外层传 `onSubmit: { commitSearch() }`（取消防抖 Task + 立即 `reload()`，不等 280ms）。
+- ⚠️ **列表滚动收键盘**：`.scrollDismissesKeyboard(.immediately)` 必须挂在 **ScrollView 本身**（挂外层容器无效）；它依赖「内容能滚动」→ 搜索无结果/不满一屏时滑不动，键盘收不掉（最常见的状态），必须再补一层 `simultaneousGesture(DragGesture(minimumDistance: 12))` 兜底 + `didResignOnDrag` 限一次拖拽只 resign 一次。
+- ⚠️ **`VoicesLibraryView.body` 的缩进是骗人的**：真正关闭 ScrollView 的 `}` 缩进 16 空格、关闭 VStack 的 `}` 缩进 12 空格（后面 `.background` 那串才 8 空格）。按缩进补括号必多一个 `}` → `extraneous '}' at top level`。定层级用括号深度脚本，别看缩进。
 - ⚠️ 项目列表增删：**磁盘 IO 必须在动画事务之外**（`deleteAudio` 拆成磁盘部分 + `removeAudioItem` 纯内存，后者才包 `withAnimation`）。
 - ⚠️ 左滑「复制」当前行先消失的根因是主线程被同步 IO 冻住 → 拆 `ProjectService.stageDuplicatedFile`（`nonisolated`，`Task.detached`）+ `finishDuplicate`（主线程写库）；副本插在被操作行**下面**（`insertAudioItem(_:after:)`），`scrollTo` 不带 anchor。
 - ⚠️ `stageDuplicatedFile` / `Date.filenameTimestamp` / `generatedAudioDirectoryURL()` / `kGeneratedAudioSubdirectory` 都要 `nonisolated`（MainActor 默认隔离）。重命名用自绘 `RenameDialog`（overlay，非系统 `.alert`）。

@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmotionVoice iOS · 音色库高密度排版（D / E 版）</title>
+<style>
+:root{
+  --font: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+}
+html[data-theme="dark"]{
+  --page:#080611; --panel:#14111F; --panel-2:#1A1628;
+  --hair:rgba(255,255,255,.08);
+  --ink:#F5F2FF; --ink-2:#ADA5CC; --ink-3:#7C7496;
+
+  --bg:#0B0916; --surface:#1B1731; --surface-2:#221D3D; --surface-3:#2B2549;
+  --text-1:#F5F2FF; --text-2:#ADA5CC; --text-3:#8E86B0;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.17);
+  --accent:#B79AFF; --accent-soft:rgba(139,92,255,.24);
+  --cta-1:#7C4DFF; --cta-2:#E23C86;
+  --amber:#FFB457; --rose:#FF5FA2; --mint:#2ED9BF; --violet:#8A5BFF;
+  --shadow:0 12px 34px rgba(0,0,0,.5);
+}
+html[data-theme="light"]{
+  --page:#EEEBF8; --panel:#FFFFFF; --panel-2:#F7F4FE;
+  --hair:rgba(88,63,178,.13);
+  --ink:#1B1533; --ink-2:#5C5780; --ink-3:#736D8F;
+
+  --bg:#F5F1FE; --surface:#FFFFFF; --surface-2:#F7F4FE; --surface-3:#EDE8FB;
+  --text-1:#1B1533; --text-2:#5C5780; --text-3:#736D8F;
+  --line:rgba(88,63,178,.11); --line-2:rgba(88,63,178,.20);
+  --accent:#6D3BF5; --accent-soft:rgba(109,59,245,.12);
+  --cta-1:#5B2EDB; --cta-2:#CE2B72;
+  --amber:#B87200; --rose:#D6336C; --mint:#0FA36B; --violet:#6D3BF5;
+  --shadow:0 12px 30px rgba(78,44,160,.14);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font);
+  -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.6}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px 120px}
+
+.page-head{padding:52px 0 34px;border-bottom:1px solid var(--hair);
+  display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.page-head h1{font-size:30px;font-weight:700;margin:0 0 8px;letter-spacing:-.4px}
+.page-head p{margin:0;color:var(--ink-2);max-width:660px;font-size:13.5px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.theme-btn{border:1px solid var(--hair);background:var(--panel);color:var(--ink);border-radius:10px;
+  padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font)}
+.theme-btn:hover{border-color:var(--accent)}
+
+section{padding-top:60px}
+h2{font-size:21px;font-weight:650;margin:0 0 6px;letter-spacing:-.2px;display:flex;align-items:center;gap:11px}
+h2 .num{font:600 12px/1 var(--mono);color:var(--accent);background:var(--accent-soft);padding:6px 8px;border-radius:6px}
+h2 + .lede{color:var(--ink-2);margin:0 0 26px;font-size:13.5px;max-width:860px}
+h3{font-size:15px;font-weight:600;margin:32px 0 14px}
+
+/* ---------- 高度预算 ---------- */
+.budget{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.budget-bar{
+  width:150px;height:560px;border-radius:14px;overflow:hidden;flex:none;
+  border:1px solid var(--hair);display:flex;flex-direction:column;
+  font:600 9.5px/1 var(--mono);color:rgba(255,255,255,.9);
+}
+.budget-bar div{display:flex;align-items:center;justify-content:center;text-align:center;padding:2px}
+.bb-status{background:#2B2549;height:35px}
+.bb-nav{background:#332C52;height:29px}
+.bb-search{background:#3A3260;height:34px}
+.bb-chip{background:#443A72;height:25px}
+.bb-list{background:linear-gradient(180deg,#7C4DFF,#E23C86);flex:1;color:#fff;font-size:12px;font-weight:700}
+.bb-tab{background:#1B1731;height:54px;border-top:1px solid var(--hair)}
+.budget-legend{flex:1;min-width:280px;font-size:12.5px}
+.budget-legend .r{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px dashed var(--hair)}
+.budget-legend .r:last-child{border:0}
+.budget-legend .sw{width:13px;height:13px;border-radius:4px;flex:none}
+.budget-legend .nm{flex:1}
+.budget-legend .pt{font:600 12px var(--mono);color:var(--accent)}
+
+table.spec{width:100%;border-collapse:collapse;font-size:12.5px}
+table.spec th{text-align:left;font-weight:650;color:var(--ink-2);font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;padding:0 12px 8px 0;border-bottom:1px solid var(--hair)}
+table.spec td{padding:8px 12px 8px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+table.spec td:first-child{font-weight:600;white-space:nowrap}
+table.spec td.mono{font-family:var(--mono);font-size:11.5px;white-space:nowrap;color:var(--accent)}
+table.spec tr:last-child td{border-bottom:0}
+.tick{color:var(--mint);font-weight:700}
+.cross{color:var(--rose);font-weight:700}
+.hi{background:var(--accent-soft)}
+
+/* ---------- iPhone ---------- */
+.phone-stage{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.phone-col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.phone{width:393px;height:852px;flex:none;background:var(--bg);border-radius:46px;position:relative;
+  overflow:hidden;box-shadow:var(--shadow),0 0 0 10px #211C33,0 0 0 11px rgba(255,255,255,.09)}
+html[data-theme="light"] .phone{box-shadow:var(--shadow),0 0 0 10px #D9D3EC,0 0 0 11px rgba(0,0,0,.06)}
+.phone.scale-72{transform:scale(.72);transform-origin:top center;margin-bottom:-238px}
+.phone::after{content:"";position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:118px;height:34px;border-radius:20px;background:#000;z-index:60}
+.statusbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:14px;font-weight:600;color:var(--text-1);position:relative;z-index:50}
+.statusbar .right{display:flex;gap:5px;align-items:center}
+.statusbar .bat{width:24px;height:12px;border:1.4px solid currentColor;border-radius:3.5px;position:relative;opacity:.9}
+.statusbar .bat::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:5px;background:currentColor;border-radius:0 1px 1px 0}
+.statusbar .bat i{position:absolute;inset:1.4px;width:66%;background:currentColor;border-radius:1.5px;display:block}
+.screen{height:calc(100% - 54px);display:flex;flex-direction:column;position:relative;overflow:hidden}
+.navbar{height:44px;flex:none;display:flex;align-items:center;justify-content:center;position:relative;
+  font-size:17px;font-weight:600;color:var(--text-1);border-bottom:.5px solid var(--line);background:var(--bg)}
+.navbar .r{position:absolute;right:6px;display:flex;gap:2px}
+.navbar .r span{width:40px;height:44px;display:grid;place-items:center;font-size:15px;color:var(--accent)}
+.search{margin:8px 16px;height:36px;flex:none;border-radius:10px;background:var(--surface-3);
+  display:flex;align-items:center;gap:7px;padding:0 10px;color:var(--text-3);font-size:13.5px}
+.search .mag{opacity:.7;font-size:13px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:0 16px 8px;flex:none;scrollbar-width:none;height:38px;align-items:center}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:30px;border-radius:999px;padding:0 11px;display:flex;align-items:center;gap:5px;
+  font-size:12.5px;background:var(--surface);color:var(--text-2);border:.5px solid var(--line);white-space:nowrap}
+.chip .n{font:400 11px var(--mono);color:var(--text-3)}
+.chip.on{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);font-weight:600}
+.chip.on .n{color:var(--accent);opacity:.8}
+.chip.heart{color:var(--rose);background:color-mix(in srgb,var(--rose) 14%,transparent);border-color:color-mix(in srgb,var(--rose) 40%,transparent)}
+.chip.heart .n{color:var(--rose)}
+.scrollarea{flex:1;overflow:hidden;position:relative}
+.tabbar{height:83px;flex:none;border-top:.5px solid var(--line);background:var(--bg);
+  display:flex;align-items:flex-start;justify-content:space-around;padding-top:9px}
+.tabbar .t{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--text-3)}
+.tabbar .t.on{color:var(--accent)}
+.tabbar .t .ic{font-size:20px;line-height:1}
+.footer-note{text-align:center;font-size:11.5px;color:var(--text-3);padding:12px 0}
+
+/* ================= D · 双列紧凑行 ================= */
+.dlist{padding:0 16px}
+.drow-wrap{display:flex;gap:10px}
+.dcol{flex:1;min-width:0}
+.drow{
+  height:48px;display:flex;align-items:center;gap:8px;padding:0 6px 0 8px;
+  background:var(--surface);position:relative;border-radius:8px;
+}
+.drow .av{
+  width:32px;height:32px;border-radius:9px;flex:none;display:grid;place-items:center;
+  font-size:14px;font-weight:650;color:#fff;position:relative;
+}
+.drow .av .star{position:absolute;right:-3px;top:-3px;font-size:8px;color:var(--amber);
+  background:var(--surface);border-radius:999px;width:12px;height:12px;display:grid;place-items:center}
+.drow .txt{min-width:0;flex:1}
+.drow .nm{font-size:13.5px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.drow .sub{font-size:10.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.drow .sub i{font-style:normal;opacity:.45;margin:0 3px}
+.drow .fav{
+  width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:999px;font-size:12px;
+  color:var(--text-3);
+}
+.drow .fav.on{color:var(--rose);background:color-mix(in srgb,var(--rose) 14%,transparent)}
+.drow.playing{background:var(--accent-soft)}
+.drow.playing::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2.5px;border-radius:2px;background:var(--accent)}
+.drow.playing .nm{color:var(--accent)}
+.drow.playing .av::after{
+  content:"❚❚";position:absolute;inset:0;border-radius:9px;background:rgba(0,0,0,.45);
+  display:grid;place-items:center;font-size:11px;color:#fff;
+}
+.drow + .drow{margin-top:2px}
+.dhead{
+  height:22px;display:flex;align-items:center;gap:5px;padding:0 4px;
+  font-size:11px;font-weight:650;color:var(--text-2);margin-top:4px;
+}
+.dhead .c{font:400 10px var(--mono);color:var(--text-3)}
+
+/* ================= E · 三列磁贴 ================= */
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px}
+.tile{
+  height:84px;border-radius:12px;background:var(--surface);border:.5px solid var(--line);
+  overflow:hidden;position:relative;
+}
+.tile .hero{
+  height:46px;display:grid;place-items:center;font-size:19px;font-weight:650;color:#fff;position:relative;
+}
+.tile .hero .tag{
+  position:absolute;left:5px;top:4px;font-size:8px;color:var(--amber);
+  background:rgba(0,0,0,.28);border-radius:999px;padding:1px 4px;
+}
+.tile .hero .tag.en{color:#9FD8FF}
+.tile .hero .heart{
+  position:absolute;right:4px;top:3px;font-size:11px;color:rgba(255,255,255,.55);
+  width:20px;height:20px;display:grid;place-items:center;
+}
+.tile .hero .heart.on{color:var(--rose);text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.tile .info{padding:5px 7px 0}
+.tile .nm{font-size:12px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.tile .ft{font-size:9.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.tile.playing{border-color:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 22%,transparent)}
+.tile.playing .hero::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:100%;background:rgba(0,0,0,.35);
+}
+.tile .wave{
+  position:absolute;left:0;right:0;top:12px;display:flex;align-items:flex-end;justify-content:center;gap:3px;z-index:2;
+}
+.tile .wave i{width:3px;border-radius:2px;background:#fff;display:block;animation:bob .6s ease-in-out infinite alternate}
+.tile .wave i:nth-child(1){height:9px}
+.tile .wave i:nth-child(2){height:17px;animation-delay:.1s}
+.tile .wave i:nth-child(3){height:7px;animation-delay:.2s}
+.tile .wave i:nth-child(4){height:14px;animation-delay:.3s}
+@keyframes bob{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+.tile .mini{
+  position:absolute;right:5px;bottom:4px;font:400 9px var(--mono);color:var(--text-3);
+}
+
+/* 骨架 / 空态 */
+.skel{background:var(--surface-3);border-radius:5px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.empty{display:flex;flex-direction:column;align-items:center;padding:70px 40px;gap:8px}
+.empty .ic{font-size:28px;color:var(--text-3);opacity:.55}
+.empty .t1{font-size:14px;font-weight:600;color:var(--text-2)}
+.empty .t2{font-size:12px;color:var(--text-3);text-align:center}
+.empty .btn{margin-top:8px;height:32px;padding:0 14px;border-radius:999px;background:var(--accent-soft);
+  color:var(--accent);font-size:12.5px;font-weight:600;display:grid;place-items:center}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:16px 18px}
+.card h4{margin:0 0 10px;font-size:13.5px;font-weight:650}
+.card p{margin:0 0 8px;font-size:12.5px;color:var(--ink-2)}
+.card p:last-child{margin-bottom:0}
+.card code{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.kv{display:flex;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px dashed var(--hair)}
+.kv:first-of-type{border-top:0}
+.kv .k{color:var(--ink-3);flex:none;width:92px}
+.kv .v{color:var(--ink)}
+.note{border-left:3px solid var(--accent);background:var(--panel-2);border-radius:0 10px 10px 0;
+  padding:12px 16px;font-size:12.5px;color:var(--ink-2);margin:16px 0}
+.note b{color:var(--ink)}
+.note.warn{border-left-color:var(--amber)}
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.state-cap{text-align:center;font-size:12.5px;font-weight:600;margin-top:12px}
+.state-cap span{display:block;font-weight:400;color:var(--ink-3);font-size:11.5px;margin-top:2px}
+footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--hair);color:var(--ink-3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page-head">
+  <div>
+    <div class="eyebrow">EmotionVoice · iOS · 音色库 · 第二稿</div>
+    <h1>高密度排版 · D / E 两版</h1>
+    <p>针对「一屏太少」重做。以 393×852 严格核算（<b>已计入底部 TabBar 83pt</b>），
+      取消旗舰横滑区、压缩行高、提高列数，把一屏从 4–7 个推到 <b>18–24 个</b>。</p>
+  </div>
+  <div><button class="theme-btn" onclick="toggleTheme()">◐ 切换 浅色 / 深色</button></div>
+</header>
+
+<!-- ============ 1. 高度预算 ============ -->
+<section>
+  <h2><span class="num">01</span> 首屏高度预算</h2>
+  <p class="lede">852pt 是怎么被吃掉的。之前一版低估了 TabBar 与旗舰横滑区，数量虚高——这张图是核算基准。</p>
+
+  <div class="budget">
+    <div class="budget-bar">
+      <div class="bb-status">状态栏 54</div>
+      <div class="bb-nav">导航 44</div>
+      <div class="bb-search">搜索 52</div>
+      <div class="bb-chip">分类 38</div>
+      <div class="bb-list">列表可用 581</div>
+      <div class="bb-tab">TabBar 83</div>
+    </div>
+    <div class="budget-legend">
+      <div class="r"><span class="sw" style="background:#2B2549"></span><span class="nm">状态栏（含灵动岛）</span><span class="pt">54 pt</span></div>
+      <div class="r"><span class="sw" style="background:#332C52"></span><span class="nm">导航栏（inline 标题 + 右侧按钮）</span><span class="pt">44 pt</span></div>
+      <div class="r"><span class="sw" style="background:#3A3260"></span><span class="nm">搜索框 36 + 上下 8×2</span><span class="pt">52 pt</span></div>
+      <div class="r"><span class="sw" style="background:#443A72"></span><span class="nm">分类 chip 条 30 + 下 8</span><span class="pt">38 pt</span></div>
+      <div class="r"><span class="sw" style="background:linear-gradient(135deg,#7C4DFF,#E23C86)"></span><span class="nm"><b>列表可用区</b></span><span class="pt">581 pt</span></div>
+      <div class="r"><span class="sw" style="background:#1B1731;border:1px solid var(--hair)"></span><span class="nm">底部 TabBar（49 + home indicator 34）</span><span class="pt">83 pt</span></div>
+      <div class="note" style="margin:14px 0 0"><b>上一版的教训：</b>方案 A 的旗舰横滑区 = 标题 30 + 卡 172 + 间距 16 = <b>218pt</b>，
+        占掉列表可用区的 37%，主体只剩约 4 行。本稿两版<b>一律取消独立的旗舰区</b>，旗舰改为行内 ⭐ 角标 + chip 筛选项。</div>
+    </div>
+  </div>
+
+  <h3>六版密度对照（同一核算基准）</h3>
+  <table class="spec">
+    <tr><th>版本</th><th>单元尺寸</th><th>每行列数</th><th>可见行数</th><th>一屏数量</th><th>相对现状</th></tr>
+    <tr><td>现状 · 两列网格卡</td><td class="mono">175 × 180</td><td>2</td><td>3</td><td>6</td><td>—</td></tr>
+    <tr><td>A · 索引行列表（含旗舰区）</td><td class="mono">361 × 64</td><td>1</td><td>4</td><td>4</td><td class="cross">−33%</td></tr>
+    <tr><td>A′ · 去掉旗舰区后</td><td class="mono">361 × 64</td><td>1</td><td>7</td><td>7</td><td>+17%</td></tr>
+    <tr><td>B · 紧凑网格 2.0</td><td class="mono">175 × 150</td><td>2</td><td>3.5</td><td>7</td><td>+17%</td></tr>
+    <tr><td>C · 内联波形卡流</td><td class="mono">361 × 110</td><td>1</td><td>5</td><td>5</td><td class="cross">−17%</td></tr>
+    <tr class="hi"><td><b>E · 三列磁贴</b></td><td class="mono">115 × 84</td><td>3</td><td>6</td><td><b>18</b></td><td class="tick">×3.0</td></tr>
+    <tr class="hi"><td><b>D · 双列紧凑行</b></td><td class="mono">175 × 48</td><td>2</td><td>12</td><td><b>24</b></td><td class="tick">×4.0</td></tr>
+    <tr><td>D′ · 极限（行高 44）</td><td class="mono">175 × 44</td><td>2</td><td>13</td><td>26</td><td class="tick">×4.3</td></tr>
+  </table>
+  <div class="note"><b>读法：</b>599 个音色，现状要滚 100 屏；D 版 25 屏，E 版 33 屏。
+    再配合分类 chip（最大一类「日常」316 个 → D 版 13 屏）与搜索，实际定位路径大幅缩短。</div>
+</section>
+
+<!-- ============ 2. D 版 ============ -->
+<section>
+  <h2><span class="num">02</span> D 版 · 双列紧凑行（一屏 24）</h2>
+  <p class="lede">把一行压到 48pt、一列压到 175pt，两列并排。<b>信息一个不少</b>：头像、名称、特质、场景、性别年龄、收藏、试听、旗舰/语种角标。</p>
+
+  <div class="phone-stage">
+    <div class="phone-col">
+      <div class="phone scale-72">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库
+            <span class="r"><span>▦</span><span>⚙</span></span>
+          </div>
+          <div class="search"><span class="mag">⌕</span>搜索音色名 / 特质 / 场景 / 语种</div>
+          <div class="chips">
+            <div class="chip on">全部 <span class="n">599</span></div>
+            <div class="chip">⭐ 旗舰 <span class="n">2</span></div>
+            <div class="chip">🌐 中文 <span class="n">591</span></div>
+            <div class="chip">💬 日常 <span class="n">316</span></div>
+            <div class="chip">💗 陪伴 <span class="n">145</span></div>
+            <div class="chip heart">♥ <span class="n">3</span></div>
+          </div>
+          <div class="scrollarea">
+            <div class="dlist">
+              <!-- 第 1 行 -->
+              <div class="drow-wrap">
+                <div class="dcol">
+                  <div class="drow playing">
+                    <div class="av" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)"><span class="star">⭐</span>龙</div>
+                    <div class="txt"><div class="nm">龙安灵心</div><div class="sub">知心温暖<i>·</i>女25</div></div>
+                    <div class="fav on">♥</div>
+                  </div>
+                </div>
+                <div class="dcol">
+                  <div class="drow">
+                    <div class="av" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)"><span class="star">⭐</span>龙</div>
+                    <div class="txt"><div class="nm">龙安鲁风</div><div class="sub">明亮开朗<i>·</i>男25</div></div>
+                    <div class="fav">♥</div>
+                  </div>
+                </div>
+              </div>
+              <!-- 2 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)">璨</div>
+                  <div class="txt"><div class="nm">璨竹月</div><div class="sub">平实质朴<i>·</i>女26</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)">澄</div>
+                  <div class="txt"><div class="nm">澄桃晦</div><div class="sub">不满犀利<i>·</i>女27</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 3 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FFC7A8,#E2703C)">嵐</div>
+                  <div class="txt"><div class="nm">嵐柏弦</div><div class="sub">惊悚恐怖<i>·</i>男30</div></div>
+                  <div class="fav on">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)">楚</div>
+                  <div class="txt"><div class="nm">楚云舒</div><div class="sub">自然亲和<i>·</i>女24</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 4 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)">风</div>
+                  <div class="txt"><div class="nm">风月瑶</div><div class="sub">直爽利落<i>·</i>女28</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)">芙</div>
+                  <div class="txt"><div class="nm">芙蕖晚</div><div class="sub">温柔亲和<i>·</i>女23</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 5 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)">朗</div>
+                  <div class="txt"><div class="nm">朗虹沫</div><div class="sub">温柔亲和<i>·</i>女25</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FFD37A,#F0932B)">岚</div>
+                  <div class="txt"><div class="nm">岚煜芙</div><div class="sub">温柔亲和<i>·</i>女26</div></div>
+                  <div class="fav on">♥</div>
+                </div></div>
+              </div>
+              <!-- 6 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)">蓉</div>
+                  <div class="txt"><div class="nm">蓉芷荷</div><div class="sub">电台质感<i>·</i>女24</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)">霓</div>
+                  <div class="txt"><div class="nm">霓岫涟</div><div class="sub">内敛含蓄<i>·</i>女27</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 7 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)">彤</div>
+                  <div class="txt"><div class="nm">彤旭弦</div><div class="sub">活泼灵动<i>·</i>女22</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)">溪</div>
+                  <div class="txt"><div class="nm">溪凌璇</div><div class="sub">不满犀利<i>·</i>女25</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 8 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FFC7A8,#E2703C)">潇</div>
+                  <div class="txt"><div class="nm">潇煜月</div><div class="sub">惊奇讶异<i>·</i>女26</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)">莹</div>
+                  <div class="txt"><div class="nm">莹松柳</div><div class="sub">爽朗利落<i>·</i>女28</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 9 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)">筝</div>
+                  <div class="txt"><div class="nm">筝瑶鹤</div><div class="sub">亢奋激昂<i>·</i>女29</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)">芷</div>
+                  <div class="txt"><div class="nm">芷晴曦</div><div class="sub">紧张不安<i>·</i>女23</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 10 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FFD37A,#F0932B)">昕</div>
+                  <div class="txt"><div class="nm">昕蕊璇</div><div class="sub">自然亲和<i>·</i>女24</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)">琴</div>
+                  <div class="txt"><div class="nm">琴鹤莹</div><div class="sub">温柔亲和<i>·</i>女29</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 11 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)">A</div>
+                  <div class="txt"><div class="nm">Olivia Lin</div><div class="sub">温柔<i>·</i>英女28</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)">A</div>
+                  <div class="txt"><div class="nm">Alexander</div><div class="sub">稳重<i>·</i>英男27</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <!-- 12 -->
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)">初</div>
+                  <div class="txt"><div class="nm">初弦</div><div class="sub">清冷疏离<i>·</i>女26</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)">楚</div>
+                  <div class="txt"><div class="nm">楚岫云</div><div class="sub">温柔亲和<i>·</i>女25</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+            </div>
+            <div class="footer-note">已显示 24 / 599 · 上拉加载更多</div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">D 版 · 稳态 <span>12 行 × 2 列 = 24 个（含 TabBar）</span></div>
+    </div>
+
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin-top:0">单元规格</h3>
+      <table class="spec">
+        <tr><th>元素</th><th>规格</th><th>说明</th></tr>
+        <tr><td>列宽</td><td class="mono">175.5 pt</td><td>(361 − 10 gap) / 2</td></tr>
+        <tr><td>行高</td><td class="mono">48 pt</td><td>行间距 2pt；极限模式可压到 44 → 26 个</td></tr>
+        <tr><td>头像</td><td class="mono">32 × 32 · r 9</td><td>沿用 8 组确定性渐变；首字 14 / Semibold 白</td></tr>
+        <tr><td>名称</td><td class="mono">13.5 / Semibold</td><td>单行截断，约 6 个汉字后省略</td></tr>
+        <tr><td>副标题</td><td class="mono">10.5 / Reg</td><td>「特质 · 场景 · 性别年龄」，<code>textTertiary</code></td></tr>
+        <tr><td>收藏钮</td><td class="mono">26 视觉 / 44 热区</td><td>未收藏灰描边空心；已收藏 rose 底 + 实心</td></tr>
+        <tr><td>旗舰角标</td><td class="mono">12 × 12</td><td>头像右上，⭐ 8pt + surface 底圆，不占文本宽度</td></tr>
+        <tr><td>试听中</td><td class="mono">—</td><td>行底 <code>accentSoft</code> + 左侧 2.5pt accent 竖条 + 头像盖 ❚❚ + 名称染 accent</td></tr>
+      </table>
+
+      <h3>交互重分配（关键）</h3>
+      <div class="card">
+        <div class="kv"><span class="k">整行轻点</span><span class="v"><b>试听</b> —— 音色库的第一动作就是听，不该藏在小按钮里</span></div>
+        <div class="kv"><span class="k">♥ 按钮</span><span class="v">收藏 / 取消（唯一独立控件，26pt 视觉 / 44pt 热区）</span></div>
+        <div class="kv"><span class="k">长按行</span><span class="v">菜单：使用该音色 / 取消收藏 / 查看全部信息</span></div>
+        <div class="kv"><span class="k">导航栏 ▦</span><span class="v">布局切换（D ⇄ E ⇄ A），偏好存 <code>AppState</code></span></div>
+      </div>
+      <div class="note"><b>为什么去掉「使用」圆钮：</b>现状每卡三个按钮（试听 / 收藏 / 使用）在 175pt 宽度里挤成一团，
+        且 28×28 全部不达标。D 版把「使用」降为长按菜单项——它不是浏览态的高频动作（选中后还要回创作页调文本），
+        而试听和收藏才是。</div>
+
+      <h3>取舍明细</h3>
+      <div class="card">
+        <div class="kv"><span class="k">砍掉</span><span class="v">旗舰横滑区（218pt）、大标题（80pt）、sticky 分组头、右侧 A–Z 索引条</span></div>
+        <div class="kv"><span class="k">保留</span><span class="v">名称、特质、场景、性别年龄、收藏、试听、旗舰/语种角标、横滑分类 chip</span></div>
+        <div class="kv"><span class="k">压缩</span><span class="v">头像 44→32、行高 64→48、副标题两字段合并为一行</span></div>
+        <div class="kv"><span class="k">补偿</span><span class="v">旗舰与英文音色靠头像角标识别；找音色靠 chip + 搜索而非索引条</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. E 版 ============ -->
+<section>
+  <h2><span class="num">03</span> E 版 · 三列磁贴（一屏 18）</h2>
+  <p class="lede">密度与视觉的折中：每个磁贴上半部是 46pt 的渐变色块（头像即色块，视觉锚点最强），下半部两行小字。适合「扫一眼挑声音」。</p>
+
+  <div class="phone-stage">
+    <div class="phone-col">
+      <div class="phone scale-72">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库
+            <span class="r"><span>▦</span><span>⚙</span></span>
+          </div>
+          <div class="search"><span class="mag">⌕</span>搜索音色名 / 特质 / 场景 / 语种</div>
+          <div class="chips">
+            <div class="chip on">全部 <span class="n">599</span></div>
+            <div class="chip">⭐ 旗舰 <span class="n">2</span></div>
+            <div class="chip">🌐 中文 <span class="n">591</span></div>
+            <div class="chip">💬 日常 <span class="n">316</span></div>
+            <div class="chip heart">♥ <span class="n">3</span></div>
+          </div>
+          <div class="scrollarea">
+            <div class="tgrid">
+              <div class="tile playing">
+                <div class="hero" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)">
+                  <span class="tag">⭐</span><span class="heart on">♥</span>龙
+                  <div class="wave"><i></i><i></i><i></i><i></i></div>
+                </div>
+                <div class="info"><div class="nm">龙安灵心</div><div class="ft">知心温暖</div></div>
+                <div class="mini">0:03</div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)">
+                  <span class="tag">⭐</span><span class="heart">♥</span>龙
+                </div>
+                <div class="info"><div class="nm">龙安鲁风</div><div class="ft">明亮开朗</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)"><span class="heart">♥</span>璨</div>
+                <div class="info"><div class="nm">璨竹月</div><div class="ft">平实质朴音</div></div>
+              </div>
+
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)"><span class="heart">♥</span>澄</div>
+                <div class="info"><div class="nm">澄桃晦</div><div class="ft">不满犀利音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FFC7A8,#E2703C)"><span class="heart on">♥</span>嵐</div>
+                <div class="info"><div class="nm">嵐柏弦</div><div class="ft">惊悚恐怖音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)"><span class="heart">♥</span>楚</div>
+                <div class="info"><div class="nm">楚云舒</div><div class="ft">自然亲和音</div></div>
+              </div>
+
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)"><span class="heart">♥</span>风</div>
+                <div class="info"><div class="nm">风月瑶</div><div class="ft">直爽利落音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)"><span class="heart">♥</span>芙</div>
+                <div class="info"><div class="nm">芙蕖晚</div><div class="ft">温柔亲和音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)"><span class="heart">♥</span>朗</div>
+                <div class="info"><div class="nm">朗虹沫</div><div class="ft">温柔亲和音</div></div>
+              </div>
+
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FFD37A,#F0932B)"><span class="heart on">♥</span>岚</div>
+                <div class="info"><div class="nm">岚煜芙</div><div class="ft">温柔亲和音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)"><span class="heart">♥</span>蓉</div>
+                <div class="info"><div class="nm">蓉芷荷</div><div class="ft">电台质感音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)"><span class="heart">♥</span>霓</div>
+                <div class="info"><div class="nm">霓岫涟</div><div class="ft">内敛含蓄音</div></div>
+              </div>
+
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)"><span class="heart">♥</span>彤</div>
+                <div class="info"><div class="nm">彤旭弦</div><div class="ft">活泼灵动音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)"><span class="heart">♥</span>溪</div>
+                <div class="info"><div class="nm">溪凌璇</div><div class="ft">不满犀利音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FFC7A8,#E2703C)"><span class="heart">♥</span>潇</div>
+                <div class="info"><div class="nm">潇煜月</div><div class="ft">惊奇讶异音</div></div>
+              </div>
+
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)"><span class="heart">♥</span>莹</div>
+                <div class="info"><div class="nm">莹松柳</div><div class="ft">爽朗利落音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)"><span class="heart">♥</span>筝</div>
+                <div class="info"><div class="nm">筝瑶鹤</div><div class="ft">亢奋激昂音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)"><span class="heart">♥</span>芷</div>
+                <div class="info"><div class="nm">芷晴曦</div><div class="ft">紧张不安音</div></div>
+              </div>
+            </div>
+            <div class="footer-note">已显示 18 / 599 · 上拉加载更多</div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">E 版 · 稳态 <span>6 行 × 3 列 = 18 个（含 TabBar）</span></div>
+    </div>
+
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin-top:0">单元规格</h3>
+      <table class="spec">
+        <tr><th>元素</th><th>规格</th><th>说明</th></tr>
+        <tr><td>磁贴</td><td class="mono">115 × 84 · r 12</td><td>(361 − 2×8) / 3；gap 8</td></tr>
+        <tr><td>色块区</td><td class="mono">115 × 46</td><td>头像即色块：首字 19 / Semibold 白，居中</td></tr>
+        <tr><td>角标</td><td class="mono">8 pt</td><td>左上 ⭐旗舰（amber）/ 🌐EN（蓝）；右上 ♥ 11pt</td></tr>
+        <tr><td>名称</td><td class="mono">12 / Semibold</td><td>单行截断</td></tr>
+        <tr><td>特质</td><td class="mono">9.5 / Reg</td><td>单行截断，<code>textTertiary</code></td></tr>
+        <tr><td>试听中</td><td class="mono">—</td><td>accent 描边 1pt + 外发光 + 色块盖 35% 黑 + 白色波形 4 条 + 右下计时</td></tr>
+      </table>
+
+      <h3>交互</h3>
+      <div class="card">
+        <div class="kv"><span class="k">轻点磁贴</span><span class="v">试听；再点停止（同一音色 toggle）</span></div>
+        <div class="kv"><span class="k">右上 ♥</span><span class="v">收藏（20pt 视觉 / 44pt 热区，与磁贴点击区不重叠）</span></div>
+        <div class="kv"><span class="k">长按</span><span class="v">菜单：使用该音色 / 查看详情</span></div>
+        <div class="kv"><span class="k">⚠️ 冲突</span><span class="v">♥ 在色块内，需把它的命中区提到磁贴之上，否则会被整块手势吃掉</span></div>
+      </div>
+
+      <h3>取舍明细</h3>
+      <div class="card">
+        <div class="kv"><span class="k">砍掉</span><span class="v">场景、年龄、性别（磁贴只剩名称 + 特质一行）</span></div>
+        <div class="kv"><span class="k">代价</span><span class="v">「女 26 岁」这类筛选信息不可见，只能靠 chip 或搜索命中</span></div>
+        <div class="kv"><span class="k">优势</span><span class="v">色块面积 115×46（D 版头像仅 32×32），8 组渐变的辨识度被放大 5 倍</span></div>
+        <div class="kv"><span class="k">适合</span><span class="v">以「听感 / 观感」挑选的场景；不适合按属性精筛</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 状态 ============ -->
+<section>
+  <h2><span class="num">04</span> 两版的状态覆盖</h2>
+  <p class="lede">高密度排版下最容易翻车的是试听态与空态——空间小，状态必须靠「底色 + 描边 + 覆盖层」表达，不能再加控件。</p>
+  <div class="states">
+
+    <div>
+      <div class="phone scale-72" style="margin-bottom:-216px">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库<span class="r"><span>▦</span><span>⚙</span></span></div>
+          <div class="search"><span class="mag">⌕</span>温柔<span style="margin-left:auto;font-size:12.5px;color:var(--accent)">取消</span></div>
+          <div class="chips"><div class="chip on">全部 599</div><div class="chip">💗 陪伴 145</div><div class="chip heart">♥ 3</div></div>
+          <div class="scrollarea">
+            <div class="dlist">
+              <div class="drow-wrap">
+                <div class="dcol"><div class="drow playing">
+                  <div class="av" style="background:linear-gradient(135deg,#FF8FC5,#E23C86)">朗</div>
+                  <div class="txt"><div class="nm">朗虹沫</div><div class="sub">温柔亲和<i>·</i>女25</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)">岚</div>
+                  <div class="txt"><div class="nm">岚煜芙</div><div class="sub">温柔亲和<i>·</i>女26</div></div>
+                  <div class="fav on">♥</div>
+                </div></div>
+              </div>
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)">琴</div>
+                  <div class="txt"><div class="nm">琴鹤莹</div><div class="sub">温柔亲和<i>·</i>女29</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#C77DFF,#7A3FF2)">芷</div>
+                  <div class="txt"><div class="nm">芷晴曦</div><div class="sub">自然亲和<i>·</i>女23</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#FFC7A8,#E2703C)">芙</div>
+                  <div class="txt"><div class="nm">芙蕖晚</div><div class="sub">温柔亲和<i>·</i>女23</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="av" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)">溪</div>
+                  <div class="txt"><div class="nm">溪凌璇</div><div class="sub">温柔亲和<i>·</i>女25</div></div>
+                  <div class="fav">♥</div>
+                </div></div>
+              </div>
+            </div>
+            <div class="footer-note">搜索「温柔」· 24 个结果 · 已全部显示</div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">D · 搜索 + 试听中 <span>底色 + 竖条 + 头像盖层三重表达</span></div>
+    </div>
+
+    <div>
+      <div class="phone scale-72" style="margin-bottom:-216px">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库<span class="r"><span>▦</span><span>⚙</span></span></div>
+          <div class="search"><span class="mag">⌕</span>搜索音色名 / 特质 / 场景 / 语种</div>
+          <div class="chips"><div class="chip on">全部 599</div><div class="chip">⭐ 旗舰 2</div><div class="chip">💬 日常 316</div></div>
+          <div class="scrollarea">
+            <div class="dlist">
+              <div class="drow-wrap">
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:64px;height:12px"></div>
+                    <div class="skel" style="width:96px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:56px;height:12px"></div>
+                    <div class="skel" style="width:88px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+              </div>
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:72px;height:12px"></div>
+                    <div class="skel" style="width:92px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:60px;height:12px"></div>
+                    <div class="skel" style="width:100px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+              </div>
+              <div class="drow-wrap" style="margin-top:2px">
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:68px;height:12px"></div>
+                    <div class="skel" style="width:84px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+                <div class="dcol"><div class="drow">
+                  <div class="skel" style="width:32px;height:32px;border-radius:9px;flex:none"></div>
+                  <div style="flex:1;min-width:0">
+                    <div class="skel" style="width:58px;height:12px"></div>
+                    <div class="skel" style="width:94px;height:9px;margin-top:5px"></div>
+                  </div>
+                  <div class="skel" style="width:20px;height:20px;border-radius:999px;flex:none"></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">D · 骨架屏 <span>行高 / 头像 / 文字 三处尺寸 1:1 对齐</span></div>
+    </div>
+
+    <div>
+      <div class="phone scale-72" style="margin-bottom:-216px">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库<span class="r"><span>▦</span><span>⚙</span></span></div>
+          <div class="search"><span class="mag">⌕</span>xyz</div>
+          <div class="chips"><div class="chip on">全部 599</div><div class="chip">⭐ 旗舰 2</div><div class="chip heart">♥ 3</div></div>
+          <div class="scrollarea">
+            <div class="empty">
+              <div class="ic">⌕</div>
+              <div class="t1">没有匹配的音色</div>
+              <div class="t2">试试换个关键词，或清除筛选条件</div>
+              <div class="btn">清除筛选</div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">D / E 通用 · 空态 <span>两版共用同一套空态</span></div>
+    </div>
+
+    <div>
+      <div class="phone scale-72" style="margin-bottom:-216px">
+        <div class="statusbar"><span>9:41</span><span class="right"><span>●●●●</span><span class="bat"><i></i></span></span></div>
+        <div class="screen">
+          <div class="navbar">音色库<span class="r"><span>▦</span><span>⚙</span></span></div>
+          <div class="search"><span class="mag">⌕</span>搜索音色名 / 特质 / 场景 / 语种</div>
+          <div class="chips"><div class="chip on">全部 599</div><div class="chip">⭐ 旗舰 2</div><div class="chip">💬 日常 316</div></div>
+          <div class="scrollarea">
+            <div class="tgrid">
+              <div class="tile playing">
+                <div class="hero" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)"><span class="heart">♥</span>风
+                  <div class="wave"><i></i><i></i><i></i><i></i></div>
+                </div>
+                <div class="info"><div class="nm">风月瑶</div><div class="ft">直爽利落音</div></div>
+                <div class="mini">0:05</div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#FFD37A,#F0932B)"><span class="heart on">♥</span>岚</div>
+                <div class="info"><div class="nm">岚煜芙</div><div class="ft">温柔亲和音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5FE0C0,#12A88C)"><span class="heart on">♥</span>蓉</div>
+                <div class="info"><div class="nm">蓉芷荷</div><div class="ft">电台质感音</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#8A5BFF,#6D3BF5)"><span class="tag">⭐</span><span class="heart on">♥</span>龙</div>
+                <div class="info"><div class="nm">龙安灵心</div><div class="ft">知心温暖</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#74B9FF,#3B74D9)"><span class="tag en">EN</span><span class="heart">♥</span>A</div>
+                <div class="info"><div class="nm">Olivia Lin</div><div class="ft">温柔 · 英女</div></div>
+              </div>
+              <div class="tile">
+                <div class="hero" style="background:linear-gradient(135deg,#5BC8FF,#2E7BE0)"><span class="tag en">EN</span><span class="heart">♥</span>J</div>
+                <div class="info"><div class="nm">James Zhao</div><div class="ft">稳重 · 英男</div></div>
+              </div>
+            </div>
+            <div class="footer-note">仅收藏 · 3 个 · 取消收藏即移出</div>
+          </div>
+          <div class="tabbar">
+            <div class="t"><span class="ic">✎</span>创作</div>
+            <div class="t on"><span class="ic">♫</span>音色库</div>
+            <div class="t"><span class="ic">☰</span>项目</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-cap">E · 试听中 + 角标 <span>⭐ 旗舰 / EN 语种 / ♥ 已收藏 三层角标</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 5. 选择建议 ============ -->
+<section>
+  <h2><span class="num">05</span> 怎么选</h2>
+  <p class="lede">两版不是互斥的，建议做成可切换。</p>
+  <div class="cols">
+    <div class="card">
+      <h4>D · 双列紧凑行</h4>
+      <p><b>24 个/屏</b>，信息完整（名称 + 特质 + 场景 + 性别年龄）。</p>
+      <p>适合：<b>按属性找音色</b>——「要个 25 岁左右、温柔的女声」这种需求，扫一眼副标题就能筛掉一半。</p>
+      <p class="tick">✓ 建议设为默认</p>
+    </div>
+    <div class="card">
+      <h4>E · 三列磁贴</h4>
+      <p><b>18 个/屏</b>，色块面积是 D 版头像的 5 倍，渐变辨识度最强。</p>
+      <p>适合：<b>按听感挑音色</b>——已经知道要什么类型，快速扫一遍点着听。</p>
+      <p>缺点：丢掉了场景 / 年龄 / 性别，精筛只能回搜索。</p>
+    </div>
+    <div class="card">
+      <h4>建议：导航栏加布局切换器</h4>
+      <p>右上角 <code>▦</code> 按钮弹出三段选择：<b>紧凑行（D）/ 磁贴（E）/ 大卡（A）</b>，偏好存 <code>AppState.voiceLibraryLayout</code>。</p>
+      <p>成本：三个布局各写一个 <code>Layout</code> 枚举分支 + 一个 <code>VoiceCell</code> 协议，数据层（VM 分页 / 筛选 / 搜索）完全复用。</p>
+      <p>注意：切换布局时<b>分页 pageSize 要跟着变</b>——D 版一页 24、E 版 18、A 版 7，不能共用一个 <code>metrics.voiceGridColumns * 4</code>。</p>
+    </div>
+    <div class="card">
+      <h4>还想更密？</h4>
+      <p>D′ 极限模式：行高 48 → <b>44</b>，一屏 26 个。代价是副标题 10.5pt 与名称 13.5pt 的间距从 2pt 压到 1pt，视觉开始发闷。</p>
+      <p>再往下（40pt 行、三列）就会低于 44pt 触控底线，<b>不建议</b>。</p>
+      <p>真正的解法不是继续压行高，而是<b>减少候选集</b>：把「日常 316」这类超大分组再按性别 / 年龄做二级 chip。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. 落地 ============ -->
+<section>
+  <h2><span class="num">06</span> SwiftUI 落地要点</h2>
+  <div class="cols">
+    <div class="card">
+      <h4>新增 / 改造</h4>
+      <p><code>VoiceCompactRow.swift</code>（D，48pt 双列）、<code>VoiceTile.swift</code>（E，115×84）。</p>
+      <p><code>VoicesLibraryView</code>：容器从 <code>LazyVGrid</code> 改为按 <code>layout</code> 分支；D 版用
+        <code>LazyVGrid(columns: 2 × flexible)</code> 但<b>去掉 .scrollTargetLayout 之类的分页装饰</b>，行高由 <code>.frame(height: 48)</code> 固定。</p>
+      <p><code>ScreenMetrics</code>：新增 <code>voiceCellLayout</code>——wide 档 D 版改 <b>3 列</b>（660pt+），extraWide 4 列，仍保持 48pt 行高。</p>
+    </div>
+    <div class="card">
+      <h4>三个容易踩的坑</h4>
+      <p>① <b>♥ 与整行手势冲突</b>：E 版 ♥ 在色块内，必须给 ♥ 单独 <code>.highPriorityGesture</code> 或把它移到磁贴外层 overlay，否则收藏点不动。</p>
+      <p>② <b>cell 复用导致状态串台</b>：密度提高后同屏 24 个 cell，试听态必须用 <code>player.playingKey == voice.key</code> 判定，绝不能在 cell 内自持 Bool。</p>
+      <p>③ <b>pageSize 与布局绑定</b>：<code>pageSize = 列数 × 行数</code>，D 版取 24、E 版 18；切换布局要重置 <code>page = 1</code> 并 reload。</p>
+    </div>
+    <div class="card">
+      <h4>无障碍底线</h4>
+      <p>D 版行 48pt 高 × 175pt 宽 —— 达标。♥ 26pt 视觉 / 44pt 热区（用 <code>.frame(44)</code> + <code>.contentShape</code>）。</p>
+      <p>E 版磁贴 115×84 —— 达标；♥ 20pt 视觉 / 44pt 热区。</p>
+      <p>副标题 10.5pt 仅作辅助信息，<b>不可承载唯一信息</b>；VoiceOver 下整行合并朗读全部字段。</p>
+    </div>
+    <div class="card">
+      <h4>待确认</h4>
+      <p>① 是否接受<b>去掉旗舰横滑区</b>（这是密度提升的最大来源，但旗舰音色的曝光会下降）。</p>
+      <p>② 「使用音色」降为长按菜单项是否可接受；若必须一键使用，D 版可在试听态把 ♥ 右侧再挤出 24pt 圆钮（常态隐藏）。</p>
+      <p>③ 是否需要<b>布局切换器</b>（多一个导航栏按钮 + 三个布局分支）。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  EmotionVoice · iOS 音色库高密度排版（第二稿）· 基于 393×852 严格核算，已计入 TabBar 83pt<br>
+  色板沿用 <code>AuroraPalette.swift</code>；所有尺寸为 pt，可直接映射到 SwiftUI。
+</footer>
+
+</div>
+<script>
+function toggleTheme(){
+  const h=document.documentElement;
+  h.dataset.theme = h.dataset.theme==='dark' ? 'light' : 'dark';
+}
+</script>
+</body>
+</html>

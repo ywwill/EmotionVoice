@@ -48,6 +48,9 @@ struct VoicePickerSheet: View {
     /// 搜索防抖用的 Task（每次键击都全表过滤会很卡）
     @State private var searchTask: Task<Void, Never>? = nil
 
+    /// 一次拖拽只收一次键盘（DragGesture 的 onChanged 会刷几十次）
+    @State private var didResignOnDrag = false
+
     /// 列表滚动位置的「重置版本号」：作为 `ScrollView` 的 id，一自增就整体重建、偏移归零
     @State private var scrollResetID = 0
 
@@ -81,6 +84,7 @@ struct VoicePickerSheet: View {
             }
         }
         .background(c.backgroundGrouped)
+        .simultaneousGesture(dragToDismissKeyboard)
         .task { initialLoad() }
         .onChange(of: searchText) { _, _ in scheduleSearch() }
         .onDisappear { player.stop() }
@@ -118,7 +122,8 @@ struct VoicePickerSheet: View {
 
     private var searchBar: some View {
         AuroraSearchField(text: $searchText,
-                          placeholder: "搜索音色名 / 特质 / 场景 / 语种".localized())
+                          placeholder: "搜索音色名 / 特质 / 场景 / 语种".localized(),
+                          onSubmit: { commitSearch() })
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 2)
         .padding(.bottom, 10)
@@ -326,6 +331,8 @@ struct VoicePickerSheet: View {
                 }
             }
             .id(scrollResetID)
+            // 滑动列表即收键盘（原生滚动拦截）
+            .scrollDismissesKeyboard(.immediately)
     }
 
     // MARK: 底部
@@ -419,6 +426,27 @@ struct VoicePickerSheet: View {
             guard !Task.isCancelled, needle == searchText else { return }
             reload()
         }
+    }
+
+    /// 回车提交：取消还在等待的防抖任务，立刻出结果
+    private func commitSearch() {
+        searchTask?.cancel()
+        reload()
+    }
+
+    // MARK: - 键盘
+
+    /// 拖拽收键盘：`.scrollDismissesKeyboard` 依赖内容可滚动，
+    /// 搜索无结果 / 不满一屏时滑不动，靠这层手势兜底
+    private var dragToDismissKeyboard: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { _ in
+                guard !didResignOnDrag else { return }
+                didResignOnDrag = true
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                to: nil, from: nil, for: nil)
+            }
+            .onEnded { _ in didResignOnDrag = false }
     }
 
     // MARK: - 行为

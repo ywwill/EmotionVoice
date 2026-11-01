@@ -53,6 +53,9 @@ struct VoicesLibraryView: View {
     /// 搜索防抖用的 Task（每次键击都全表过滤会很卡）
     @State private var searchTask: Task<Void, Never>? = nil
 
+    /// 一次拖拽只收一次键盘（DragGesture 的 onChanged 会刷几十次）
+    @State private var didResignOnDrag = false
+
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 10),
               count: metrics.voiceGridColumns)
@@ -98,6 +101,8 @@ struct VoicesLibraryView: View {
                         endFooter
                     }
                 }
+                // 滑动列表即收键盘（原生滚动拦截；⚠️ 必须挂在 ScrollView 上，挂容器不生效）
+                .scrollDismissesKeyboard(.immediately)
                 // ⚠️ 筛选一变就换 id → ScrollView 整体重建 → 滚动偏移归零。
                 // 早先试过 `scrollTo(顶部锚点)`：它在布局前按**旧 contentSize** 算偏移，
                 // 行数变少时算出的偏移仍超出新范围，于是「滚不动」——
@@ -114,6 +119,11 @@ struct VoicesLibraryView: View {
                 .animation(.easeOut(duration: 0.24), value: scrollResetID)
             }
         .background(c.backgroundGrouped)
+        // ⚠️ 兜底：`.scrollDismissesKeyboard` 依赖**内容能否滚动**——
+        //    搜索无结果 / 结果不满一屏时 ScrollView 滑不动，键盘就永远收不掉，
+        //    而这恰恰是「输完关键词等结果」最常见的状态。
+        //    `minimumDistance: 12` 避免误吞卡片点击（`simultaneous` 不挡 tap）。
+        .simultaneousGesture(dragToDismissKeyboard)
         .navigationTitle("音色库".localized())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -150,7 +160,8 @@ struct VoicesLibraryView: View {
 
     private var searchBar: some View {
         AuroraSearchField(text: $searchText,
-                          placeholder: "搜索音色名 / 特质 / 场景 / 语种".localized())
+                          placeholder: "搜索音色名 / 特质 / 场景 / 语种".localized(),
+                          onSubmit: { commitSearch() })
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 2)
         .padding(.bottom, 10)
@@ -406,6 +417,30 @@ struct VoicesLibraryView: View {
             guard !Task.isCancelled, needle == searchText else { return }
             reload()
         }
+    }
+
+    /// 回车提交：取消还在等待的防抖任务，立刻出结果
+    private func commitSearch() {
+        searchTask?.cancel()
+        reload()
+    }
+
+    // MARK: - 键盘
+
+    /// 列表区拖拽收键盘：`ScrollView` 内容不够高时滑不动，只能靠这层手势兜底
+    private var dragToDismissKeyboard: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { _ in
+                guard !didResignOnDrag else { return }
+                didResignOnDrag = true
+                resignKeyboard()
+            }
+            .onEnded { _ in didResignOnDrag = false }
+    }
+
+    private func resignKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 
     // MARK: - 行为
