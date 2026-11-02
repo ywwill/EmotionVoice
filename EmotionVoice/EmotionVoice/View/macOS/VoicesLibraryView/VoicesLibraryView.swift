@@ -510,11 +510,11 @@ struct VoicesLibraryView: View {
     }
 
     /// 分类 Chip：两行布局
-    /// 第一行（固定）：收藏、全部、旗舰、中文、英文
+    /// 第一行（固定）：收藏、全部、旗舰
     /// 第二行（其余）：按 displayOrder 渲染剩余分类，行满自动换行
     private var categoryChips: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // 第一行：收藏 / 全部 / 旗舰 / 中文 / 英文
+            // 第一行：收藏 / 全部 / 旗舰
             HStack(spacing: 6) {
                 CountChip(
                     title: "收藏".localized(),
@@ -540,8 +540,6 @@ struct VoicesLibraryView: View {
                 }
 
                 primaryRowChip(for: .premium)
-                primaryRowChip(for: .chinese)
-                primaryRowChip(for: .english)
             }
 
             // 第二行：其余分类（按 displayOrder，自动换行）

@@ -53,6 +53,19 @@ struct VoicesLibraryView: View {
     /// 搜索防抖用的 Task（每次键击都全表过滤会很卡）
     @State private var searchTask: Task<Void, Never>? = nil
 
+    /// 分类 Sheet 提交后排的延迟刷新（见 `reloadAfterSheetDismiss`）
+    @State private var deferredReloadTask: Task<Void, Never>? = nil
+
+    /// 「换数据」那一步排的 Task（见 `apply(_:total:)`）
+    @State private var swapTask: Task<Void, Never>? = nil
+
+    /// 内容区可见度：刷新 = 旧内容淡出 → 换数据 → 新内容淡入 + 上浮。
+    ///
+    /// ⚠️ 不用容器级 `.transition`：`.id` 整体重建触发的 transition 在
+    ///    「Sheet 正在收起」「骨架屏替换」这些场景下不保证触发，肉眼看就是硬切。
+    ///    直接改 `opacity` / `offset` 这种可动画属性，必然出效果。
+    @State private var contentVisible = true
+
     /// 一次拖拽只收一次键盘（DragGesture 的 onChanged 会刷几十次）
     @State private var didResignOnDrag = false
 
@@ -64,6 +77,19 @@ struct VoicesLibraryView: View {
     private var pageSize: Int { metrics.voiceGridColumns * 4 }
 
     private var hasMore: Bool { voices.count < totalCount }
+
+    /// 新内容淡入 + 上浮（0.28s）
+    private static let swapAnimation = Animation.easeOut(duration: 0.28)
+
+    /// 旧内容淡出（短一点，换数据的等待时间都算在这里）
+    private static let fadeOutAnimation = Animation.easeOut(duration: 0.1)
+
+    /// 淡出走完后换数据的等待
+    private static let fadeOutNanos: UInt64 = 100_000_000
+
+    /// 分类 Sheet 收起动画约 0.25s：刷新排在这个点之后，过渡才看得见
+    /// （同步刷新的话淡入全程发生在下落中的 Sheet 背后，用户只看到硬切）
+    private static let sheetDismissDelayNanos: UInt64 = 250_000_000
 
     var body: some View {
         VStack(spacing: 0) {
@@ -108,15 +134,14 @@ struct VoicesLibraryView: View {
                 // 行数变少时算出的偏移仍超出新范围，于是「滚不动」——
                 // 表现就是「滚动过再点收藏 → 列表一片空白，而数据其实早就换好了」。
                 .id(scrollResetID)
-                // ⚠️ 换 id 等于「整块内容被替换」，不给过渡就是硬切。配一条
-                //    「新内容淡入 + 轻微上浮 / 旧内容淡出」，切分类时才看得出来是换了数据。
+                // ⚠️ 换 id 等于「整块内容被瞬间替换」，所以配套两层动画：
+                //    ① 换之前 `contentVisible = false` → 旧内容淡出；
+                //    ② 换的同一帧置回 true → 新内容淡入并从下方 12pt 浮上来。
                 //    （`scrollResetID` 只在 reload 里自增，loadMore 追加不触发，
                 //     所以上拉加载不会整屏闪一下。）
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .offset(y: 10)),
-                    removal: .opacity
-                ))
-                .animation(.easeOut(duration: 0.24), value: scrollResetID)
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 12)
+                .animation(Self.swapAnimation, value: contentVisible)
             }
         .background(c.backgroundGrouped)
         // ⚠️ 兜底：`.scrollDismissesKeyboard` 依赖**内容能否滚动**——
@@ -145,7 +170,9 @@ struct VoicesLibraryView: View {
                 counts: vm.chipCounts,
                 totalAll: vm.totalAll,
                 favoriteCount: vm.favoriteCount,
-                onCommit: { reload() },
+                onCommit: { dismissing in
+                    dismissing ? reloadAfterSheetDismiss() : reload()
+                },
                 onDismiss: { sheetPresented = false }
             )
             .presentationDetents([.medium, .large])
@@ -153,7 +180,12 @@ struct VoicesLibraryView: View {
         }
         .task { initialLoad() }
         .onChange(of: searchText) { _, _ in scheduleSearch() }
-        .onDisappear { player.stop() }
+        .onDisappear {
+            player.stop()
+            deferredReloadTask?.cancel()
+            swapTask?.cancel()
+            contentVisible = true   // 别让半途取消的淡出把列表留在透明状态
+        }
     }
 
     // MARK: 搜索框
@@ -234,6 +266,8 @@ struct VoicesLibraryView: View {
         // ⚠️ `Rectangle` 而不是 `Capsule`：连圆角外的四个方角也算进热区（多出几 pt 无所谓，
         //    漏掉一角就会「明明点在按钮上却没反应」）
         .contentShape(Rectangle())
+        // 选完分类，胶囊的底色/描边/计数跟着过渡一下，别硬切
+        .animation(.easeOut(duration: 0.22), value: selectedCategory)
         .onTapGesture { sheetPresented = true }
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("选择分类".localized())
@@ -241,6 +275,7 @@ struct VoicesLibraryView: View {
 
     private var favoriteButton: some View {
         Button {
+            deferredReloadTask?.cancel()   // 别让 Sheet 排的延迟刷新晚一步把列表再切一次
             showFavoritesOnly.toggle()
             if showFavoritesOnly { selectedCategory = nil }
             reload()
@@ -349,7 +384,21 @@ struct VoicesLibraryView: View {
         showFavoritesOnly = appState.voiceLibraryShowFavoritesOnly
         reload()
         // 骨架屏 → 真实卡片也算一次「内容切换」，走同一条淡入过渡
-        withAnimation(.easeOut(duration: 0.24)) { didLoad = true }
+        withAnimation(Self.swapAnimation) { didLoad = true }
+    }
+
+    /// 分类 Sheet 提交（点行即收起）后的刷新
+    ///
+    /// ⚠️ 不能同步 `reload()`：Sheet 收起动画与列表淡入同时开始，
+    /// 0.28s 的过渡全程发生在 Sheet 背后，用户体感就是「数据硬切了一下」。
+    /// 排到收起之后，按钮上的分类名（Binding）已经先变，列表随后淡入换数据。
+    private func reloadAfterSheetDismiss() {
+        deferredReloadTask?.cancel()
+        deferredReloadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.sheetDismissDelayNanos)
+            guard !Task.isCancelled else { return }
+            reload()
+        }
     }
 
     /// 重新按当前筛选取首页并整体替换
@@ -362,14 +411,33 @@ struct VoicesLibraryView: View {
         vm.setPageSize(pageSize)
         syncToVM()
         vm.reloadCurrentPage()
-        let fresh = vm.displayedVoices
-        let freshTotal = vm.totalCount
-        withAnimation(.easeOut(duration: 0.24)) {
-            voices = fresh
-            totalCount = freshTotal
-            scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部 + 走过渡动画
-        }
+        apply(vm.displayedVoices, vm.totalCount)
         persist()
+    }
+
+    /// 落地一页新数据：淡出 → 换 → 淡入
+    ///
+    /// ⚠️ 换数据的瞬间 `contentVisible` 已经是 0，所以 `.id` 那一次硬替换看不见；
+    ///    紧接着把它置回 1，用户看到的就是「旧列表淡出 → 新列表浮上来」。
+    private func apply(_ fresh: [Voice], _ total: Int, animated: Bool = true) {
+        guard animated else {
+            voices = fresh
+            totalCount = total
+            scrollResetID += 1
+            return
+        }
+        withAnimation(Self.fadeOutAnimation) { contentVisible = false }
+        swapTask?.cancel()
+        swapTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.fadeOutNanos)
+            guard !Task.isCancelled else { return }
+            withAnimation(Self.swapAnimation) {
+                voices = fresh
+                totalCount = total
+                scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
+                contentVisible = true
+            }
+        }
     }
 
     /// 追加下一页

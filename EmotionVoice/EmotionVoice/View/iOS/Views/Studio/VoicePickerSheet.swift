@@ -54,6 +54,14 @@ struct VoicePickerSheet: View {
     /// 列表滚动位置的「重置版本号」：作为 `ScrollView` 的 id，一自增就整体重建、偏移归零
     @State private var scrollResetID = 0
 
+    /// 「换数据」那一步排的 Task（见 `apply(_:total:)`）
+    @State private var swapTask: Task<Void, Never>? = nil
+
+    /// 内容区可见度：刷新 = 旧内容淡出 → 换数据 → 新内容淡入 + 上浮。
+    /// ⚠️ 不用容器级 `.transition`（`.id` 重建触发的 transition 不保证触发，肉眼看是硬切），
+    ///    直接改 `opacity` / `offset` 这种可动画属性必然出效果。
+    @State private var contentVisible = true
+
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 10),
               count: metrics.voiceGridColumns)
@@ -62,6 +70,18 @@ struct VoicePickerSheet: View {
     private var pageSize: Int { metrics.voiceGridColumns * 4 }
 
     private var hasMore: Bool { voices.count < totalCount }
+
+    /// 新内容淡入 + 上浮 / 旧内容淡出（与 `VoicesLibraryView` 同一套节奏）
+    private static let swapAnimation = Animation.easeOut(duration: 0.28)
+    private static let fadeOutAnimation = Animation.easeOut(duration: 0.1)
+    private static let fadeOutNanos: UInt64 = 100_000_000
+
+    /// 分类列表就地替换内容区的进出场（出现：从下方滑入 + 淡入；消失：滑下去 + 淡出）
+    private static let panelAnimation = Animation.easeOut(duration: 0.26)
+    private static let panelTransition: AnyTransition = .asymmetric(
+        insertion: .move(edge: .bottom).combined(with: .opacity),
+        removal: .move(edge: .bottom).combined(with: .opacity)
+    )
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,22 +92,33 @@ struct VoicePickerSheet: View {
                     counts: vm.chipCounts,
                     totalAll: vm.totalAll,
                     favoriteCount: vm.favoriteCount,
-                    onCommit: { reload() },
-                    onDismiss: { categoryPresented = false }
+                    onCommit: { _ in reload() },
+                    onDismiss: { dismissCategoryList() }
                 )
+                .transition(Self.panelTransition)
             } else {
-                navBar
-                searchBar
-                filterBar
-                resultBar
-                grid
+                // ⚠️ 必须包一层：`navBar`/`grid` 是多个视图，逐个挂 transition 会各自为政
+                VStack(spacing: 0) {
+                    navBar
+                    searchBar
+                    filterBar
+                    resultBar
+                    grid
+                }
+                .transition(.opacity)
             }
         }
+        // ⚠️ 分支切换的过渡由这个 `value` 驱动（配合下面的 withAnimation）
+        .animation(Self.panelAnimation, value: categoryPresented)
         .background(c.backgroundGrouped)
         .simultaneousGesture(dragToDismissKeyboard)
         .task { initialLoad() }
         .onChange(of: searchText) { _, _ in scheduleSearch() }
-        .onDisappear { player.stop() }
+        .onDisappear {
+            player.stop()
+            swapTask?.cancel()
+            contentVisible = true   // 别让半途取消的淡出把列表留在透明状态
+        }
     }
 
     // MARK: - 顶栏
@@ -140,54 +171,41 @@ struct VoicePickerSheet: View {
         .padding(.bottom, 8)
     }
 
+    /// 分类按钮：整块胶囊都是热区，点哪儿都切到分类列表。
+    ///
+    /// ⚠️ 早年只有中间那截 `Button` 的 label 能点（右侧 chevron 区、左侧留白都点不动）。
+    ///    改成「外层容器 + `contentShape(Rectangle())` + `onTapGesture`」，视觉不变、整条都能点。
+    ///
+    /// ⚠️ 选完分类**不再出现 ×**：清除筛选在分类列表里点「全部音色 / 重置」，
+    ///    按钮上挂 × 既挤掉类名，又容易被看成「删掉这个分类」。
     private var filterButton: some View {
         HStack(spacing: 0) {
-            Button {
-                categoryPresented = true
-            } label: {
-                HStack(spacing: 7) {
-                    if let cat = selectedCategory {
-                        Text(cat.icon)
-                            .font(.system(size: 15))
-                        Text(cat.displayName)
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                        Text("\(vm.countForCategory(cat))")
-                            .font(.system(size: 12.5, design: .monospaced))
-                            .foregroundStyle(c.accent.opacity(0.75))
-                    } else {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(c.textSecondary)
-                        Text("全部分类".localized())
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                        Text("\(vm.totalAll)")
-                            .font(.system(size: 12.5, design: .monospaced))
-                            .foregroundStyle(c.textTertiary)
-                    }
+            HStack(spacing: 7) {
+                if let cat = selectedCategory {
+                    Text(cat.icon)
+                        .font(.system(size: 15))
+                    Text(cat.displayName)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                    Text("\(vm.countForCategory(cat))")
+                        .font(.system(size: 12.5, design: .monospaced))
+                        .foregroundStyle(c.accent.opacity(0.75))
+                } else {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(c.textSecondary)
+                    Text("全部分类".localized())
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                    Text("\(vm.totalAll)")
+                        .font(.system(size: 12.5, design: .monospaced))
+                        .foregroundStyle(c.textTertiary)
                 }
-                .foregroundStyle(c.textPrimary)
-                .padding(.leading, 12)
-                .padding(.trailing, 6)
-                .frame(height: 36)
             }
-            .buttonStyle(.plain)
-
-            if selectedCategory != nil {
-                Button {
-                    selectedCategory = nil
-                    reload()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(c.accent.opacity(0.8))
-                        .frame(width: 18, height: 18)
-                        .background(Circle().fill(c.accent.opacity(0.18)))
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
-            }
+            .foregroundStyle(c.textPrimary)
+            .padding(.leading, 12)
+            .padding(.trailing, 6)
+            .frame(height: 36)
 
             Image(systemName: "chevron.down")
                 .font(.system(size: 12, weight: .semibold))
@@ -204,7 +222,12 @@ struct VoicePickerSheet: View {
                                       lineWidth: 0.5)
                 )
         )
-        .contentShape(Capsule(style: .continuous))
+        .contentShape(Rectangle())
+        // 选完分类，胶囊的底色/描边/计数跟着过渡一下，别硬切
+        .animation(.easeOut(duration: 0.22), value: selectedCategory)
+        .onTapGesture { openCategoryList() }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("选择分类".localized())
     }
 
     private var favoriteButton: some View {
@@ -241,26 +264,6 @@ struct VoicePickerSheet: View {
 
     private var resultBar: some View {
         HStack(spacing: 8) {
-            if let cat = selectedCategory {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                    Text("%@ · %d 个".localized(cat.displayName, totalCount))
-                        .font(.system(size: 12))
-                }
-                .foregroundStyle(c.accent)
-                Text("点 ✕ 取消筛选".localized())
-                    .font(.system(size: 12))
-                    .foregroundStyle(c.textTertiary)
-            } else if showFavoritesOnly {
-                Text("仅看收藏 · %d 个".localized(totalCount))
-                    .font(.system(size: 12))
-                    .foregroundStyle(AuroraDecor.rose)
-            } else {
-                Text("共 %d 个 · 旗舰优先，再按名称排序".localized(totalCount))
-                    .font(.system(size: 12))
-                    .foregroundStyle(c.textTertiary)
-            }
 
             Spacer(minLength: 8)
 
@@ -331,6 +334,10 @@ struct VoicePickerSheet: View {
                 }
             }
             .id(scrollResetID)
+            // 换 id 是瞬间替换，所以配套「淡出 → 换 → 淡入上浮」（见 `apply(_:total:)`）
+            .opacity(contentVisible ? 1 : 0)
+            .offset(y: contentVisible ? 0 : 12)
+            .animation(Self.swapAnimation, value: contentVisible)
             // 滑动列表即收键盘（原生滚动拦截）
             .scrollDismissesKeyboard(.immediately)
     }
@@ -373,6 +380,18 @@ struct VoicePickerSheet: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - 分类列表进出场
+
+    /// 分类按钮 → 列表从下方滑入（列表是就地替换内容区，不套第二层 Sheet）
+    private func openCategoryList() {
+        withAnimation(Self.panelAnimation) { categoryPresented = true }
+    }
+
+    /// 列表滑下去退回网格；网格那边的淡入由 `reload()` 自己接上
+    private func dismissCategoryList() {
+        withAnimation(Self.panelAnimation) { categoryPresented = false }
+    }
+
     // MARK: - 数据
 
     private func initialLoad() {
@@ -387,9 +406,29 @@ struct VoicePickerSheet: View {
         vm.setPageSize(pageSize)
         syncToVM()
         vm.reloadCurrentPage()
-        voices = vm.displayedVoices
-        totalCount = vm.totalCount
-        scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
+        apply(vm.displayedVoices, vm.totalCount)
+    }
+
+    /// 落地一页新数据：淡出 → 换 → 淡入（换的瞬间内容已经是透明的，硬替换看不见）
+    private func apply(_ fresh: [Voice], _ total: Int, animated: Bool = true) {
+        guard animated else {
+            voices = fresh
+            totalCount = total
+            scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
+            return
+        }
+        withAnimation(Self.fadeOutAnimation) { contentVisible = false }
+        swapTask?.cancel()
+        swapTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.fadeOutNanos)
+            guard !Task.isCancelled else { return }
+            withAnimation(Self.swapAnimation) {
+                voices = fresh
+                totalCount = total
+                scrollResetID += 1
+                contentVisible = true
+            }
+        }
     }
 
     /// 追加下一页

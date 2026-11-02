@@ -17,10 +17,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
 
     /// 旗舰音色
     case premium = "premium"
-    /// 中文
-    case chinese = "chinese"
-    /// 英文
-    case english = "english"
 
     // 适用场景
     case sceneDaily = "scene_daily"
@@ -60,7 +56,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
     var dimension: VoiceCategoryDimension {
         switch self {
         case .premium: return .premium
-        case .chinese, .english: return .language
         case .sceneDaily, .sceneCompanion, .sceneCustomer, .sceneReading,
              .sceneSocial, .sceneAnime, .sceneNews, .sceneLive, .sceneClassic,
              .sceneSports, .sceneAudiobook, .sceneRadio, .sceneKnowledge,
@@ -77,8 +72,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
     var displayName: String {
         switch self {
         case .premium: return "旗舰音色".localized()
-        case .chinese: return "中文".localized()
-        case .english: return "英文".localized()
 
         case .sceneDaily:      return VoiceSceneCode.daily.displayName
         case .sceneCompanion:  return VoiceSceneCode.companion.displayName
@@ -115,8 +108,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
     var icon: String {
         switch self {
         case .premium:    return "⭐"
-        case .chinese:    return "🌐"
-        case .english:    return "🌍"
         case .sceneDaily:      return "💬"
         case .sceneCompanion:  return "💝"
         case .sceneCustomer:   return "🎧"
@@ -186,12 +177,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
         switch dimension {
         case .premium:
             return voice.isPremium
-        case .language:
-            switch self {
-            case .chinese: return voice.lang == .zh
-            case .english: return voice.lang == .en
-            default: return false
-            }
         case .scene:
             guard let code = sceneCode else { return false }
             return voice.scene == code
@@ -213,7 +198,7 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
 
     /// 当前应展示的分组维度（按维度顺序展示所有分类）
     static var displayOrder: [VoiceCategoryDimension] {
-        [.premium, .language, .scene, .role, .age]
+        [.premium, .scene, .role, .age]
     }
 
     /// 按维度分组的分类列表（用于 chip 横向滚动展示）
@@ -224,7 +209,7 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
     }
 
     /// 第一行已固定的分类（收藏 / 全部由视图层独立渲染）
-    static let primaryRow: Set<VoiceCategory> = [.premium, .chinese, .english]
+    static let primaryRow: Set<VoiceCategory> = [.premium]
 
     /// 第二行展示的分类：除 primaryRow 之外的全部 case，按维度顺序排列
     static var secondaryDisplayOrder: [VoiceCategory] {
@@ -239,7 +224,6 @@ enum VoiceCategory: String, CaseIterable, Identifiable, Hashable {
 /// 音色分类维度
 enum VoiceCategoryDimension: String, CaseIterable, Hashable {
     case premium = "premium"
-    case language = "language"
     case scene = "scene"
     case role = "role"
     case age = "age"
@@ -247,7 +231,6 @@ enum VoiceCategoryDimension: String, CaseIterable, Hashable {
     var displayName: String {
         switch self {
         case .premium:  return "旗舰".localized()
-        case .language: return "语言".localized()
         case .scene:    return "适用场景".localized()
         case .role:     return "角色".localized()
         case .age:      return "年龄阶段".localized()
@@ -315,12 +298,6 @@ struct Voice: Identifiable, Hashable {
 
     /// 排序键：始终用当前语言的展示名，保证中英文下排序都自然
     var sortKey: String { localizedName }
-
-    /// 兼容旧调用：派生出的「分类视图」（旗舰 > 语言）
-    var category: VoiceCategory {
-        if isPremium { return .premium }
-        return lang == .en ? .english : .chinese
-    }
 
     /// 年龄桶（用于分组筛选）；未知年龄返回 nil
     var ageBucket: AgeBucket? {

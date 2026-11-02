@@ -210,11 +210,6 @@ final class VoiceService {
         case .premium:
             return db.voiceTier == VoiceTier.premium.rawValue
 
-        case .chinese:
-            return db.voiceLangCode == VoiceLangCode.zh.rawValue
-        case .english:
-            return db.voiceLangCode == VoiceLangCode.en.rawValue
-
         // 场景：直接比 code
         case .sceneDaily:      return db.voiceSceneKey == VoiceSceneCode.daily.rawValue
         case .sceneCompanion:  return db.voiceSceneKey == VoiceSceneCode.companion.rawValue

@@ -2,8 +2,8 @@
 //  CategoryFilterSheet.swift
 //  iOSEmora
 //
-//  全部分类 Sheet：29 个 `VoiceCategory` case 按 5 个维度分组，
-//  再加视图层的「全部音色 / 仅看收藏」，一共 31 项。
+//  全部分类 Sheet：26 个 `VoiceCategory` case 按 4 个维度分组（旗舰 / 场景 / 角色 / 年龄），
+//  再加视图层的「全部音色 / 仅看收藏」，一共 28 项。
 //
 //  与 macOS chip 的差异：**单选互斥**（`selectCategory` 语义不变），
 //  但 iOS 上关闭 Sheet 不清除选择，只有「重置」才清空 —— 所以进来时要把
@@ -28,7 +28,12 @@ struct CategoryFilterSheet: View {
     let totalAll: Int
     let favoriteCount: Int
 
-    let onCommit: () -> Void
+    /// 提交选择。
+    ///
+    /// `dismissing == true` 表示调用方紧接着要收起 Sheet —— 外面据此决定
+    /// 刷新要不要延后：此刻换数据的话，列表的淡入过渡会整段被收起动画盖住，
+    /// 用户只看到「硬切」。「重置」不收起 Sheet，传 `false` 让外面立即刷新。
+    let onCommit: (_ dismissing: Bool) -> Void
     let onDismiss: () -> Void
 
     /// 「视图级筛选」分组的锚点 id（滚动定位用）
@@ -37,12 +42,16 @@ struct CategoryFilterSheet: View {
 
     @State private var flashTick = 0
 
+    /// 进场动画：Sheet 自己有上滑，但内容（分组标题 + 行）是瞬间出现的，
+    /// 给它补一段 14pt 上浮 + 淡入，观感上才是「列表滑进来」而不是「闪出来」
+    @State private var appeared = false
+
     private var hasSelection: Bool { selectedCategory != nil || showFavoritesOnly }
 
     /// 选中一行：写回选择 → 让外面刷新列表 → 直接收起（不再需要「完成」）
     private func commit(_ apply: () -> Void) {
         apply()
-        onCommit()
+        onCommit(true)
         onDismiss()
     }
 
@@ -54,7 +63,7 @@ struct CategoryFilterSheet: View {
                     Button {
                         selectedCategory = nil
                         showFavoritesOnly = false
-                        onCommit()
+                        onCommit(false)   // 重置不收起 Sheet：立刻刷新，别延迟
                     } label: {
                         Text("重置".localized())
                             .font(.system(size: 16))
@@ -138,6 +147,12 @@ struct CategoryFilterSheet: View {
             }
         }
         .background(c.backgroundGrouped)
+        .offset(y: appeared ? 0 : 14)
+        .opacity(appeared ? 1 : 0)
+        .animation(.easeOut(duration: 0.26), value: appeared)
+        .onAppear { withAnimation(.easeOut(duration: 0.26)) { appeared = true } }
+        // ⚠️ 复位：否则第二次打开时 `appeared` 还是 true，进场动画不再触发
+        .onDisappear { appeared = false }
     }
 
     // MARK: 行

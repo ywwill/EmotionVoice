@@ -16,11 +16,11 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-JSON_PATH = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice", "Voices", "basic_voices.json")
+JSON_PATH = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice", "Shared", "Voices", "basic_voices.json")
 
 # 与 Voice.swift 中 VoiceCategory 的 rawValue 保持一致
 CATEGORIES = [
-    "premium", "chinese", "english",
+    "premium",
     "scene_daily", "scene_companion", "scene_customer", "scene_reading",
     "scene_social", "scene_anime", "scene_news", "scene_live", "scene_classic",
     "scene_sports", "scene_audiobook", "scene_radio", "scene_knowledge",
@@ -106,10 +106,6 @@ SEARCH_CASES = {
 def predicate_for(cat):
     if cat == "premium":
         return "tier = 'premium'"
-    if cat == "chinese":
-        return "lang_code = 'zh'"
-    if cat == "english":
-        return "lang_code = 'en'"
     return SCENE_PREDICATE[cat]
 
 

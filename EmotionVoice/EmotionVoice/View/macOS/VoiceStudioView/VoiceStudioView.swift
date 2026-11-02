@@ -545,36 +545,19 @@ struct VoiceStudioView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
     }
 
-    /// 备选音色：只显示用户收藏的音色，最多显示 6 个（按 dimension 排序，旗舰优先）
+    /// 备选音色：只显示用户收藏的音色，最多显示 6 个（旗舰优先，其次按名字典序）
     private var alternateVoices: [Voice] {
         let all = appState.voices
 
-        // 只取收藏的音色，按 dimension 排序（旗舰 > 语言 > 场景 > 角色 > 年龄）
         let favorites = all.filter { $0.isFavorite }
 
         return favorites
             .sorted { a, b in
-                let da = dimensionRank(a.category.dimension)
-                let db_ = dimensionRank(b.category.dimension)
-                if da != db_ { return da < db_ }
-                let aIsPremium = a.category == .premium
-                let bIsPremium = b.category == .premium
-                if aIsPremium != bIsPremium { return aIsPremium }
+                if a.isPremium != b.isPremium { return a.isPremium }
                 return a.name < b.name
             }
             .prefix(6)
             .map { $0 }
-    }
-
-    /// 分类维度排序权重
-    private func dimensionRank(_ dim: VoiceCategoryDimension) -> Int {
-        switch dim {
-        case .premium:  return 0
-        case .language: return 1
-        case .scene:    return 2
-        case .role:     return 3
-        case .age:      return 4
-        }
     }
 
     // MARK: - 音频控制卡片（语速/音量）
