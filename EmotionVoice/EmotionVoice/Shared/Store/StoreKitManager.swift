@@ -11,25 +11,40 @@ import SwiftUI
 import Combine
 
 // MARK: - 商品配置
+//
+// ⚠️ 商品 ID 按平台分流：iOS 与 macOS 在 App Store Connect 上是两套独立的内购商品，
+// 但两个 target 共用这个枚举（Shared/Store），所以 rawValue 必须靠编译条件隔离。
+// iOS 这套 ID 后缀即积分数（.iOS.60 / .iOS.400 / .iOS.900 / .iOS.1500），一一对应；
+// macOS 保留原有 ID —— 其中 400 积分档的 ID 后缀是 30（历史包袱），**不要**跟着
+// 积分改名，否则 macOS 会拉不到商品。
 enum CreditProduct: String, CaseIterable, Sendable {
-    case credits6 = "ai.emora.credit.60"      // $1.99 → 60 积分
-    case credits30 = "ai.emora.credit.30"     // $9.99 → 400 积分（主推）
-    case credits60 = "ai.emora.credit.900"     // $19.99 → 900 积分（主推）
-    case credits98 = "ai.emora.credit.1500"   // $29.99 → 1500 积分
-    
+    #if canImport(UIKit)
+    // iOS
+    case credits60   = "ai.emora.credit.iOS.60"
+    case credits400  = "ai.emora.credit.iOS.400"
+    case credits900  = "ai.emora.credit.iOS.900"
+    case credits1500 = "ai.emora.credit.iOS.1500"
+    #else
+    // macOS
+    case credits60   = "ai.emora.credit.60"
+    case credits400  = "ai.emora.credit.30"
+    case credits900  = "ai.emora.credit.900"
+    case credits1500 = "ai.emora.credit.1500"
+    #endif
+
     nonisolated var creditsAmount: Int {
         switch self {
-        case .credits6: return 60
-        case .credits30: return 400
-        case .credits60: return 900
-        case .credits98: return 1500
+        case .credits60:   return 60
+        case .credits400:  return 400
+        case .credits900:  return 900
+        case .credits1500: return 1500
         }
     }
-    
+
     nonisolated var isRecommended: Bool {
-        return self == .credits30
+        return self == .credits400
     }
-    
+
     nonisolated static var allProductIds: [String] {
         return allCases.map { $0.rawValue }
     }
@@ -299,6 +314,6 @@ extension StoreKitManager {
     
     /// 获取推荐商品
     var recommendedProduct: Product? {
-        return product(for: .credits30)
+        return product(for: .credits400)
     }
 }

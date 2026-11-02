@@ -373,10 +373,10 @@ struct PurchaseProductRow: View {
 
     private var productDescription: String {
         switch creditProduct {
-        case .credits6: return "适合尝鲜体验".localized()
-        case .credits30: return "个人创作首选".localized()
-        case .credits60: return "高频使用推荐".localized()
-        case .credits98: return "专业创作者".localized()
+        case .credits60: return "适合尝鲜体验".localized()
+        case .credits400: return "个人创作首选".localized()
+        case .credits900: return "高频使用推荐".localized()
+        case .credits1500: return "专业创作者".localized()
         case .none: return ""
         }
     }
@@ -389,10 +389,10 @@ struct PurchaseProductRow: View {
     /// 替代原来的满饱和纯色实心圆（大面积高亮刺眼）
     private var iconTint: Color {
         switch creditProduct {
-        case .credits6:  return Color(hex: 0x7C9A80)   // 🌱 哑光苔绿
-        case .credits30: return Color(hex: 0xB98A55)   // ⭐ 哑光琥珀
-        case .credits60: return Color(hex: 0xC4735A)   // 🔥 哑光赭红
-        case .credits98: return Color(hex: 0x7C86B8)   // 💎 哑光蓝紫
+        case .credits60:   return Color(hex: 0x7C9A80)   // 🌱 哑光苔绿
+        case .credits400:  return Color(hex: 0xB98A55)   // ⭐ 哑光琥珀
+        case .credits900:  return Color(hex: 0xC4735A)   // 🔥 哑光赭红
+        case .credits1500: return Color(hex: 0x7C86B8)   // 💎 哑光蓝紫
         case .none:      return AppColor.textTertiary
         }
     }

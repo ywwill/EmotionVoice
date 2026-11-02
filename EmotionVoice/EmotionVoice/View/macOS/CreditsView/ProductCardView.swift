@@ -210,13 +210,13 @@ struct ProductCardView: View {
 
     private var features: [String] {
         switch creditProduct {
-        case .credits6:
-            return ["适合尝鲜体验".localized(), "永久有效".localized()]
-        case .credits30:
-            return ["个人创作首选".localized(), "永久有效".localized()]
         case .credits60:
+            return ["适合尝鲜体验".localized(), "永久有效".localized()]
+        case .credits400:
             return ["个人创作首选".localized(), "永久有效".localized()]
-        case .credits98:
+        case .credits900:
+            return ["个人创作首选".localized(), "永久有效".localized()]
+        case .credits1500:
             return ["高频使用推荐".localized(), "永久有效".localized()]
         case .none:
             return ["永久有效".localized()]
@@ -364,19 +364,19 @@ struct SkeletonProductCard: View {
 extension CreditProduct {
     var icon: String {
         switch self {
-        case .credits6: return "🌱"
-        case .credits30: return "⭐"
-        case .credits60: return "🔥"
-        case .credits98: return "💎"
+        case .credits60: return "🌱"
+        case .credits400: return "⭐"
+        case .credits900: return "🔥"
+        case .credits1500: return "💎"
         }
     }
 
     var name: String {
         switch self {
-        case .credits6: return "体验包".localized()
-        case .credits30: return "基础包".localized()
-        case .credits60: return "进阶包".localized()
-        case .credits98: return "专业包".localized()
+        case .credits60: return "体验包".localized()
+        case .credits400: return "基础包".localized()
+        case .credits900: return "进阶包".localized()
+        case .credits1500: return "专业包".localized()
         }
     }
 }

@@ -34,7 +34,7 @@ struct PurchaseSheet: View {
     var shortfallHint: String? = nil
 
     /// 当前选中的套餐。默认落在推荐档上，省掉用户一次点选。
-    @State private var selected: CreditProduct = .credits30
+    @State private var selected: CreditProduct = .credits400
 
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
@@ -83,6 +83,10 @@ struct PurchaseSheet: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    // 处理中锁住套餐选择：避免系统确认弹窗期间还能切档，导致按钮状态闪回
+                    .allowsHitTesting(!isPurchasing)
+                    .opacity(isPurchasing ? 0.5 : 1)
+                    .animation(.easeOut(duration: 0.16), value: isPurchasing)
 
                     footnote
 
@@ -184,7 +188,7 @@ struct PurchaseSheet: View {
             // ⚠️ 商品拉不回来时一定要说清楚为什么按钮点不了：
             // 否则用户只看到一个灰着的「立即购买」，既不知道在加载也不知道失败了。
             if productsLoaded {
-                Text("购买后积分永久有效，到账可能延迟；未到账时 App 会在下次启动自动补发。".localized())
+                Text("购买后积分永久有效。".localized())
                 Text("确认购买后将从您的 App Store 账户扣款。".localized())
             } else {
                 Text("正在获取商品信息…".localized())
@@ -202,27 +206,15 @@ struct PurchaseSheet: View {
     private var footBar: some View {
         VStack(spacing: 0) {
             Hairline()
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("%d 积分".localized(selected.creditsAmount))
-                        .font(.system(size: 12))
-                        .foregroundStyle(c.textTertiary)
-                    Text(priceText(for: selected))
-                        .font(AuroraFont.mono17)
-                        .foregroundStyle(c.textPrimary)
-                }
-                .fixedSize()
-
-                PrimaryButton(title: ctaTitle, systemImage: "diamond.fill", height: 48,
-                              isEnabled: canBuy) {
+            HStack(spacing: 10) {
+                PrimaryButton(title: ctaTitle, systemImage: "diamond.fill", height: 50,
+                              isEnabled: canBuy, isLoading: isPurchasing) {
                     Task { await buy(selected) }
                 }
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
             .padding(.bottom, 10)
-            .disabled(isPurchasing)
-            .opacity(isPurchasing ? 0.6 : 1)
         }
         .background(c.bar)
     }
@@ -231,8 +223,10 @@ struct PurchaseSheet: View {
         isPurchasing ? "购买中…".localized() : "立即购买".localized()
     }
 
+    /// 任意一笔购买在进行中都算「处理中」——不能只看 selected：
+    /// 用户在系统确认弹窗期间点了别的套餐时 selected 会变，绑死 selected 会让 CTA 瞬间恢复可点。
     private var isPurchasing: Bool {
-        store.purchasingProductId == selected.rawValue
+        store.purchasingProductId != nil
     }
 
     /// 商品还没拉回来时不能点（点了只会拿到「商品未找到」）。
@@ -248,6 +242,7 @@ struct PurchaseSheet: View {
     // MARK: 行为
 
     private func select(_ product: CreditProduct) {
+        guard !isPurchasing else { return }
         withAnimation(.easeOut(duration: 0.16)) { selected = product }
     }
 
@@ -280,38 +275,38 @@ struct PurchaseSheet: View {
 
     private func emoji(for product: CreditProduct) -> String {
         switch product {
-        case .credits6:  return "🌱"
-        case .credits30: return "⭐"
-        case .credits60: return "🔥"
-        case .credits98: return "💎"
+        case .credits60:   return "🌱"
+        case .credits400:  return "⭐"
+        case .credits900:  return "🔥"
+        case .credits1500: return "💎"
         }
     }
 
     private func subtitle(for product: CreditProduct) -> String {
         switch product {
-        case .credits6:  return "适合尝鲜体验".localized()
-        case .credits30: return "个人创作首选".localized()
-        case .credits60: return "高频使用推荐".localized()
-        case .credits98: return "专业创作者".localized()
+        case .credits60:   return "适合尝鲜体验".localized()
+        case .credits400:  return "个人创作首选".localized()
+        case .credits900:  return "高频使用推荐".localized()
+        case .credits1500: return "专业创作者".localized()
         }
     }
 
     /// 商品还没拉回来时的兜底价（与 App Store Connect 配置保持一致）
     private func priceFallback(for product: CreditProduct) -> String {
         switch product {
-        case .credits6:  return "¥6"
-        case .credits30: return "¥30"
-        case .credits60: return "¥60"
-        case .credits98: return "¥98"
+        case .credits60:   return "¥6"
+        case .credits400:  return "¥30"
+        case .credits900:  return "¥60"
+        case .credits1500: return "¥98"
         }
     }
 
     private func packageTint(_ product: CreditProduct) -> Color {
         switch product {
-        case .credits6:  return Color(hex: 0x57C08A)
-        case .credits30: return Color(hex: 0xF2A03D)
-        case .credits60: return Color(hex: 0xFF7A6B)
-        case .credits98: return Color(hex: 0x918DF5)
+        case .credits60:   return Color(hex: 0x57C08A)
+        case .credits400:  return Color(hex: 0xF2A03D)
+        case .credits900:  return Color(hex: 0xFF7A6B)
+        case .credits1500: return Color(hex: 0x918DF5)
         }
     }
 }

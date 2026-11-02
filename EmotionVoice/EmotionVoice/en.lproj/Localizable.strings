@@ -400,7 +400,7 @@
 "无损原始 PCM，适合二次编辑" = "Lossless raw PCM — ideal for further editing";
 
 // iOS · 购买积分
-"购买后积分永久有效，到账可能延迟；未到账时 App 会在下次启动自动补发。" = "Credits never expire after purchase; arrival may be delayed. If not received, the app auto-reissues them on next launch.";
+"购买后积分永久有效。" = "Credits never expire after purchase.";
 "确认购买后将从您的 App Store 账户扣款。" = "Your App Store account will be charged after confirming the purchase.";
 "正在获取商品信息…" = "Fetching product info…";
 "%d 积分" = "%d Credits";

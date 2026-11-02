@@ -57,12 +57,18 @@ struct PrimaryButton: View {
     /// 底部条里几个按钮并排时用得着：主操作不该跟着旁边的数字长短伸缩。
     var width: CGFloat? = nil
     var isEnabled: Bool = true
+    /// 处理中：图标位换成转圈并禁用点击，购买/提交类操作防重复点
+    var isLoading: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let systemImage {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(c.ctaForeground)
+                } else if let systemImage {
                     Image(systemName: systemImage)
                         .font(.system(size: 14, weight: .semibold))
                 }
@@ -83,10 +89,10 @@ struct PrimaryButton: View {
                     .shadow(color: c.ctaStart.opacity(isEnabled ? 0.32 : 0),
                             radius: 10, x: 0, y: 4)
             )
-            .opacity(isEnabled ? 1 : 0.45)
+            .opacity(isLoading ? 1 : (isEnabled ? 1 : 0.45))
         }
         .buttonStyle(.plain)
-        .disabled(!isEnabled)
+        .disabled(!isEnabled || isLoading)
     }
 }
 
