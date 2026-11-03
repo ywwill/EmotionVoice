@@ -385,17 +385,7 @@ struct StudioView: View {
     private var cardHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(c.accent)
-                    Text("文本输入".localized())
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(c.textPrimary)
-                }
-
                 if !metrics.usesTwoColumnStudio {
-                    Spacer(minLength: 4)
                     voiceHeaderChip
                     Spacer(minLength: 4)
                 } else {

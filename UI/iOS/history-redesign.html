@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmotionVoice iOS · 历史记录（项目页）优化设计 v2 · 待确认</title>
+<style>
+:root{
+  --font: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+}
+html[data-theme="light"]{
+  --page:#EEEBF8; --panel:#FFFFFF; --panel-2:#F7F4FE;
+  --hair:rgba(88,63,178,.13); --hair-2:rgba(88,63,178,.22);
+  --ink:#1B1533; --ink-2:#5C5780; --ink-3:#736D8F;
+
+  --bg:#F5F1FE; --surface:#FFFFFF; --surface-2:#F7F4FE; --surface-3:#EDE8FB;
+  --text-1:#1B1533; --text-2:#5C5780; --text-3:#736D8F;
+  --line:rgba(88,63,178,.11); --line-2:rgba(88,63,178,.20);
+  --accent:#6D3BF5; --accent-soft:rgba(109,59,245,.12);
+  --accent-line:rgba(109,59,245,.42);
+  --cta-1:#5B2EDB; --cta-2:#CE2B72;
+  --amber:#B87200; --rose:#D6336C; --mint:#0FA36B; --violet:#6D3BF5;
+  --danger:#E0344B; --info:#2E7BE0;
+  --shadow:0 12px 30px rgba(78,44,160,.14);
+  --phone-edge:#D9D3EC;
+}
+html[data-theme="dark"]{
+  --page:#080611; --panel:#14111F; --panel-2:#1A1628;
+  --hair:rgba(255,255,255,.09); --hair-2:rgba(255,255,255,.17);
+  --ink:#F5F2FF; --ink-2:#ADA5CC; --ink-3:#7C7496;
+
+  --bg:#0B0916; --surface:#1B1731; --surface-2:#221D3D; --surface-3:#2B2549;
+  --text-1:#F5F2FF; --text-2:#ADA5CC; --text-3:#8E86B0;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.17);
+  --accent:#B79AFF; --accent-soft:rgba(139,92,255,.24);
+  --accent-line:rgba(183,154,255,.50);
+  --cta-1:#7C4DFF; --cta-2:#E23C86;
+  --amber:#FFC24B; --rose:#FF6B9C; --mint:#3ED99A; --violet:#8A5BFF;
+  --danger:#FF6B7E; --info:#5BA8FF;
+  --shadow:0 14px 36px rgba(0,0,0,.55);
+  --phone-edge:#211C33;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font);
+  -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.62}
+.wrap{max-width:1320px;margin:0 auto;padding:0 30px 130px}
+a{color:var(--accent)}
+svg.ic{width:1em;height:1em;display:block;flex:none}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+
+/* ---------- 页头 ---------- */
+.page-head{padding:52px 0 34px;border-bottom:1px solid var(--hair);
+  display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.page-head h1{font-size:31px;font-weight:700;margin:0 0 8px;letter-spacing:-.5px}
+.page-head p{margin:0;color:var(--ink-2);max-width:700px;font-size:13.5px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.head-meta{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.tag{font:600 11px/1 var(--mono);color:var(--ink-2);border:1px solid var(--hair);
+  background:var(--panel);padding:8px 10px;border-radius:8px;white-space:nowrap}
+.tag.hi{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.btn{border:1px solid var(--hair);background:var(--panel);color:var(--ink);border-radius:10px;
+  padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.btn:hover{border-color:var(--accent)}
+.btn.on{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+section{padding-top:62px}
+h2{font-size:21px;font-weight:650;margin:0 0 6px;letter-spacing:-.2px;display:flex;align-items:center;gap:11px}
+h2 .num{font:600 12px/1 var(--mono);color:var(--accent);background:var(--accent-soft);padding:6px 8px;border-radius:6px}
+h2 + .lede, .lede{color:var(--ink-2);margin:0 0 26px;font-size:13.5px;max-width:900px}
+h3{font-size:15px;font-weight:650;margin:34px 0 14px}
+
+/* ---------- 痛点 / 策略 ---------- */
+.pain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.pain{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:16px 17px 15px}
+.pain .pn{font:600 11px/1 var(--mono);color:var(--accent);letter-spacing:.06em}
+.pain h4{margin:9px 0 8px;font-size:14.5px;font-weight:650}
+.pain .old{color:var(--ink-2);font-size:12.5px;padding-left:11px;border-left:2px solid var(--hair-2);margin-bottom:9px}
+.pain .new{font-size:12.5px;color:var(--ink);padding-left:11px;border-left:2px solid var(--accent)}
+.pain .new b{color:var(--accent);font-weight:650}
+
+/* ---------- 舞台 ---------- */
+.stage{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.phone-stage{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.frame{display:flex;flex-direction:column;align-items:center;gap:12px;margin:0;transition:filter .3s, transform .3s}
+.frame.focus{filter:drop-shadow(0 0 0 var(--accent))}
+.frame.focus .phone{box-shadow:0 0 0 3px var(--accent),var(--shadow)}
+.phone-scaler{width:330px;height:716px;position:relative;flex:none}
+.phone{width:393px;height:852px;position:absolute;top:0;left:0;transform:scale(.84);transform-origin:top left;
+  background:var(--bg);border-radius:46px;overflow:hidden;
+  box-shadow:var(--shadow),0 0 0 10px var(--phone-edge),0 0 0 11px rgba(0,0,0,.06)}
+.phone::after{content:"";position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:118px;height:34px;border-radius:20px;background:#08060F;z-index:60}
+body.zoom-full .phone-scaler{width:393px;height:852px}
+body.zoom-full .phone{transform:none}
+figcaption{width:330px;font-size:12px;color:var(--ink-2);line-height:1.65}
+body.zoom-full figcaption{width:393px}
+figcaption b{color:var(--ink);font-weight:650}
+figcaption em{display:block;font-style:normal;color:var(--ink-3);font-size:11.5px;margin-top:5px}
+.state-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.state-tabs button{border:1px solid var(--hair);background:var(--panel);color:var(--ink-2);
+  border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.state-tabs button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- iPhone 内部 ---------- */
+.statusbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 7px;font-size:14px;font-weight:650;color:var(--text-1);position:relative;z-index:50}
+.statusbar .right{display:flex;gap:6px;align-items:center}
+.sig{display:flex;align-items:flex-end;gap:2px;height:11px}
+.sig i{width:3px;background:currentColor;border-radius:1px;display:block}
+.sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}.sig i:nth-child(3){height:8px}.sig i:nth-child(4){height:11px}
+.bat{width:24px;height:12px;border:1.5px solid currentColor;border-radius:3.5px;position:relative;opacity:.9}
+.bat::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:5px;background:currentColor;border-radius:0 1px 1px 0}
+.bat i{position:absolute;inset:1.5px;width:66%;background:currentColor;border-radius:1.5px;display:block}
+.screen{height:calc(100% - 54px);display:flex;flex-direction:column;position:relative;overflow:hidden}
+.navbar{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;position:relative;font-size:15.5px;font-weight:600;color:var(--accent)}
+.navbar .l,.navbar .r{display:flex;align-items:center;gap:12px;z-index:2}
+.navbar .title{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:650;color:var(--text-1);pointer-events:none}
+.navbtn{display:flex;align-items:center;gap:5px;color:var(--accent);font-size:15px;font-weight:600}
+.navpill{border:.5px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);
+  border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:650;display:flex;align-items:center;gap:5px}
+.lt{padding:2px 16px 0;font-size:34px;font-weight:700;letter-spacing:-.6px;color:var(--text-1);line-height:1.15;flex:none}
+.lt .sub{display:block;font-size:12.5px;font-weight:500;letter-spacing:0;color:var(--text-3);margin-top:3px}
+.search{margin:11px 16px 9px;height:38px;flex:none;border-radius:11px;background:var(--surface-3);
+  display:flex;align-items:center;gap:8px;padding:0 11px;color:var(--text-3);font-size:13.5px}
+.search .mag{font-size:15px;opacity:.75}
+.search .ph{flex:1}
+.search .clear{width:17px;height:17px;border-radius:50%;background:var(--text-3);color:var(--surface);
+  display:grid;place-items:center;font-size:11px;opacity:.55}
+.stat{margin:0 16px 9px;flex:none;height:38px;border-radius:10px;background:var(--surface-2);
+  border:.5px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:0;font-size:11.5px;color:var(--text-2)}
+.stat .s{flex:1;display:flex;align-items:center;gap:6px}
+.stat .s + .s{border-left:.5px solid var(--line-2);padding-left:12px}
+.stat .v{font:650 13px/1 var(--mono);color:var(--text-1)}
+.stat .sep{width:1px;height:16px;background:var(--line-2)}
+.chips{display:flex;gap:7px;padding:0 16px 10px;flex:none;overflow:hidden}
+.chip{flex:none;height:29px;border-radius:999px;padding:0 11px;display:flex;align-items:center;gap:5px;
+  font-size:12.5px;background:var(--surface);color:var(--text-2);border:.5px solid var(--line);white-space:nowrap;cursor:pointer}
+.chip .n{font:400 11px var(--mono);color:var(--text-3)}
+.chip.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line);font-weight:650}
+.chip.on .n{color:var(--accent);opacity:.8}
+.scrollarea{flex:1;overflow:hidden;position:relative}
+.group{display:flex;align-items:center;gap:8px;padding:13px 16px 7px;font-size:12px;font-weight:650;color:var(--text-3);letter-spacing:.02em}
+.group .cnt{font:400 11px var(--mono);color:var(--text-3);opacity:.8}
+.group .gl{flex:1;height:.5px;background:var(--line)}
+.rows{padding:0 12px}
+.hrow{position:relative;display:flex;align-items:center;gap:11px;margin:0 0 7px;padding:10px 12px;
+  border-radius:12px;background:var(--surface);border:.5px solid var(--line);overflow:hidden}
+.hrow.playing{background:var(--surface-2);border-color:var(--accent-line)}
+.hrow.playing::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--cta-1),var(--cta-2))}
+.hrow.dim{opacity:.42}
+.hrow.missing{opacity:.6}
+.hav{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;
+  font-size:18px;font-weight:650;color:#fff;background:linear-gradient(145deg,var(--av1),var(--av2));
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.22)}
+.hbody{flex:1;min-width:0}
+.hline1{display:flex;align-items:baseline;gap:8px}
+.hname{flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htime{font:400 10.5px var(--mono);color:var(--text-3);white-space:nowrap}
+.hline2{display:flex;align-items:center;gap:6px;margin-top:5px;min-width:0}
+.pill{height:19px;padding:0 7px;border-radius:6px;display:flex;align-items:center;gap:4px;
+  font-size:10.5px;font-weight:600;white-space:nowrap}
+.pill.voice{background:var(--accent-soft);color:var(--accent)}
+.pill.tone{background:rgba(214,51,108,.11);color:var(--rose)}
+.pill.state{background:rgba(46,123,224,.12);color:var(--info)}
+.pill.fail{background:rgba(224,52,75,.12);color:var(--danger)}
+.pill.warn{background:rgba(184,114,0,.13);color:var(--amber)}
+.pill.ghost{background:var(--surface-3);color:var(--text-3)}
+.m{font:400 10.5px var(--mono);color:var(--text-3);white-space:nowrap}
+.mdot{color:var(--text-3);opacity:.55;font-size:10px}
+.playbtn{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface-3);color:var(--accent);border:.5px solid var(--line);font-size:13px;cursor:pointer}
+.playbtn.on{background:linear-gradient(135deg,var(--cta-1),var(--cta-2));color:#fff;border-color:transparent}
+.wave{display:flex;align-items:flex-end;gap:2px;height:14px}
+.wave i{width:2px;border-radius:1px;background:var(--accent);display:block;
+  animation:br 1s ease-in-out infinite alternate}
+.wave i:nth-child(1){height:7px;animation-delay:0s}
+.wave i:nth-child(2){height:13px;animation-delay:.16s}
+.wave i:nth-child(3){height:9px;animation-delay:.32s}
+.wave i:nth-child(4){height:11px;animation-delay:.48s}
+@keyframes br{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+.progress{position:absolute;left:0;bottom:0;height:2px;background:var(--accent);opacity:.65}
+.sel{width:23px;height:23px;flex:none;border-radius:50%;border:1.5px solid var(--line-2);
+  display:grid;place-items:center;color:#fff;font-size:12px}
+.sel.on{background:var(--accent);border-color:var(--accent)}
+.skel{height:66px;border-radius:12px;background:var(--surface);border:.5px solid var(--line);margin:0 0 7px;
+  display:flex;align-items:center;gap:11px;padding:10px 12px}
+.skel .b{background:var(--surface-3);border-radius:6px;animation:sk 1.4s ease-in-out infinite alternate}
+@keyframes sk{from{opacity:.45}to{opacity:1}}
+.loadmore{display:flex;align-items:center;justify-content:center;gap:7px;padding:14px 0 20px;
+  color:var(--text-3);font-size:11.5px}
+.spin{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2);border-top-color:var(--accent);animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* mini player / 工具条 / tabbar */
+.dock{flex:none;position:relative;z-index:5}
+.mini{margin:0 12px 7px;height:56px;border-radius:14px;background:var(--surface);
+  border:.5px solid var(--line);box-shadow:0 6px 18px rgba(78,44,160,.10);
+  display:flex;align-items:center;gap:10px;padding:0 10px;position:relative;overflow:hidden}
+.mini .mav{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:15px;font-weight:650;
+  background:linear-gradient(145deg,#9B7BFF,#6D3BF5)}
+.mini .mt{flex:1;min-width:0}
+.mini .mt b{display:block;font-size:12.5px;font-weight:650;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .mt span{font-size:10.5px;color:var(--text-3)}
+.mini .mb{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--cta-1),var(--cta-2));color:#fff;font-size:12px}
+.mini .mx{color:var(--text-3);font-size:15px}
+.mini .mp{position:absolute;left:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--cta-1),var(--cta-2))}
+.toolbar{padding:9px 16px 11px;background:var(--surface);border-top:.5px solid var(--line);
+  display:flex;align-items:center;gap:0}
+.toolbar .cnt{font:700 13px var(--mono);color:#fff;background:var(--accent);padding:4px 9px;border-radius:999px}
+.toolbar .lbl{font-size:12px;color:var(--text-2);margin-left:8px}
+.toolbar .sp{flex:1}
+.toolbar .act{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--accent);
+  min-width:44px;margin-left:4px}
+.toolbar .act svg{font-size:17px}
+.toolbar .act.danger{color:var(--danger)}
+.toolbar .act.off{color:var(--text-3);opacity:.55}
+.toolbar .vr{width:1px;height:26px;background:var(--line-2);margin:0 4px}
+.tabbar{height:83px;flex:none;border-top:.5px solid var(--line);background:var(--surface);
+  display:flex;align-items:flex-start;justify-content:space-around;padding-top:10px}
+.tabbar .t{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--text-3);width:33%}
+.tabbar .t.on{color:var(--accent)}
+.tabbar .t svg{font-size:21px}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--text-1);opacity:.28;z-index:40}
+
+
+/* 收藏角标 / 更多菜单 / 播放详情页收藏 */
+.hav{position:relative}
+.fav{position:absolute;right:-4px;top:-4px;width:17px;height:17px;border-radius:50%;
+  background:var(--surface);display:grid;place-items:center;color:var(--rose);font-size:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.menu-scrim{position:absolute;inset:0;z-index:34}
+.menu{position:absolute;top:52px;right:12px;width:246px;border-radius:13px;overflow:hidden;
+  background:var(--surface);border:.5px solid var(--line);
+  box-shadow:0 16px 40px rgba(30,16,60,.24);z-index:35}
+.menu .mi{display:flex;align-items:center;gap:10px;padding:12px 14px;font-size:13.5px;
+  color:var(--text-1);border-bottom:.5px solid var(--line)}
+.menu .mi svg{font-size:17px;color:var(--accent)}
+.menu .mi .badge{margin-left:auto;font:600 11px var(--mono);color:var(--text-3)}
+.menu .mi .chev{margin-left:4px;color:var(--text-3);font-size:12px}
+.menu .mf{padding:9px 14px;font-size:11px;color:var(--text-3);background:var(--surface-2)}
+.favbtn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(214,51,108,.13);color:var(--rose);font-size:15px}
+/* 左滑操作 */
+.swipe-wrap{position:relative;margin:0 0 7px;overflow:hidden;border-radius:12px}
+.swipe-actions{position:absolute;inset:0;display:flex;justify-content:flex-end}
+.swipe-actions .sa{width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:#fff;font-size:10.5px;font-weight:600}
+.swipe-actions .sa svg{font-size:17px}
+.swipe-actions .sa.rename{background:var(--mint)}
+.swipe-actions .sa.copy{background:var(--info)}
+.swipe-actions .sa.del{background:var(--danger)}
+.swipe-actions .sa.favact{background:var(--rose)}
+.swipe-wrap .hrow{margin:0;transform:translateX(-240px);border-radius:0;transition:transform .25s}
+
+/* 弹层 */
+.scrim{position:absolute;inset:0;background:rgba(20,12,42,.42);backdrop-filter:blur(2px);z-index:30;
+  display:grid;place-items:center;padding:0 34px}
+.alert{width:100%;border-radius:14px;background:var(--surface);overflow:hidden;
+  box-shadow:0 20px 50px rgba(20,12,42,.28);text-align:center}
+.alert .ac{padding:19px 18px 15px}
+.alert .ai{width:42px;height:42px;border-radius:50%;background:rgba(224,52,75,.12);color:var(--danger);
+  display:grid;place-items:center;margin:0 auto 11px;font-size:20px}
+.alert h4{margin:0 0 6px;font-size:16px;font-weight:650;color:var(--text-1)}
+.alert p{margin:0;font-size:12.5px;color:var(--text-2);line-height:1.5}
+.alert .ab{display:flex;border-top:.5px solid var(--line)}
+.alert .ab span{flex:1;padding:12px 0;font-size:15px;color:var(--accent);font-weight:600}
+.alert .ab span + span{border-left:.5px solid var(--line);color:var(--danger);font-weight:650}
+.toast{margin:0 12px 8px;height:46px;border-radius:12px;background:var(--text-1);color:var(--surface);
+  display:flex;align-items:center;gap:9px;padding:0 13px;font-size:12.5px;position:relative;overflow:hidden}
+.toast .ti{color:var(--mint);font-size:15px}
+.toast .tx{flex:1}
+.toast .undo{color:var(--accent);font-weight:700;font-size:13px}
+html[data-theme="dark"] .toast .undo{color:#D3C2FF}
+.toast .tp{position:absolute;left:0;bottom:0;height:2px;background:var(--mint);opacity:.8}
+
+/* 搜索态 / 空态 / 最近删除 */
+.scope{display:flex;gap:6px;padding:0 16px 8px;flex:none}
+.scope .sc{height:26px;padding:0 10px;border-radius:8px;background:var(--surface-2);color:var(--text-2);
+  font-size:11.5px;display:flex;align-items:center;gap:5px;border:.5px solid var(--line)}
+.scope .sc.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line);font-weight:650}
+.result-bar{display:flex;align-items:center;justify-content:space-between;padding:2px 16px 9px;font-size:11.5px;color:var(--text-3)}
+.hl{color:var(--accent);background:var(--accent-soft);border-radius:3px;padding:0 2px;font-weight:650}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding-bottom:60px}
+.empty .eic{width:92px;height:92px;border-radius:28px;background:var(--surface-2);border:.5px solid var(--line);
+  display:grid;place-items:center;color:var(--accent);font-size:38px;position:relative}
+.empty .eic::after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;border:1px dashed var(--line-2)}
+.empty h4{margin:6px 0 0;font-size:16px;font-weight:650;color:var(--text-1)}
+.empty p{margin:0;font-size:12.5px;color:var(--text-3);text-align:center;line-height:1.6}
+.empty .cta{margin-top:10px;height:38px;padding:0 20px;border-radius:999px;
+  background:linear-gradient(135deg,var(--cta-1),var(--cta-2));color:#fff;font-size:13.5px;font-weight:650;
+  display:flex;align-items:center;gap:6px}
+.notice{margin:2px 16px 10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);
+  border:.5px solid var(--line);display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--text-2);flex:none}
+.notice svg{color:var(--amber);font-size:16px}
+.restore{height:26px;padding:0 10px;border-radius:8px;background:var(--accent-soft);color:var(--accent);
+  font-size:11.5px;font-weight:650;display:flex;align-items:center;gap:4px;flex:none}
+
+/* 规格 / 表格 */
+.spec-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:24px;align-items:start}
+.annot{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:18px}
+.annot .arow{display:flex;gap:12px;padding:9px 0;border-bottom:1px dashed var(--hair);font-size:12.5px;align-items:flex-start}
+.annot .arow:last-child{border:0}
+.annot .k{width:22px;height:22px;flex:none;border-radius:7px;background:var(--accent-soft);color:var(--accent);
+  font:650 11px var(--mono);display:grid;place-items:center}
+.annot .t{flex:1}
+.annot .t b{font-weight:650;display:block;margin-bottom:2px}
+.annot .t span{color:var(--ink-2)}
+.annot .t code{font:400 11px var(--mono);color:var(--accent)}
+.row-demo{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:20px 16px}
+.row-demo .cap{font-size:11px;color:var(--ink-3);margin-bottom:14px;letter-spacing:.04em}
+.row-demo .hrow{background:var(--surface-2);margin:0}
+table.spec{width:100%;border-collapse:collapse;font-size:12.5px}
+table.spec th{text-align:left;font-weight:650;color:var(--ink-2);font-size:10.5px;letter-spacing:.07em;
+  text-transform:uppercase;padding:0 12px 9px 0;border-bottom:1px solid var(--hair)}
+table.spec td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair);vertical-align:top;color:var(--ink-2)}
+table.spec td:first-child{font-weight:650;color:var(--ink);white-space:nowrap}
+table.spec td.mono{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap}
+table.spec tr:last-child td{border-bottom:0}
+.tick{color:var(--mint);font-weight:700}
+.cross{color:var(--rose);font-weight:700}
+.rule-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+.rule{background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;font-size:12.5px;color:var(--ink-2)}
+.rule b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:5px}
+.rule code{font:400 11px var(--mono);color:var(--accent)}
+.decision{background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;margin-bottom:10px;
+  display:flex;gap:14px;align-items:flex-start;font-size:12.5px}
+.decision .dn{font:650 11px var(--mono);color:var(--accent);background:var(--accent-soft);
+  padding:5px 8px;border-radius:6px;flex:none}
+.decision b{color:var(--ink)}
+.decision p{margin:3px 0 0;color:var(--ink-2)}
+.foot{margin-top:70px;padding-top:20px;border-top:1px solid var(--hair);font-size:11.5px;color:var(--ink-3);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:820px){.spec-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.3c0-.8.9-1.3 1.6-.9l9.1 5.8c.6.4.6 1.3 0 1.7l-9.1 5.8c-.7.4-1.6-.1-1.6-.9V5.3Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6.3" y="5" width="3.8" height="14" rx="1.1"/><rect x="13.9" y="5" width="3.8" height="14" rx="1.1"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h1.5M7 8v8M11 5v14M15 8v8M19 10.5v3M21.5 12h-1"/></symbol>
+  <symbol id="i-personwave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.4-3.2 2.6-5 5.5-5s5.1 1.8 5.5 5"/><path d="M17.5 9.5v5M20 11v2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.2l1.8 2h9A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3.2 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.9-5.4 2.9 1-6L3.3 9.6l6-.9L12 3.2Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15M9 7V5.2A1.2 1.2 0 0 1 10.2 4h3.6A1.2 1.2 0 0 1 15 5.2V7M6.5 7l.8 12A1.5 1.5 0 0 0 8.8 20.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17v3Z"/><path d="m14.5 6.5 3 3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5"/><path d="M5 13v5.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V13"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 3.5-3.5M12 15l-3.5-3.5"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h9a5.5 5.5 0 1 1 0 11H8"/><path d="M4 9l4-4M4 9l4 4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-ellipsis" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-chevup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m5 15 7-7 7 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="m19 16 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.4-7.5-9.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 3.1C19.5 15.6 12 20 12 20Z"/></symbol>
+  <symbol id="i-heartfill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.4s-8-4.7-8-10A4.6 4.6 0 0 1 12 7.4 4.6 4.6 0 0 1 20 10.4c0 5.3-8 10-8 10Z"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Design Proposal · iOS · v2 待确认</div>
+      <h1>历史记录（项目页）优化设计</h1>
+      <p>现状是一张按创建时间倒序平铺的等权列表：看不出日期、搜索只覆盖已加载的名称、点行即播放并跳详情、删除不可挽回。本稿给出新的信息架构、时间分组、行卡片、播放与删除流程，色板与组件沿用 Aurora Pop，深浅两套主题同步给出。</p>
+    </div>
+    <div class="head-meta">
+      <span class="tag hi">2026-11-03</span>
+      <span class="tag">Aurora Pop</span>
+      <span class="tag">iPhone 393 × 852</span>
+      <button class="btn" id="themeBtn">切换深浅主题</button>
+      <button class="btn" id="zoomBtn">1:1 放大</button>
+    </div>
+  </header>
+
+  <!-- ============ 01 现状 → 目标 ============ -->
+  <section id="overview">
+    <h2><span class="num">01</span>为什么要改 · 七个现状痛点</h2>
+    <p class="lede">对照 <code>ProjectsView.swift</code> / <code>HistoryViewModel.swift</code> 与 10-27 总设计稿第 5 章。每条都给出对应的界面改动，不只是换皮。</p>
+    <div class="pain-grid">
+      <div class="pain"><div class="pn">P1 · 信息架构</div><h4>没有时间锚点</h4>
+        <div class="old">列表平铺等权，meta 只有「音色 · 时长 · 大小」，创建日期完全不可见，翻到第 3 页就找不到"上周那条"。</div>
+        <div class="new">按 <b>今天 / 昨天 / 本周 / 更早</b> 分组，组头吸顶并带条数；行内右上角补时间（时分 / 昨天 / 日期）。</div></div>
+      <div class="pain"><div class="pn">P2 · 搜索</div><h4>搜不到，也不敢搜</h4>
+        <div class="old"><code>.searchable</code> 只匹配 <code>shownName</code>，且只在已分页加载的数据里过滤 —— 老记录根本不在内存里。</div>
+        <div class="new">改走 <b>全库检索</b>，范围覆盖 名称 / 原文 / 音色，命中词高亮，结果按分组展示并显示「共 N 条」。</div></div>
+      <div class="pain"><div class="pn">P3 · 播放</div><h4>试听成本过高</h4>
+        <div class="old">点任意行 = 立即播放 + push 播放详情；想连着听几条要反复返回，列表里没有暂停/切换。</div>
+        <div class="new">行内 <b>32pt 播放按钮</b> 就地试听；底部 <b>常驻 mini player</b> 跨页保留；点击行才进详情。</div></div>
+      <div class="pain"><div class="pn">P4 · 删除</div><h4>一次误触就永久没了</h4>
+        <div class="old">左滑删除 → alert 确认 → 磁盘文件 + 库记录一并抹掉，没有撤销、没有回收站。</div>
+        <div class="new">改为 <b>移入最近删除</b>（保留 30 天）+ 删除后 <b>5 秒撤销 Toast</b>；最近删除页可恢复 / 彻底删除。</div></div>
+      <div class="pain"><div class="pn">P5 · 状态</div><h4>异常记录不说话</h4>
+        <div class="old">生成中 / 失败 / 文件已丢失在列表里没有任何反馈，用户只会看到一条"点了没反应"的行。</div>
+        <div class="new">行内 <b>状态胶囊 + 进度条 / 重试按钮</b>；文件丢失置灰并标注「文件已丢失」，不允许播放。</div></div>
+      <div class="pain"><div class="pn">P6 · 操作</div><h4>图标猜谜 & 批量能力弱</h4>
+        <div class="old">左滑三连纯图标；多选工具条只有分享/删除两个图标，导出与复制藏得太深。</div>
+        <div class="new">批量条改 <b>图标 + 文字</b>，补 导出 / 复制 / 收藏；多选态导航栏显示「已选 N 条」。</div></div>
+      <div class="pain"><div class="pn">P7 · 空态</div><h4>空页面不告诉用户下一步</h4>
+        <div class="old">只有一行灰字「还没有生成的音频」，没有入口、没有引导。</div>
+        <div class="new">插画 + 一句说明 + <b>「去创作」主按钮</b>；搜索无结果时补「换个关键词 / 清除筛选」。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 主视觉 ============ -->
+  <section id="hero">
+    <h2><span class="num">02</span>主视觉 · 默认列表</h2>
+    <p class="lede">一屏之内同时给到「总量 → 筛选 → 时间定位 → 单条信息 → 试听 → 当前播放」。大标题改为「历史记录」，标签栏仍沿用「项目」，是否同步改名列为待确认项。筛选胶囊只保留「全部 / 收藏」，行卡片不再显示情绪。</p>
+    <div class="stage">
+      <figure class="frame" id="shot-default">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill"><svg class="ic" style="font-size:14px"><use href="#i-check"/></svg>选择</span><svg class="ic" style="font-size:18px"><use href="#i-ellipsis"/></svg></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat">
+              <span class="s"><span class="v">128</span> 条音频</span>
+              <span class="s"><span class="v">42.6</span> MB</span>
+              <span class="s"><span class="v">18</span> 条本月</span>
+            </div>
+            <div class="chips">
+              <span class="chip on">全部 <span class="n">128</span></span>
+              <span class="chip"><svg class="ic" style="font-size:12px"><use href="#i-heart"/></svg>收藏 <span class="n">12</span></span>
+              
+              
+            </div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">2 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow playing">
+                  <div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div>
+                    <div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span><span class="mdot">·</span><span class="m">412 KB</span></div>
+                  </div>
+                  <div class="playbtn on"><svg class="ic"><use href="#i-pause"/></svg></div>
+                  <div class="progress" style="width:38%"></div>
+                </div>
+                <div class="hrow">
+                  <div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div>
+                    <div class="hline2"><span class="pill state"><span style="width:5px;height:5px;border-radius:50%;background:currentColor"></span>生成中 62%</span><span class="m">WAV · 24kHz</span></div>
+                  </div>
+                  <div class="playbtn" style="opacity:.4"><svg class="ic"><use href="#i-play"/></svg></div>
+                  <div class="progress" style="width:62%;opacity:.4"></div>
+                </div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow">
+                  <div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span><span class="mdot">·</span><span class="m">158 KB</span></div>
+                  </div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div>
+                </div>
+                <div class="hrow">
+                  <div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">新品上线啦，快来抢先体验！</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">龙安欢语</span><span class="m">00:31</span><span class="mdot">·</span><span class="m">540 KB</span></div>
+                  </div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div>
+                </div>
+                <div class="hrow">
+                  <div class="hav" style="--av1:#5FE0C0;--av2:#12A88C">A</div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">Welcome to EmotionVoice.</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">Ada</span><span class="m">00:18</span><span class="mdot">·</span><span class="m">320 KB</span></div>
+                  </div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div>
+                </div>
+                <div class="hrow missing">
+                  <div class="hav" style="--av1:#B9B2D6;--av2:#7A739B">失</div>
+                  <div class="hbody">
+                    <div class="hline1"><span class="hname">十月活动旁白（旧）</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill warn">文件已丢失</span><span class="m">无法播放</span></div>
+                  </div>
+                  <div class="playbtn" style="opacity:.4"><svg class="ic"><use href="#i-play"/></svg></div>
+                </div>
+              </div>
+              <div class="group">更早 <span class="cnt">10月28日 · 3 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow">
+                  <div class="hav" style="--av1:#9FC6FF;--av2:#4C7BD9">远</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">深秋的雨落在窗台上…</span><span class="htime">10-28</span></div>
+                    <div class="hline2"><span class="pill voice">龙安鲁风</span><span class="m">01:12</span><span class="mdot">·</span><span class="m">1.2 MB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div>
+                </div>
+              </div>
+              <div class="loadmore"><span class="spin"></span>继续加载更早的记录…</div>
+            </div>
+            <div class="dock">
+              <div class="mini">
+                <div class="mav">心</div>
+                <div class="mt"><b>今天真是个好日子，我们终于见面了…</b><span>龙安灵心 · 00:09 / 00:24</span></div>
+                <div class="mb"><svg class="ic"><use href="#i-pause"/></svg></div>
+                <svg class="ic mx"><use href="#i-chevup"/></svg>
+                <div class="mp" style="width:38%"></div>
+              </div>
+            </div>
+            <div class="tabbar">
+              <div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div>
+              <div class="homebar"></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><b>A · 默认列表</b>：统计条 + 筛选胶囊 + 时间分组 + 行内播放 + 常驻 mini player。<em>组头吸顶、行内时间是新增的时间锚点；播放中行左侧渐变竖条 + 底部进度；生成中 / 文件丢失都有独立状态表达。mini player 挂在标签栏之上，与现有「后台接收浮条」不冲突（两者互斥显示）。</em></figcaption>
+      </figure>
+
+      <div class="annot" style="flex:1;min-width:330px;max-width:520px">
+        <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">主视觉 · 元素编号</div>
+        <div class="arow"><span class="k">1</span><span class="t"><b>大标题 + 副标题</b><span><code>34 / Bold</code>「历史记录」，副标题 12.5 说明排序规则；替代原来孤零零的「项目」。</span></span></div>
+        <div class="arow"><span class="k">2</span><span class="t"><b>全库搜索框</b><span><code>h38 · r11</code>，提示语写明可搜「名称、文案、音色」，不再只搜名称。</span></span></div>
+        <div class="arow"><span class="k">3</span><span class="t"><b>统计条</b><span><code>h38 · surface-2</code>：总条数 / 占用空间 / 本月新增，三等分。数据来自 <code>totalCount</code> + 文件尺寸求和。</span></span></div>
+        <div class="arow"><span class="k">4</span><span class="t"><b>筛选胶囊</b><span><code>h29</code>：只保留 全部 / 收藏 两项，单选互斥；计数恒为全量（与音色库筛选规则 ③ 一致）。生成中 / 失败仍作为行内状态徽章存在，但不再作为筛选维度。</span></span></div>
+        <div class="arow"><span class="k">5</span><span class="t"><b>时间分组头</b><span><code>12 / Semibold</code> + 条数 + 细线，滚动时吸顶；按 <code>createdAt</code> 归组。</span></span></div>
+        <div class="arow"><span class="k">6</span><span class="t"><b>行卡片（详见 04）</b><span><code>r12 · h68</code>：头像 44 / 名称 15 / 音色·时长·大小 / 时间 / 播放按钮 32（不显示情绪）。</span></span></div>
+        <div class="arow"><span class="k">7</span><span class="t"><b>状态表达</b><span>播放中：渐变竖条 + 进度；生成中：蓝胶囊 + 进度；失败：红胶囊 + 重试；丢失：置灰。</span></span></div>
+        <div class="arow"><span class="k">8</span><span class="t"><b>mini player</b><span><code>h56 · r14</code>，头像 / 名称 / 进度 / 暂停 / 展开；点展开 push 播放详情，点行也从这里走。</span></span></div>
+        <div class="arow"><span class="k">9</span><span class="t"><b>收藏角标与入口</b><span>已收藏行头像右上角实心玫红心（与音色库 heart.fill 同款）；入口 = 播放详情页右上角心形（主）+ 列表左滑 / 多选工具条（辅），见屏 I / J。</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 状态流 ============ -->
+  <section id="states">
+    <h2><span class="num">03</span>关键状态 · 搜索 / 删除 / 多选 / 收藏 / 入口</h2>
+    <p class="lede">删除流程这次是重点：从「永久删除」改成「移入最近删除 + 可撤销」。另外补了两张回答「收藏放哪」「最近删除入口在哪」的屏（I / J），共 9 张，点上方按钮可快速定位。</p>
+    <div class="state-tabs">
+      <button data-jump="#shot-search">搜索态</button>
+      <button data-jump="#shot-swipe">左滑操作</button>
+      <button data-jump="#shot-confirm">删除确认</button>
+      <button data-jump="#shot-undo">撤销 Toast</button>
+      <button data-jump="#shot-multi">多选态</button>
+      <button data-jump="#shot-trash">最近删除</button>
+      <button data-jump="#shot-empty">空态</button>
+      <button data-jump="#shot-menu">最近删除入口</button>
+      <button data-jump="#shot-favorite">播放页收藏</button>
+    </div>
+    <div class="phone-stage">
+
+      <!-- B 搜索 -->
+      <figure class="frame" id="shot-search">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"><span class="navbtn">取消</span></span><span class="r"></span></div>
+            <div class="lt" style="font-size:26px">搜索</div>
+            <div class="search" style="background:var(--surface);border:.5px solid var(--accent-line)"><svg class="ic mag" style="color:var(--accent)"><use href="#i-search"/></svg><span class="ph" style="color:var(--text-1)">见面</span><span class="clear"><svg class="ic" style="font-size:11px"><use href="#i-x"/></svg></span></div>
+            <div class="scope"><span class="sc on">全部字段</span><span class="sc">名称</span><span class="sc">文案</span><span class="sc">音色</span></div>
+            <div class="result-bar"><span>全库命中 <b style="color:var(--accent)">3</b> 条</span><span>按时间排序</span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于<span class="hl">见面</span>了…</span><span class="htime">14:32</span></div>
+                    <div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span><span class="mdot">·</span><span class="m">412 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">很久没<span class="hl">见面</span>，想和你说说话</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:16</span><span class="mdot">·</span><span class="m">236 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">更早 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#5FE0C0;--av2:#12A88C">A</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">Nice to meet you, 初次<span class="hl">见面</span></span><span class="htime">10-28</span></div>
+                    <div class="hline2"><span class="pill voice">Ada</span><span class="m">00:12</span><span class="mdot">·</span><span class="m">210 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="loadmore" style="color:var(--text-3)">— 已显示全部 3 条结果 —</div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>B · 搜索态</b>：范围 chip + 全库命中 + 关键词高亮 + 结果仍按时间分组。<em>⚠️ 需要改 VM：现在的 <code>filterAndDisplay()</code> 只过滤 <code>allLoadedAudios</code>，全库检索要走 <code>ProjectService</code> 的 SQL LIKE，命中后回填 <code>AudioItem</code>，不能靠翻页凑。</em></figcaption>
+      </figure>
+
+      <!-- C 左滑 -->
+      <figure class="frame" id="shot-swipe">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill">选择</span><svg class="ic" style="font-size:18px"><use href="#i-ellipsis"/></svg></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat"><span class="s"><span class="v">128</span> 条音频</span><span class="s"><span class="v">42.6</span> MB</span><span class="s"><span class="v">18</span> 条本月</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">128</span></span><span class="chip">收藏 <span class="n">12</span></span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">2 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="swipe-wrap">
+                  <div class="swipe-actions">
+                    <span class="sa favact"><svg class="ic"><use href="#i-heartfill"/></svg>收藏</span>
+                    <span class="sa rename"><svg class="ic"><use href="#i-pencil"/></svg>重命名</span>
+                    <span class="sa copy"><svg class="ic"><use href="#i-copy"/></svg>复制</span>
+                    <span class="sa del"><svg class="ic"><use href="#i-trash"/></svg>删除</span>
+                  </div>
+                  <div class="hrow"><div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                    <div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div>
+                      <div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span><span class="mdot">·</span><span class="m">412 KB</span></div></div>
+                    <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                </div>
+                <div class="hrow"><div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div>
+                    <div class="hline2"><span class="pill state">生成中 62%</span><span class="m">WAV · 24kHz</span></div></div>
+                  <div class="playbtn" style="opacity:.4"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span><span class="mdot">·</span><span class="m">158 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">新品上线啦，快来抢先体验！</span><span class="htime">昨天</span></div>
+                    <div class="hline2"><span class="pill voice">龙安欢语</span><span class="m">00:31</span><span class="mdot">·</span><span class="m">540 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">更早 <span class="cnt">3 条</span><span class="gl"></span></div>
+              <div class="rows"><div class="skel"><div class="b" style="width:44px;height:44px;border-radius:12px"></div><div style="flex:1"><div class="b" style="width:72%;height:12px;margin-bottom:7px"></div><div class="b" style="width:48%;height:10px"></div></div><div class="b" style="width:32px;height:32px;border-radius:50%"></div></div>
+                <div class="skel"><div class="b" style="width:44px;height:44px;border-radius:12px"></div><div style="flex:1"><div class="b" style="width:60%;height:12px;margin-bottom:7px"></div><div class="b" style="width:40%;height:10px"></div></div><div class="b" style="width:32px;height:32px;border-radius:50%"></div></div></div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>C · 左滑操作 + 骨架屏</b>：操作改为四枚「收藏 / 重命名 / 复制 / 删除」，收藏用玫红心形、放最靠近内容的一侧（非破坏性，可支持左滑到底快速收藏），删除仍是红色且禁止全滑；删除语义改为移入最近删除。<em>顺序与颜色沿用现有 <code>.swipeActions</code>；骨架屏只在首屏/翻页出现，行内增删仍按现有规则：磁盘 IO 在动画事务之外。</em></figcaption>
+      </figure>
+
+      <!-- D 删除确认 -->
+      <figure class="frame" id="shot-confirm">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill">选择</span></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat"><span class="s"><span class="v">128</span> 条音频</span><span class="s"><span class="v">42.6</span> MB</span><span class="s"><span class="v">18</span> 条本月</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">128</span></span><span class="chip">收藏 <span class="n">12</span></span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">2 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div><div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div><div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div><div class="hbody"><div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div><div class="hline2"><span class="pill voice">龙安鲁风</span><span class="m">01:12</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows"><div class="hrow"><div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div><div class="hbody"><div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div></div>
+            </div>
+            <div class="scrim">
+              <div class="alert">
+                <div class="ac"><div class="ai"><svg class="ic"><use href="#i-trash"/></svg></div>
+                  <h4>移入最近删除？</h4>
+                  <p>「今天真是个好日子…」将保留 30 天，期间可随时恢复。到期后自动清除，不会立即占用额度。</p></div>
+                <div class="ab"><span>取消</span><span>移入最近删除</span></div>
+              </div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>D · 删除确认</b>：文案从「删除后无法恢复」改为「保留 30 天、可恢复」，主按钮改「移入最近删除」。<em>⚠️ 这是语义变更，不只是 UI：数据库需要软删除字段（<code>deleted_at</code>），<code>ProjectService.deleteAudio</code> 改为打标 + 到期清理；现有 <code>.alert</code> 结构可以沿用，但同一层不要挂两个 <code>.alert</code>。</em></figcaption>
+      </figure>
+
+      <!-- E 撤销 Toast -->
+      <figure class="frame" id="shot-undo">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill">选择</span><svg class="ic" style="font-size:18px"><use href="#i-ellipsis"/></svg></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat"><span class="s"><span class="v">127</span> 条音频</span><span class="s"><span class="v">42.2</span> MB</span><span class="s"><span class="v">18</span> 条本月</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">127</span></span><span class="chip">收藏 <span class="n">12</span></span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div><div class="hbody"><div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div><div class="hline2"><span class="pill voice">龙安鲁风</span><span class="m">01:12</span><span class="mdot">·</span><span class="m">1.2 MB</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div><div class="hbody"><div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div><div class="hbody"><div class="hline1"><span class="hname">新品上线啦，快来抢先体验！</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙安欢语</span><span class="m">00:31</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#5FE0C0;--av2:#12A88C">A</div><div class="hbody"><div class="hline1"><span class="hname">Welcome to EmotionVoice.</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">Ada</span><span class="m">00:18</span></div></div><div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+            </div>
+            <div class="dock">
+              <div class="toast"><svg class="ic ti"><use href="#i-check"/></svg><span class="tx">已移入最近删除 · 30 天内可恢复</span><span class="undo">撤销</span><div class="tp" style="width:72%"></div></div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>E · 删除后 5 秒撤销</b>：行已从列表移除、统计同步 −1，底部 Toast 带倒计时进度条，点「撤销」原样插回。<em>沿用现有 <code>IOSUIState.showToast</code> 通道，但 Toast 需要支持尾随动作按钮；倒计时结束前不要动磁盘文件，撤销就是清掉 <code>deleted_at</code>。</em></figcaption>
+      </figure>
+
+      <!-- F 多选 -->
+      <figure class="frame" id="shot-multi">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"><span class="navbtn">取消</span></span><span class="title">已选 3 条</span><span class="r"><span class="navbtn">全选</span></span></div>
+            <div class="lt">历史记录<span class="sub">选择要操作的音频</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">128</span></span><span class="chip">收藏 <span class="n">12</span></span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">2 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><span class="sel on"><svg class="ic" style="font-size:12px"><use href="#i-check"/></svg></span>
+                  <div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div><div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div><div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span></div></div></div>
+                <div class="hrow"><span class="sel on"><svg class="ic" style="font-size:12px"><use href="#i-check"/></svg></span>
+                  <div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div><div class="hbody"><div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div><div class="hline2"><span class="pill voice">龙安鲁风</span><span class="m">01:12</span></div></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><span class="sel on"><svg class="ic" style="font-size:12px"><use href="#i-check"/></svg></span>
+                  <div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div><div class="hbody"><div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span></div></div></div>
+                <div class="hrow"><span class="sel"></span>
+                  <div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div><div class="hbody"><div class="hline1"><span class="hname">新品上线啦，快来抢先体验！</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙安欢语</span><span class="m">00:31</span></div></div></div>
+                <div class="hrow"><span class="sel"></span>
+                  <div class="hav" style="--av1:#5FE0C0;--av2:#12A88C">A</div><div class="hbody"><div class="hline1"><span class="hname">Welcome to EmotionVoice.</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">Ada</span><span class="m">00:18</span></div></div></div>
+              </div>
+            </div>
+            <div class="dock">
+              <div class="toolbar">
+                <span class="cnt">3</span><span class="lbl">已选择</span><span class="sp"></span>
+                <span class="vr"></span>
+                <span class="act"><svg class="ic"><use href="#i-share"/></svg>分享</span>
+                <span class="act"><svg class="ic"><use href="#i-export"/></svg>导出</span>
+                <span class="act"><svg class="ic"><use href="#i-copy"/></svg>复制</span>
+                <span class="act" style="color:var(--rose)"><svg class="ic"><use href="#i-heartfill"/></svg>收藏</span>
+                <span class="act danger"><svg class="ic"><use href="#i-trash"/></svg>删除</span>
+              </div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>F · 多选态</b>：导航栏中间显示「已选 N 条」，工具条改为图标 + 文字，补上导出与复制；未选时全部置灰。<em>沿用 <code>safeAreaInset(edge: .bottom)</code> 挂在标签栏之上。批量删除走与单条相同的「移入最近删除 + 撤销」流程，N 条时 Toast 文案改为「已移入 N 条」。</em></figcaption>
+      </figure>
+
+      <!-- G 最近删除 -->
+      <figure class="frame" id="shot-trash">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"><span class="navbtn"><svg class="ic" style="font-size:17px"><use href="#i-back"/></svg>项目</span></span><span class="title">最近删除</span><span class="r"><span class="navbtn">编辑</span></span></div>
+            <div class="lt" style="font-size:28px">最近删除<span class="sub">保留 30 天，到期自动清除</span></div>
+            <div class="notice"><svg class="ic"><use href="#i-clock"/></svg><span>恢复后会回到原来的时间分组；彻底删除不可撤销。</span></div>
+            <div class="scrollarea">
+              <div class="group">剩余 29 天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span></div>
+                    <div class="hline2"><span class="pill ghost">今天 14:32 移入</span><span class="m">00:24</span></div></div>
+                  <span class="restore"><svg class="ic" style="font-size:12px"><use href="#i-undo"/></svg>恢复</span></div>
+              </div>
+              <div class="group">剩余 21 天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">活动预热旁白（旧版）</span></div>
+                    <div class="hline2"><span class="pill ghost">10月24日 移入</span><span class="m">00:31</span></div></div>
+                  <span class="restore"><svg class="ic" style="font-size:12px"><use href="#i-undo"/></svg>恢复</span></div>
+              </div>
+              <div class="group">剩余 8 天 <span class="cnt">1 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#B9B2D6;--av2:#7A739B">旧</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">测试音频 03</span></div>
+                    <div class="hline2"><span class="pill ghost">10月11日 移入</span><span class="m">00:06</span></div></div>
+                  <span class="restore"><svg class="ic" style="font-size:12px"><use href="#i-undo"/></svg>恢复</span></div>
+              </div>
+            </div>
+            <div class="dock"><div class="toolbar" style="justify-content:center"><span class="act danger" style="margin:0"><svg class="ic"><use href="#i-trash"/></svg>清空最近删除</span></div></div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>G · 最近删除</b>：从导航栏「⋯」进入，按剩余天数分组，单行「恢复」，底部「清空」需二次确认。<em>这是新增页面（push 进项目标签导航栈，复用二级界面隐藏 TabBar 的现有机制）。文件在到期前不删除磁盘数据，只按 <code>deleted_at</code> 过滤；到期清理放 App 启动时执行一次。</em></figcaption>
+      </figure>
+
+      <!-- H 空态 -->
+      <figure class="frame" id="shot-empty">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill">选择</span><svg class="ic" style="font-size:18px"><use href="#i-ellipsis"/></svg></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat"><span class="s"><span class="v">0</span> 条音频</span><span class="s"><span class="v">0</span> MB</span><span class="s"><span class="v">0</span> 条本月</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">0</span></span><span class="chip">收藏 <span class="n">0</span></span></div>
+            <div class="scrollarea">
+              <div class="empty">
+                <div class="eic"><svg class="ic" style="font-size:38px"><use href="#i-wave"/></svg></div>
+                <h4>还没有生成过音频</h4>
+                <p>写一段文字、挑一个音色，<br>第一条作品就会出现在这里。</p>
+                <div class="cta"><svg class="ic" style="font-size:15px"><use href="#i-sparkle"/></svg>去创作</div>
+              </div>
+            </div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div>
+              <div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div>
+              <div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>H · 空态</b>：图形 + 说明 + 「去创作」主按钮，直接切到创作标签。<em>搜索无结果时复用同一骨架，文案换成「没有匹配的音频」+「换个关键词 / 清除筛选」两个次级按钮，不再是一片空白。</em></figcaption>
+      </figure>
+
+
+      <!-- I 最近删除入口 -->
+      <figure class="frame" id="shot-menu">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar"><span class="l"></span><span class="r"><span class="navpill">选择</span><svg class="ic" style="font-size:18px"><use href="#i-ellipsis"/></svg></span></div>
+            <div class="lt">历史记录<span class="sub">全部生成音频 · 按时间排列</span></div>
+            <div class="search"><svg class="ic mag"><use href="#i-search"/></svg><span class="ph">搜索名称、文案或音色</span></div>
+            <div class="stat"><span class="s"><span class="v">128</span> 条音频</span><span class="s"><span class="v">42.6</span> MB</span><span class="s"><span class="v">18</span> 条本月</span></div>
+            <div class="chips"><span class="chip on">全部 <span class="n">128</span></span><span class="chip"><svg class="ic" style="font-size:12px"><use href="#i-heart"/></svg>收藏 <span class="n">12</span></span></div>
+            <div class="scrollarea">
+              <div class="group">今天 <span class="cnt">2 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow playing"><div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div><div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span><span class="mdot">·</span><span class="m">412 KB</span></div></div>
+                  <div class="playbtn on"><svg class="ic"><use href="#i-pause"/></svg></div><div class="progress" style="width:38%"></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#74B9FF;--av2:#3B74D9">风</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">各位听众晚上好，欢迎收听…</span><span class="htime">11:08</span></div><div class="hline2"><span class="pill state">生成中 62%</span><span class="m">WAV · 24kHz</span></div></div>
+                  <div class="playbtn" style="opacity:.4"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+              <div class="group">昨天 <span class="cnt">4 条</span><span class="gl"></span></div>
+              <div class="rows">
+                <div class="hrow"><div class="hav" style="--av1:#FF8FC5;--av2:#E23C86">芷<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+                  <div class="hbody"><div class="hline1"><span class="hname">别忘了给自己留一点时间。</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙柏清芷</span><span class="m">00:09</span><span class="mdot">·</span><span class="m">158 KB</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+                <div class="hrow"><div class="hav" style="--av1:#FFC7A8;--av2:#E2703C">欢</div>
+                  <div class="hbody"><div class="hline1"><span class="hname">新品上线啦，快来抢先体验！</span><span class="htime">昨天</span></div><div class="hline2"><span class="pill voice">龙安欢语</span><span class="m">00:31</span></div></div>
+                  <div class="playbtn"><svg class="ic"><use href="#i-play"/></svg></div></div>
+              </div>
+            </div>
+            <div class="menu-scrim"></div>
+            <div class="menu">
+              <div class="mi"><svg class="ic"><use href="#i-clock"/></svg>最近删除<span class="badge">3 条</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="mi"><svg class="ic"><use href="#i-sliders"/></svg>排序方式<span class="badge">最新优先</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="mf">已删除的项目保留 30 天，到期自动清除</div>
+            </div>
+            <div class="dock"><div class="mini"><div class="mav">心</div><div class="mt"><b>今天真是个好日子，我们终于见面了…</b><span>龙安灵心 · 00:09 / 00:24</span></div><div class="mb"><svg class="ic"><use href="#i-pause"/></svg></div><svg class="ic mx"><use href="#i-chevup"/></svg><div class="mp" style="width:38%"></div></div></div>
+            <div class="tabbar"><div class="t"><svg class="ic"><use href="#i-wave"/></svg><span>创作</span></div><div class="t"><svg class="ic"><use href="#i-personwave"/></svg><span>音色库</span></div><div class="t on"><svg class="ic"><use href="#i-folder"/></svg><span>项目</span></div><div class="homebar"></div></div>
+          </div>
+        </div></div>
+        <figcaption><b>I · 最近删除入口</b>：导航栏右上角「⋯」→ 菜单第一项「最近删除」（带条数 badge），点按 push 到屏 G 的最近删除页。<em>推荐理由：筛选行只有「全部 / 收藏」两个维度，把「最近删除」混进胶囊会被当成第三个筛选条件；⋯ 菜单不占横向空间、位置固定、可带条数反馈。备选方案是筛选行右端固定「最近删除 ›」文字链，见 D6。</em></figcaption>
+      </figure>
+
+      <!-- J 播放详情页收藏 -->
+      <figure class="frame" id="shot-favorite">
+        <div class="phone-scaler"><div class="phone">
+          <div class="statusbar"><span>9:41</span><span class="right"><span class="sig"><i></i><i></i><i></i><i></i></span><svg class="ic" style="font-size:15px"><use href="#i-wave"/></svg><span class="bat"><i></i></span></span></div>
+          <div class="screen">
+            <div class="navbar">
+              <span class="l"><span class="navbtn"><svg class="ic" style="font-size:17px"><use href="#i-back"/></svg>项目</span></span>
+              <span class="title" style="font-size:14px">今天真是个好日子…</span>
+              <span class="r" style="gap:8px"><span class="favbtn"><svg class="ic" style="font-size:15px"><use href="#i-heartfill"/></svg></span><svg class="ic" style="font-size:18px"><use href="#i-share"/></svg></span>
+            </div>
+            <div class="scrollarea" style="padding:0 16px">
+              <div style="margin-top:14px;background:var(--surface);border:.5px solid var(--line);border-radius:16px;padding:16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;height:64px;gap:2px"><span style="width:3px;height:18px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:30px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:42px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:26px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:52px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:38px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:22px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:46px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:34px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:16px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:40px;border-radius:2px;background:var(--accent);display:block"></span><span style="width:3px;height:28px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:48px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:24px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:36px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:20px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:44px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:30px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:18px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:38px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:26px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:46px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:22px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:34px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:16px;border-radius:2px;background:var(--surface-3);display:block"></span><span style="width:3px;height:28px;border-radius:2px;background:var(--surface-3);display:block"></span></div>
+                <div style="display:flex;justify-content:space-between;font:400 12px var(--mono);color:var(--text-3);margin-top:10px"><span>00:09</span><span>00:24</span></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:18px;padding:18px 0 6px;color:var(--text-2)">
+                <svg class="ic" style="font-size:22px"><use href="#i-back"/></svg>
+                <svg class="ic" style="font-size:19px"><use href="#i-undo"/></svg>
+                <div style="width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--cta-1),var(--cta-2));color:#fff"><svg class="ic" style="font-size:25px"><use href="#i-pause"/></svg></div>
+                <svg class="ic" style="font-size:19px"><use href="#i-retry"/></svg>
+                <svg class="ic" style="font-size:22px"><use href="#i-chev"/></svg>
+              </div>
+              <div style="display:flex;gap:8px;margin:12px 0"><span class="chip" style="flex:1;justify-content:center">1.0x ⌄</span><span class="chip" style="flex:1;justify-content:center">从头播放</span></div>
+              <div style="background:var(--surface);border:.5px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px 0">
+                <div><div style="font-size:11px;color:var(--text-3)">时长</div><div style="font:650 15px var(--mono);color:var(--text-1)">00:24</div></div>
+                <div><div style="font-size:11px;color:var(--text-3)">格式</div><div style="font:650 15px var(--mono);color:var(--text-1)">WAV</div></div>
+                <div><div style="font-size:11px;color:var(--text-3)">积分</div><div style="font:650 15px var(--mono);color:var(--text-1)">0.48</div></div>
+                <div><div style="font-size:11px;color:var(--text-3)">音色</div><div style="font:650 15px var(--mono);color:var(--text-1)">龙安灵心</div></div>
+              </div>
+              <div style="background:var(--surface);border:.5px solid var(--line);border-radius:16px;padding:14px;margin-top:12px">
+                <div style="font-size:11.5px;color:var(--text-3);display:flex;justify-content:space-between"><span>文案 · 42 字</span><span>复制</span></div>
+                <div style="font-size:14px;line-height:1.7;color:var(--text-1);margin-top:8px">今天真是个好日子，我们终于见面了，先来一段开场白……</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px">
+                <span class="chip" style="flex:1;justify-content:center">重命名</span>
+                <span class="chip" style="flex:1;justify-content:center">复制音频</span>
+                <span class="chip" style="flex:1;justify-content:center;color:var(--danger)">删除</span>
+              </div>
+            </div>
+            <div class="dock"><div class="toast"><svg class="ic ti" style="color:var(--rose)"><use href="#i-heartfill"/></svg><span class="tx">已加入收藏 · 可在「收藏」中快速找到</span></div></div>
+            <div class="homebar"></div>
+          </div>
+        </div></div>
+        <figcaption><b>J · 播放详情页：收藏主入口</b>：导航栏右上角常驻心形按钮（实心玫红 = 已收藏，空心 = 未收藏），与现有「分享」并排；点按出 Toast 反馈。<em>这是改动最小、上下文最强的一处：<code>PlayerDetailView.toolbar</code> 现在只有一个分享按钮，同一个 ToolbarItem 里并排加一个心形即可。列表侧（屏 C 左滑 / 屏 F 多选）作为辅助批量入口，两处共用同一个 AudioFlagStore 同步；二级页按现有机制隐藏 TabBar。</em></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ 04 组件规格 ============ -->
+  <section id="spec">
+    <h2><span class="num">04</span>行卡片规格拆解</h2>
+    <p class="lede">行高从现状的 ≈64pt 调整为 ≈68pt，增加的是时间锚点与状态信息，不靠加大留白。所有令牌与 <code>AuroraPalette.swift</code> / <code>AuroraRadius</code> 对齐。</p>
+    <div class="spec-grid">
+      <div class="row-demo">
+        <div class="cap">ROW · 369 × 68 · 放大示意</div>
+        <div class="hrow playing" style="padding:12px">
+          <div class="hav" style="--av1:#A98BFF;--av2:#6D3BF5;width:48px;height:48px;font-size:20px">心<span class="fav"><svg class="ic" style="font-size:10px"><use href="#i-heartfill"/></svg></span></div>
+          <div class="hbody">
+            <div class="hline1"><span class="hname" style="font-size:16px">今天真是个好日子，我们终于见面了…</span><span class="htime">14:32</span></div>
+            <div class="hline2"><span class="pill voice">龙安灵心</span><span class="m">00:24</span><span class="mdot">·</span><span class="m">412 KB</span></div>
+          </div>
+          <div class="playbtn on" style="width:36px;height:36px"><svg class="ic"><use href="#i-pause"/></svg></div>
+        </div>
+        <table class="spec" style="margin-top:18px">
+          <tr><th>元素</th><th>规格</th><th>令牌 / 说明</th></tr>
+          <tr><td>容器</td><td class="mono">r12 · 0.5px 描边 · 行间距 7</td><td><code>surface</code> / <code>line</code>；播放中换 <code>surface2</code> + <code>accent-line</code></td></tr>
+          <tr><td>头像</td><td class="mono">44 × 44 · r12 · 18/650</td><td>沿用 <code>VoiceAvatar</code>，渐变按音色 key 取色</td></tr>
+          <tr><td>名称</td><td class="mono">15 / 600 · 单行截断</td><td><code>textPrimary</code>；搜索命中词用 <code>accentSoft</code> 底 + 紫字</td></tr>
+          <tr><td>时间</td><td class="mono">10.5 / Mono</td><td><code>textTertiary</code>；今天=时分，昨天=「昨天」，更早=MM-dd</td></tr>
+          <tr><td>音色 pill</td><td class="mono">h19 · r6 · 10.5/600</td><td><code>accentSoft</code> 底 + <code>accent</code> 字</td></tr>
+          <tr><td>状态 pill</td><td class="mono">h19 · r6</td><td>生成中蓝 / 失败红 / 丢失橙；<b>不显示情绪</b>，也不作为筛选维度</td></tr>
+          <tr><td>收藏角标</td><td class="mono">17 × 17 · 圆形</td><td>头像右上角实心玫红心 + 白底描边，与音色库 <code>heart.fill</code> 同一套视觉语言</td></tr>
+          <tr><td>元信息</td><td class="mono">10.5 / Mono</td><td>时长 · 大小；<code>textTertiary</code>，用中点分隔</td></tr>
+          <tr><td>播放按钮</td><td class="mono">32 × 32 · 圆形</td><td>默认 <code>surface3</code>；播放中紫→玫红渐变 + 暂停图标</td></tr>
+          <tr><td>进度 / 高亮条</td><td class="mono">2px · 贴底 / 3px 贴左</td><td>播放中行左侧渐变竖条，底部按播放进度填充</td></tr>
+        </table>
+      </div>
+      <div class="annot">
+        <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">信息优先级（从上到下）</div>
+        <div class="arow"><span class="k">①</span><span class="t"><b>这条是什么</b><span>名称（默认取文案首句，重命名后取 displayName）</span></span></div>
+        <div class="arow"><span class="k">②</span><span class="t"><b>什么时候的</b><span>分组头 + 行内时间双锚点，解决"翻页找不到"</span></span></div>
+        <div class="arow"><span class="k">③</span><span class="t"><b>用谁、什么状态</b><span>音色 pill + 状态胶囊（生成中 / 失败 / 丢失），与元数据分离；<b>不显示情绪</b></span></span></div>
+        <div class="arow"><span class="k">④</span><span class="t"><b>多大、多长、什么状态</b><span>Mono 数值 + 状态胶囊 / 进度条</span></span></div>
+        <div class="arow"><span class="k">⑤</span><span class="t"><b>能做什么</b><span>试听按钮；左滑重命名 / 复制 / 删除</span></span></div>
+        <h3 style="margin-top:26px">深浅主题</h3>
+        <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">点右上角「切换深浅主题」查看两套效果。所有色值直接取自 <code>AuroraPalette(scheme:)</code>，不引入新颜色；强调面积用渐变，承载文字的紫色单独一档，保证对比度。</p>
+        <table class="spec">
+          <tr><th>语义</th><th>浅色</th><th>深色</th></tr>
+          <tr><td>分组背景</td><td class="mono">#F5F1FE</td><td class="mono">#0B0916</td></tr>
+          <tr><td>卡片</td><td class="mono">#FFFFFF</td><td class="mono">#1B1731</td></tr>
+          <tr><td>主文字</td><td class="mono">#1B1533</td><td class="mono">#F5F2FF</td></tr>
+          <tr><td>强调（文字）</td><td class="mono">#6D3BF5</td><td class="mono">#B79AFF</td></tr>
+          <tr><td>CTA 渐变</td><td class="mono">#5B2EDB→#CE2B72</td><td class="mono">#7C4DFF→#E23C86</td></tr>
+          <tr><td>危险色</td><td class="mono">#E0344B</td><td class="mono">#FF6B7E</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 交互规则 ============ -->
+  <section id="rules">
+    <h2><span class="num">05</span>交互与动效规则</h2>
+    <p class="lede">沿用项目里已经踩过坑定下来的规则，新方案不推翻它们。</p>
+    <div class="rule-list">
+      <div class="rule"><b>播放：行内试听 ≠ 进详情</b>点 32pt 播放按钮就地播/停，不 push；点行才 <code>router.push(.player)</code>。mini player 常驻且跨标签保留，展开才进详情。<code>playingKey</code> 继续用 identifier 判等。</div>
+      <div class="rule"><b>删除：软删 + 5s 撤销</b>确认后立刻从数组移除并出 Toast；5 秒内不许动磁盘文件；点撤销清 <code>deleted_at</code> 并把行插回原位置（纯插入，不做 remove+insert）。倒计时结束才落盘清理。</div>
+      <div class="rule"><b>磁盘 IO 在动画事务之外</b>复制 / 删除 / 重命名继续遵守现有约定：<code>withAnimation</code> 里只有一次数组写入，磁盘操作走 <code>Task.detached</code> 或事务之前完成。</div>
+      <div class="rule"><b>列表刷新用可动画属性</b>筛选 / 搜索变化后 <code>ScrollView.id(scrollResetID)</code> 重建复位滚动，过渡靠 <code>opacity + offset</code>，不用容器 <code>.transition</code>；节奏沿用 0.1s 淡出 → 换数据 → 0.28s 淡入。</div>
+      <div class="rule"><b>搜索：回车立即查，滚动收键盘</b><code>.submitLabel(.search)</code> + <code>@FocusState</code>，提交时取消防抖立即查全库；<code>.scrollDismissesKeyboard(.immediately)</code> 挂在 ScrollView 本身并补拖拽兜底。</div>
+      <div class="rule"><b>分页：先写本地 page 再同步</b>沿用音色库踩过的坑：上拉追加必须先写本地 <code>page</code> 再 <code>syncToVM()</code>，空页回退 <code>page = max(1, next-1)</code>；分组头按合并后的数据重算。</div>
+      <div class="rule"><b>键盘与底栏避让</b>本页没有文本编辑区，但多选工具条 / mini player 仍挂在 <code>safeAreaInset</code>；搜索框聚焦时键盘弹出，工具条需要按现有「键盘顶边」逻辑上移，别压到键盘。</div>
+      <div class="rule"><b>同一层只挂一个 .alert</b>删除确认、清空最近删除、清空文本三个入口互斥；重命名继续用自绘 <code>RenameDialog</code>，不退回系统 Alert 的 TextField。</div>
+      <div class="rule"><b>收藏：单点写入 + 跨页同步</b>播放详情页右上角心形、列表左滑、多选工具条三处共用同一个 <code>AudioFlagStore</code>（独立轻量存储，按 audio id 索引），不要用各自 View 的本地 @State；任一处切换后，列表角标 / 「收藏」计数 / 「仅看收藏」结果同时刷新。取消收藏的处理沿用音色库 <code>VoicesLibraryView.toggleFavorite</code> 的既有规则。</div>
+      <div class="rule"><b>最近删除：入口固定在 ⋯ 菜单</b>导航栏右上角「⋯」→ 菜单第一项「最近删除」（带条数 badge），点进 push 最近删除页；不放进筛选胶囊行，避免被当成另一个筛选维度。删除后的撤销 Toast 只负责撤销，菜单 badge 随软删记录实时变化。</div>
+    </div>
+  </section>
+
+  <!-- ============ 06 待确认 ============ -->
+  <section id="decisions">
+    <h2><span class="num">06</span>需要你拍板的 7 件事</h2>
+    <p class="lede">这些是会动到数据层 / 全局文案的决策，先确认再落代码。</p>
+    <div class="decision"><span class="dn">D1</span><div><b>页面与标签是否改名</b><p>设计稿用「历史记录」作大标题、标签栏仍是「项目」。若要把标签也改成「历史」，需要同步改 <code>TabRouter.Tab.title</code> 和三语 <code>.strings</code>；不改的话只动 <code>navigationTitle</code>。</p></div></div>
+    <div class="decision"><span class="dn">D2</span><div><b>最近删除保留多久 · 状态存哪里</b><p>稿里写 30 天，也可退化成「手动清空、不自动过期」。⚠️ 当前 <code>createTables()</code> 是 <code>create(ifNotExists: true)</code>：<b>给旧库加列不会生效</b>（不会自动 ALTER），项目也约定不做迁移。推荐把 <code>deletedAt</code> 与 <code>isFavorite</code> 一起放进独立轻量存储（UserDefaults / JSON，按 audio id 索引），完全不动 <code>audio_items</code> 表；若坚持入库，需要启动时读 <code>PRAGMA table_info</code> 显式 ALTER，且不能走 DROP 重建（会丢已有音频记录）。</p></div></div>
+    <div class="decision"><span class="dn">D3</span><div><b>全库搜索的落地范围</b><p>名称 / 文案 / 音色三字段全库检索要改 <code>ProjectService</code> 的查询与 <code>HistoryViewModel</code> 的分页模型（搜索态不再分页）。若想先做轻量版，可只保留「名称 + 音色」的本地过滤。</p></div></div>
+    <div class="decision"><span class="dn">D4</span><div><b>收藏状态的数据来源</b><p>音频表目前<b>没有</b> <code>is_favorite</code> 列（只有音色表有），收藏是音频条目的新属性。推荐与 D2 共用同一份独立轻量存储；筛选「收藏」时计数恒为全量、与「全部」单选互斥。<b>情绪不显示、也不存</b>，生成时保存的语气标记无需为列表派生任何 UI 文案。</p></div></div>
+    <div class="decision"><span class="dn">D5</span><div><b>mini player 与后台接收浮条的层级</b><p>两者都想占标签栏之上同一位置。稿里建议互斥：生成中且弹窗关闭时显示后台浮条，否则显示 mini player；不叠放。需要确认这个优先级。</p></div></div>
+    <div class="decision"><span class="dn">D6</span><div><b>最近删除入口：⋯ 菜单 还是 筛选行末尾</b><p>稿里主推导航栏右上角「⋯」菜单第一项（带条数 badge，见屏 I），不占筛选行、不与胶囊混淆；备选是把「最近删除 ›」做成筛选行右端的固定文字链（更好发现，但会挤横向空间、视觉上像第三个筛选条件）。二选一后我再定稿。</p></div></div>
+    <div class="decision"><span class="dn">D7</span><div><b>收藏入口范围：只做播放页 / 只做列表 / 两处都做</b><p>我建议两处都做：播放详情页右上角常驻心形是<b>主入口</b>（听完即收藏，改动最小），列表左滑 + 多选工具条是<b>辅助批量入口</b>，两者共用同一个 store 同步（见屏 J / C / F）。若想先减负，第一期只做播放详情页即可。</p></div></div>
+  </section>
+
+  <div class="foot">
+    <span>EmotionVoice · iOS 历史记录优化设计 v2 · 2026-11-03 · 仅设计稿，未改动任何 Swift 代码</span>
+    <span>色板：AuroraPalette.swift ｜ 组件：AuroraComponents.swift ｜ 现状：ProjectsView.swift / HistoryViewModel.swift</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  themeBtn.addEventListener('click', function(){
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+  });
+  var zoomBtn = document.getElementById('zoomBtn');
+  zoomBtn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('zoom-full');
+    zoomBtn.classList.toggle('on', on);
+    zoomBtn.textContent = on ? '缩回 84%' : '1:1 放大';
+  });
+  document.querySelectorAll('[data-jump]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var target = document.querySelector(btn.getAttribute('data-jump'));
+      if(!target) return;
+      document.querySelectorAll('.frame').forEach(function(f){ f.classList.remove('focus'); });
+      target.classList.add('focus');
+      target.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(function(){ target.classList.remove('focus'); }, 1800);
+    });
+  });
+  // 手机内的轻量交互：点播放按钮切换试听态
+  document.querySelectorAll('.playbtn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var row = btn.closest('.hrow');
+      if(!row) return;
+      var on = btn.classList.toggle('on');
+      row.classList.toggle('playing', on);
+      btn.innerHTML = on ? '<svg class="ic"><use href="#i-pause"/></svg>' : '<svg class="ic"><use href="#i-play"/></svg>';
+    });
+  });
+  // 筛选胶囊：单选互斥（视觉演示）
+  document.querySelectorAll('.chips').forEach(function(group){
+    group.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); });
+        chip.classList.add('on');
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

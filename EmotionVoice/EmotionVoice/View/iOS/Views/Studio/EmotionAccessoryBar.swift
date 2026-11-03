@@ -2,7 +2,7 @@
 //  EmotionAccessoryBar.swift
 //  iOSEmora
 //
-//  键盘 accessory：23 个语气 + 7 个拟声 + 中断 + 清空。
+//  键盘 accessory：23 个语气 + 7 个拟声 + 中断 + 粘贴 + 清空。
 //
 //  ⚠️ 「完成」（收键盘）**不在这里** —— 它落在底部那条生成条上、与「生成音频」同一行。
 //  accessory 那一排按钮太多，主操作（收键盘）混在 30 个胶囊里找不着；而生成条
@@ -90,6 +90,8 @@ final class EditorAccessoryConfig: ObservableObject {
 
     var onPick: ((EmotionItem, EmotionCategory) -> Void)?
     var onInterrupt: (() -> Void)?
+    /// 把剪贴板里的纯文本插到光标处（与系统「粘贴」同一件事，只是入口在 accessory 上）
+    var onPaste: (() -> Void)?
     /// 清空输入框（与 StudioView 文本卡标题行的「清空」同一个动作）
     var onClear: (() -> Void)?
 }
@@ -167,6 +169,23 @@ struct EmotionAccessoryBar: View {
             .buttonStyle(.plain)
 
             Spacer(minLength: 0)
+            
+            Button {
+                config.onPaste?()
+            } label: {
+                Image(systemName: "square.on.square")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(c.textSecondary)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(c.surface3)
+                            .overlay(Circle().strokeBorder(c.line, lineWidth: 0.5))
+                    )
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("粘贴".localized())
 
             Button {
                 config.onClear?()

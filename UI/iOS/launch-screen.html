@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EmotionVoice · iOS 启动页</title>
+<style>
+  :root {
+    /* Cold Luxury 设计系统 */
+    --bg-0: #0E0F12;   /* 主背景 */
+    --bg-1: #15171B;   /* 次背景 */
+    --bg-2: #1C1F24;   /* 卡片底 */
+    --amber: #E8A968;  /* 主强调 */
+    --amber-2: #D49B5B;/* 次强调 */
+    --amber-hi: #F2C088;/* 高亮 */
+    --tx-1: #F5F5F7;   /* 主文字 */
+    --tx-2: #A8ABB4;   /* 次文字 */
+    --tx-3: #6B6E76;   /* 弱化文字 */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a1410 0%, transparent 60%),
+      #050507;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+      "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--tx-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 56px;
+    flex-wrap: wrap;
+    padding: 40px 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 设备外壳（iPhone 15 Pro 风格） ---------- */
+  .device {
+    position: relative;
+    width: 393px;
+    height: 852px;
+    border-radius: 56px;
+    padding: 12px;
+    background: linear-gradient(160deg, #2a2d33, #0b0c0e 55%, #1b1d21);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.10) inset,
+      0 0 0 3px #0a0b0d,
+      0 40px 90px rgba(0,0,0,0.65),
+      0 10px 30px rgba(0,0,0,0.5);
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background:
+      radial-gradient(140% 95% at 50% 18%, #16181d 0%, #0e0f12 48%, #08090b 100%);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- 状态栏 ---------- */
+  .statusbar {
+    height: 54px;
+    flex: 0 0 54px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 30px 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--tx-1);
+    z-index: 5;
+  }
+  .statusbar .right { display: flex; align-items: center; gap: 6px; }
+  .statusbar svg { display: block; }
+
+  /* ---------- 灵动岛 ---------- */
+  .island {
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 122px;
+    height: 36px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 6;
+  }
+
+  /* ---------- 启动主体 ---------- */
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 32px;
+    position: relative;
+  }
+
+  /* 背景光晕 */
+  .glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 320px; height: 320px;
+    transform: translate(-50%, -58%);
+    background: radial-gradient(circle, rgba(232,169,104,0.22) 0%, rgba(232,169,104,0.06) 42%, transparent 68%);
+    filter: blur(6px);
+    animation: breathe 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -58%) scale(0.92); }
+    50%      { opacity: 1;    transform: translate(-50%, -58%) scale(1.06); }
+  }
+
+  /* Logo 声纹球 */
+  .logo {
+    width: 188px; height: 188px;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 14px 30px rgba(232,169,104,0.28));
+    animation: float 4.2s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+  /* 脉动外环 */
+  .pulse {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 188px; height: 188px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1.5px solid rgba(232,169,104,0.35);
+    animation: ripple 3.4s ease-out infinite;
+    z-index: 1;
+  }
+  .pulse.delay { animation-delay: 1.7s; }
+  @keyframes ripple {
+    0%   { width: 170px; height: 170px; opacity: 0.7; }
+    100% { width: 300px; height: 300px; opacity: 0; }
+  }
+
+  /* 文案 */
+  .wordmark {
+    margin-top: 34px;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--tx-1);
+    z-index: 2;
+  }
+  .wordmark .accent { color: var(--amber); }
+  .tagline {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    color: var(--tx-2);
+    z-index: 2;
+  }
+
+  /* ---------- 底部声纹加载 ---------- */
+  .loader {
+    position: absolute;
+    bottom: 86px;
+    left: 0; right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    z-index: 2;
+  }
+  .wave {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+  }
+  .wave span {
+    width: 4px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, var(--amber-hi), var(--amber-2));
+    animation: eq 1.1s ease-in-out infinite;
+  }
+  .wave span:nth-child(1){ height: 8px;  animation-delay: 0s; }
+  .wave span:nth-child(2){ height: 18px; animation-delay: .12s; }
+  .wave span:nth-child(3){ height: 28px; animation-delay: .24s; }
+  .wave span:nth-child(4){ height: 14px; animation-delay: .36s; }
+  .wave span:nth-child(5){ height: 22px; animation-delay: .48s; }
+  .wave span:nth-child(6){ height: 30px; animation-delay: .60s; }
+  .wave span:nth-child(7){ height: 16px; animation-delay: .72s; }
+  .wave span:nth-child(8){ height: 26px; animation-delay: .84s; }
+  .wave span:nth-child(9){ height: 10px; animation-delay: .96s; }
+  .wave span:nth-child(10){ height: 20px; animation-delay: 1.04s; }
+  @keyframes eq {
+    0%, 100% { transform: scaleY(0.35); opacity: .65; }
+    50%      { transform: scaleY(1);    opacity: 1; }
+  }
+  .loading-text {
+    font-size: 12.5px;
+    letter-spacing: 1px;
+    color: var(--tx-3);
+  }
+
+  /* 底部 Home 指示条 */
+  .home-bar {
+    position: absolute;
+    bottom: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.55);
+    z-index: 5;
+  }
+
+  /* ---------- 说明卡 ---------- */
+  .spec {
+    width: 300px;
+    background: linear-gradient(180deg, #15171B, #0E0F12);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 18px;
+    padding: 24px 24px 26px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  }
+  .spec h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tx-1);
+    margin-bottom: 4px;
+  }
+  .spec .sub { font-size: 12px; color: var(--tx-3); margin-bottom: 18px; letter-spacing: .5px;}
+  .spec dl { display: grid; grid-template-columns: auto 1fr; gap: 11px 14px; }
+  .spec dt { font-size: 12.5px; color: var(--tx-2); white-space: nowrap; }
+  .spec dd { font-size: 12.5px; color: var(--tx-1); text-align: right; font-family: "SF Mono", ui-monospace, monospace; }
+  .spec .swatch { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  .spec hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 16px 0; }
+  .spec .note { font-size: 11.5px; line-height: 1.6; color: var(--tx-3); }
+  .spec .note b { color: var(--amber); font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <!-- 设备 -->
+  <div class="device">
+    <div class="screen">
+      <div class="island"></div>
+
+      <!-- 状态栏 -->
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="right">
+          <!-- 信号 -->
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+          <!-- WiFi -->
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.5c2.7 0 5.2 1 7 2.8l-1.5 1.6A7.7 7.7 0 0 0 8.5 4.6 7.7 7.7 0 0 0 3 6.9L1.5 5.3A10 10 0 0 1 8.5 2.5Zm0 3.6c1.7 0 3.3.6 4.5 1.8l-1.5 1.6A4.3 4.3 0 0 0 8.5 8.2 4.3 4.3 0 0 0 5.5 9.5L4 7.9A7 7 0 0 1 8.5 6.1Zm0 3.4c.7 0 1.4.3 1.9.8L8.5 12 6.6 10.3c.5-.5 1.2-.8 1.9-.8Z"/></svg>
+          <!-- 电池 -->
+          <svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" stroke="currentColor" opacity="0.4"/><rect x="2" y="2" width="18" height="9" rx="2" fill="currentColor"/><rect x="24" y="4" width="2.5" height="5" rx="1.2" fill="currentColor" opacity="0.5"/></svg>
+        </span>
+      </div>
+
+      <!-- 主体 -->
+      <div class="stage">
+        <div class="glow"></div>
+        <div class="pulse"></div>
+        <div class="pulse delay"></div>
+
+        <!-- 真实 Logo：琥珀声纹球 -->
+        <svg class="logo" viewBox="154 154 716 716" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="kbody" cx="416" cy="404" r="392" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#FBDCAF"/><stop offset="0.18" stop-color="#EDB273"/>
+              <stop offset="0.48" stop-color="#C98A45"/><stop offset="0.78" stop-color="#96682C"/>
+              <stop offset="1" stop-color="#6B481C"/>
+            </radialGradient>
+            <linearGradient id="kmark" x1="0" y1="332" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#2B1B09"/><stop offset="1" stop-color="#452C12"/>
+            </linearGradient>
+          </defs>
+          <circle cx="231.4" cy="350.0" r="12" fill="#E8A968"/>
+          <circle cx="326.2" cy="246.6" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="455.7" cy="192.9" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="595.9" cy="199.0" r="12" fill="#E8A968"/>
+          <circle cx="720.3" cy="263.8" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="805.6" cy="375.1" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="836.0" cy="512.0" r="12" fill="#E8A968"/>
+          <circle cx="805.6" cy="648.9" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="720.3" cy="760.2" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="595.9" cy="825.0" r="12" fill="#E8A968"/>
+          <circle cx="455.7" cy="831.1" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="326.2" cy="777.4" r="7" fill="#FFFFFF" fill-opacity="0.45"/>
+          <circle cx="231.4" cy="674.0" r="12" fill="#E8A968"/>
+          <circle cx="512.0" cy="512.0" r="244" fill="url(#kbody)"/>
+          <circle cx="512.0" cy="512.0" r="192" fill="none" stroke="#000000" stroke-opacity="0.07" stroke-width="3"/>
+          <circle cx="512.0" cy="512.0" r="195" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="2"/>
+          <circle cx="512.0" cy="512.0" r="158" fill="none" stroke="#000000" stroke-opacity="0.07" stroke-width="3"/>
+          <circle cx="512.0" cy="512.0" r="161" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="2"/>
+          <circle cx="512.0" cy="512.0" r="124" fill="none" stroke="#000000" stroke-opacity="0.07" stroke-width="3"/>
+          <circle cx="512.0" cy="512.0" r="127" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="2"/>
+          <circle cx="512.0" cy="512.0" r="244" fill="none" stroke="#000000" stroke-opacity="0.40" stroke-width="6"/>
+          <circle cx="512.0" cy="512.0" r="237" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="3"/>
+          <path d="M346.0 388.0 A204 204 0 0 1 582.0 292.0" fill="none" stroke="#FFFFFF" stroke-opacity="0.58" stroke-width="13" stroke-linecap="round"/>
+          <path d="M644.0 670.0 A204 204 0 0 1 388.0 698.0" fill="none" stroke="#000000" stroke-opacity="0.26" stroke-width="15" stroke-linecap="round"/>
+          <g transform="rotate(34.0 512 512)"><rect x="489" y="360" width="46" height="152" rx="23" fill="url(#kmark)"/></g>
+          <circle cx="512.0" cy="512.0" r="40" fill="url(#kmark)"/>
+          <circle cx="512.0" cy="512.0" r="40" fill="none" stroke="#FFFFFF" stroke-opacity="0.20" stroke-width="3"/>
+        </svg>
+
+        <div class="wordmark">Emotion<span class="accent">Voice</span></div>
+        <div class="tagline">情 感 语 音 创 作</div>
+
+        <!-- 声纹加载 -->
+        <div class="loader">
+          <div class="wave">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="loading-text">正在唤醒情感之声…</div>
+        </div>
+      </div>
+
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <!-- 规格说明 -->
+  <div class="spec">
+    <h2>EmotionVoice · 启动页</h2>
+    <div class="sub">iOS LAUNCH SCREEN · Cold Luxury</div>
+    <dl>
+      <dt>机型</dt><dd>iPhone 15 Pro</dd>
+      <dt>画布</dt><dd>393 × 852 pt</dd>
+      <dt>安全区</dt><dd>顶部 59 / 底部 34</dd>
+      <dt>主背景</dt><dd><span class="swatch" style="background:#0E0F12"></span>#0E0F12</dd>
+      <dt>强调色</dt><dd><span class="swatch" style="background:#E8A968"></span>#E8A968</dd>
+      <dt>主文字</dt><dd><span class="swatch" style="background:#F5F5F7"></span>#F5F5F7</dd>
+    </dl>
+    <hr/>
+    <div class="note">
+      <b>设计要点</b><br/>
+      · 真实品牌 Logo（琥珀声纹球）居中，呼吸光晕 + 浮动 + 双脉动外环。<br/>
+      · 底部声纹均衡器动画呼应「情感语音」产品定位。<br/>
+      · <b>生产须知</b>：iOS 启动图（LaunchScreen）为静态快照，动画仅用于本预览；上线需导出静态 PNG / 用 Storyboard 摆放同构图。
+    </div>
+  </div>
+
+</body>
+</html>

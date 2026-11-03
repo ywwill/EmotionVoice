@@ -231,7 +231,10 @@ struct TokenTextEditor: UIViewRepresentable {
                                                  coordinator?.insertInterrupt()
                                              },
                                              onClear: { [weak coordinator = context.coordinator] in
-                                                 coordinator?.clearAll()
+                                                 coordinator?.requestClear()
+                                             },
+                                             onPaste: { [weak coordinator = context.coordinator] in
+                                                 coordinator?.pasteFromClipboard()
                                              })
     }
 
@@ -500,6 +503,21 @@ struct TokenTextEditor: UIViewRepresentable {
             insertPlaceholder(token: token)
         }
 
+        /// 把剪贴板内容插到光标处（有选区就替换选区）。
+        ///
+        /// ⚠️ **只走系统的 `paste(_:)`，别自己读 `UIPasteboard.general.string` 再改 textStorage**：
+        ///  * iOS 16 起「app 主动读剪贴板」会弹「允许粘贴」确认框，只有系统 paste 通道免弹；
+        ///    而这里本来就是用户点了粘贴按钮，弹一次确认等于点了两次才粘上；
+        ///  * `paste(_:)` 照常走 `shouldChangeTextIn` → `textViewDidChange`，光标之后的标记
+        ///    由 `TokenDocument.adjust` 自动平移。手写插入（`insertPlaceholder` 那种）则要
+        ///    自己补一次 adjust —— 粘贴是变长替换，漏掉就是「粘完之后所有标签集体错位」。
+        func pasteFromClipboard() {
+            guard let tv = textView, tv.isEditable else { return }
+            // ⚠️ 不做 `UIPasteboard.general.hasStrings` 预检：那也是一次剪贴板访问。
+            // 剪贴板没东西时系统 paste 自己就是空操作，不需要我们兜底。
+            tv.paste(nil)
+        }
+
         /// 删除一个标记（点 ×）：连它占的那个占位符一起删
         func removeMark(id: UUID) {
             guard let tv = textView, let mark = store.marks.first(where: { $0.id == id }) else { return }
@@ -513,6 +531,49 @@ struct TokenTextEditor: UIViewRepresentable {
             }
             store.commit(doc: tv.text, marks: others)
             tvDidChangeContent(tv)
+        }
+
+        /// 点「清空」：先弹二次确认，确认后才真的清。
+        ///
+        /// ⚠️ **弹窗不能挂 accessory 的 SwiftUI 树上**：accessory 是 `inputAccessoryView`，
+        /// 它的 `UIHostingController` 在**键盘窗口**（`UITextEffectsWindow`）里，从那儿 present
+        /// 出来的 alert 会跟着键盘那一层走（位置飘、被键盘盖、系统日志刷 present 警告）。
+        /// 这里改从**编辑器自己的窗口**取最上层 VC —— `textView` 是在 app 窗口里的。
+        ///
+        /// ⚠️ 弹不出来就什么也不做 —— 宁可按钮「没反应」，也不能越过确认把正文清掉。
+        func requestClear() {
+            guard let tv = textView, tv.isEditable else { return }
+            // 空的就别问了（标记也算内容：它占着占位符，长度不会是 0）
+            guard (tv.text as NSString).length > 0 else { return }
+            guard let presenter = topPresenter() else { return }
+
+            let alert = UIAlertController(title: "清空内容".localized(),
+                                          message: "文本框里的所有文字和标签都会被清空，且无法恢复。".localized(),
+                                          preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "取消".localized(), style: .cancel))
+            alert.addAction(UIAlertAction(title: "清空".localized(), style: .destructive) { [weak self] _ in
+                self?.clearAll()
+            })
+            presenter.present(alert, animated: true)
+        }
+
+        /// app 窗口里最上层的 VC（用于 present 确认弹窗）
+        private func topPresenter() -> UIViewController? {
+            let window = textView?.window ?? Self.keyWindow
+            var vc = window?.rootViewController
+            while let presented = vc?.presentedViewController, !presented.isBeingDismissed {
+                vc = presented
+            }
+            // ⚠️ 已经有弹窗在上面了（连点两下「清空」）→ 不再叠一个，交给它自己
+            guard !(vc is UIAlertController) else { return nil }
+            return vc
+        }
+
+        private static var keyWindow: UIWindow? {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow }
         }
 
         /// 清空全部内容（正文 + 标记）
@@ -703,10 +764,12 @@ final class AccessoryHost {
                 isDark: Bool,
                 onPick: @escaping (EmotionItem, EmotionCategory) -> Void,
                 onInterrupt: @escaping () -> Void,
-                onClear: @escaping () -> Void) {
+                onClear: @escaping () -> Void,
+                onPaste: @escaping () -> Void) {
         config.onPick = onPick
         config.onInterrupt = onInterrupt
         config.onClear = onClear
+        config.onPaste = onPaste
         guard isDark != lastIsDark else { return }
         lastIsDark = isDark
         refresh(palette: palette)

@@ -249,8 +249,7 @@ struct GenerationDialog: View {
             StatGrid(items: [
                 ("已用时".localized(), formatDuration(ticker.elapsed)),
                 ("数据块".localized(), "%d 段".localized(stats.receivedChunks)),
-                ("目标".localized(), "≈\(formatDataSize(estimatedBytes))"),
-                ("时长".localized(), formatDuration(estimatedDuration))
+                ("目标".localized(), "≈\(formatDataSize(estimatedBytes))")
             ])
             .padding(.horizontal, 16)
             .padding(.top, 12)
