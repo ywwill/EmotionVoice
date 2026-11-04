@@ -161,6 +161,8 @@ final class SupabaseManager {
 
     func initializeUser() async throws -> (credits: Double, user: UserCreditsModel?) { (credits: 0, user: nil) }
     func updateCredits(_ credits: Double) async throws {}
+    /// app_updates 只读查询（真实现走 PostgREST，见 SupabaseManager.swift）
+    func fetchAppUpdate(platform: String) async throws -> [AppUpdateRecord] { [] }
 }
 
 // MARK: - 替身：设备标识

@@ -270,6 +270,10 @@ struct AuroraRow<Leading: View, Trailing: View>: View {
         .frame(minHeight: 44)
         .padding(.horizontal, 14)
         .background(isSelected ? c.accentSoft : Color.clear)
+        // ⚠️ 整行可点：行内是 HStack + Spacer，中间大片空白默认不可命中，
+        //    包成 Button 后只有「文字 / 值 / 箭头」附近有反应。这里统一给整行
+        //    加一个矩形热区，所有 NavigationRow 一行点哪儿都算。
+        .contentShape(Rectangle())
         .overlay(alignment: .bottom) {
             if showsSeparator {
                 Rectangle()

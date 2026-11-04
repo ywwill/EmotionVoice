@@ -26,6 +26,8 @@ struct RootTabView: View {
     @StateObject private var router = TabRouter()
     @StateObject private var studioVM = VoiceStudioViewModel.shared
     @StateObject private var nowPlaying = NowPlayingStore.shared
+    /// 检查更新：启动静默拉一次 `app_updates`，命中就出顶部横幅 / 强制更新弹窗
+    @StateObject private var updateManager = AppUpdateManager.shared
     // ⚠️ 根容器不订阅任何播放态：`AudioPreviewPlayer`（10Hz）会让整个 TabView +
     //    3 个 NavigationStack 一起重算；连低频代理 `PlaybackStatus` 也不再需要 ——
     //    mini player 的显隐只看 `NowPlayingStore.currentItem`（见 `bottomDock`），
@@ -63,12 +65,27 @@ struct RootTabView: View {
                     //    一边归位」。显隐由 `keyboardVisible` 单独控制（见 DidHide 注释）。
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
+            // 顶部更新横幅：**浮层**（Z 轴重叠），不占布局高度 —— 不再把 StudioView /
+            // 音色库 / 项目页整体往下推。
+            // ⚠️ 让开导航栏：根容器顶边就在状态栏下方，inline 导航栏（44pt）正好占前 44pt，
+            //    直接贴顶会盖住「创作」标题和左右 toolbar 按钮，所以下移一个导航栏高度。
+            .overlay(alignment: .top) {
+                updateBannerLayer
+                    .padding(.top, AppUpdateBanner.navBarClearance)
+                    .animation(.easeInOut(duration: 0.22), value: updateManager.showsBanner)
+            }
             .overlay { generationOverlay }
             .overlay(alignment: .top) { toastLayer }
             .sheet(isPresented: $uiState.purchaseSheetPresented) {
                 PurchaseSheet()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+            }
+            // 更新详情 / 强制更新弹窗（SheetNavBar 自带顶部抓手，不再用系统 drag indicator）
+            .sheet(item: $updateManager.presentedUpdate) { info in
+                AppUpdateSheet(manager: updateManager, info: info)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.hidden)
             }
         }
         .environment(\.aurora, palette)
@@ -100,6 +117,8 @@ struct RootTabView: View {
             let expired = AudioFlagStore.shared.purgeExpired()
             for id in expired { ProjectService.shared.deleteAudio(id: id) }
         }
+        // 启动静默检查更新：失败 / 无更新都不打扰用户
+        .task { await updateManager.checkForUpdateAtLaunch() }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardVisible = true
         }
@@ -147,6 +166,16 @@ struct RootTabView: View {
             PlayerDetailView(item: item)
         case .recentlyDeleted:
             RecentlyDeletedView()
+        }
+    }
+
+    // MARK: - 更新横幅（浮层，不参与布局）
+
+    @ViewBuilder
+    private var updateBannerLayer: some View {
+        if updateManager.showsBanner, let info = updateManager.availableUpdate {
+            AppUpdateBanner(manager: updateManager, info: info)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 

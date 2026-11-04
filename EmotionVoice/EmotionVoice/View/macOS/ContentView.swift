@@ -11,6 +11,9 @@ struct ContentView: View {
 
     @EnvironmentObject var appState: AppState
 
+    /// 检查更新：启动静默拉一次 `app_updates`，命中就出顶部横幅 / 强制更新弹窗
+    @StateObject private var updateManager = AppUpdateManager.shared
+
     /// 实际渲染到右侧的内容分区。
     ///
     /// 刻意滞后于 `appState.selectedSection`：点击菜单时 `selectedSection` 立即变化，
@@ -32,13 +35,31 @@ struct ContentView: View {
             Sidebar()
             Divider()
                 .background(AppColor.borderSubtle)
+
+            // 更新横幅浮在内容区顶部（Z 轴叠在内容之上，不占布局高度）：
+            // 不能再用 VStack 顶条 —— 那样横幅一出现就把 VoiceStudioView 等页面
+            // 整体往下挤，工作台的文本域、生成栏会跟着跳一下。
+            // 只叠在内容列之内，不越过 Divider 盖住侧边栏。
             mainContent
+                .overlay(alignment: .top) {
+                    if updateManager.showsBanner, let info = updateManager.availableUpdate {
+                        AppUpdateBannerMac(manager: updateManager, info: info)
+                            .padding(.top, AppUpdateBannerMac.topInset)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .animation(.easeInOut(duration: 0.22), value: updateManager.showsBanner)
         }
         .background(AppColor.bgPrimary)
         .frame(minWidth: 1000, minHeight: 800)
         // 生成弹窗 / 后台接收卡片挂在这一层：
         // 弹窗关闭后接收仍在后台跑，提示必须能跨页面存在（见 GenerationOverlay）
         .overlay { GenerationOverlay() }
+        // 更新详情 / 强制更新弹窗
+        .sheet(item: $updateManager.presentedUpdate) { info in
+            AppUpdateSheetMac(manager: updateManager, info: info)
+        }
+        .task { await updateManager.checkForUpdateAtLaunch() }
         .onChange(of: appState.selectedSection) { _, newSection in
             scheduleContentSwap(to: newSection)
         }

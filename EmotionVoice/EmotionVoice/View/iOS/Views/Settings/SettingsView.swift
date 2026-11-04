@@ -9,7 +9,7 @@
 //  —— iOS 的外观与语言由系统设置接管，导出走分享面板没有常驻目录，
 //  缓存交给系统，设备标识随 Keychain 走。
 //
-//  只留三组：账户（购买 + 记录）· 语音合成（默认格式 / 采样率）· 关于（版本）。
+//  只留三组：账户（购买 + 记录）· 语音合成（默认格式 / 采样率）· 关于（检查更新，右侧显版本号）。
 //
 
 import SwiftUI
@@ -22,6 +22,9 @@ struct SettingsView: View {
     @EnvironmentObject private var uiState: IOSUIState
     @EnvironmentObject private var router: TabRouter
 
+    /// 检查更新（单例，直接观察；不走 environmentObject，免得每层都补注入）
+    @ObservedObject private var updateManager = AppUpdateManager.shared
+
     /// 积分记录总条数（首屏取一次，进入二级页后再由二级页自己翻页）
     @State private var recordCount: Int = 0
 
@@ -29,8 +32,7 @@ struct SettingsView: View {
     @State private var optionSheet: SettingsOptionKind?
 
     private var versionText: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        return "\(short)"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     }
 
     var body: some View {
@@ -49,6 +51,10 @@ struct SettingsView: View {
 
                 GroupTitle(text: "关于".localized(), topPadding: 20)
                 aboutBlock
+
+                if let note = updateFootnote {
+                    footnote(note)
+                }
 
                 Spacer(minLength: 24)
             }
@@ -195,11 +201,18 @@ struct SettingsView: View {
 
     // MARK: 关于
 
+    /// 单行：左侧「检查更新」，右侧就是当前版本号，整行可点触发检查
     private var aboutBlock: some View {
-        NavigationRow(title: "版本".localized(),
-                      value: versionText,
-                      accessory: .none,
-                      showsSeparator: false)
+        Button {
+            Task { await updateManager.checkForUpdateManually() }
+        } label: {
+            NavigationRow(title: "检查更新".localized(),
+                          value: checkUpdateValue,
+                          accessory: updateManager.isChecking ? .none : .chevron,
+                          showsSeparator: false)
+        }
+        .buttonStyle(.plain)
+        .disabled(updateManager.isChecking)
         .background(
             RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
                 .fill(c.surface)
@@ -210,6 +223,23 @@ struct SettingsView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous))
         .padding(.horizontal, metrics.pageMargin)
+    }
+
+    /// 「检查更新」行右侧的值：常态显示当前版本号，检查中临时让位给进度文案
+    /// （检查结果统一走下方脚注，只有一句「已是最新版本」）
+    private var checkUpdateValue: String {
+        updateManager.isChecking ? "检查中…".localized() : versionText
+    }
+
+    /// 检查结果提示：有更新由 manager 直接弹窗，**其余情况一律只提示「已是最新版本」**
+    /// —— 本地领先 / 网络失败都不再单独报错，免得设置页出现一堆用户看不懂的状态词。
+    private var updateFootnote: String? {
+        switch updateManager.manualResult {
+        case .upToDate, .localAhead, .failed:
+            return "已是最新版本".localized()
+        case .idle, .checking, .updateAvailable:
+            return nil
+        }
     }
 
     private func footnote(_ text: String) -> some View {

@@ -243,3 +243,19 @@ extension SupabaseManager {
         return newCredits
     }
 }
+
+// MARK: - App 更新信息（客户端只读）
+
+extension SupabaseManager {
+
+    /// 检查更新
+    func fetchAppUpdate(platform: String) async throws -> [AppUpdateRecord] {
+        try await client
+            .from("app_updates")
+            .select("platform,version,force_update,release_notes")
+            .eq("platform", value: platform)
+            .limit(1)
+            .execute()
+            .value
+    }
+}

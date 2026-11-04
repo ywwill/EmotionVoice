@@ -14,6 +14,9 @@ struct SettingsView: View {
 
     @EnvironmentObject var appState: AppState
 
+    /// 检查更新（单例，直接观察）
+    @ObservedObject private var updateManager = AppUpdateManager.shared
+
     @State private var selectedCategory: SettingsCategory = .voice
 
     @State private var showingDirectoryPicker: Bool = false
@@ -21,6 +24,7 @@ struct SettingsView: View {
     enum SettingsCategory: String, CaseIterable, Identifiable {
         case voice = "语音合成"
         case file = "文件"
+        case about = "关于"
 
         var id: String { rawValue }
         var displayName: String { rawValue.localized() }
@@ -29,6 +33,7 @@ struct SettingsView: View {
             switch self {
             case .voice: return "waveform"
             case .file: return "folder"
+            case .about: return "info.circle"
             }
         }
     }
@@ -90,6 +95,7 @@ struct SettingsView: View {
                         : AppColor.textSecondary
                     )
                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .pointingHandCursor()
@@ -101,45 +107,6 @@ struct SettingsView: View {
         .background(AppColor.bgSidebar.opacity(0.5))
     }
 
-    // MARK: - 头部
-
-    private var settingsHeader: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(selectedCategory.displayName)
-                    .font(.system(size: 22, weight: .semibold))
-                Text(headerSubtitle)
-                    .font(AppFont.bodyMedium)
-                    .foregroundStyle(AppColor.textTertiary)
-            }
-            Spacer()
-            Button {} label: {
-                Text("完成".localized())
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(AppColor.borderMedium, lineWidth: 1)
-                    )
-                    .foregroundStyle(AppColor.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-        }
-        .padding(.bottom, 8)
-        .overlay(alignment: .bottom) {
-            Divider().background(AppColor.borderSubtle)
-        }
-    }
-
-    private var headerSubtitle: String {
-        switch selectedCategory {
-        case .voice: return "配置音色和音频输出选项".localized()
-        case .file: return "管理文件存储与缓存".localized()
-        }
-    }
-
     // MARK: - 内容
 
     @ViewBuilder
@@ -147,6 +114,7 @@ struct SettingsView: View {
         switch cat {
         case .voice:      voiceContent
         case .file:       fileContent
+        case .about:      aboutContent
         }
     }
 
@@ -272,6 +240,69 @@ struct SettingsView: View {
             case .failure:
                 break
             }
+        }
+    }
+
+    // MARK: 关于
+
+    private var versionText: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
+    private var aboutContent: some View {
+        VStack(spacing: 20) {
+            sectionCard(icon: "ℹ️", title: "版本信息".localized()) {
+                settingRow(
+                    label: "当前版本".localized(),
+                    desc: "",
+                    control: {
+                        Text(versionText)
+                            .font(AppFont.monoMedium)
+                            .foregroundStyle(AppColor.textSecondary)
+                    }
+                )
+
+                divider()
+
+                settingRow(
+                    label: "检查更新".localized(),
+                    desc: "",
+                    control: {
+                        HStack(spacing: 10) {
+                            if let status = checkUpdateStatus {
+                                Text(status)
+                                    .font(AppFont.caption)
+                                    .foregroundStyle(AppColor.textTertiary)
+                            }
+
+                            Button {
+                                Task { await updateManager.checkForUpdateManually() }
+                            } label: {
+                                Text(updateManager.isChecking ? "检查中…".localized() : "检查".localized())
+                                    .font(AppFont.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(AppColor.borderMedium, lineWidth: 1)
+                                    )
+                                    .foregroundStyle(AppColor.textPrimary)
+                            }
+                            .buttonStyle(.plain)
+                            .pointingHandCursor()
+                            .disabled(updateManager.isChecking)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    /// 「检查更新」右侧的状态短词：有更新直接弹窗，其余情况统一「已是最新版本」
+    private var checkUpdateStatus: String? {
+        switch updateManager.manualResult {
+        case .upToDate, .localAhead, .failed: return "已是最新版本".localized()
+        case .idle, .checking, .updateAvailable: return nil
         }
     }
 

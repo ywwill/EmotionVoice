@@ -254,7 +254,6 @@
 "⭐ 推荐" = "⭐ Recommended";
 
 // 设置
-"配置音色和音频输出选项" = "Configure voice and audio output options";
 "音频输出" = "Audio Output";
 "默认格式" = "Default Format";
 "导出音频文件格式" = "Export audio file format";
@@ -416,8 +415,6 @@
 "文本框里的所有文字和标签都会被清空，且无法恢复。" = "All text and tags in the text box will be cleared. This cannot be undone.";
 "从插入处一直生效，直到下一个语气标签或中断。" = "Takes effect from where it's inserted until the next tone tag or interrupt.";
 "只在插入处播放一次，不改变周围的语气。" = "Plays once at the insertion point without changing the surrounding tone.";
-
-// iOS · 创作参数
 "创作参数" = "Creation Parameters";
 "音频控制" = "Audio Control";
 "未选择音色" = "No voice selected";
@@ -559,7 +556,18 @@
 "选择要操作的音频" = "Select audio to manage";
 "重新编辑" = "Edit Again";
 "音频文件已丢失" = "Audio file is missing";
-"后台接收时间已用完" = "Background receiving time expired";
-"请返回 App 继续接收" = "Return to the app to continue";
-"返回 App 查看结果" = "Open the app to see the result";
-"生成已结束" = "Generation ended";
+
+// App 检查更新
+"检查更新" = "Check for Updates";
+"检查" = "Check";
+"检查中…" = "Checking…";
+"发现新版本" = "New Version Available";
+"发现新版本 %@" = "Version %@ is available";
+"更新" = "Update";
+"立即更新" = "Update Now";
+"稍后再说" = "Later";
+"更新内容" = "What's New";
+"查看更新内容" = "View update details";
+"当前版本" = "Current";
+"已是最新版本" = "You're on the latest version";
+"版本信息" = "Version";
