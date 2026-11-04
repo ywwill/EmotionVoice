@@ -27,7 +27,9 @@ struct VoicePickerSheet: View {
     @StateObject private var vm = VoicesLibraryViewModel(
         selectedCategory: nil, searchText: "", showFavoritesOnly: false, currentPage: 1
     )
-    @StateObject private var player = AudioPreviewPlayer.shared
+    // ⚠️ 同 VoicesLibraryView：宿主不订阅 10Hz progress，播放态走低频代理。
+    private let player = AudioPreviewPlayer.shared
+    @StateObject private var status = PlaybackStatus.shared
 
     // MARK: 筛选状态（Sheet 私有）
 
@@ -299,7 +301,7 @@ struct VoicePickerSheet: View {
                         ForEach(voices) { voice in
                             VoiceCardGrid(
                                 voice: voice,
-                                isPreviewing: player.playingKey == voice.key && player.isPlaying,
+                                isPreviewing: status.playingKey == voice.key && status.isPlaying,
                                 onPreview: { togglePreview(voice) },
                                 onFavorite: { toggleFavorite(voice) },
                                 onUse: { pick(voice) }

@@ -72,7 +72,9 @@ struct GenerationDialog: View {
 
     @StateObject private var gridModel = DataReceiveGridModel(rows: 5)
     @StateObject private var ticker = ElapsedTicker()
-    @StateObject private var player = AudioPreviewPlayer.shared
+    // ⚠️ 弹窗主体不订阅播放器：10Hz progress 会把四宫格 / 音色卡 / 积分行 / 网格
+    //    一起拖着重算（macOS `AudioGenerationModal` 开头注释写的就是这个坑）。
+    //    完成态播放器的订阅隔离在 `ModalAudioPlayer` 里。
 
     @State private var litCells = 0
     @State private var bytesPerCell = 4096
@@ -87,8 +89,8 @@ struct GenerationDialog: View {
 
     /// 完成态频谱的真实振幅包络（0...1，共 waveformBars 条）
     @State private var waveform: [CGFloat] = []
-    /// 拖动定位中的临时进度（nil = 跟随播放器）
-    @State private var scrubProgress: CGFloat? = nil
+    /// 名称输入框焦点：`.done` 收键盘
+    @FocusState private var nameFocused: Bool
 
     /// 网格目标格数（≈ 空槽数 × 0.82）
     private static let gridTargetCells = 82
@@ -246,14 +248,6 @@ struct GenerationDialog: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
 
-            StatGrid(items: [
-                ("已用时".localized(), formatDuration(ticker.elapsed)),
-                ("数据块".localized(), "%d 段".localized(stats.receivedChunks)),
-                ("目标".localized(), "≈\(formatDataSize(estimatedBytes))")
-            ])
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-
             gridBox
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -274,12 +268,29 @@ struct GenerationDialog: View {
 
     private var completedContent: some View {
         VStack(spacing: 0) {
-            // 名称可编辑行
+            // 名称可编辑行：预填默认名（对齐 macOS AudioGenerationModal），右侧 × 一键清空。
+            // 清空按钮只在有内容时出现，样式与项目页 RenameDialog 一致。
             HStack(spacing: 8) {
                 TextField("音频名称".localized(), text: $displayName)
                     .font(.system(size: 15.5))
                     .foregroundStyle(c.textPrimary)
+                    .focused($nameFocused)
                     .submitLabel(.done)
+                    .onSubmit { nameFocused = false }
+
+                if !displayName.isEmpty {
+                    Button { displayName = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(c.textTertiary)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.opacity.combined(with: .scale(scale: 0.7)))
+                    .accessibilityLabel("清空".localized())
+                }
+
                 Text((vm.generatedAudioURL?.pathExtension ?? vm.selectedFormat).uppercased())
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(c.accent)
@@ -296,6 +307,8 @@ struct GenerationDialog: View {
                     .fill(c.surface3)
             )
             .padding(.horizontal, 16)
+            // 只在「空 ↔ 非空」翻转时动一下，打字期间不触发
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: displayName.isEmpty)
 
             StatGrid(items: [
                 ("大小".localized(), formatDataSize(fileSize)),
@@ -303,6 +316,9 @@ struct GenerationDialog: View {
                 ("格式".localized(), (vm.generatedAudioURL?.pathExtension ?? vm.selectedFormat).uppercased()),
                 ("时长".localized(), formatDuration(vm.generatedAudioDuration))
             ])
+            // ⚠️ LazyVGrid 在 VStack(alignment:.center) 里只拿「理想宽度」→ 四列缩在中间。
+            //    显式撑满，左右边界才和下面同样 16pt 边距的 miniPlayer 对齐。
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.top, 10)
 
@@ -336,86 +352,12 @@ struct GenerationDialog: View {
 
     // MARK: 播放器
 
+    /// ⚠️ 播放器的 10Hz 订阅只关在 `ModalAudioPlayer` 里，弹窗主体零重算。
     private var miniPlayer: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 13) {
-                Button {
-                    if let url = vm.generatedAudioURL {
-                        if player.isPlaying(url: url) { player.pause() } else { player.play(url: url) }
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(c.ctaGradient)
-                            .frame(width: 48, height: 48)
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(formatDuration(player.currentTime))
-                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(c.textPrimary)
-                    Text(formatDuration(max(vm.generatedAudioDuration, player.duration)))
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(c.textTertiary)
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(player.isPlaying ? c.success : c.textTertiary)
-                        .frame(width: 7, height: 7)
-                    Text(player.isPlaying ? "正在播放".localized() : "已暂停".localized())
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(c.textSecondary)
-                }
-            }
-
-            waveformStrip
-                .frame(height: 36)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                .fill(c.surface2)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                        .strokeBorder(c.line, lineWidth: 0.5)
-                )
-        )
-        .onAppear {
-            if let url = vm.generatedAudioURL { player.play(url: url) }
-        }
-        .onDisappear { player.stop() }
-    }
-
-    // MARK: 频谱
-
-    /// 真实频谱条：振幅来自音频文件本身，可拖动定位
-    private var waveformStrip: some View {
-        GeometryReader { geo in
-            WaveformBars(samples: waveform,
-                         barCount: Self.waveformBars,
-                         progress: scrubProgress ?? CGFloat(min(max(player.progress, 0), 1)))
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            scrubProgress = min(max(value.location.x / max(geo.size.width, 1), 0), 1)
-                        }
-                        .onEnded { _ in
-                            let p = Double(scrubProgress ?? 0)
-                            scrubProgress = nil
-                            let total = max(player.duration, vm.generatedAudioDuration)
-                            if total > 0 { player.seek(to: p * total) }
-                        }
-                )
-        }
+        ModalAudioPlayer(audioURL: vm.generatedAudioURL,
+                         fallbackDuration: vm.generatedAudioDuration,
+                         samples: waveform,
+                         barCount: Self.waveformBars)
     }
 
     // MARK: 网格
@@ -470,14 +412,7 @@ struct GenerationDialog: View {
     private var footer: some View {
         HStack(spacing: 8) {
             if hasResult {
-                SecondaryButton(title: "", systemImage: "square.and.arrow.up",
-                                height: 44, isFullWidth: false) { isSharing = true }
-                    .frame(width: 50)
-                    .accessibilityLabel("分享".localized())
-
-                SecondaryButton(title: "导出".localized(), systemImage: "arrow.down.doc") {
-                    prepareExport()
-                }
+                SecondaryButton(title: "导出".localized(),) { isSharing = true }
 
                 PrimaryButton(title: "完成".localized()) {
                     commitName()
@@ -575,7 +510,9 @@ struct GenerationDialog: View {
         if let started = vm.generationStartedAt {
             ticker.start(at: started)
         }
-        // ⚠️ 名称不再用正文前 20 字兜底：完成态不展示任何合成文本内容
+        // 完成态名称不空着：与 macOS AudioGenerationModal 同规则预填一个可直接用的名字。
+        // 预填值只是输入框里的「预设」，用户可点右侧 × 清空后自己写或留空。
+        displayName = Self.defaultAudioName(from: vm.plainText)
         feedGrid()
     }
 
@@ -587,13 +524,6 @@ struct GenerationDialog: View {
         gridRemainder = total % bytesPerCell
         litCells = target
         gridModel.receive(delta)
-    }
-
-    private func prepareExport() {
-        guard let url = vm.generatedAudioURL,
-              let data = try? Data(contentsOf: url) else { return }
-        exportData = data
-        isExporting = true
     }
 
     /// 解析完成态频谱（解码在后台线程，只把包络写回主线程）
@@ -609,10 +539,33 @@ struct GenerationDialog: View {
         waveform = values
     }
 
+    /// 完成态默认名（与 macOS `AudioGenerationModal.generateDefaultAudioName()` 同规则）。
+    ///
+    /// ① 换行折成空格 → 先截 40 字再 `sanitizeFileName`（洗掉 `/ : * ?` 等非法字符）→ 取前 10 字；
+    ///    情感 / 拟声标签是编辑器装饰，只取 `plainText`，不混进名字。
+    /// ② 文本为空 / 洗完什么都不剩 → 退回本地化的「音频_MM-dd HH:mm」时间戳。
+    /// ⚠️ 时间戳兜底用带参数的 `.localized(...)`，不要写成 `String(format: "…%@…".localized(), …)`。
+    private static func defaultAudioName(from plainText: String) -> String {
+        let source = plainText
+            .components(separatedBy: .newlines)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        let cleaned = sanitizeFileName(String(source.prefix(40)))
+        let prefix = String(cleaned.prefix(10))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-").union(.whitespaces))
+        if !prefix.isEmpty { return prefix }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM-dd HH:mm"
+        return sanitizeFileName("音频_%@".localized(formatter.string(from: Date())))
+    }
+
+    /// 完成：写入自定义名称；点过「清空」则按「无自定义名」落库，列表回退到时间戳文件名。
     private func commitName() {
+        guard let id = vm.generatedAudioId else { return }
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let id = vm.generatedAudioId else { return }
-        ProjectService.shared.renameAudio(id: id, displayName: trimmed)
+        ProjectService.shared.renameAudio(id: id,
+                                          displayName: trimmed.isEmpty ? nil : trimmed)
     }
 }
 
@@ -668,6 +621,102 @@ private struct StreamingWaveBars: View {
         let p = Double(index) * 0.42 + time * 2.6
         let v = 0.42 + 0.34 * sin(p) + 0.16 * sin(p * 2.6 + 1.4)
         return min(max(v, 0.12), 1)
+    }
+}
+
+// MARK: - 完成态播放器（订阅隔离）
+
+/// macOS `AudioGenerationModal.ModalAudioPlayer` 同款：播放器订阅只关在这一个小 View 里，
+/// 弹窗主体的四宫格 / 音色卡 / 积分行 / 网格不会跟着 10Hz progress 重算。
+private struct ModalAudioPlayer: View {
+    @Environment(\.aurora) private var c
+    @ObservedObject private var player = AudioPreviewPlayer.shared
+
+    let audioURL: URL?
+    let fallbackDuration: Double
+    let samples: [CGFloat]
+    let barCount: Int
+
+    @State private var scrubProgress: CGFloat? = nil
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 13) {
+                Button {
+                    if let url = audioURL {
+                        if player.isPlaying(url: url) { player.pause() } else { player.play(url: url) }
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(c.ctaGradient)
+                            .frame(width: 48, height: 48)
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(formatDuration(player.currentTime))
+                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(c.textPrimary)
+                    Text(formatDuration(max(fallbackDuration, player.duration)))
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(c.textTertiary)
+                }
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(player.isPlaying ? c.success : c.textTertiary)
+                        .frame(width: 7, height: 7)
+                    Text(player.isPlaying ? "正在播放".localized() : "已暂停".localized())
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(c.textSecondary)
+                }
+            }
+
+            waveformStrip
+                .frame(height: 36)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                .fill(c.surface2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                        .strokeBorder(c.line, lineWidth: 0.5)
+                )
+        )
+        .onAppear {
+            if let url = audioURL { player.play(url: url) }
+        }
+        .onDisappear { player.stop() }
+    }
+
+    /// 真实频谱条：振幅来自音频文件本身，可拖动定位
+    private var waveformStrip: some View {
+        GeometryReader { geo in
+            WaveformBars(samples: samples,
+                         barCount: barCount,
+                         progress: scrubProgress ?? CGFloat(min(max(player.progress, 0), 1)))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            scrubProgress = min(max(value.location.x / max(geo.size.width, 1), 0), 1)
+                        }
+                        .onEnded { _ in
+                            let p = Double(scrubProgress ?? 0)
+                            scrubProgress = nil
+                            let total = max(player.duration, fallbackDuration)
+                            if total > 0 { player.seek(to: p * total) }
+                        }
+                )
+        }
     }
 }
 

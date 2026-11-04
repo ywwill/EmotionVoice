@@ -2,19 +2,21 @@
 //  ProjectsView.swift
 //  iOSEmora
 //
-//  我的项目列表
+//  历史记录（项目标签页）。
 //
-//  macOS 是「左 340pt 列表 + 右详细信息」两栏同屏，iOS 改为 push 导航栈：
-//  - 点任意行「选中即播放」并 push 播放详情
-//  - 右键 popover 菜单（编辑名称 / 复制 / 删除）→ **左滑 Swipe Actions**
-//  - macOS 菜单里的「批量操作」→ 导航栏「选择」进入多选 + 底部工具条
-//    （`safeAreaInset` 挂在标签栏之上）
+//  按 UI/iOS/history-redesign.html v2 重做：
+//  - 大标题「历史记录」+ 副标题；标签栏仍叫「项目」（D1 默认不改标签名）
+//  - 全库检索（名称 / 文案 / 音色）+ 范围 chip + 命中高亮 + 结果计数
+//  - 统计条 / 全部·收藏筛选 / 时间分组（今天·昨天·本周·更早，组头吸顶）
+//  - 行内 32pt 就地试听 ≠ 点行进详情；mini player 全局常驻
+//  - 删除 = 移入最近删除（30 天）+ 5 秒撤销 Toast，不再是永久删除
+//  - 左滑四操作 / 多选工具条图标+文字 / 空态引导 / 骨架屏
 //
-//  搜索沿用 `HistoryViewModel`：只在**本地已加载数据**里过滤，与 macOS 一致。
+//  ⚠️ 约定：磁盘 IO 一律在动画事务之外；列表刷新用 opacity+offset 可动画属性，
+//     `.id(scrollResetID)` 只负责滚动复位；同一层只挂一个 `.alert`。
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ProjectsView: View {
     @Environment(\.aurora) private var c
@@ -23,24 +25,19 @@ struct ProjectsView: View {
     @EnvironmentObject private var uiState: IOSUIState
     @EnvironmentObject private var router: TabRouter
 
-    @StateObject private var vm = HistoryViewModel()
-    @StateObject private var player = AudioPreviewPlayer.shared
+    @StateObject private var vm = HistoryListViewModel()
+    @StateObject private var flags = AudioFlagStore.shared
+    @StateObject private var nowPlaying = NowPlayingStore.shared
+    // ⚠️ 列表宿主不订阅播放器：progress 10Hz 会让 ForEach 里所有行一起重算。
+    //    播放态走低频代理，行内进度条由「正在播放那一行」自己订阅。
+    @StateObject private var status = PlaybackStatus.shared
 
-    // MARK: 多选
+    // MARK: 多选 / 重命名 / 删除
 
     @State private var isSelecting = false
     @State private var selectedIDs: Set<Int64> = []
-
-    /// 列表滚动代理：复制后要滚回顶部，让用户看见新行
-    @State private var scrollProxy: ScrollViewProxy? = nil
-
-    // MARK: 重命名
-
     @State private var renameTarget: AudioItem? = nil
     @State private var renameText: String = ""
-
-    // MARK: 删除确认
-
     @State private var deleteTarget: AudioItem? = nil
     @State private var deleteMany = false
 
@@ -48,64 +45,45 @@ struct ProjectsView: View {
 
     @State private var shareURLs: [URL] = []
     @State private var isSharing = false
-    @State private var isExporting = false
-    @State private var exportItem: AudioItem? = nil
 
-    /// key → 展示名（首屏拉一次，避免每行都查库）
-    @State private var voiceNames: [String: String] = [:]
+    // MARK: 菜单 / 刷新节奏
+
+    @State private var moreMenuPresented = false
+    @State private var contentVisible = true
+    @State private var scrollResetID = 0
+    @State private var searchTask: Task<Void, Never>? = nil
 
     var body: some View {
-        ScrollViewReader { proxy in
-        List {
-            Section {
-                ForEach(vm.displayedAudios) { audio in
-                    row(audio)
-                        .id(audio.id)
-                        .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) { deleteTarget = audio } label: {
-                                Label("删除".localized(), systemImage: "trash.fill")
-                            }
-                            Button { duplicate(audio) } label: {
-                                Label("复制".localized(), systemImage: "doc.on.doc.fill")
-                            }
-                            .tint(c.info)
-                            Button { beginRename(audio) } label: {
-                                Label("重命名".localized(), systemImage: "pencil")
-                            }
-                            .tint(c.success)
-                        }
-                        .onAppear { loadMoreIfNeeded(audio) }
+        VStack(spacing: 0) {
+            header
+            searchField
+
+            if vm.isSearching {
+                HistoryScopeChips(selection: vm.searchScope) { scope in
+                    animateRefresh { vm.searchScope = scope }
                 }
-            } header: {
-                if vm.displayedAudios.isEmpty && !vm.isLoading { emptyHint }
-            } footer: {
-                footerHint
+                HistoryResultBar(count: vm.resultCount, sortOrder: vm.sortOrder)
             }
+
+            HistoryStatBar(count: vm.totalCount, bytes: vm.totalBytes, monthly: vm.monthlyCount)
+
+            HistoryFilterChips(allCount: vm.totalCount,
+                               favoriteCount: vm.favoriteTotalCount,
+                               selection: vm.filter) { filter in
+                animateRefresh { vm.filter = filter }
+            }
+
+            listArea
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(c.backgroundGrouped)
-        // ⚠️ 列表的统一转场：行内容的增删（复制插入 / 删除 / 重命名）默认是一帧硬切，
-        // 这里统一给一条 spring，避免「点一下 → 整列表闪一下」。
-        .animation(.spring(response: 0.34, dampingFraction: 0.9),
-                   value: vm.displayedAudios.count)
-        .searchable(text: $vm.searchText, prompt: "搜索音频名称".localized())
-        .navigationTitle("项目".localized())
+        // 多选态导航栏中间显示「已选 N 条」；平时留空（大标题在内容区）
+        .navigationTitle(isSelecting ? "已选 %d 条".localized(selectedIDs.count) : "")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .safeAreaInset(edge: .bottom) {
             if isSelecting { selectionBar }
         }
         .sheet(isPresented: $isSharing) { ShareSheet(items: shareURLs) }
-        .fileExporter(isPresented: $isExporting,
-                      document: exportDocument,
-                      contentType: exportContentType,
-                      defaultFilename: exportFileName) { _ in }
-        // ⚠️ 重命名**不用系统 `.alert`**：它的 `TextField` 没有清空按钮，而 Alert 的
-        // 内容槽位里也塞不进自定义视图（塞进去会被排版成一整行按钮）。
-        // 重命名恰恰是最需要「先清一遍再重输」的入口 —— 名字通常是随手起的代号。
         .overlay {
             if renameTarget != nil {
                 RenameDialog(text: $renameText,
@@ -113,290 +91,473 @@ struct ProjectsView: View {
                              onSave: { commitRename() })
             }
         }
+        .overlay {
+            if moreMenuPresented { moreMenu }
+        }
         .animation(.spring(response: 0.32, dampingFraction: 0.82), value: renameTarget?.id)
-        .alert("删除音频".localized(), isPresented: deletePresented) {
-            Button("取消".localized(), role: .cancel) { deleteTarget = nil; deleteMany = false }
-            Button("删除".localized(), role: .destructive) { commitDelete() }
+        .alert("移入最近删除？".localized(), isPresented: deletePresented) {
+            Button("取消".localized(), role: .cancel) {
+                deleteTarget = nil
+                deleteMany = false
+            }
+            Button("移入最近删除".localized(), role: .destructive) { commitSoftDelete() }
         } message: {
             Text(deleteMessage)
         }
-        .task {
-            vm.loadInitialData()
-            preloadVoiceNames()
+        .onAppear {
+            vm.load()
+            uiState.hideMiniPlayer = isSelecting
         }
-        .onAppear { scrollProxy = proxy }
-        }
+        .onChange(of: vm.searchText) { _, _ in scheduleRefresh() }
+        // 详情页 / 最近删除页撤销软删后，列表页早已 onAppear 过 → 靠信号重新拉全量
+        .onChange(of: uiState.historyReloadSignal) { _, _ in vm.load() }
     }
 
-    // MARK: - 行
+    // MARK: - 顶部固定区
 
-    private func row(_ audio: AudioItem) -> some View {
-        HStack(spacing: 11) {
-            if isSelecting {
-                selectionCircle(audio)
-            }
-
-            VoiceAvatar(text: avatarText(audio), seed: audio.voice, size: 44, corner: 12)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(audio.shownName)
-                    .font(.system(size: 15.5, weight: .medium))
-                    .foregroundStyle(c.textPrimary)
-                    .lineLimit(1)
-                Text(metaLine(audio))
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(c.textTertiary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-
-            if isPlaying(audio) {
-                PlayingBars(color: c.accent)
-                    .frame(width: 16, height: 14)
-            }
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("历史记录".localized())
+                .font(.system(size: 34, weight: .bold))
+                .foregroundStyle(c.textPrimary)
+            Text(isSelecting ? "选择要操作的音频".localized() : "全部生成音频 · 按时间排列".localized())
+                .font(.system(size: 12.5))
+                .foregroundStyle(c.textTertiary)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: AuroraRadius.sm, style: .continuous)
-                .fill(isPlaying(audio) ? c.surface2 : c.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AuroraRadius.sm, style: .continuous)
-                        .strokeBorder(isPlaying(audio) ? c.accent.opacity(0.35) : c.line,
-                                      lineWidth: 0.5)
-                )
-        )
-        .contentShape(Rectangle())
-        .onTapGesture { tap(audio) }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, metrics.pageMargin)
+        .padding(.top, 2)
     }
 
-    private func selectionCircle(_ audio: AudioItem) -> some View {
-        let on = selectedIDs.contains(audio.id)
-        return ZStack {
-            Circle()
-                .fill(on ? c.accent : Color.clear)
-                .overlay(
-                    Circle().strokeBorder(on ? Color.clear : c.line2, lineWidth: 1.5)
-                )
-            if on {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-            }
+    private var searchField: some View {
+        AuroraSearchField(text: $vm.searchText,
+                          placeholder: "搜索名称、文案或音色".localized()) {
+            commitSearch()
         }
-        .frame(width: 23, height: 23)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
     }
 
-    // MARK: - 空态 / 底部
-
-    private var emptyHint: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "folder")
-                .font(.system(size: 28))
-                .foregroundStyle(c.textTertiary.opacity(0.6))
-            Text(vm.searchText.isEmpty ? "还没有生成的音频".localized() : "没有匹配的音频".localized())
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(c.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
-    }
+    // MARK: - 列表
 
     @ViewBuilder
-    private var footerHint: some View {
-        if vm.isLoading {
-            HStack(spacing: 7) {
-                ProgressView().controlSize(.small)
-                Text("加载中…".localized())
-                    .font(.system(size: 12))
-                    .foregroundStyle(c.textTertiary)
+    private var listArea: some View {
+        List {
+            if vm.isLoading && vm.sections.isEmpty {
+                ForEach(0..<3, id: \.self) { _ in
+                    HistorySkeletonRow()
+                        .listRowInsets(EdgeInsets(top: 3.5, leading: 12, bottom: 3.5, trailing: 12))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            } else {
+                ForEach(vm.sections) { section in
+                    Section {
+                        ForEach(section.items) { audio in
+                            row(audio)
+                                .id(audio.id)
+                                .listRowInsets(EdgeInsets(top: 3.5, leading: 12, bottom: 3.5, trailing: 12))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    swipeButtons(audio)
+                                }
+                        }
+                    } header: {
+                        HistorySectionHeader(section: section)
+                            .listRowInsets(EdgeInsets())
+                    }
+                }
+
+                if showEmpty {
+                    Section {
+                        HistoryEmptyState(isSearching: vm.isSearching,
+                                          onCreate: { router.selection = .studio },
+                                          onClearSearch: { clearSearch() },
+                                          onClearFilter: { clearFilter() })
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                }
+
+                if vm.hasMoreVisible && !vm.isSearching {
+                    Section {
+                        loadMoreRow
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-        } else if vm.hasMorePages && !vm.displayedAudios.isEmpty {
-            Text("上拉加载更多".localized())
-                .font(.system(size: 12))
-                .foregroundStyle(c.textTertiary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .onAppear { vm.loadNextPage() }
+
+            // ⚠️ mini player 是 RootTabView 的全局浮层，不参与 List 的 safe area。
+            //    不给底部留占位，最后一行滚到底也仍被盖住。
+            if miniPlayerVisible {
+                Section {
+                    Color.clear
+                        .frame(height: MiniPlayerView.height + 28)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
+        // ⚠️ `.id` 只负责滚动复位；过渡靠可动画属性，不用容器 .transition
+        .id(scrollResetID)
+        .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 12)
+        .animation(.easeOut(duration: 0.28), value: contentVisible)
+        .animation(.spring(response: 0.34, dampingFraction: 0.9), value: vm.sections.count)
+    }
+
+    private var showEmpty: Bool { vm.sections.isEmpty && !vm.isLoading }
+
+    /// 与 `RootTabView.bottomDock` 的 mini player 显示条件对齐（键盘态除外：
+    /// 键盘弹起浮层会隐藏，此时多留一段底部空白没有副作用）。
+    private var miniPlayerVisible: Bool {
+        !uiState.hideMiniPlayer
+        && router.activePath.isEmpty
+        && nowPlaying.currentItem != nil
+        && status.playingKey != nil
+    }
+
+    private var loadMoreRow: some View {
+        HStack(spacing: 7) {
+            if vm.isLoading { ProgressView().controlSize(.small) }
+            Text("继续加载更早的记录…".localized())
+                .font(.system(size: 11.5))
+                .foregroundStyle(c.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .onAppear { vm.loadMoreVisible() }
+    }
+
+    private func row(_ audio: AudioItem) -> some View {
+        HistoryRow(audio: audio,
+                   voiceName: vm.voiceName(for: audio),
+                   favorite: flags.isFavorite(audio.id),
+                   isPlaying: isPlaying(audio),
+                   isSelecting: isSelecting,
+                   selected: selectedIDs.contains(audio.id),
+                   query: vm.searchText,
+                   onPreview: { preview(audio) },
+                   onOpen: { tap(audio) },
+                   onRetry: { retry(audio) })
+    }
+
+    // MARK: - ⋯ 菜单
+
+    private var moreMenu: some View {
+        HistoryMoreMenu(deletedCount: flags.deletedCount,
+                        sortOrder: vm.sortOrder,
+                        onTrash: {
+                            router.push(.recentlyDeleted)
+                        },
+                        onSortChange: { order in
+                            animateRefresh { vm.sortOrder = order }
+                        },
+                        onDismiss: { setMoreMenu(false) })
+            // 退场淡出（进场由菜单内部 appeared 驱动缩放 + 淡入）
+            .transition(.opacity)
+    }
+
+    /// ⚠️ 翻转必须落在动画事务里，overlay 的插入 / 移除才有过渡，否则瞬切。
+    private func setMoreMenu(_ on: Bool) {
+        withAnimation(.easeOut(duration: 0.2)) { moreMenuPresented = on }
     }
 
     // MARK: - 导航栏
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // ⚠️ 这里**不放设置入口**：设置已经能从另外两个标签页进（创作 / 音色库），
-        // 项目页右上角要留给「进入多选」这一个动作，两个按钮挤在一起时用户
-        // 分不清哪个是选择、哪个是设置。
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                withAnimation(.easeOut(duration: 0.18)) {
-                    isSelecting.toggle()
-                    if !isSelecting { selectedIDs = [] }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: isSelecting ? "checkmark.circle.fill" : "checklist")
-                        .font(.system(size: 17, weight: .semibold))
-                    Text(isSelecting ? "完成".localized() : "选择".localized())
-                        .font(.system(size: 15.5, weight: .semibold))
-                }
-                .foregroundStyle(c.accent)
-                .padding(.horizontal, isSelecting ? 11 : 8)
-                .frame(height: 32)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(c.accentSoft)
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .strokeBorder(c.accent.opacity(0.28), lineWidth: 0.5)
-                        )
-                )
-                .contentShape(Capsule(style: .continuous))
+        ToolbarItem(placement: .topBarLeading) {
+            if isSelecting {
+                Button("取消".localized()) { setSelecting(false) }
+                    .foregroundStyle(c.accent)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(isSelecting ? "结束多选".localized() : "进入多选".localized())
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            HStack(spacing: 10) {
+                if isSelecting {
+                    Button {
+                        if selectedIDs.count == vm.sections.reduce(0, { $0 + $1.items.count }) {
+                            selectedIDs = []
+                        } else {
+                            selectedIDs = Set(vm.sections.flatMap(\.items).map(\.id))
+                        }
+                    } label: {
+                        Text(allSelected ? "取消全选".localized() : "全选".localized())
+                            .font(.system(size: 14.5, weight: .semibold))
+                            .foregroundStyle(c.accent)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button { setSelecting(true) } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checklist")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(c.accent)
+                        .padding(.horizontal, 11)
+                        .frame(height: 32)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(c.accentSoft)
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(c.accent.opacity(0.28), lineWidth: 0.5)
+                                )
+                        )
+                        .contentShape(Capsule(style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("进入多选".localized())
+
+                    Button { setMoreMenu(true) } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(c.accent)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("更多".localized())
+                }
+            }
         }
     }
 
-    // MARK: - 多选工具条
+    private var allSelected: Bool {
+        let total = vm.sections.reduce(0) { $0 + $1.items.count }
+        return total > 0 && selectedIDs.count == total
+    }
+
+    // MARK: - 多选工具条（图标 + 文字）
 
     private var selectionBar: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 0) {
             Text("\(selectedIDs.count)")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(Capsule(style: .continuous).fill(c.accent))
+            Text("已选择".localized())
+                .font(.system(size: 12))
+                .foregroundStyle(c.textSecondary)
+                .padding(.leading, 8)
 
             Spacer(minLength: 0)
+            Rectangle().fill(c.line2).frame(width: 1, height: 26).padding(.horizontal, 4)
 
-            Button {
-                if selectedIDs.count == vm.displayedAudios.count {
-                    selectedIDs = []
-                } else {
-                    selectedIDs = Set(vm.displayedAudios.map(\.id))
-                }
-            } label: {
-                Text(selectedIDs.count == vm.displayedAudios.count ? "取消全选".localized() : "全选".localized())
-                    .font(.system(size: 14.5, weight: .semibold))
-                    .foregroundStyle(c.accent)
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(c.line2)
-                .frame(width: 1, height: 22)
-
-            Button { shareSelected() } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(selectedIDs.isEmpty ? c.textTertiary : c.accent)
-            }
-            .buttonStyle(.plain)
-            .disabled(selectedIDs.isEmpty)
-
-            Button {
-                deleteMany = true
-            } label: {
-                Image(systemName: "trash.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(selectedIDs.isEmpty ? c.textTertiary : c.danger)
-            }
-            .buttonStyle(.plain)
-            .disabled(selectedIDs.isEmpty)
+            toolAction("square.and.arrow.up", "分享".localized(), tint: c.accent) { shareSelected() }
+            toolAction("doc.on.doc", "复制".localized(), tint: c.accent) { duplicateSelected() }
+            // 所选条目全部已收藏时，同一个按钮翻转为「取消收藏」→ 支持批量取消
+            toolAction(allSelectedFavorited ? "heart.slash.fill" : "heart.fill",
+                       allSelectedFavorited ? "取消收藏".localized() : "收藏".localized(),
+                       tint: AuroraDecor.rose) { toggleFavoriteSelected() }
+            toolAction("trash.fill", "删除".localized(), tint: c.danger) { deleteMany = true }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 10)
         .background(c.bar)
         .overlay(alignment: .top) { Hairline() }
     }
 
-    // MARK: - 行为
-
-    private func tap(_ audio: AudioItem) {
-        if isSelecting {
-            if selectedIDs.contains(audio.id) {
-                selectedIDs.remove(audio.id)
-            } else {
-                selectedIDs.insert(audio.id)
+    private func toolAction(_ icon: String, _ title: String, tint: Color,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 10))
             }
-            return
+            .foregroundStyle(selectedIDs.isEmpty ? c.textTertiary : tint)
+            .frame(minWidth: 44)
+            .contentShape(Rectangle())
         }
-        vm.selectAudio(audio)
-        router.push(.player(audio))
+        .buttonStyle(.plain)
+        .disabled(selectedIDs.isEmpty)
     }
 
-    private func loadMoreIfNeeded(_ audio: AudioItem) {
-        guard audio.id == vm.displayedAudios.last?.id else { return }
-        vm.loadNextPage()
+    // MARK: - 刷新节奏
+
+    /// 打字：280ms 防抖，只重算不淡出（每敲一个字都闪一下太晃）。
+    private func scheduleRefresh() {
+        searchTask?.cancel()
+        searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            guard !Task.isCancelled else { return }
+            vm.rebuild()
+            scrollResetID += 1
+        }
+    }
+
+    /// 回车：取消防抖，立即查全库。
+    private func commitSearch() {
+        searchTask?.cancel()
+        searchTask = nil
+        vm.rebuild()
+        scrollResetID += 1
+    }
+
+    /// 筛选 / 排序：淡出 0.1s → 换数据 → 淡入 0.28s，滚动复位。
+    private func animateRefresh(_ apply: @escaping () -> Void) {
+        withAnimation(.easeOut(duration: 0.1)) { contentVisible = false }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            apply()
+            vm.rebuild()
+            scrollResetID += 1
+            withAnimation(.easeOut(duration: 0.28)) { contentVisible = true }
+        }
+    }
+
+    private func clearSearch() {
+        vm.searchText = ""
+        vm.searchScope = .all
+        commitSearch()
+    }
+
+    private func clearFilter() {
+        animateRefresh {
+            vm.filter = .all
+            vm.searchText = ""
+            vm.searchScope = .all
+        }
+    }
+
+    // MARK: - 行为
+
+    private func setSelecting(_ on: Bool) {
+        withAnimation(.easeOut(duration: 0.18)) {
+            isSelecting = on
+            if !on { selectedIDs = [] }
+        }
+        uiState.hideMiniPlayer = on
     }
 
     private func isPlaying(_ audio: AudioItem) -> Bool {
-        vm.isPlayingAudio(audio)
+        status.playingKey == audio.fileName && status.isPlaying
     }
 
-    /// 左滑「复制」。
-    ///
-    /// ⚠️ 三件事各对应一种「该行先消失、留一段空白、过会儿才回来」，缺一件都会复现：
-    ///  ⓿ **等左滑菜单的回弹动画走完再动列表**：SwiftUI 在菜单未被判为「已收起」时改数据，
-    ///     那一行会被重挂载一次 —— 期间它的内容还停在滑开的位置上，视觉上就是整行凭空没了；
-    ///  ① **「复制文件」必须脱离主线程**：这是同步磁盘 IO（音频文件几 MB 起），
-    ///     卡在主线程会把上面的回弹动画冻在半路 ——
-    ///     **「当前行先消失、隔一下才回来」** 就是这么来的（`ProjectService.stageDuplicatedFile`）；
-    ///  ② **列表只能纯插入**：`insertAudioItem` 一次写完 `displayedAudios`，不出现
-    ///     「先删后插」的中间态 —— SwiftUI 一旦在差分里看到 remove + insert，
-    ///     就会把那一行 unmount 再 mount（视觉上闪一下 + 空一帧）。
-    ///
-    /// ⚠️ 副本插在被操作那一行的**下面**（而不是列表顶部）：列表按创建时间倒序，
-    /// 理论上新条目该去顶部，但那会把整列表往下推一格 —— 配合一次滚到顶部，
-    /// 用户看到的就是「刚操作的那行被顶出视野」。就地插入 + 最小滚动（不带 anchor）
-    /// 让原来的行一动不动，只在副本落在屏幕边缘时补一点位移把它露出来。
-    ///
-    /// ⚠️ 用 `Task { @MainActor }` 而不是 `DispatchQueue.main.asyncAfter`：
-    /// `AudioItem` 不是 `Sendable`，扔进 GCD 的逃逸闭包在 Swift 6 下过不了并发检查。
+    /// 行内 32pt 试听：就地播/停，不 push。
+    private func preview(_ audio: AudioItem) {
+        guard audio.isOnDisk else {
+            uiState.showToast(.failure("音频文件已丢失".localized()))
+            return
+        }
+        nowPlaying.toggle(audio, voiceName: vm.voiceName(for: audio))
+    }
+
+    /// 点行：接管播放并 push 详情（播放跨页保留，详情页不再 stop）。
+    private func tap(_ audio: AudioItem) {
+        if isSelecting {
+            if selectedIDs.contains(audio.id) { selectedIDs.remove(audio.id) }
+            else { selectedIDs.insert(audio.id) }
+            return
+        }
+        guard audio.isOnDisk else {
+            uiState.showToast(.failure("音频文件已丢失".localized()))
+            return
+        }
+        let voice = vm.voiceName(for: audio)
+        if status.playingKey == audio.fileName {
+            nowPlaying.attach(audio, voiceName: voice)
+        } else {
+            nowPlaying.start(audio, voiceName: voice)
+        }
+        router.push(.player(audio))
+    }
+
+    /// 失败记录「重新编辑」：把文案带回创作页。
+    private func retry(_ audio: AudioItem) {
+        VoiceStudioViewModel.shared.text = audio.text
+        router.selection = .studio
+        uiState.showToast(.info("已将文案带回创作页".localized()))
+    }
+
+    private func toggleFavorite(_ audio: AudioItem) {
+        let on = flags.toggleFavorite(audio.id)
+        vm.rebuild()
+        uiState.showToast(.success(on ? "已加入收藏".localized() : "已取消收藏".localized()))
+    }
+
+    // MARK: 左滑四操作（数组从右到左：删除 / 复制 / 重命名 / 收藏）
+
+    @ViewBuilder
+    private func swipeButtons(_ audio: AudioItem) -> some View {
+        Button(role: .destructive) { deleteTarget = audio } label: {
+            Label("删除".localized(), systemImage: "trash.fill")
+        }
+        Button { duplicate(audio) } label: {
+            Label("复制".localized(), systemImage: "doc.on.doc.fill")
+        }
+        .tint(c.info)
+        Button { beginRename(audio) } label: {
+            Label("重命名".localized(), systemImage: "pencil")
+        }
+        .tint(c.success)
+        Button { toggleFavorite(audio) } label: {
+            Label(flags.isFavorite(audio.id) ? "取消收藏".localized() : "收藏".localized(),
+                  systemImage: flags.isFavorite(audio.id) ? "heart.slash.fill" : "heart.fill")
+        }
+        .tint(AuroraDecor.rose)
+    }
+
+    // MARK: 复制
+
+    /// ⚠️ 等左滑回弹走完 + 磁盘复制脱离主线程 + 纯插入，三步缺一就会复现「该行先消失」。
     private func duplicate(_ audio: AudioItem) {
-        // 先把要用的值类型抠出来：逃逸闭包里不碰 `AudioItem` 本体
         let sourceURL = audio.absoluteURL
-        let sourceExtension = audio.fileExtension
+        let ext = audio.fileExtension
         let sourceID = audio.id
-
         Task { @MainActor in
-            // ⓿ 等左滑菜单基本收完，别让菜单回弹动画和插入动画抢同一帧
             try? await Task.sleep(nanoseconds: 260_000_000)
-
-            // ① 重活（磁盘复制）在**后台线程**完成，写库仍然留在主线程
-            let stagedName = await Task.detached(priority: .userInitiated) { () -> String? in
-                ProjectService.stageDuplicatedFile(sourceURL: sourceURL,
-                                                   fileExtension: sourceExtension)
+            let staged = await Task.detached(priority: .userInitiated) {
+                ProjectService.stageDuplicatedFile(sourceURL: sourceURL, fileExtension: ext)
             }.value
-            guard let newFileName = stagedName,
-                  let copy = ProjectService.shared.finishDuplicate(source: audio,
-                                                                   newFileName: newFileName) else {
+            guard let name = staged,
+                  let copy = ProjectService.shared.finishDuplicate(source: audio, newFileName: name) else {
                 uiState.showToast(.failure("复制失败".localized()))
                 return
             }
-
-            // ② 纯插入：一次写入，只有 insert 没有 remove
             withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
-                vm.insertAudioItem(copy, after: sourceID)
+                vm.insertItem(copy, after: sourceID)
             }
             uiState.showToast(.success("已复制音频".localized()))
-
-            // ③ 让插入这一帧先提交。不带 anchor 的 `scrollTo` 只会做最小位移，
-            //    副本已经在视野里时就一步都不会走 —— 列表不会跳。
-            try? await Task.sleep(nanoseconds: 120_000_000)
-            guard vm.displayedAudios.contains(where: { $0.id == copy.id }) else { return }
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
-                scrollProxy?.scrollTo(copy.id)
-            }
         }
     }
+
+    private func duplicateSelected() {
+        let targets = selectedAudios()
+        guard !targets.isEmpty else { return }
+        Task { @MainActor in
+            var copies: [AudioItem] = []
+            for item in targets {
+                let url = item.absoluteURL
+                let ext = item.fileExtension
+                let staged = await Task.detached(priority: .userInitiated) {
+                    ProjectService.stageDuplicatedFile(sourceURL: url, fileExtension: ext)
+                }.value
+                if let name = staged,
+                   let copy = ProjectService.shared.finishDuplicate(source: item, newFileName: name) {
+                    copies.append(copy)
+                }
+            }
+            vm.load()
+            uiState.showToast(.success("已复制 %d 条音频".localized(copies.count)))
+        }
+    }
+
+    // MARK: 重命名
 
     private func beginRename(_ audio: AudioItem) {
         renameTarget = audio
@@ -408,50 +569,71 @@ struct ProjectsView: View {
         let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
         renameTarget = nil
         if !trimmed.isEmpty, trimmed != target.shownName {
-            // 行里的名字是行内容的一部分，给它一条动画，别一帧硬切
+            ProjectService.shared.renameAudio(id: target.id, displayName: trimmed)
             withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
-                vm.renameAudio(target, newName: trimmed)
+                vm.renameItem(target.id, name: trimmed)
             }
         }
     }
 
-    /// 删除（单条 / 多选）。
-    ///
-    /// ⚠️ 与「复制」同一个道理：**磁盘删除 + 数据库操作不能夹在动画事务里**，
-    /// 只有「把这一行从数组里拿掉」这一步才包 `withAnimation` —— 早年直接把
-    /// `vm.deleteAudio` 扔进动画，左滑删除会先卡一帧再把行推走。
-    private func commitDelete() {
+    // MARK: 软删 + 撤销
+
+    private var deletePresented: Binding<Bool> {
+        Binding(get: { deleteTarget != nil || deleteMany },
+                set: { if !$0 { deleteTarget = nil; deleteMany = false } })
+    }
+
+    private var deleteMessage: String {
         if deleteMany {
-            let ids = selectedIDs
-            let targets = vm.displayedAudios.filter { ids.contains($0.id) }
+            return "选中的 %d 条将保留 30 天，期间可随时恢复。".localized(selectedIDs.count)
+        }
+        if let target = deleteTarget {
+            return "「%@」将保留 30 天，期间可随时恢复。".localized(target.shownName)
+        }
+        return ""
+    }
+
+    /// 确认后立即从数组移除并出 Toast；5 秒内不动磁盘文件，撤销 = 清标记 + 插回原位置。
+    private func commitSoftDelete() {
+        let ids: Set<Int64>
+        if deleteMany {
+            ids = selectedIDs
             deleteMany = false
             selectedIDs = []
-
-            Task { @MainActor in
-                for audio in targets { ProjectService.shared.deleteAudio(id: audio.id) }
-                guard !targets.isEmpty else { return }
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
-                    for audio in targets { vm.removeAudioItem(audio) }
-                }
-            }
+            isSelecting = false
+            uiState.hideMiniPlayer = false
         } else if let target = deleteTarget {
+            ids = [target.id]
             deleteTarget = nil
-            Task { @MainActor in
-                ProjectService.shared.deleteAudio(id: target.id)
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
-                    vm.removeAudioItem(target)
-                }
-            }
+        } else { return }
+
+        let idArray = Array(ids)
+        flags.markDeleted(idArray)
+        nowPlaying.clearIfMatches(ids)
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+            vm.removeItems(ids)
         }
+
+        let store = flags
+        let state = uiState
+        let text = ids.count == 1
+            ? "已移入最近删除 · 30 天内可恢复".localized()
+            : "已移入 %d 条 · 30 天内可恢复".localized(ids.count)
+        state.showUndoToast(text: text) {
+            store.restore(idArray)
+            state.requestHistoryReload()
+            state.showToast(.success("已撤销删除".localized()))
+        }
+    }
+
+    // MARK: 分享 / 收藏（多选）
+
+    private func selectedAudios() -> [AudioItem] {
+        vm.sections.flatMap(\.items).filter { selectedIDs.contains($0.id) }
     }
 
     private func shareSelected() {
-        let urls = vm.displayedAudios
-            .filter { selectedIDs.contains($0.id) }
-            .compactMap { audio -> URL? in
-                guard audio.isOnDisk else { return nil }
-                return audio.absoluteURL
-            }
+        let urls = selectedAudios().compactMap { $0.isOnDisk ? $0.absoluteURL : nil }
         guard !urls.isEmpty else {
             uiState.showToast(.failure("所选音频文件不存在".localized()))
             return
@@ -460,80 +642,32 @@ struct ProjectsView: View {
         isSharing = true
     }
 
-    // MARK: 导出（单个，fileExporter 替代 NSSavePanel）
-
-    func beginExport(_ audio: AudioItem) {
-        exportItem = audio
-        isExporting = true
+    /// 所选条目全部已收藏 → 按钮变「取消收藏」；否则是批量加入收藏。
+    private var allSelectedFavorited: Bool {
+        let ids = Array(selectedIDs)
+        return !ids.isEmpty && ids.allSatisfy { flags.isFavorite($0) }
     }
 
-    private var exportFileName: String {
-        guard let item = exportItem else { return "audio" }
-        return item.fileExtension.isEmpty ? item.shownName : "\(item.shownName).\(item.fileExtension)"
-    }
-
-    private var exportContentType: UTType {
-        switch exportItem?.fileExtension.lowercased() ?? "" {
-        case "mp3": return .mp3
-        case "m4a": return .mpeg4Audio
-        case "wav": return .wav
-        default: return .audio
-        }
-    }
-
-    private var exportDocument: AudioFileDocument? {
-        guard let item = exportItem,
-              let data = try? Data(contentsOf: item.absoluteURL) else { return nil }
-        return AudioFileDocument(data: data)
-    }
-
-    // MARK: Alert 绑定
-
-    private var deletePresented: Binding<Bool> {
-        Binding(get: { deleteTarget != nil || deleteMany }, set: { if !$0 { deleteTarget = nil; deleteMany = false } })
-    }
-
-    private var deleteMessage: String {
-        if deleteMany {
-            return "确定删除选中的 %d 条音频？删除后无法恢复。".localized(selectedIDs.count)
-        }
-        return "确定删除这条音频？删除后无法恢复。".localized()
-    }
-
-    // MARK: - 展示
-
-    private func metaLine(_ audio: AudioItem) -> String {
-        let voice = voiceNames[audio.voice] ?? audio.voice
-        return "\(voice) · \(formatDuration(audio.duration)) · \(formatDataSize(audio.fileSize))"
-    }
-
-    private func avatarText(_ audio: AudioItem) -> String {
-        let name = voiceNames[audio.voice] ?? audio.voice
-        return name.isEmpty ? "声" : String(name.suffix(1))
-    }
-
-    private func preloadVoiceNames() {
-        var map: [String: String] = [:]
-        for v in VoiceService.shared.fetchAll() {
-            map[v.key] = v.localizedName
-        }
-        voiceNames = map
+    private func toggleFavoriteSelected() {
+        let ids = Array(selectedIDs)
+        guard !ids.isEmpty else { return }
+        let target = !allSelectedFavorited
+        flags.setFavorites(ids, to: target)
+        if !target && vm.filter == .favorites { selectedIDs = [] }
+        vm.rebuild()
+        uiState.showToast(.success(target
+            ? "已加入收藏".localized()
+            : "已取消收藏".localized()))
     }
 }
 
 // MARK: - 重命名弹窗
 
-/// 重命名弹窗。
-///
-/// ⚠️ 不用系统 `.alert`：它的 `TextField` 没有清空按钮，而 Alert 的内容槽位也塞不进
-/// 自定义视图（塞进去会被排版成一整行按钮）。重命名偏偏是最需要「先清一遍再重输」的入口 ——
-/// 名字通常是随手起的代号，改的时候往往是整串重敲，而不是在一串字符里挪光标。
-/// 这里自己画一张和生成弹窗同款的小卡片，输入框右侧挂一个随输入出现的清空按钮。
+/// ⚠️ 不用系统 `.alert` 的 TextField：它没有清空按钮，内容槽位也塞不进自定义视图。
 struct RenameDialog: View {
     @Environment(\.aurora) private var c
     @Environment(\.screenMetrics) private var metrics
 
-    /// 待编辑的名字（外面持有，配合「取消即丢弃」）
     @Binding var text: String
     var onCancel: () -> Void
     var onSave: () -> Void
@@ -561,8 +695,6 @@ struct RenameDialog: View {
         .onAppear {
             appeared = true
             Task { @MainActor in
-                // ⚠️ 键盘要等卡片转场落定再弹：抢在 scale 动画中间 focus，
-                // 输入框会被往上顶的过程中带着整张卡片一起位移，看着像抖了一下。
                 try? await Task.sleep(nanoseconds: 200_000_000)
                 focused = true
             }
@@ -596,9 +728,6 @@ struct RenameDialog: View {
         )
     }
 
-    /// 输入框 + 清空按钮。
-    ///
-    /// ⚠️ 清空按钮只在有字时出现：空输入框顶着一个灰 ×，既没用又把占位文案挤短一截。
     private var field: some View {
         HStack(spacing: 8) {
             TextField("音频名称".localized(), text: $text)

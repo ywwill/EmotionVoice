@@ -33,22 +33,60 @@ struct VoiceCardGrid: View {
             actionRow
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                .fill(c.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
-                        .strokeBorder(isPreviewing ? c.accent.opacity(0.4) : c.line,
-                                      lineWidth: isPreviewing ? 1 : 0.5)
-                )
-                .shadow(color: isPreviewing ? c.accent.opacity(0.16) : .clear,
-                        radius: 12, x: 0, y: 4)
-        )
+        .background { cardBackground }
         .contentShape(Rectangle())
         // ⚠️ 试听态的描边 / 投影要渐变，硬切会让人以为点错了卡。
         //    用 `value:` 限定只在这一个布尔变化时动画：不带 `value` 的 `.animation`
         //    会把卡片里所有属性变化（含 LazyVGrid 复用时的重排）都变成动画。
         .animation(.easeOut(duration: 0.18), value: isPreviewing)
+    }
+
+    // MARK: 卡片背景
+
+    /// 两个旗舰音色不能只是普通白卡 + 一枚徽章：用品牌紫→玫瑰渐变打底，
+    /// 右上角再叠一层暖金柔光，配琥珀描边和淡紫投影，一眼和普通音色拉开层级。
+    @ViewBuilder
+    private var cardBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+        ZStack {
+            if voice.isPremium {
+                shape.fill(premiumGradient)
+                shape.fill(premiumGlow)
+            } else {
+                shape.fill(c.surface)
+            }
+            shape.strokeBorder(borderColor, lineWidth: borderWidth)
+        }
+        .shadow(color: shadowColor, radius: 12, x: 0, y: 4)
+    }
+
+    private var premiumGradient: LinearGradient {
+        LinearGradient(colors: [
+            c.ctaStart.opacity(0.18),
+            c.ctaEnd.opacity(0.12),
+            c.surface
+        ], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    private var premiumGlow: RadialGradient {
+        RadialGradient(colors: [AuroraDecor.amber.opacity(0.22), Color.clear],
+                       center: .topTrailing, startRadius: 4, endRadius: 150)
+    }
+
+    private var borderColor: Color {
+        if isPreviewing { return c.accent.opacity(0.5) }
+        if voice.isPremium { return AuroraDecor.amber.opacity(0.42) }
+        return c.line
+    }
+
+    private var borderWidth: CGFloat {
+        (isPreviewing || voice.isPremium) ? 1 : 0.5
+    }
+
+    private var shadowColor: Color {
+        if isPreviewing { return c.accent.opacity(0.16) }
+        if voice.isPremium { return c.ctaStart.opacity(0.18) }
+        return .clear
     }
 
     // MARK: 头部

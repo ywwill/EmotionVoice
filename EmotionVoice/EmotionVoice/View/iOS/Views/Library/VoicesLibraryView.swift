@@ -28,7 +28,10 @@ struct VoicesLibraryView: View {
     @StateObject private var vm = VoicesLibraryViewModel(
         selectedCategory: nil, searchText: "", showFavoritesOnly: false, currentPage: 1
     )
-    @StateObject private var player = AudioPreviewPlayer.shared
+    // ⚠️ 音色库是 LazyVGrid（卡片多）：订阅播放器的 10Hz progress 会让整格重算。
+    //    宿主用非观察的 let 调方法，播放态走低频代理。
+    private let player = AudioPreviewPlayer.shared
+    @StateObject private var status = PlaybackStatus.shared
 
     // MARK: 筛选状态（镜像 AppState，切标签回来不丢）
 
@@ -102,7 +105,7 @@ struct VoicesLibraryView: View {
                             ForEach(voices) { voice in
                                 VoiceCardGrid(
                                     voice: voice,
-                                    isPreviewing: player.playingKey == voice.key && player.isPlaying,
+                                    isPreviewing: status.playingKey == voice.key && status.isPlaying,
                                     onPreview: { togglePreview(voice) },
                                     onFavorite: { toggleFavorite(voice) },
                                     onUse: { useVoice(voice) }

@@ -21,6 +21,8 @@ enum Route: Hashable {
     case creditRecords
     /// 播放详情（`AudioItem` 是 Hashable，可直接进导航栈；避免二级页再查一次库）
     case player(AudioItem)
+    /// 最近删除（软删回收站，30 天）
+    case recentlyDeleted
 }
 
 @MainActor

@@ -32,6 +32,19 @@ struct ToastMessage: Identifiable, Equatable {
     static func info(_ text: String) -> ToastMessage { .init(text: text, style: .info, duration: 3) }
 }
 
+/// 底部「撤销」Toast：5 秒倒计时 + 尾随动作按钮。
+/// ⚠️ 与顶部购买结果 Toast 分开两条通道：一个在顶、一个占标签栏之上，
+///    撤销条显示时 mini player / 后台浮条让位，不叠放。
+struct UndoToastMessage: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+    let createdAt = Date()
+    let duration: TimeInterval = 5
+    let onUndo: () -> Void
+
+    static func == (lhs: UndoToastMessage, rhs: UndoToastMessage) -> Bool { lhs.id == rhs.id }
+}
+
 @MainActor
 final class IOSUIState: ObservableObject {
 
@@ -45,10 +58,22 @@ final class IOSUIState: ObservableObject {
     /// 顶部 Toast
     @Published var toast: ToastMessage? = nil
 
+    /// 底部撤销 Toast（软删后 5 秒内可恢复）
+    @Published var undoToast: UndoToastMessage? = nil
+
+    /// 多选工具条显示时让出 mini player 的位置（避免两层底栏叠放）
+    @Published var hideMiniPlayer: Bool = false
+
+    /// 历史列表需要刷新的自增信号。
+    /// ⚠️ 播放详情页 / 最近删除页里撤销软删时，列表页早已 onAppear 过，
+    ///    光改 AudioFlagStore 不会让它重算；靠这个信号让 ProjectsView 重新 load()。
+    @Published var historyReloadSignal: Int = 0
+
     /// 音色选择 Sheet（工作台「更换音色」）
     @Published var voicePickerPresented: Bool = false
 
     private var toastTask: Task<Void, Never>?
+    private var undoTask: Task<Void, Never>?
 
     private init() {}
 
@@ -70,6 +95,33 @@ final class IOSUIState: ObservableObject {
         toastTask?.cancel()
         toastTask = nil
         toast = nil
+    }
+
+    // MARK: - 撤销 Toast
+
+    func showUndoToast(text: String, onUndo: @escaping () -> Void) {
+        undoTask?.cancel()
+        let message = UndoToastMessage(text: text, onUndo: onUndo)
+        withAnimation(.easeOut(duration: 0.22)) { undoToast = message }
+        undoTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(message.duration * 1_000_000_000))
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.25)) { undoToast = nil }
+            }
+        }
+    }
+
+    func requestHistoryReload() {
+        historyReloadSignal += 1
+    }
+
+    /// 点「撤销」：先消费掉 Toast，再执行恢复闭包（避免倒计时任务把新 Toast 顶掉）。
+    func consumeUndoToast() {
+        undoTask?.cancel()
+        undoTask = nil
+        let action = undoToast?.onUndo
+        withAnimation(.easeOut(duration: 0.2)) { undoToast = nil }
+        action?()
     }
 }
 

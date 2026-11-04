@@ -18,12 +18,25 @@ import SwiftUI
 struct PlayerDetailView: View {
     @Environment(\.aurora) private var c
     @Environment(\.screenMetrics) private var metrics
+    @Environment(\.dismiss) private var dismiss
+
+    @EnvironmentObject private var uiState: IOSUIState
 
     let item: AudioItem
 
-    @StateObject private var player = AudioPreviewPlayer.shared
+    // ⚠️ 整页不订阅播放器：10Hz progress 会把长文本 / metaCard / 倍速 Menu / 工具栏
+    //    一起拖着重算（macOS `AudioPlayerDetailView` 开头注释写的就是这个坑）。
+    //    宿主用非观察的 let 调方法，播放态走低频代理；高频显示各自下沉到小 View。
+    private let player = AudioPreviewPlayer.shared
+    @StateObject private var status = PlaybackStatus.shared
+    @ObservedObject private var flags = AudioFlagStore.shared
     @State private var isSharing = false
     @State private var voiceName: String = ""
+    @State private var currentName: String = ""
+    /// 详情页底部操作条：重命名 / 复制音频 / 删除
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
     /// 按下频谱那一刻是否正在播放（松手后据此恢复，避免拖动中反复 seek 掉帧）
     @State private var resumeAfterScrub = false
     /// 拖动中的落点（0~1）。`nil` = 没在拖，时间行跟播放器走。
@@ -32,6 +45,9 @@ struct PlayerDetailView: View {
     /// 所以 `player.currentTime` 在这段时间里是不动的 —— 左边那个「已播放」必须由
     /// `scrubFraction` 顶上，否则拖到哪儿数字都不变，用户会以为拖动没生效。
     @State private var scrubFraction: Double? = nil
+    /// 断句数只算一次。原来写在 `textCard` 的计算属性里，播放器 0.1s 一次进度刷新
+    /// 会把整段文案反复 `components(separatedBy:)` + trim，长文案下是白烧主线程。
+    @State private var sentenceCount: Int = 0
 
     /// 快进 / 快退步长（秒）。详情页是精听场景，15 秒太粗，5 秒刚好够定位一句话。
     private static let skipStep: Double = 5
@@ -40,19 +56,13 @@ struct PlayerDetailView: View {
 
     /// ⚠️ 时长以播放器拿到的为准：流式文件的 `item.duration` 可能是入库时的估值，
     /// 取 `max` 才能保证右侧「总时长」在播放开始后不再跳变。
-    private var totalDuration: Double { max(player.duration, item.duration) }
-
-    /// 时间行左边显示什么：拖动中 = 手指落点，否则 = 播放进度
-    private var displayTime: Double {
-        guard let f = scrubFraction else { return player.currentTime }
-        return f * totalDuration
-    }
+    private var totalDuration: Double { max(status.duration, item.duration) }
 
     /// ⚠️ 必须用 identifier（`item.fileName`）判定，不能用 `player.isPlaying(url:)`：
     /// 详情页是用 `play(url:identifier: item.fileName)` 起的播，`playingKey` 存的是文件名，
     /// 拿 `url.path` 去比永远不等 —— 正是「点了暂停图标不变、只会从头重播」的根因。
-    private var isThisPlaying: Bool { player.playingKey == item.fileName && player.isPlaying }
-    private var isThisPaused: Bool { player.playingKey == item.fileName && player.isPaused }
+    private var isThisPlaying: Bool { status.playingKey == item.fileName && status.isPlaying }
+    private var isThisPaused: Bool { status.playingKey == item.fileName && status.isPaused }
 
     var body: some View {
         ScrollView {
@@ -72,53 +82,94 @@ struct PlayerDetailView: View {
                     .padding(.horizontal, metrics.pageMargin)
                     .padding(.top, 12)
 
-                statusLine
-                    .padding(.horizontal, metrics.pageMargin + 4)
-                    .padding(.top, 14)
-
                 Spacer(minLength: 24)
             }
         }
         .background(c.backgroundGrouped)
-        .navigationTitle(item.shownName)
+        // ⚠️ 三个操作按钮原来排在 ScrollView 内容末尾，长文案会把它们推到屏幕外
+        //    （要一路滚到底才看得见）。改成固定底栏，文案再长也够得着。
+        .safeAreaInset(edge: .bottom) { actionBar }
+        .navigationTitle(currentName.isEmpty ? item.shownName : currentName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { isSharing = true } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(c.accent)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                HStack(spacing: 8) {
+                    // 收藏主入口：实心玫红 = 已收藏（与列表左滑共用同一个 store）
+                    Button {
+                        let on = flags.toggleFavorite(item.id)
+                        uiState.showToast(.success(on
+                            ? "已加入收藏".localized()
+                            : "已取消收藏".localized()))
+                    } label: {
+                        let on = flags.isFavorite(item.id)
+                        Image(systemName: on ? "heart.fill" : "heart")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(on ? AuroraDecor.rose : c.accent)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle().fill(on ? AuroraDecor.rose.opacity(0.13) : c.surface3)
+                            )
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(flags.isFavorite(item.id) ? "取消收藏".localized() : "收藏".localized())
+
+                    Button { isSharing = true } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(c.accent)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .sheet(isPresented: $isSharing) {
             ShareSheet(items: [url])
         }
-        .onAppear {
-            voiceName = VoiceService.shared.fetchByKeys([item.voice]).first?.localizedName ?? item.voice
-            guard item.isOnDisk else { return }
-            if player.isPlaying(url: url) {
-                // 从列表点进来时已经在播这条：接管标识即可，别从头重播
-                player.reidentify(item.fileName)
-            } else if !isThisPlaying {
-                player.play(url: url, identifier: item.fileName)
+        .overlay {
+            if showRename {
+                RenameDialog(text: $renameText,
+                             onCancel: { showRename = false },
+                             onSave: { commitRename() })
             }
         }
-        .onDisappear { player.stop() }
+        .alert("移入最近删除？".localized(), isPresented: $showDeleteConfirm) {
+            Button("取消".localized(), role: .cancel) {}
+            Button("移入最近删除".localized(), role: .destructive) { softDeleteCurrent() }
+        } message: {
+            Text("「%@」将保留 30 天，期间可随时恢复。".localized(item.shownName))
+        }
+        .onAppear {
+            sentenceCount = Self.countSentences(item.text)
+            voiceName = VoiceService.shared.fetchByKeys([item.voice]).first?.localizedName ?? item.voice
+            currentName = item.shownName
+            NowPlayingStore.shared.attach(item, voiceName: voiceName)
+            guard item.isOnDisk else { return }
+            // ⚠️ 列表用 identifier = fileName 起播，`isPlaying(url:)` 比的是 url.path，
+            //    恒为 false —— 用它判定会把列表里正在播的这条从头重播。
+            //    播放跨页保留（不再 onDisappear stop），mini player 才能常驻。
+            if status.playingKey == item.fileName {
+                // 已经在播这条：只接管，不重播
+            } else if !isThisPlaying {
+                NowPlayingStore.shared.start(item, voiceName: voiceName)
+            }
+        }
     }
 
     // MARK: 波形卡
 
     private var waveformCard: some View {
         VStack(spacing: 0) {
+            // 状态徽章固定在卡片右上角：单独占一行，避免和拖动时从左滑到右的时间气泡抢位置
+            statusLine
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.bottom, 6)
+
             scrubTimeLane
 
-            WaveformScrubber(progress: player.progress,
-                             seed: item.fileName,
-                             tint: c.accent,
+            WaveformScrubber(tint: c.accent,
                              trackTint: c.slot,
                              onScrubStart: {
                                  // 播放中按下 → 先暂停，拖动期间只跟手不出声
@@ -138,9 +189,7 @@ struct PlayerDetailView: View {
             .frame(height: 52)
 
             HStack {
-                Text(formatDuration(displayTime))
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(scrubFraction == nil ? c.textSecondary : c.accent)
+                ElapsedTimeLabel(scrubFraction: scrubFraction, duration: totalDuration)
                 Spacer(minLength: 0)
                 Text(formatDuration(totalDuration))
                     .font(.system(size: 13, design: .monospaced))
@@ -253,7 +302,7 @@ struct PlayerDetailView: View {
                     } label: {
                         HStack {
                             Text(option.label)
-                            if abs(player.playbackRate - option.rate) < 0.001 {
+                            if abs(status.playbackRate - option.rate) < 0.001 {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -279,10 +328,7 @@ struct PlayerDetailView: View {
 
             Spacer(minLength: 0)
 
-            Text("剩余约 %@".localized(
-                formatDuration(max(0, max(player.duration, item.duration) - player.currentTime))))
-                .font(.system(size: 12))
-                .foregroundStyle(c.textTertiary)
+            RemainingTimeLabel(fallbackDuration: item.duration)
 
             Spacer(minLength: 0)
 
@@ -309,7 +355,7 @@ struct PlayerDetailView: View {
     }
 
     private var rateLabel: String {
-        let r = player.playbackRate
+        let r = status.playbackRate
         if r == r.rounded() { return String(format: "%.0fx", r) }
         return String(format: "%.2fx", r)
     }
@@ -319,7 +365,7 @@ struct PlayerDetailView: View {
     private var metaCard: some View {
         let cols = metrics.metaColumns
         let items: [(String, String, String)] = [
-            ("clock", "时长".localized(), formatDuration(max(item.duration, player.duration))),
+            ("clock", "时长".localized(), formatDuration(max(item.duration, status.duration))),
             ("waveform", "格式".localized(), item.format.uppercased()),
             ("diamond.fill", "积分".localized(), formatCredits(item.pointsCost)),
             ("person.wave.2.fill", "音色".localized(), voiceName)
@@ -431,18 +477,114 @@ struct PlayerDetailView: View {
         )
     }
 
-    // MARK: 状态行
+    // MARK: 固定底栏（重命名 / 复制音频 / 删除）
 
-    private var statusLine: some View {
+    private var actionBar: some View {
         HStack(spacing: 8) {
+            detailAction("pencil", "重命名".localized(), tint: c.textSecondary) {
+                renameText = currentName.isEmpty ? item.shownName : currentName
+                showRename = true
+            }
+            detailAction("doc.on.doc", "复制音频".localized(), tint: c.textSecondary) {
+                duplicateCurrent()
+            }
+            detailAction("trash", "删除".localized(), tint: c.danger) {
+                showDeleteConfirm = true
+            }
+        }
+        .padding(.horizontal, metrics.pageMargin)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background(c.bar)
+        .overlay(alignment: .top) { Hairline() }
+    }
+
+    private func detailAction(_ icon: String, _ title: String, tint: Color,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity)
+            .frame(height: 34)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(c.surface3)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: 详情页操作
+
+    private func commitRename() {
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        showRename = false
+        guard !trimmed.isEmpty, trimmed != (currentName.isEmpty ? item.shownName : currentName) else { return }
+        ProjectService.shared.renameAudio(id: item.id, displayName: trimmed)
+        currentName = trimmed
+        uiState.showToast(.success("已重命名".localized()))
+    }
+
+    /// 磁盘复制在后台线程，主线程只写库 + Toast（与列表左滑「复制」同一套取舍）。
+    private func duplicateCurrent() {
+        let sourceURL = item.absoluteURL
+        let ext = item.fileExtension
+        let source = item
+        Task { @MainActor in
+            let staged = await Task.detached(priority: .userInitiated) {
+                ProjectService.stageDuplicatedFile(sourceURL: sourceURL, fileExtension: ext)
+            }.value
+            guard let name = staged,
+                  ProjectService.shared.finishDuplicate(source: source, newFileName: name) != nil else {
+                uiState.showToast(.failure("复制失败".localized()))
+                return
+            }
+            uiState.showToast(.success("已复制音频".localized()))
+        }
+    }
+
+    /// 与列表一致走软删：只打标，文件保留 30 天；撤销即清标记。
+    private func softDeleteCurrent() {
+        let id = item.id
+        flags.markDeleted([id])
+        NowPlayingStore.shared.clearIfMatches([id])
+        let store = flags
+        let state = uiState
+        state.showUndoToast(text: "已移入最近删除 · 30 天内可恢复".localized()) {
+            store.restore([id])
+            // ⚠️ 列表页在删除那一刻就已 onAppear 过，撤销后必须主动发信号让它重算
+            state.requestHistoryReload()
+            state.showToast(.success("已撤销删除".localized()))
+        }
+        dismiss()
+    }
+
+    // MARK: 状态行（卡片右上角徽章）
+
+    /// ⚠️ 这里不能带内部 `Spacer`：外层用 `.frame(maxWidth: .infinity, alignment: .trailing)`
+    /// 把它推到右上角，撑满的 Spacer 会把文字挤回左边。
+    private var statusLine: some View {
+        HStack(spacing: 6) {
             Circle()
                 .fill(isThisPlaying ? c.success : c.textTertiary)
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
             Text(statusText)
-                .font(.system(size: 12))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(c.textSecondary)
-            Spacer(minLength: 0)
+                .lineLimit(1)
         }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(
+            Capsule(style: .continuous).fill(c.surface3)
+        )
+        .accessibilityElement(children: .combine)
     }
 
     private var statusText: String {
@@ -451,33 +593,67 @@ struct PlayerDetailView: View {
         return "待播放".localized()
     }
 
-    private var sentenceCount: Int {
-        item.text.components(separatedBy: CharacterSet(charactersIn: "。！？!?；;\n"))
+    private static func countSentences(_ text: String) -> Int {
+        text.components(separatedBy: CharacterSet(charactersIn: "。！？!?；;\n"))
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             .count
     }
 }
 
+// MARK: - 高频时间显示（订阅只关在这两个小 View 里）
+
+/// 「已播放」时间：10Hz 只重算这一个 Text，不牵动整页。
+/// 拖动中用手指落点顶上（拖动期间不 seek，`currentTime` 本来就不动）。
+private struct ElapsedTimeLabel: View {
+    @Environment(\.aurora) private var c
+    @ObservedObject private var player = AudioPreviewPlayer.shared
+    let scrubFraction: Double?
+    let duration: Double
+
+    private var displayed: Double {
+        scrubFraction.map { $0 * duration } ?? player.currentTime
+    }
+
+    var body: some View {
+        Text(formatDuration(displayed))
+            .font(.system(size: 13, design: .monospaced))
+            .foregroundStyle(scrubFraction == nil ? c.textSecondary : c.accent)
+    }
+}
+
+/// 「剩余约」同理：只重算自己。
+private struct RemainingTimeLabel: View {
+    @Environment(\.aurora) private var c
+    @ObservedObject private var player = AudioPreviewPlayer.shared
+    let fallbackDuration: Double
+
+    var body: some View {
+        Text("剩余约 %@".localized(
+            formatDuration(max(0, max(player.duration, fallbackDuration) - player.currentTime))))
+            .font(.system(size: 12))
+            .foregroundStyle(c.textTertiary)
+    }
+}
+
 // MARK: - 可拖动波形
 
-/// 波形定位条：整条可**点击**也可**拖动**，已播部分着色，播放头带抓手。
+/// 波形定位条：整条可**点击**也可**拖动**，播放头带抓手。
 ///
-/// 两条关键取舍：
-///  * **用 `Canvas` 一次画完所有柱子**，而不是 `HStack` 里塞 88 个 `RoundedRectangle` ——
-///    后者在 0.1s 一次的进度刷新里要重排两遍整条栈，拖动时会明显掉帧。
-///  * 拖动过程中既要**立刻跟手**（本地 `dragging` 覆盖 `progress`），又要**真的出声**
-///    （`onChanged` 里同步 seek）：只在 `onEnded` 才 seek 的话，手指划过去了声音没动，
-///    用户会以为拖动没生效。
+/// ⚠️ 频谱是**静态假数据**：柱高来自写死的常量数组，不做任何噪声 / 哈希 / 三角函数计算；
+/// 而且 `StaticWaveformBars` 的参数里**不含 progress**，配合 `.equatable()`，
+/// 0.1s 一次的进度刷新不会重绘 Canvas。进度只用「已播色层的裁剪宽度」+ 播放头 offset
+/// 表达，两者都是布局操作而非绘制操作 —— 这是「切倍速时 CPU 暴涨」的真正解法。
+///
+/// 拖动过程仍是「只跟手、不 seek」（每帧 seek 会让解码器反复丢缓冲），松手才落定。
 private struct WaveformScrubber: View {
-    let progress: Double
-    let seed: String
+    /// ⚠️ 详情页唯一订阅 10Hz 进度的小 View（macOS `PlayerWaveformView` 同款隔离）：
+    ///    几何重算只发生在这里，长文本 / metaCard / 倍速 Menu 完全不参与。
+    @ObservedObject private var player = AudioPreviewPlayer.shared
     let tint: Color
     let trackTint: Color
     /// 开始拖动的那一刻回调：用来**先暂停播放**，避免边拖边 seek 掉帧
     var onScrubStart: (() -> Void)? = nil
     /// **拖动过程中**每一次跟手都回调（传当前落点 0~1，松手时传 `nil`）。
-    /// ⚠️ 光有 `onScrubEnd` 不够：拖动期间不 seek，`player.currentTime` 是不动的，
-    /// 上层拿不到「手指现在指到几秒」，时间显示就会僵在旧值上。
     var onScrubChanged: ((Double?) -> Void)? = nil
     /// 松手回调：落定到最终位置并恢复播放
     var onScrubEnd: ((Double) -> Void)? = nil
@@ -496,22 +672,24 @@ private struct WaveformScrubber: View {
             let width = max(geo.size.width, 1)
             let height = max(geo.size.height, 1)
             let count = max(8, Int(floor((width + barGap) / (barWidth + barGap))))
-            let shown = min(max(dragging ?? progress, 0), 1)
+            let shown = min(max(dragging ?? player.progress, 0), 1)
 
             ZStack(alignment: .leading) {
-                Canvas { ctx, size in
-                    for i in 0..<count {
-                        let x = CGFloat(i) * (barWidth + barGap)
-                        let amp = envelope(index: i, count: count)
-                        let barH = max(3, amp * size.height)
-                        let rect = CGRect(x: x, y: (size.height - barH) / 2,
-                                          width: barWidth, height: barH)
-                        let center = (x + barWidth / 2) / size.width
-                        let color = center <= shown ? tint : trackTint
-                        ctx.fill(Path(roundedRect: rect, cornerRadius: barWidth / 2, style: .continuous),
-                                 with: .color(color))
-                    }
-                }
+                // 底层：全部柱子（未播色），静态
+                StaticWaveformBars(count: count, width: width, height: height,
+                                   barWidth: barWidth, barGap: barGap, color: trackTint)
+                    .equatable()
+                    .frame(width: width, height: height, alignment: .leading)
+
+                // 上层：同一份静态柱子（已播色），只裁掉右侧未播部分。
+                // ⚠️ 内层 frame 固定 width/height → Canvas 尺寸恒定，变的只有外层裁剪宽度，
+                //    所以不会触发 Canvas 重绘。
+                StaticWaveformBars(count: count, width: width, height: height,
+                                   barWidth: barWidth, barGap: barGap, color: tint)
+                    .equatable()
+                    .frame(width: width, height: height, alignment: .leading)
+                    .frame(width: max(shown * width, 0), alignment: .leading)
+                    .clipped()
 
                 // 播放头 + 抓手：让用户一眼看出「这里可以拖」
                 Capsule(style: .continuous)
@@ -531,10 +709,8 @@ private struct WaveformScrubber: View {
                     .onChanged { value in
                         if !didNotifyStart {
                             didNotifyStart = true
-                            onScrubStart?()      // 播放中 → 先暂停，否则每帧 seek 会卡
+                            onScrubStart?()
                         }
-                        // ⚠️ 拖动中**只跟手，不 seek**：每帧 seek 会让解码器反复丢弃已缓冲
-                        // 的数据重建，实测掉到 20fps 以下。落定到松手时那一次就够了。
                         let f = Double(min(max(value.location.x / width, 0), 1))
                         dragging = f
                         onScrubChanged?(f)
@@ -549,51 +725,45 @@ private struct WaveformScrubber: View {
             )
         }
     }
+}
 
-    /// 由文件名派生的确定性包络（同一条音频每次进来波形一致）。
-    ///
-    /// 早年是「两个正弦叠加」，波形呈规则的波浪、一眼假。改成**值噪声**三层叠加：
-    /// 低频给出「一句一句」的呼吸感，高频给出齿音细节，再叠一层极低频做整体起伏，
-    /// 首尾各渐隐，视觉上接近真实语音波形。
-    private func envelope(index: Int, count: Int) -> CGFloat {
-        let t = Double(index) / Double(max(count - 1, 1))
-        let coarse = valueNoise(t * 3.1 + phase(0.0))        // 段落起伏
-        let mid = valueNoise(t * 9.7 + phase(1.7))           // 音节
-        let fine = valueNoise(t * 23.3 + phase(4.3))         // 细节
-        var v = 0.28 + 0.46 * mid + 0.20 * fine
-        v *= 0.45 + 0.55 * coarse
-        // 首尾渐隐，避免第一 / 最后一根柱子贴着卡片边缘顶到底
-        v *= 0.35 + 0.65 * sin(min(max(t, 0), 1) * .pi)
-        return CGFloat(min(max(v, 0.14), 1))
+/// 静态频谱柱：参数全是尺寸 / 颜色常量，不含进度、不含 seed，且遵循 Equatable。
+/// 父视图 10Hz 重算时 SwiftUI 直接跳过它的 body → Canvas 只画一次。
+private struct StaticWaveformBars: View, Equatable {
+    let count: Int
+    let width: CGFloat
+    let height: CGFloat
+    let barWidth: CGFloat
+    let barGap: CGFloat
+    let color: Color
+
+    /// 写死的「语音包络」，循环铺满。零计算。
+    private static let amplitudes: [CGFloat] = [
+        0.18, 0.32, 0.54, 0.80, 0.46, 0.68, 0.90, 0.36,
+        0.22, 0.58, 0.84, 0.60, 0.34, 0.72, 0.50, 0.26,
+        0.42, 0.92, 0.64, 0.38, 0.20, 0.56, 0.74, 0.46,
+        0.86, 0.32, 0.16, 0.48, 0.68, 0.96, 0.52, 0.28,
+        0.62, 0.40, 0.22, 0.76, 0.88, 0.34, 0.18, 0.54,
+        0.70, 0.44, 0.94, 0.30, 0.58, 0.24, 0.82, 0.38
+    ]
+
+    static func == (lhs: StaticWaveformBars, rhs: StaticWaveformBars) -> Bool {
+        lhs.count == rhs.count && lhs.width == rhs.width && lhs.height == rhs.height
+        && lhs.barWidth == rhs.barWidth && lhs.barGap == rhs.barGap && lhs.color == rhs.color
     }
 
-    private func phase(_ offset: Double) -> Double {
-        Double(abs(seedHash % 997)) / 997.0 * 31.0 + offset
-    }
-
-    private var seedHash: Int {
-        var hash: UInt64 = 1469598103934665603
-        for byte in seed.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 1099511628211
+    var body: some View {
+        Canvas { ctx, size in
+            let bars = Self.amplitudes
+            let n = bars.count
+            for i in 0..<count {
+                let x = CGFloat(i) * (barWidth + barGap)
+                let barH = max(3, bars[i % n] * size.height)
+                let rect = CGRect(x: x, y: (size.height - barH) / 2,
+                                  width: barWidth, height: barH)
+                ctx.fill(Path(roundedRect: rect, cornerRadius: barWidth / 2, style: .continuous),
+                         with: .color(color))
+            }
         }
-        return Int(hash % 100_003)
-    }
-
-    /// 一维值噪声：整数点取哈希，中间用 smoothstep 插值
-    private func valueNoise(_ t: Double) -> Double {
-        let i = Int(floor(t))
-        let f = t - Double(i)
-        let a = hashNoise(i)
-        let b = hashNoise(i + 1)
-        let s = f * f * (3 - 2 * f)
-        return a + (b - a) * s
-    }
-
-    private func hashNoise(_ n: Int) -> Double {
-        var x = n &* 374761393 &+ seedHash
-        x = (x ^ (x >> 13)) &* 1274126177
-        x ^= x >> 16
-        return Double(abs(x) % 100_000) / 100_000.0
     }
 }

@@ -15,6 +15,8 @@
 //
 
 import SwiftUI
+import UIKit
+import Combine
 
 struct RootTabView: View {
     @Environment(\.colorScheme) private var scheme
@@ -23,6 +25,13 @@ struct RootTabView: View {
     @StateObject private var uiState = IOSUIState.shared
     @StateObject private var router = TabRouter()
     @StateObject private var studioVM = VoiceStudioViewModel.shared
+    @StateObject private var nowPlaying = NowPlayingStore.shared
+    // ⚠️ 根容器绝不能订阅播放器：progress 10Hz 会让整个 TabView + 3 个 NavigationStack
+    //    一起重算。这里只订阅低频播放态（macOS 宿主同款做法）。
+    @StateObject private var status = PlaybackStatus.shared
+
+    /// 键盘弹起时底部浮层让位：搜索框聚焦时 mini player / 后台浮条不压到键盘。
+    @State private var keyboardVisible = false
 
     private var palette: AuroraPalette { AuroraPalette(scheme: scheme) }
 
@@ -36,8 +45,8 @@ struct RootTabView: View {
                 }
                 .tint(palette.accent)
 
-                // 后台接收浮条（标签栏之上）
-                backgroundBar
+                // 底部浮层三选一（互斥，不叠放）：撤销 Toast > 后台接收浮条 > mini player
+                bottomDock
             }
             .overlay { generationOverlay }
             .overlay(alignment: .top) { toastLayer }
@@ -56,6 +65,17 @@ struct RootTabView: View {
         // 而 Bool 只在翻转时触发。
         .onChange(of: studioVM.generationCompletedSignal) { _, _ in
             appState.showGenerationModal = true
+        }
+        // 启动时清一次到期记录（磁盘删除不夹在任何动画事务里）
+        .task {
+            let expired = AudioFlagStore.shared.purgeExpired()
+            for id in expired { ProjectService.shared.deleteAudio(id: id) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardVisible = false
         }
     }
 
@@ -90,6 +110,8 @@ struct RootTabView: View {
             CreditRecordsView()
         case .player(let item):
             PlayerDetailView(item: item)
+        case .recentlyDeleted:
+            RecentlyDeletedView()
         }
     }
 
@@ -106,12 +128,21 @@ struct RootTabView: View {
         }
     }
 
-    // MARK: - 后台接收浮条
+    // MARK: - 底部浮层（三选一，互斥）
 
-    /// 弹窗关掉但任务还在跑时，从任意标签都能一键回到弹窗
+    /// 优先级：撤销 Toast > 后台接收浮条 > mini player。
+    /// ⚠️ 三者都占「标签栏之上」同一位置，叠放会互相盖住；多选工具条自己在
+    ///    `ProjectsView.safeAreaInset` 里，靠 `uiState.hideMiniPlayer` 让出位置。
     @ViewBuilder
-    private var backgroundBar: some View {
-        if studioVM.isGenerating && !appState.showGenerationModal {
+    private var bottomDock: some View {
+        if let undo = uiState.undoToast {
+            UndoToastView(message: undo) { uiState.consumeUndoToast() }
+                .padding(.horizontal, 12)
+                .padding(.bottom, router.activePath.isEmpty ? 58 : 18)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(4)
+        } else if !keyboardVisible && studioVM.isGenerating && !appState.showGenerationModal {
+            // 弹窗关掉但任务还在跑时，从任意标签都能一键回到弹窗
             BackgroundReceiveBar(stats: studioVM.stats) {
                 appState.showGenerationModal = true
             }
@@ -120,6 +151,20 @@ struct RootTabView: View {
             .padding(.bottom, router.activePath.isEmpty ? 58 : 18)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .zIndex(2)
+        } else if !keyboardVisible && router.activePath.isEmpty && !uiState.hideMiniPlayer,
+                  let item = nowPlaying.currentItem, status.playingKey != nil {
+            MiniPlayerView(item: item,
+                           voiceName: nowPlaying.currentVoiceName,
+                           onExpand: {
+                               router.selection = .projects
+                               router.push(.player(item))
+                           },
+                           onToggle: { NowPlayingStore.shared.toggle(item) },
+                           onClose: { NowPlayingStore.shared.close() })
+                .padding(.horizontal, 12)
+                .padding(.bottom, 58)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(2)
         }
     }
 

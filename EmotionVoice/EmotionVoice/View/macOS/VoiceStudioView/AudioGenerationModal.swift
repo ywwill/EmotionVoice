@@ -1144,7 +1144,7 @@ struct AudioGenerationModal: View {
         // 兜底：文本为空，或洗完什么都不剩
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm"
-        return sanitizeFileName("音频_" + formatter.string(from: Date()))
+        return sanitizeFileName("音频_%@".localized(formatter.string(from: Date())))
     }
 
     /// 保存编辑后的音频名称
