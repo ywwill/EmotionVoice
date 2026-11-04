@@ -16,6 +16,7 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 - 唯一数据源 `Voices/basic_voices.json`(v4)，语言无关 code+稳定 key，改后跑 `tools/gen_basic_voices.py`；筛选基于 code，搜索下沉内存。七规则：分类单选互斥／分类与收藏互斥／计数恒全量／搜索忽略分类全库匹配／只命中 4 字段／旗舰优先→名字典序／iOS 上拉追加。
 - 胶囊整条热区 `contentShape(Rectangle())`+`onTapGesture`；分类列表就地替换（`panelTransition`+`withAnimation`）；刷新过渡用 `contentVisible` 驱动 opacity/offset，`.id(scrollResetID)` 只管滚回顶部。
 - `.emotion` 胶囊+徽章／`.richLanguage` 虚线 pill／`.interrupt` 灰徽章；中断 API 不支持 → `toTTSAPIString()` 丢弃，生成走 `toTTSSegments()` 分段 + `AudioConcatenator.merge()`。
+- ⚠️ iOS 分类筛选**只在当前进程内保留**：`VoiceLibraryFilterStore`（定义在 `View/iOS/App/IOSUIState.swift` 内的纯内存单例，定义在已有文件里避免改 pbxproj）；切 tab／跳转／View 重建不丢，**重启回「全部音色」**。禁再读写 `AppState.voiceLibrary*`（那 4 个属性带 UserDefaults 落盘，属 macOS 语义）。筛选变化用 `.onChange` 即时落 store；Sheet 的 0.25s 延迟刷新若遇 `onDisappear`，须取消并 `reload(animated:false)` 同步落地，否则「按钮是分类 A、列表还是全部音色」。
 
 ## iOS UI / 编辑器
 - `ScreenMetrics` 分档 <375/375–659/**660–1023**/≥1024；两栏 `width>=740 && isWide`；3 标签+各自导航栈；二级页 `.toolbar(.hidden,for:.tabBar)` 由 `TabRouter.isTabBarHidden` 驱动；push 前 `resignFirstResponder()`；Sheet 统一 `SheetNavBar`；同层不挂两个 `.alert`；body 计算属性不查库。

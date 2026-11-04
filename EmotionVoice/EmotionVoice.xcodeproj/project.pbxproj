@@ -1328,6 +1328,7 @@
 		6F3AEA6C30907A20007975DD /* TokenDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4F30907A20007975DD /* TokenDocument.swift */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
 		6F6702983081F0CE0001A3BE /* AudioConcatenator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */; };
+		6F8A519F309B03DA00C9DF9C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6F8A519E309B03DA00C9DF9C /* PrivacyInfo.xcprivacy */; };
 		6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001000 /* PlayerTextMetrics.swift */; };
 		6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001001 /* PlayerMetaStrip.swift */; };
 		6FB000000000000000001002 /* PlayerTransportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA000000000000000001002 /* PlayerTransportView.swift */; };
@@ -2068,6 +2069,7 @@
 		6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConcatenator.swift; sourceTree = "<group>"; };
 		6F8763CE3088643500F260A9 /* zh-HK */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-HK"; path = "zh-HK.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		6F8763CF3088643500F260A9 /* zh-HK */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-HK"; path = "zh-HK.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
+		6F8A519E309B03DA00C9DF9C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6F9DEF56308754520048ED6F /* Emora-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Emora-Info.plist"; sourceTree = "<group>"; };
 		6FA000000000000000001000 /* PlayerTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTextMetrics.swift; sourceTree = "<group>"; };
 		6FA000000000000000001001 /* PlayerMetaStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetaStrip.swift; sourceTree = "<group>"; };
@@ -2288,6 +2290,7 @@
 				6FA18FE43094769F00C90900 /* Shared */,
 				6F209380303EC80500A770BB /* View */,
 				6F209381303EC80500A770BB /* Assets.xcassets */,
+				6F8A519E309B03DA00C9DF9C /* PrivacyInfo.xcprivacy */,
 				6FCD807D3099BDFC00C5C51F /* Launch Screen.storyboard */,
 				6F209386303EC80500A770BB /* Localizable.strings */,
 				A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */,
@@ -3765,6 +3768,7 @@
 				6F3AE9DA3090797A007975DD /* longyilanni.m4a in Resources */,
 				6F3AE9DB3090797A007975DD /* longlanquexiao.m4a in Resources */,
 				6F3AE9DC3090797A007975DD /* longyinghaitai.m4a in Resources */,
+				6F8A519F309B03DA00C9DF9C /* PrivacyInfo.xcprivacy in Resources */,
 				6F3AE9DD3090797A007975DD /* longshuangqinque.m4a in Resources */,
 				6F3AE9DE3090797A007975DD /* longshuangsongbai.m4a in Resources */,
 				6F3AE9DF3090797A007975DD /* longyuanruiling.m4a in Resources */,

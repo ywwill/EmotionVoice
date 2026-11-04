@@ -4,6 +4,7 @@
 //
 //  全部分类 Sheet：26 个 `VoiceCategory` case 按 4 个维度分组（旗舰 / 场景 / 角色 / 年龄），
 //  再加视图层的「全部音色 / 仅看收藏」，一共 28 项。
+//  图标风格：视图级筛选两行用系统图标（网格 / 心形），26 个分类行用各自 Emoji。
 //
 //  与 macOS chip 的差异：**单选互斥**（`selectCategory` 语义不变），
 //  但 iOS 上关闭 Sheet 不清除选择，只有「重置」才清空 —— 所以进来时要把
@@ -90,10 +91,13 @@ struct CategoryFilterSheet: View {
                     LazyVStack(spacing: 0, pinnedViews: []) {
                         groupTitle("视图级筛选".localized(), top: 6)
                         rowsBlock {
+                            // 「全部音色」以前是 20pt 空占位，整组里只有它没有图标。
+                            // 用系统图标与同组的「仅看收藏」对齐（分类行才是 Emoji）。
                             catRow(icon: nil,
                                    name: "全部音色".localized(),
                                    count: totalAll,
                                    checked: selectedCategory == nil && !showFavoritesOnly,
+                                   systemIcon: "square.grid.2x2.fill",
                                    id: Self.allRowID) {
                                 commit {
                                     selectedCategory = nil

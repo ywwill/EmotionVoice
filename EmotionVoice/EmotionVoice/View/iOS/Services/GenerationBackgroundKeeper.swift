@@ -83,8 +83,8 @@ final class GenerationBackgroundKeeper {
         guard !expired else { return }
         guard UIApplication.shared.applicationState != .active else { return }
 
-        notify(title: success ? "音频生成完成".localized() : "生成已结束".localized(),
-               body: "返回 App 查看结果".localized())
+//        notify(title: success ? "音频生成完成".localized() : "生成已结束".localized(),
+//               body: "返回 App 查看结果".localized())
     }
 
     // MARK: - 到期
@@ -99,9 +99,9 @@ final class GenerationBackgroundKeeper {
         // BailianTTSService 既有容错策略落盘，回前台后由失败提示 / 弹窗体现）。
         BailianTTSService.shared.closeConnection()
 
-        guard UIApplication.shared.applicationState != .active else { return }
-        notify(title: "后台接收时间已用完".localized(),
-               body: "请返回 App 继续接收".localized())
+//        guard UIApplication.shared.applicationState != .active else { return }
+//        notify(title: "后台接收时间已用完".localized(),
+//               body: "请返回 App 继续接收".localized())
     }
 
     private func endTask() {

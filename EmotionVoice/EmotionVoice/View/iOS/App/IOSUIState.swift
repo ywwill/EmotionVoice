@@ -10,6 +10,7 @@
 //  3. Toast（购买结果）需要盖在标签栏之上。
 //
 
+import Foundation
 import SwiftUI
 import Combine   // @Published / ObservableObject 在 Combine，SwiftUI 不再隐式导出
 
@@ -122,6 +123,44 @@ final class IOSUIState: ObservableObject {
         let action = undoToast?.onUndo
         withAnimation(.easeOut(duration: 0.2)) { undoToast = nil }
         action?()
+    }
+}
+
+// MARK: - 音色库筛选状态（仅当前进程，不落盘）
+
+/// iOS 音色库的筛选状态容器：**只在当前 App 进程内有效**。
+///
+/// 行为约定：
+/// - 切标签 / 页面跳转 / 音色库 View 被 SwiftUI 重建 → 分类、搜索词、收藏筛选原样保留；
+/// - App 进程结束（重启）→ 一律回到默认「全部音色 + 空搜索 + 非收藏」。
+///
+/// ⚠️ 绝不写 `UserDefaults`：`AppState` 里那 4 个 `voiceLibrary*` 字段带 `didSet` 落盘，
+///    macOS 音色库仍在用；iOS 以前读写它们，结果就是「重启后自动恢复上次分类」。
+///    现在 iOS 只读这里，磁盘上的历史残留首次访问时清掉，避免以后被误读带回来。
+@MainActor
+final class VoiceLibraryFilterStore {
+
+    static let shared = VoiceLibraryFilterStore()
+
+    /// nil = 全部音色
+    var selectedCategory: VoiceCategory?
+    var searchText: String = ""
+    var showFavoritesOnly: Bool = false
+
+    private init() {
+        let ud = UserDefaults.standard
+        for key in ["voiceLibrarySelectedCategory",
+                    "voiceLibrarySearchText",
+                    "voiceLibraryShowFavoritesOnly",
+                    "voiceLibraryCurrentPage"] {
+            ud.removeObject(forKey: key)
+        }
+    }
+
+    func update(selectedCategory: VoiceCategory?, searchText: String, showFavoritesOnly: Bool) {
+        self.selectedCategory = selectedCategory
+        self.searchText = searchText
+        self.showFavoritesOnly = showFavoritesOnly
     }
 }
 

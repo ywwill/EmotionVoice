@@ -10,7 +10,7 @@
 //  - 卡片支持自适应列网格，hover/选中时变化边框与背景
 //  - 播放中展示波形动画
 //  - 顶部 chip 使用瀑布流布局（FlowLayout）
-//  - 卡片列表使用 SQL 分页：每页 3 行，按列数动态计算 pageSize
+//  - 卡片列表使用 SQL 分页：每页 6 行，按列数动态计算 pageSize
 //  - 底部带分页栏：上一页 / 页码输入 / 下一页 / 总数，仅 1 页时输入框不可编辑
 //  - 底部分页栏始终占位：骨架阶段渲染等高占位条，骨架只铺在内容区，不盖住页码切换
 //
@@ -50,13 +50,16 @@ struct VoicesLibraryView: View {
     /// 首屏异步加载任务（视图消失时取消，避免回调到已销毁的 VM）
     @State private var loadTask: Task<Void, Never>?
 
-    // 每行 3 个音色的目标行数
-    private static let rowsPerPage: Int = 4
-    /// 骨架屏固定铺「5 列 × 4 行」：与首屏 pageSize 形状一致，不多不少
+    /// 每页行数（列数由实际宽度动态计算，pageSize = 列数 × rowsPerPage）
+    /// 6 行：比原来的 4 行多显示 2 行，减少翻页次数
+    private static let rowsPerPage: Int = 6
+    /// 骨架屏固定铺「5 列 × 4 行 = 20 张」：只做首屏占位，**不跟随 rowsPerPage**，
+    /// 避免 30 张骨架卡同时扫光带来的逐帧合成开销
     private static let skeletonColumns: Int = 5
+    private static let skeletonRows: Int = 4
     // 卡片最小宽度 + 间距（与下方 GridItem 保持一致）
     private static let cardMinWidth: CGFloat = 220
-    private static let gridSpacing: CGFloat = 14
+    private static let gridSpacing: CGFloat = 12
 
     // MARK: - 初始化
 
@@ -248,10 +251,10 @@ struct VoicesLibraryView: View {
             .background(gridWidthTracker)
         }
         .padding(.horizontal, 32)
-        .padding(.vertical, 20)
+        .padding(.vertical, 16)
     }
 
-    /// 骨架屏网格：固定 5 列 × 4 行 = 20 张，先占位再被真实数据替换。
+    /// 骨架屏网格：固定 5 列 × 4 行 = 20 张，先占位再被真实数据替换（行数不跟 pageSize）。
     /// 内外边距与 `singleCategoryCardList` 完全一致，
     /// 保证骨架与真实卡片左右对齐、上下留白一致（含底部不贴边）。
     private var skeletonGrid: some View {
@@ -261,13 +264,13 @@ struct VoicesLibraryView: View {
             ],
             spacing: Self.gridSpacing
         ) {
-            ForEach(0..<(Self.skeletonColumns * Self.rowsPerPage), id: \.self) { _ in
+            ForEach(0..<(Self.skeletonColumns * Self.skeletonRows), id: \.self) { _ in
                 VoiceCardSkeleton()
             }
         }
         .background(gridWidthTracker)
         .padding(.horizontal, 32)
-        .padding(.vertical, 20)
+        .padding(.vertical, 16)
     }
 
     /// 网格可用宽度测量（骨架与真实网格共用），用于确定列数 → pageSize。

@@ -14,6 +14,10 @@
 //  ⑥ 排序固定「旗舰优先 → 展示名字典序」，没有排序控件
 //  ⑦ macOS pageSize = 列数 × 4 的分页在 iOS 改成上拉追加。
 //
+//  ⚠️ 筛选状态的生命周期：只在**当前进程内**保留（`VoiceLibraryFilterStore`，纯内存），
+//     切标签 / 页面跳转 / View 被重建都不丢；App 重启回到「全部音色」。
+//     不读写 `AppState.voiceLibrary*` —— 那组字段会落 UserDefaults，是 macOS 用的。
+//
 
 import SwiftUI
 
@@ -58,6 +62,9 @@ struct VoicesLibraryView: View {
 
     /// 分类 Sheet 提交后排的延迟刷新（见 `reloadAfterSheetDismiss`）
     @State private var deferredReloadTask: Task<Void, Never>? = nil
+
+    /// 这次延迟刷新还没落地：离屏前要就地同步做完，否则回来会「按钮是分类 A、列表还是全部音色」
+    @State private var pendingSheetReload = false
 
     /// 「换数据」那一步排的 Task（见 `apply(_:total:)`）
     @State private var swapTask: Task<Void, Never>? = nil
@@ -182,11 +189,28 @@ struct VoicesLibraryView: View {
             .presentationDragIndicator(.visible)
         }
         .task { initialLoad() }
-        .onChange(of: searchText) { _, _ in scheduleSearch() }
+        // ⚠️ 筛选一变就写进程内 store，不等 reload：Sheet 的刷新排在 0.25s 之后，
+        //   用户完全可能在这之前切标签 / 跳走，那时状态必须已经安全落地。
+        .onChange(of: searchText) { _, _ in
+            persist()
+            scheduleSearch()
+        }
+        .onChange(of: selectedCategory) { _, _ in persist() }
+        .onChange(of: showFavoritesOnly) { _, _ in persist() }
         .onDisappear {
             stopPreviewIfNeeded()
-            deferredReloadTask?.cancel()
-            swapTask?.cancel()
+            if pendingSheetReload {
+                // 延迟刷新还没跑就离屏：取消它，改成无动画同步落地。
+                // 否则回来时分类名是新的、列表数据还是旧的。
+                pendingSheetReload = false
+                deferredReloadTask?.cancel()
+                deferredReloadTask = nil
+                swapTask?.cancel()
+                reload(animated: false)
+            } else {
+                deferredReloadTask?.cancel()
+                swapTask?.cancel()
+            }
             contentVisible = true   // 别让半途取消的淡出把列表留在透明状态
         }
     }
@@ -289,6 +313,7 @@ struct VoicesLibraryView: View {
     private var favoriteButton: some View {
         Button {
             deferredReloadTask?.cancel()   // 别让 Sheet 排的延迟刷新晚一步把列表再切一次
+            pendingSheetReload = false
             showFavoritesOnly.toggle()
             if showFavoritesOnly { selectedCategory = nil }
             reload()
@@ -391,10 +416,12 @@ struct VoicesLibraryView: View {
 
     private func initialLoad() {
         guard !didLoad else { return }
-        // 恢复上次的筛选状态
-        selectedCategory = appState.voiceLibrarySelectedCategory
-        searchText = appState.voiceLibrarySearchText
-        showFavoritesOnly = appState.voiceLibraryShowFavoritesOnly
+        // 只从进程内 store 恢复：View 重建 / 切标签回来时保留筛选；
+        // App 重启时 store 是全新的，自然回到「全部音色」。
+        let store = VoiceLibraryFilterStore.shared
+        selectedCategory = store.selectedCategory
+        searchText = store.searchText
+        showFavoritesOnly = store.showFavoritesOnly
         reload()
         // 骨架屏 → 真实卡片也算一次「内容切换」，走同一条淡入过渡
         withAnimation(Self.swapAnimation) { didLoad = true }
@@ -407,9 +434,11 @@ struct VoicesLibraryView: View {
     /// 排到收起之后，按钮上的分类名（Binding）已经先变，列表随后淡入换数据。
     private func reloadAfterSheetDismiss() {
         deferredReloadTask?.cancel()
+        pendingSheetReload = true
         deferredReloadTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: Self.sheetDismissDelayNanos)
             guard !Task.isCancelled else { return }
+            pendingSheetReload = false
             reload()
         }
     }
@@ -419,12 +448,12 @@ struct VoicesLibraryView: View {
     /// ⚠️ 查库**必须留在动画事务之外**：`vm.reloadCurrentPage()` 是同步的全表过滤，
     /// 放进 `withAnimation` 会卡住动画的第一帧（与 `ProjectsView.duplicate` 同一个坑）。
     /// 这里只把最后那几次 `@State` 写入包进动画。
-    private func reload() {
+    private func reload(animated: Bool = true) {
         page = 1
         vm.setPageSize(pageSize)
         syncToVM()
         vm.reloadCurrentPage()
-        apply(vm.displayedVoices, vm.totalCount)
+        apply(vm.displayedVoices, vm.totalCount, animated: animated)
         persist()
     }
 
@@ -482,11 +511,15 @@ struct VoicesLibraryView: View {
                             currentPage: page)
     }
 
+    /// 筛选状态即时写进进程内 store（不落盘）。
+    /// ⚠️ 不依赖 `reload()` 完成：分类 Sheet 的刷新是延迟的，用户可能在 0.25s 内就切走；
+    ///    页码不入 store —— View 重建 / 重启后一律从第一页重新加载。
     private func persist() {
-        appState.voiceLibrarySelectedCategory = selectedCategory
-        appState.voiceLibrarySearchText = searchText
-        appState.voiceLibraryShowFavoritesOnly = showFavoritesOnly
-        appState.voiceLibraryCurrentPage = page
+        VoiceLibraryFilterStore.shared.update(
+            selectedCategory: selectedCategory,
+            searchText: searchText,
+            showFavoritesOnly: showFavoritesOnly
+        )
     }
 
     /// 搜索防抖：每次键击都全表过滤会很卡

@@ -43,8 +43,11 @@ struct VoiceCardGrid: View {
 
     // MARK: 卡片背景
 
-    /// 两个旗舰音色不能只是普通白卡 + 一枚徽章：用品牌紫→玫瑰渐变打底，
-    /// 右上角再叠一层暖金柔光，配琥珀描边和淡紫投影，一眼和普通音色拉开层级。
+    /// 旗舰卡用品牌紫→玫瑰渐变打底，右上角只留一层极淡的暖金柔光做氛围，
+    /// 配琥珀描边和淡紫投影拉开层级。
+    /// ⚠️ 柔光不能压过「旗舰」徽章：强度与半径都收小，且徽章自带不透明底 +
+    ///    主题自适应的高对比金字（见 `premiumBadge`）。早年两层金色直接叠在一起，
+    ///    浅色下亮金 #FFB457 对白底只有约 1.7:1，标识基本糊成一片。
     @ViewBuilder
     private var cardBackground: some View {
         let shape = RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
@@ -68,9 +71,11 @@ struct VoiceCardGrid: View {
         ], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
+    /// 右上角暖金柔光：只做角上的一点氛围，不再铺满徽章所在的整个右上区域。
+    /// 0.22/150 时正好把「旗舰」胶囊整块泡在金光里，和徽章的金色字同色相撞。
     private var premiumGlow: RadialGradient {
-        RadialGradient(colors: [AuroraDecor.amber.opacity(0.22), Color.clear],
-                       center: .topTrailing, startRadius: 4, endRadius: 150)
+        RadialGradient(colors: [AuroraDecor.amber.opacity(0.10), Color.clear],
+                       center: .topTrailing, startRadius: 4, endRadius: 96)
     }
 
     private var borderColor: Color {
@@ -115,11 +120,18 @@ struct VoiceCardGrid: View {
             Text("旗舰".localized())
                 .font(.system(size: 10, weight: .semibold))
         }
-        .foregroundStyle(AuroraDecor.amber)
+        // `c.warning` 随主题给足对比：浅色 #B87200（对白 ≈4.6:1）、深色 #FFC24B。
+        // 不再用半透明琥珀底 —— 它会把下面的暖金柔光透上来，字和光同色就没边界了。
+        .foregroundStyle(c.warning)
         .padding(.horizontal, 6)
         .frame(height: 16)
         .background(
-            Capsule(style: .continuous).fill(AuroraDecor.amber.opacity(0.16))
+            Capsule(style: .continuous)
+                .fill(c.surface)       // 不透明底：把柔光完全隔在徽章之外
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(c.warning.opacity(0.35), lineWidth: 0.5)
+                )
         )
     }
 
