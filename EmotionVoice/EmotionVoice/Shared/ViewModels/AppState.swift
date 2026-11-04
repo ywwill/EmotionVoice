@@ -14,7 +14,10 @@ import Combine
 final class AppState: ObservableObject {
 
     /// UserDefaults 键：上次使用的音色 key
-    private static let selectedVoiceKeyUDKey = "selectedVoiceKey"
+    ///
+    /// ⚠️ 跑的是 `VoiceStudioViewModel` 里那个常量（同一个键）：工作台每次换音色都会写它，
+    /// 这里只负责启动时读出来解析。两者指向不同的字符串会让「记住音色」时灵时不灵。
+    private static let selectedVoiceKeyUDKey = VoiceStudioViewModel.selectedVoiceKeyDefaultsKey
 
     /// 当前选中的侧边栏项
     @Published var selectedSection: SidebarSection = .voiceStudio

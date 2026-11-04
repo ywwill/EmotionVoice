@@ -254,7 +254,7 @@ struct GenerationDialog: View {
 
             HStack(spacing: 6) {
                 PulseDot(color: c.accent)
-                Text("正在持续接收。关闭弹窗不会中断任务，可从顶部浮条随时返回。".localized())
+                Text("请保持 App 在前台运行，以免影响数据接收。".localized())
                     .font(.system(size: 11.5))
                     .foregroundStyle(c.textTertiary)
                 Spacer(minLength: 0)
@@ -334,7 +334,7 @@ struct GenerationDialog: View {
                 Image(systemName: "diamond.fill")
                     .font(.system(size: 13))
                     .foregroundStyle(AuroraDecor.creditB)
-                Text("本次消耗积分".localized())
+                Text("消耗".localized())
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
                 Text("\(formatCredits(chargedPoints))")
@@ -419,12 +419,8 @@ struct GenerationDialog: View {
                     onDismiss()
                 }
             } else {
-                SecondaryButton(title: "后台接收".localized(), systemImage: "person.crop.circle") {
+                SecondaryButton(title: "隐藏窗口".localized(), systemImage: "person.crop.circle") {
                     onBackground()
-                }
-                DangerBorderButton(title: "停止生成".localized(), systemImage: "xmark") {
-                    vm.cancelGeneration()
-                    onDismiss()
                 }
             }
         }
@@ -691,9 +687,12 @@ private struct ModalAudioPlayer: View {
                         .strokeBorder(c.line, lineWidth: 0.5)
                 )
         )
-        .onAppear {
-            if let url = audioURL { player.play(url: url) }
-        }
+        // ⚠️ 生成完成**不自动起播**：后台接收完成时 `RootTabView` 会按
+        //    `generationCompletedSignal` 自动把弹窗唤回完成态，用户可能根本没看屏幕，
+        //    这时突然出声很突兀。与 macOS `AudioGenerationModal` 一致，
+        //    播放只由下面的播放按钮触发。
+        //    关闭弹窗仍停播：这个播放器走 `AudioPreviewPlayer` 私有路径，不挂
+        //    `NowPlayingStore`，没有 mini player 接管，继续播会变成「无 UI 控制的声音」。
         .onDisappear { player.stop() }
     }
 

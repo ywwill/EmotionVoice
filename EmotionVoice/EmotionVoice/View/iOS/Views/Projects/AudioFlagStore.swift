@@ -188,22 +188,39 @@ final class NowPlayingStore: ObservableObject {
     private init() {}
 
     func attach(_ item: AudioItem, voiceName: String? = nil) {
+        let isDifferent = currentItem?.id != item.id
         currentItem = item
-        if let voiceName { currentVoiceName = voiceName }
+        if let voiceName {
+            currentVoiceName = voiceName
+        } else if isDifferent {
+            currentVoiceName = ""
+        }
+        applyNowPlayingMetadata(item)
+    }
+
+    /// 锁屏信息必须在起播前就位：`play(url:)` 内部会先 `stop()`，
+    /// 等播起来再补元数据会先闪一次空封面 / 上一条的音色。
+    /// 封面用与列表 `VoiceAvatar` 相同的 seed + 末字，保证锁屏与历史记录一致。
+    private func applyNowPlayingMetadata(_ item: AudioItem) {
+        let name = currentVoiceName.isEmpty ? item.voice : currentVoiceName
+        player.setNowPlayingMetadata(title: item.shownName,
+                                     artist: name,
+                                     seed: item.voice,
+                                     avatarText: String(name.suffix(1)))
     }
 
     /// 行内试听 / mini player 的统一入口：同一条切换播放、不同条直接换曲。
     /// ⚠️ 一律用 `identifier = fileName` 起播，详情页才能用 playingKey 判等。
     func toggle(_ item: AudioItem, voiceName: String? = nil) {
         guard item.isOnDisk else { return }
-        player.togglePlayback(url: item.absoluteURL, identifier: item.fileName)
         attach(item, voiceName: voiceName)
+        player.togglePlayback(url: item.absoluteURL, identifier: item.fileName)
     }
 
     func start(_ item: AudioItem, voiceName: String? = nil) {
         guard item.isOnDisk else { return }
-        player.play(url: item.absoluteURL, identifier: item.fileName)
         attach(item, voiceName: voiceName)
+        player.play(url: item.absoluteURL, identifier: item.fileName)
     }
 
     func isCurrent(_ item: AudioItem) -> Bool {
@@ -218,6 +235,7 @@ final class NowPlayingStore: ObservableObject {
     /// mini player 的「关闭」：停播 + 清掉当前项，浮层随即收起。
     func close() {
         player.stop()
+        player.clearNowPlayingMetadata()
         currentItem = nil
         currentVoiceName = ""
     }

@@ -124,6 +124,17 @@ struct TokenTextEditor: UIViewRepresentable {
         tv.isSelectable = true
         tv.isScrollEnabled = true
         tv.alwaysBounceVertical = false
+        // ⚠️ 编辑器自己就是一个 `UIScrollView`，UIKit 默认 `.none` —— 于是「拖编辑器内容」
+        // 只会滚动文本、键盘纹丝不动（长文想往上翻看时，键盘白占 300 多 pt）。
+        // 这里改成「一开始拖就收键盘」：
+        //  * **必须带 `WithAccessory` 后缀**：本编辑器的标签条是自定义 `inputAccessoryView`，
+        //    普通的 `.onDrag` 只收键盘、会把那条 accessory 留在屏幕底部孤零零挂着；
+        //  * 用 `.onDrag` 不用 `.interactive`：interactive 让键盘跟手走，而 `StudioView`
+        //    的让位是「实测差值 + 0.25s 动画」算的，两者叠在一起底部条会抖。
+        // 收键盘 → `textViewDidEndEditing` → 顶部横条 / 参数条恢复 + 底部条让位归零，链路已通。
+        // ⚠️ 光设这一行在**短文本**上不生效（内容不足一屏时 pan 手势不会开始），
+        // 回弹由 `textViewDidBeginEditing` 临时打开，别把它删了。
+        tv.keyboardDismissMode = .onDragWithAccessory
         tv.textContainerInset = UIEdgeInsets(top: 22, left: 14, bottom: 14, right: 14)
         tv.textContainer.lineFragmentPadding = 0
         tv.typingAttributes = Self.bodyAttributes(textColor: UIColor(palette.textPrimary))
@@ -713,12 +724,19 @@ struct TokenTextEditor: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
+            // ⚠️ 为「滚动收键盘」补的一环：正文还没超出一屏时，`UIScrollView` 的 pan 手势
+            // 根本不会开始（`alwaysBounceVertical = false` 时连橡皮筋都没有），于是
+            // `keyboardDismissMode` 永远等不到 drag —— 表现就是「短文本下滑一下，键盘没反应」。
+            // 编辑期间临时打开回弹，让任意拖拽都能被识别；结束编辑立刻关掉，
+            // 非编辑态的编辑器不该有那种抖动。
+            textView.alwaysBounceVertical = true
             syncOverlayFrame()
             overlay?.setNeedsDisplay()
             notifyEditingChanged(true)
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
+            textView.alwaysBounceVertical = false
             store.flush()
             overlay?.setNeedsDisplay()
             notifyEditingChanged(false)

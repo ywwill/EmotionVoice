@@ -20,7 +20,6 @@
 "使用统计" = "Usage Statistics";
 "设置" = "Settings";
 "创作" = "Create";
-"积分消耗" = "Points Consumed";
 "音频生成" = "Audio Generation";
 "音色使用" = "Voice Usage";
 "文本输入" = "Text Input";
@@ -348,7 +347,7 @@
 "✓ 已写入缓冲区" = "✓ buffered";
 "音频接收完成" = "Audio received";
 "大小" = "Size";
-"本次消耗积分" = "Credits used";
+"消耗" = "Usage";
 "剩余 %@ 积分" = "%@ credits left";
 "关闭窗口不会中断，音频将在后台继续接收" = "Closing won't interrupt it — audio keeps downloading in the background";
 "⬇ 导出" = "⬇ Export";
@@ -486,11 +485,11 @@
 
 // iOS · 生成弹窗
 "目标" = "Target";
-"正在持续接收。关闭弹窗不会中断任务，可从顶部浮条随时返回。" = "Still receiving. Closing the popup won't interrupt the task — return anytime from the top banner.";
+"请保持 App 在前台运行，以免影响数据接收。" = "Keep the app in the foreground — backgrounding may interrupt receiving.";
 "剩余 %@" = "%@ left";
 "−%@ 积分" = "−%@ credits";
 "分享" = "Share";
-"后台接收" = "Background Receiving";
+"隐藏窗口" = "Hide Window";
 "停止生成" = "Stop Generating";
 "音频_%@" = "Audio_%@";
 
@@ -560,3 +559,7 @@
 "选择要操作的音频" = "Select audio to manage";
 "重新编辑" = "Edit Again";
 "音频文件已丢失" = "Audio file is missing";
+"后台接收时间已用完" = "Background receiving time expired";
+"请返回 App 继续接收" = "Return to the app to continue";
+"返回 App 查看结果" = "Open the app to see the result";
+"生成已结束" = "Generation ended";

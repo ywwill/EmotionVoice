@@ -39,6 +39,8 @@ struct StudioView: View {
     @EnvironmentObject private var router: TabRouter
 
     @StateObject private var vm = VoiceStudioViewModel.shared
+    /// mini player 是挂在 `RootTabView` 的全局浮层，和本页 `generateBar` 抢同一块地方。
+    @StateObject private var nowPlaying = NowPlayingStore.shared
 
     // MARK: 编辑器状态
 
@@ -79,7 +81,12 @@ struct StudioView: View {
                     wideLayout
                         .padding(.bottom, 10)
                 }
-                .scrollDismissesKeyboard(.interactively)
+                // 滚动 = 在浏览、不在打字 → 一开始滚就收键盘，把空间还给正文。
+                // ⚠️ 用 `.immediately` 而不是 `.interactively`：本页的键盘让位（见 `keyboardSeam`）
+                // 是「按实测差值 + 0.25s 动画」算出来的，interactive 那种键盘跟手走的过程
+                // 会让底部条一路追着手指重排（抖），一次性收起反而干净。
+                // 编辑器内部（窄屏）的滚动收起由 `TokenTextEditor` 的 `keyboardDismissMode` 负责。
+                .scrollDismissesKeyboard(.immediately)
             } else {
                 // 窄屏不套 ScrollView：音色行 + 参数行是固定高度，
                 // 输入框独占剩余空间撑到底部，与 generateBar 只隔 10pt。
@@ -122,7 +129,15 @@ struct StudioView: View {
             Alert(title: Text(item.title), message: Text(item.message),
                   dismissButton: .default(Text("好".localized())))
         }
-        .onAppear(perform: restoreFromViewModel)
+        .onAppear {
+            restoreFromViewModel()
+            restoreSelectedVoice()
+        }
+        // 工作台里换音色（导航栏 🎭 / 标题行音色胶囊 / 音色 Sheet）也要同步给 AppState：
+        // 它才是音色库、历史记录这些页面读的那份状态，两边不一对，换完音色再进音色库会显示旧音色。
+        .onChange(of: vm.selectedVoiceKey) { _, _ in
+            if let voice = vm.voice { appState.selectedVoice = voice }
+        }
         // ⚠️ 只要离开创作页就收键盘：键盘还在屏上时进二级页，返回后底部那条会错位
         // （成因与统一收口见 `TabRouter.push`）。这里同时兜住「切标签」这类不走 push 的离开。
         .onDisappear(perform: finishEditing)
@@ -427,6 +442,17 @@ struct StudioView: View {
 
     // MARK: 底部生成条
 
+    /// 给全局 mini player 让位的高度。
+    /// ⚠️ 两者抢同一块地方：浮层是 56pt 高、底边贴在标签栏上方 9pt 处，而本页生成条
+    ///    高 60pt、底边在标签栏上方 8pt —— 实测只差 1pt，等于完全重合，
+    ///    不给让位的话「生成音频」按钮会被整块盖住。
+    /// ⚠️ 键盘弹起时浮层本来就不显示（`RootTabView` 里带 `!keyboardVisible`），
+    ///    这里同步归零，否则键盘上方会凭空多出 68pt 空白。
+    private var miniPlayerInset: CGFloat {
+        guard nowPlaying.currentItem != nil, keyboardTop == nil else { return 0 }
+        return MiniPlayerView.height + 12
+    }
+
     private var generateBar: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
@@ -459,8 +485,12 @@ struct StudioView: View {
         }
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 8)
-        .padding(.bottom, 8)
+        // ⚠️ 让位加在 bottom padding 上（而不是给 generateBar 外面套 padding）：
+        //    下面这层 `c.bar` 是跟在 padding 之后的，色块会一起长高，
+        //    mini player 就浮在这块同色底上，不会从底下漏出页面背景。
+        .padding(.bottom, 8 + miniPlayerInset)
         .background(c.bar)
+        .animation(RootTabView.dockAnimation, value: miniPlayerInset)
         .overlay(alignment: .top) { Hairline() }
         // ⚠️ 二次确认挂在这里而不是 body 根视图：根视图上已经有一个 `.alert(item:)`，
         // 同一层再挂一个 `.alert` 会互相覆盖（这也是上一版才退而求其次用了
@@ -612,6 +642,23 @@ struct StudioView: View {
         guard editor.doc.isEmpty, !vm.ttsItems.isEmpty else { return }
         let made = TokenDocument.make(items: vm.ttsItems)
         editor.replace(doc: made.doc, marks: made.marks)
+    }
+
+    /// 音色对账：把 VM 里记着的音色与 AppState 对齐。
+    ///
+    /// 冷启动时 `VoiceStudioViewModel` 已经从 UserDefaults 读回了上次的音色，
+    /// `AppState` 也按同一个键解析过一遍，正常情况下两边一致 —— 这里只处理两种偏差：
+    ///  * **VM 的音色已不在音色库中**（音色被下线 / 表按新 schema 重建）→ 回落到
+    ///    AppState 解析出的音色（上次使用 → 旗舰默认），而不是留着 key 让「生成音频」报「请先选择音色」；
+    ///  * 两边不一致（一般只在启动早期出现）→ 以 VM 为准并回写 AppState。
+    private func restoreSelectedVoice() {
+        guard let voice = vm.voice else {
+            vm.selectedVoiceKey = appState.selectedVoice?.key ?? appState.defaultVoiceKey
+            return
+        }
+        if appState.selectedVoice?.key != voice.key {
+            appState.selectedVoice = voice
+        }
     }
 
     /// 点「生成音频」：先收键盘 + 同步内容 + 前置校验，通过后才弹二次确认。

@@ -184,11 +184,21 @@ struct VoicesLibraryView: View {
         .task { initialLoad() }
         .onChange(of: searchText) { _, _ in scheduleSearch() }
         .onDisappear {
-            player.stop()
+            stopPreviewIfNeeded()
             deferredReloadTask?.cancel()
             swapTask?.cancel()
             contentVisible = true   // 别让半途取消的淡出把列表留在透明状态
         }
+    }
+
+    /// 离开本页只停「音色库自己的试听」。
+    /// ⚠️ 生成音频的播放归 `NowPlayingStore` 管，要跨标签常驻 ——
+    ///    早先在这里无条件 `player.stop()`，用户一切标签音频就断、mini player 跟着没了。
+    ///    两个 identifier 不同（试听 = `voice.key`，生成音频 = `fileName`），据此区分。
+    private func stopPreviewIfNeeded() {
+        guard let key = player.playingKey else { return }
+        if key == NowPlayingStore.shared.currentItem?.fileName { return }
+        player.stop()
     }
 
     // MARK: 搜索框
@@ -541,7 +551,7 @@ struct VoicesLibraryView: View {
     private func useVoice(_ voice: Voice) {
         appState.selectedVoice = voice
         VoiceStudioViewModel.shared.selectedVoiceKey = voice.key
-        player.stop()
+        stopPreviewIfNeeded()   // 只停试听；mini player 正在收听的生成音频不受影响
         router.selection = .studio
         uiState.showToast(.success("已切换到「%@」".localized(voice.localizedName)))
     }

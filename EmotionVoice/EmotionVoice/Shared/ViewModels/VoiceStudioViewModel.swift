@@ -105,6 +105,18 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 全局共享实例：保证页面切换时数据不丢失
     static let shared = VoiceStudioViewModel()
 
+    /// 冷启动恢复上次使用的音色。
+    ///
+    /// ⚠️ 这里**只读不校验**：单例可能早于音色表同步完成就被创建，此刻
+    /// `VoiceService.voice(forKey:)` 查不到并不代表 key 已失效。真正的回落
+    /// 交给 `StudioView.onAppear`（那时音色必可查），避免「表还没就绪 → 记忆被默认音色覆盖」。
+    init() {
+        if let saved = UserDefaults.standard.string(forKey: Self.selectedVoiceKeyDefaultsKey),
+           !saved.isEmpty {
+            selectedVoiceKey = saved
+        }
+    }
+
     // MARK: - 状态
 
     // 文本（两套表示形式同步维护）
@@ -127,8 +139,23 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 触发 EmotionTokenEditor 清空所有 token
     @Published var clearTokensTrigger: Int = 0
 
+    /// UserDefaults 键：上次使用的音色 key
+    ///
+    /// ⚠️ 与 `AppState.selectedVoiceKeyUDKey` 是**同一个字符串**（这里反过来引用本常量）：
+    /// 工作台、音色库往这里写，冷启动时两边读到的都是这个值，不存在两套记忆。
+    static let selectedVoiceKeyDefaultsKey = "selectedVoiceKey"
+
     // 音色
-    @Published var selectedVoiceKey: String = Constants.defaultVoice
+    ///
+    /// ⚠️ 变更即落盘：单例在进程内本来就记得本次会话的选择，落盘是为了**冷启动**也能接上。
+    /// 写入点是这里（而不是只在 `onAppear` 里同步），所以音色库「使用此音色」等
+    /// 直接改 `selectedVoiceKey` 的路径同样会被记住。
+    @Published var selectedVoiceKey: String = Constants.defaultVoice {
+        didSet {
+            guard selectedVoiceKey != oldValue else { return }
+            UserDefaults.standard.set(selectedVoiceKey, forKey: Self.selectedVoiceKeyDefaultsKey)
+        }
+    }
 
     // 情感/语速/音量
     @Published var rate: Double = 1.0    // 0.5 - 2.0

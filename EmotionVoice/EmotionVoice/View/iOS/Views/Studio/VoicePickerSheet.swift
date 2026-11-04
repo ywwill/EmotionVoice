@@ -117,10 +117,18 @@ struct VoicePickerSheet: View {
         .task { initialLoad() }
         .onChange(of: searchText) { _, _ in scheduleSearch() }
         .onDisappear {
-            player.stop()
+            stopPreviewIfNeeded()
             swapTask?.cancel()
             contentVisible = true   // 别让半途取消的淡出把列表留在透明状态
         }
+    }
+
+    /// Sheet 关闭只停「这里的试听」；mini player 正在收听的生成音频不能跟着断
+    /// （identifier 不同：试听 = `voice.key`，生成音频 = `fileName`）。
+    private func stopPreviewIfNeeded() {
+        guard let key = player.playingKey else { return }
+        if key == NowPlayingStore.shared.currentItem?.fileName { return }
+        player.stop()
     }
 
     // MARK: - 顶栏
@@ -515,7 +523,7 @@ struct VoicePickerSheet: View {
     }
 
     private func pick(_ voice: Voice) {
-        player.stop()
+        stopPreviewIfNeeded()
         selectedKey = voice.key
         uiState.showToast(.success("已切换到「%@」".localized(voice.localizedName)))
         dismiss()

@@ -25,6 +25,9 @@ trap 'rm -f "$LIST"' EXIT
 
 # 依赖 SPM 包、被 Shims.swift 顶替掉的 6 个文件（改了目录结构要同步维护这份清单）
 SHIMMED="DatabaseManager VoiceService ProjectService CreditsService SupabaseManager DeviceIdentifier"
+# macOS 专属实现（同名类，iOS 版在 View/iOS/Services/AudioPreviewPlayer+iOS.swift），
+# 编进 iOS 会撞出 "invalid redeclaration"。
+MAC_ONLY="AudioPreviewPlayer"
 
 {
   # ---- iOS 端代码 ----
@@ -34,7 +37,7 @@ SHIMMED="DatabaseManager VoiceService ProjectService CreditsService SupabaseMana
   find "$E/Shared" -name "*.swift" | sort | while read -r f; do
     base=$(basename "$f" .swift)
     skip=0
-    for s in $SHIMMED; do [ "$base" = "$s" ] && skip=1; done
+    for s in $SHIMMED $MAC_ONLY; do [ "$base" = "$s" ] && skip=1; done
     [ "$skip" -eq 0 ] && echo "$f"
   done
 

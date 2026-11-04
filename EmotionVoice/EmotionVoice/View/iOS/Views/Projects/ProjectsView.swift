@@ -212,17 +212,21 @@ struct ProjectsView: View {
         .offset(y: contentVisible ? 0 : 12)
         .animation(.easeOut(duration: 0.28), value: contentVisible)
         .animation(.spring(response: 0.34, dampingFraction: 0.9), value: vm.sections.count)
+        // 占位 Section 的插入 / 移除跟 mini player 的进出场同一节奏，
+        // 否则浮层是滑上来的、列表却先一步瞬跳 84pt。
+        .animation(RootTabView.dockAnimation, value: miniPlayerVisible)
     }
 
     private var showEmpty: Bool { vm.sections.isEmpty && !vm.isLoading }
 
     /// 与 `RootTabView.bottomDock` 的 mini player 显示条件对齐（键盘态除外：
     /// 键盘弹起浮层会隐藏，此时多留一段底部空白没有副作用）。
+    /// ⚠️ 不要加 `status.playingKey != nil`：浮层只随 `currentItem` 存亡（用户点 ✕ 才收），
+    ///    否则播到结尾 / 试听顶掉 key 时浮层还在、这里的占位却先没了，最后一行会被盖住。
     private var miniPlayerVisible: Bool {
         !uiState.hideMiniPlayer
         && router.activePath.isEmpty
         && nowPlaying.currentItem != nil
-        && status.playingKey != nil
     }
 
     private var loadMoreRow: some View {
@@ -356,7 +360,7 @@ struct ProjectsView: View {
             Rectangle().fill(c.line2).frame(width: 1, height: 26).padding(.horizontal, 4)
 
             toolAction("square.and.arrow.up", "分享".localized(), tint: c.accent) { shareSelected() }
-            toolAction("doc.on.doc", "复制".localized(), tint: c.accent) { duplicateSelected() }
+            toolAction("square.on.square", "复制".localized(), tint: c.accent) { duplicateSelected() }
             // 所选条目全部已收藏时，同一个按钮翻转为「取消收藏」→ 支持批量取消
             toolAction(allSelectedFavorited ? "heart.slash.fill" : "heart.fill",
                        allSelectedFavorited ? "取消收藏".localized() : "收藏".localized(),
@@ -469,12 +473,17 @@ struct ProjectsView: View {
             return
         }
         let voice = vm.voiceName(for: audio)
+        // ⚠️ 顺序不能反：**先 push，再接管播放**。
+        //    `attach` 会立刻把 `NowPlayingStore.currentItem` 写成这条，而此刻导航栈还是空的
+        //    → `RootTabView.bottomDock` 判定「该显示 mini player」，于是底部先滑出一个小条，
+        //    下一帧 path 变非空又把它收走 —— 观感就是「进详情页前底部弹了一下」。
+        //    path 先更新，同一帧里 `currentItem` 再怎么变都不满足 `activePath.isEmpty`。
+        router.push(.player(audio))
         if status.playingKey == audio.fileName {
             nowPlaying.attach(audio, voiceName: voice)
         } else {
             nowPlaying.start(audio, voiceName: voice)
         }
-        router.push(.player(audio))
     }
 
     /// 失败记录「重新编辑」：把文案带回创作页。
@@ -498,11 +507,11 @@ struct ProjectsView: View {
             Label("删除".localized(), systemImage: "trash.fill")
         }
         Button { duplicate(audio) } label: {
-            Label("复制".localized(), systemImage: "doc.on.doc.fill")
+            Label("复制".localized(), systemImage: "square.on.square")
         }
         .tint(c.info)
         Button { beginRename(audio) } label: {
-            Label("重命名".localized(), systemImage: "pencil")
+            Label("重命名".localized(), systemImage: "square.and.pencil")
         }
         .tint(c.success)
         Button { toggleFavorite(audio) } label: {

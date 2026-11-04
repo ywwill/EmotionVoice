@@ -931,10 +931,10 @@ struct AudioGenerationModal: View {
             Text("💎")
                 .font(.system(size: 13))
             VStack(alignment: .leading, spacing: 1) {
-                Text("本次消耗积分".localized())
+                Text("消耗".localized())
                     .font(.system(size: 11.5))
                     .foregroundStyle(AppColor.textTertiary)
-                Text("−\(formatCredits(consumedPoints))")
+                Text("\(formatCredits(consumedPoints))")
                     .font(.system(size: 15, weight: .semibold))
                     .fontDesign(.monospaced)
                     .foregroundStyle(AppColor.accentPrimary)

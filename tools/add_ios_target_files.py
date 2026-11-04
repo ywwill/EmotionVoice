@@ -44,7 +44,8 @@ REUSED = [
     "StoreKitManager.swift",
     "CreditManager.swift",
     "DeviceIdentifier.swift",
-    "AudioPreviewPlayer.swift",
+    # AudioPreviewPlayer.swift 只归 Emora (macOS)：iOS 同名类在
+    # View/iOS/Services/AudioPreviewPlayer+iOS.swift，不能再复用进 iOS target。
     "BailianTTSService.swift",
     "BasicVoiceLoader.swift",
     "CreditsService.swift",

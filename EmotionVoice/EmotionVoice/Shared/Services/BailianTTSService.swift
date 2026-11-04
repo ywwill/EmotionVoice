@@ -340,6 +340,17 @@ final class BailianTTSService {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 60
         config.timeoutIntervalForResource = 300
+        #if os(iOS)
+        // 后台接收（配合 GenerationBackgroundKeeper 的 beginBackgroundTask）：
+        // WiFi ↔ 蜂窝等短暂切换时等连通，而不是直接把 receive 判失败。
+        // ⚠️ 两点别踩坑：
+        //    ① URLSessionWebSocketTask 不支持 background URLSessionConfiguration，
+        //       WebSocket 只能跑在 default session 上；
+        //    ② `shouldUseExtendedBackgroundIdleMode` 自 iOS 18.4 起已被标记
+        //       "Not supported"，不要再靠它保 socket。后台能继续收流的唯一保证是
+        //       `UIApplication.beginBackgroundTask` 提供的那段执行时间。
+        config.waitsForConnectivity = true
+        #endif
 
         urlSession = URLSession(configuration: config)
 

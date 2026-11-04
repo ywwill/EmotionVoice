@@ -4,7 +4,7 @@
 //
 //  Created by young on 2026/8/9.
 //
-//  音色试听播放器
+//  音色试听播放器（macOS 专属实现）
 //  从 Bundle 的 voices/basic/ 或 voices/premium/ 子目录加载 wav 并播放。
 //
 
@@ -13,9 +13,6 @@ import AVFoundation
 import Combine
 #if canImport(AppKit)
 import AppKit
-#endif
-#if canImport(UIKit)
-import UIKit
 #endif
 
 /// 基础音色试听播放器（单例）

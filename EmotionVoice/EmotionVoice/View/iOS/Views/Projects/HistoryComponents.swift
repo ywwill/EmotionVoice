@@ -592,6 +592,13 @@ struct MiniPlayerView: View {
     let onToggle: () -> Void
     let onClose: () -> Void
 
+    /// ⚠️ 只有播放器当前播的**就是这一条**时，时间 / 进度 / 播放态才可信：
+    ///    音色库试听复用同一个 `AudioPreviewPlayer`，会把 `playingKey` 顶到音色 key 上，
+    ///    而 mini player 按设计依旧常驻（用户没点 ✕），此时不能显示别人那条的进度。
+    private var isCurrent: Bool { player.playingKey == item.fileName }
+
+    private var showsPlaying: Bool { isCurrent && player.isPlaying }
+
     var body: some View {
         HStack(spacing: 10) {
             VoiceAvatar(text: String(voiceName.suffix(1)), seed: item.voice, size: 36, corner: 10)
@@ -605,7 +612,7 @@ struct MiniPlayerView: View {
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                Text("\(voiceName) · \(formatDuration(player.currentTime)) / \(formatDuration(max(player.duration, item.duration)))")
+                Text("\(voiceName) · \(formatDuration(isCurrent ? player.currentTime : 0)) / \(formatDuration(max(isCurrent ? player.duration : 0, item.duration)))")
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.72))
                     .lineLimit(1)
@@ -616,14 +623,14 @@ struct MiniPlayerView: View {
                 Button(action: onToggle) {
                     ZStack {
                         Circle().fill(.white)
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: showsPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(c.ctaStart)
                     }
                     .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(player.isPlaying ? "暂停".localized() : "播放".localized())
+                .accessibilityLabel(showsPlaying ? "暂停".localized() : "播放".localized())
 
                 Button(action: onClose) {
                     Image(systemName: "xmark")
@@ -652,7 +659,7 @@ struct MiniPlayerView: View {
             Rectangle()
                 .fill(.white.opacity(0.85))
                 .frame(height: 2)
-                .scaleEffect(x: max(min(player.progress, 1), 0.001), anchor: .leading)
+                .scaleEffect(x: isCurrent ? max(min(player.progress, 1), 0.001) : 0.001, anchor: .leading)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         // ⚠️ shadow 必须挂在 clipShape 之后，挂在 background 里会连阴影一起被裁掉
