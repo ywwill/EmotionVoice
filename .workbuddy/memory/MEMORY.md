@@ -4,6 +4,7 @@
 Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift / supabase-swift / keychain-swift。
 - iOS 独有 `View/iOS/`；复用 macOS 文件原地加入 iOS target（不复制），`#if canImport(AppKit)` 隔离；`@Published` 须显式 `import Combine`。
 - 新增 iOS .swift 手工改 pbxproj 4 处（FileRef + BuildFile + 叶子 group children + iOSEmora Sources）；新 ID `7B3A...`；`tools/add_ios_target_files.py` 的 `IOS_DIR` 指向不存在的顶层 `iOS/`，不可靠；PBXBuildFile ID ≠ XCSwiftPackageProductDependency ID。
+- `View/iOS/Views/` 已按职责拆分：`HistoryComponents`（统计条/筛选/分组头/空态）、`HistoryRowViews`（行卡片）、`HistoryOverlays`（mini player/菜单/Toast）、`ProjectsOverlays`（重命名/呼吸条）、`PlayerDetailControls`、`GenerationDialogControls`、`Services/AudioFileSupport`（波形提取/导出/ShareSheet，跨页共用放 Services）。单一 View 只是 body 长的（`StudioView`）和 UITextView 强耦合的（`TokenTextEditor`/`TokenCapsuleOverlay`）不拆。
 - SQLite（Documents/emotionvoice.sqlite3）**永不迁移**：改 `createTables()` 就 bump `currentSchemaVersion`，不符 DROP 重建。
 - 真构建 `bash tools/ios_build.sh`（`mac` 可回归双 target）；类型检查 `bash tools/ios_typecheck/typecheck.sh`（`Shims.swift` 替身，给真实类加方法须同步加桩）。三 workaround：`IDEPackageSupportDisableManifestSandbox`／`OTHER_SWIFT_FLAGS='$(inherited) -disable-sandbox'`／`ONLY_ACTIVE_ARCH=YES`。既有问题：`CreditsService.swift` 4 条 Swift6 报错、`PackageCardView.swift` 孤儿文件。
 

@@ -1373,6 +1373,15 @@
 		7B3A00000000000000000008 /* RecentlyDeletedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000007 /* RecentlyDeletedView.swift */; };
 		7B3A0000000000000000000A /* AudioPreviewPlayer+iOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000009 /* AudioPreviewPlayer+iOS.swift */; };
 		7B3A0000000000000000000F /* GenerationBackgroundKeeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A0000000000000000000E /* GenerationBackgroundKeeper.swift */; };
+		7B3A00000000000000000021 /* GenerationDialogControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000020 /* GenerationDialogControls.swift */; };
+		7B3A00000000000000000023 /* AudioFileSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000022 /* AudioFileSupport.swift */; };
+		7B3A00000000000000000025 /* HistoryRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000024 /* HistoryRowViews.swift */; };
+		7B3A00000000000000000027 /* HistoryOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000026 /* HistoryOverlays.swift */; };
+		7B3A00000000000000000029 /* ProjectsOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000028 /* ProjectsOverlays.swift */; };
+		7B3A0000000000000000002B /* PlayerDetailControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A0000000000000000002A /* PlayerDetailControls.swift */; };
+		7B3A0000000000000000002D /* InstructionGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A0000000000000000002C /* InstructionGuideSheet.swift */; };
+		7B3A0000000000000000002F /* PackageCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A0000000000000000002E /* PackageCard.swift */; };
+		7B3A00000000000000000031 /* VoiceCardAuxViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000030 /* VoiceCardAuxViews.swift */; };
 		A1B2C3D4E5F60718293A4B5F /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
 		D25E3AEE86086A6B2E6754C8 /* VoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354B0D1FFDB031C321103309 /* VoiceCatalog.swift */; };
 		E001000131010101AABBCCDD /* TTSContentItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001000231010101AABBCCDD /* TTSContentItem.swift */; };
@@ -2099,6 +2108,15 @@
 		7B3A00000000000000000009 /* AudioPreviewPlayer+iOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPreviewPlayer+iOS.swift"; sourceTree = "<group>"; };
 		7B3A0000000000000000000C /* iOSEmora-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "iOSEmora-Info.plist"; sourceTree = "<group>"; };
 		7B3A0000000000000000000E /* GenerationBackgroundKeeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationBackgroundKeeper.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000020 /* GenerationDialogControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationDialogControls.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000022 /* AudioFileSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileSupport.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000024 /* HistoryRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowViews.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000026 /* HistoryOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryOverlays.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000028 /* ProjectsOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsOverlays.swift; sourceTree = "<group>"; };
+		7B3A0000000000000000002A /* PlayerDetailControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailControls.swift; sourceTree = "<group>"; };
+		7B3A0000000000000000002C /* InstructionGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionGuideSheet.swift; sourceTree = "<group>"; };
+		7B3A0000000000000000002E /* PackageCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackageCard.swift; sourceTree = "<group>"; };
+		7B3A00000000000000000030 /* VoiceCardAuxViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCardAuxViews.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/VoiceCatalog.strings"; sourceTree = "<group>"; };
 		E001000231010101AABBCCDD /* TTSContentItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSContentItem.swift; sourceTree = "<group>"; };
@@ -2962,6 +2980,7 @@
 		6F3AEA3E30907A20007975DD /* Generation */ = {
 			isa = PBXGroup;
 			children = (
+				7B3A00000000000000000020 /* GenerationDialogControls.swift */,
 				6F3AEA3D30907A20007975DD /* GenerationDialog.swift */,
 			);
 			path = Generation;
@@ -2970,9 +2989,10 @@
 		6F3AEA4230907A20007975DD /* Library */ = {
 			isa = PBXGroup;
 			children = (
-				6F3AEA3F30907A20007975DD /* CategoryFilterSheet.swift */,
-				6F3AEA4030907A20007975DD /* VoiceCardGrid.swift */,
 				6F3AEA4130907A20007975DD /* VoicesLibraryView.swift */,
+				6F3AEA3F30907A20007975DD /* CategoryFilterSheet.swift */,
+				7B3A00000000000000000030 /* VoiceCardAuxViews.swift */,
+				6F3AEA4030907A20007975DD /* VoiceCardGrid.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -2980,12 +3000,16 @@
 		6F3AEA4530907A20007975DD /* Projects */ = {
 			isa = PBXGroup;
 			children = (
+				6F3AEA4430907A20007975DD /* ProjectsView.swift */,
+				6F3AEA4330907A20007975DD /* PlayerDetailView.swift */,
+				7B3A00000000000000000024 /* HistoryRowViews.swift */,
+				7B3A00000000000000000026 /* HistoryOverlays.swift */,
+				7B3A00000000000000000028 /* ProjectsOverlays.swift */,
+				7B3A0000000000000000002A /* PlayerDetailControls.swift */,
 				7B3A00000000000000000001 /* AudioFlagStore.swift */,
 				7B3A00000000000000000003 /* HistoryListViewModel.swift */,
 				7B3A00000000000000000005 /* HistoryComponents.swift */,
 				7B3A00000000000000000007 /* RecentlyDeletedView.swift */,
-				6F3AEA4330907A20007975DD /* PlayerDetailView.swift */,
-				6F3AEA4430907A20007975DD /* ProjectsView.swift */,
 			);
 			path = Projects;
 			sourceTree = "<group>";
@@ -2993,10 +3017,11 @@
 		6F3AEA4A30907A20007975DD /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				6F3AEA4930907A20007975DD /* SettingsView.swift */,
+				7B3A0000000000000000002E /* PackageCard.swift */,
 				6F3AEA4630907A20007975DD /* CreditRecordsView.swift */,
 				6F3AEA4730907A20007975DD /* OptionPickerView.swift */,
 				6F3AEA4830907A20007975DD /* PurchaseSheet.swift */,
-				6F3AEA4930907A20007975DD /* SettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -3005,6 +3030,7 @@
 			isa = PBXGroup;
 			children = (
 				6F3AEA4D30907A20007975DD /* StudioView.swift */,
+				7B3A0000000000000000002C /* InstructionGuideSheet.swift */,
 				6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */,
 				6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */,
 				6F3AEA4E30907A20007975DD /* TokenCapsuleOverlay.swift */,
@@ -3122,6 +3148,7 @@
 		7B3A0000000000000000000B /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				7B3A00000000000000000022 /* AudioFileSupport.swift */,
 				7B3A00000000000000000009 /* AudioPreviewPlayer+iOS.swift */,
 				7B3A0000000000000000000E /* GenerationBackgroundKeeper.swift */,
 			);
@@ -4475,6 +4502,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7B3A00000000000000000021 /* GenerationDialogControls.swift in Sources */,
+				7B3A00000000000000000023 /* AudioFileSupport.swift in Sources */,
+				7B3A00000000000000000025 /* HistoryRowViews.swift in Sources */,
+				7B3A00000000000000000027 /* HistoryOverlays.swift in Sources */,
+				7B3A00000000000000000029 /* ProjectsOverlays.swift in Sources */,
+				7B3A0000000000000000002B /* PlayerDetailControls.swift in Sources */,
+				7B3A0000000000000000002D /* InstructionGuideSheet.swift in Sources */,
+				7B3A0000000000000000002F /* PackageCard.swift in Sources */,
+				7B3A00000000000000000031 /* VoiceCardAuxViews.swift in Sources */,
 				7B3A00000000000000000002 /* AudioFlagStore.swift in Sources */,
 				7B3A00000000000000000004 /* HistoryListViewModel.swift in Sources */,
 				7B3A00000000000000000006 /* HistoryComponents.swift in Sources */,
