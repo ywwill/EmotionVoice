@@ -443,7 +443,7 @@ struct PlayerDetailView: View {
                     UIPasteboard.general.string = item.text
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "doc.on.doc")
+                        Image(systemName: "square.on.square")
                             .font(.system(size: 11))
                         Text("复制".localized())
                             .font(.system(size: 12))
@@ -481,14 +481,14 @@ struct PlayerDetailView: View {
 
     private var actionBar: some View {
         HStack(spacing: 8) {
-            detailAction("pencil", "重命名".localized(), tint: c.textSecondary) {
+            detailAction("square.and.pencil", "重命名".localized(), tint: c.textSecondary) {
                 renameText = currentName.isEmpty ? item.shownName : currentName
                 showRename = true
             }
-            detailAction("doc.on.doc", "复制音频".localized(), tint: c.textSecondary) {
+            detailAction("square.on.square", "复制音频".localized(), tint: c.textSecondary) {
                 duplicateCurrent()
             }
-            detailAction("trash", "删除".localized(), tint: c.danger) {
+            detailAction("trash.fill", "删除".localized(), tint: c.danger) {
                 showDeleteConfirm = true
             }
         }

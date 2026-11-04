@@ -508,9 +508,9 @@
 "剩余 %d 天" = "%d days left";
 "历史记录" = "History";
 "去创作" = "Start Creating";
-"取消收藏" = "Remove Favorite";
+"取消收藏" = "Remove";
 "名称" = "Name";
-"复制音频" = "Duplicate Audio";
+"复制音频" = "Duplicate";
 "失败" = "Failed";
 "已删除的项目保留 30 天，到期自动清除" = "Deleted items are kept for 30 days, then removed automatically";
 "已加入收藏" = "Favorited";
