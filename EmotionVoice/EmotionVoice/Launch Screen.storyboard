@@ -15,25 +15,27 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="launch_icon" translatesAutoresizingMaskIntoConstraints="NO" id="0mq-4U-I74">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="0mq-4U-I74">
+                                <rect key="frame" x="121.66666666666669" y="209" width="150" height="150"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="150" id="h4M-0a-1do"/>
+                                    <constraint firstAttribute="width" secondItem="0mq-4U-I74" secondAttribute="height" id="nn0-X5-wTI"/>
+                                </constraints>
                             </imageView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Emora" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BtX-i7-HRW">
                                 <rect key="frame" x="0.0" y="722" width="393" height="36"/>
                                 <fontDescription key="fontDescription" type="system" weight="semibold" pointSize="30"/>
-                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <color key="textColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
                             </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
-                            <constraint firstAttribute="bottom" secondItem="0mq-4U-I74" secondAttribute="bottom" id="0hI-0d-pEw"/>
                             <constraint firstItem="Bcu-3y-fUS" firstAttribute="trailing" secondItem="BtX-i7-HRW" secondAttribute="trailing" id="6Xe-7O-BXM"/>
                             <constraint firstItem="BtX-i7-HRW" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" id="DK2-KQ-EQR"/>
-                            <constraint firstItem="0mq-4U-I74" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="FAA-d7-kRC"/>
-                            <constraint firstAttribute="trailing" secondItem="0mq-4U-I74" secondAttribute="trailing" id="Qg7-rm-yFU"/>
-                            <constraint firstItem="0mq-4U-I74" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="UWf-ab-bXJ"/>
+                            <constraint firstItem="0mq-4U-I74" firstAttribute="top" secondItem="Bcu-3y-fUS" secondAttribute="top" constant="150" id="G2t-Ck-nLK"/>
+                            <constraint firstItem="0mq-4U-I74" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Jss-zf-XGb"/>
                             <constraint firstItem="Bcu-3y-fUS" firstAttribute="bottom" secondItem="BtX-i7-HRW" secondAttribute="bottom" constant="60" id="cA1-7G-EiH"/>
                         </constraints>
                     </view>
@@ -44,6 +46,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="launch_icon" width="786" height="1704"/>
+        <image name="logo" width="1024" height="1024"/>
     </resources>
 </document>
