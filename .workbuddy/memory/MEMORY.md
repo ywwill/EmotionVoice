@@ -46,3 +46,4 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 ## 积分 / 生成弹窗
 - 积分全链路 Double(≤2位)：`CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5），`TextSplitter.calculateCharCount`（CJK 算2），云端 `numeric(10,2)`。
 - `GenerationDialog` 完成态 `displayName = defaultAudioName(from: vm.plainText)`；`commitName()` 清空必须写 `displayName: nil` 才回退时间戳；`hasResult = generatedAudioURL != nil && !isGenerating`；macOS 只 `Views/GenerationOverlay.swift` 订阅 VM。
+- ⚠️ `PackageCard`（iOS 套餐卡）副标题**禁 `.lineLimit(1)`**：2 列卡片最窄内容区 110pt（320pt 屏），英文译文最长 178.8pt 会被截成「…」；中文/繁中 71.5pt 本就放得下，别改中文文案。已用 `lineLimit(2)`+`fixedSize(horizontal:false,vertical:true)`+`Spacer(minLength:0)`+`maxHeight:.infinity` 等高兜底，并缩短 en.lproj 三条长译文（2026-11-05）。

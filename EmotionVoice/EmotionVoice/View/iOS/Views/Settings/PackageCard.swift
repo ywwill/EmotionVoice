@@ -58,8 +58,14 @@ struct PackageCard: View {
             Text(subtitle)
                 .font(.system(size: 12))
                 .foregroundStyle(c.textSecondary)
-                .lineLimit(1)
+                // ⚠️ 别写死 lineLimit(1)：英文译文最长 ≈179pt，而 2 列卡片在 320pt 屏
+                //    的内容区只有 110pt，会被截成 "…"。允许 2 行完整显示，配下面的
+                //    Spacer + maxHeight:.infinity 让同排卡片等高、价格行仍贴底对齐。
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 3)
+
+            Spacer(minLength: 0)
 
             Text(priceText)
                 .font(.system(size: 16, weight: .bold))
@@ -67,7 +73,7 @@ struct PackageCard: View {
                 .padding(.top, 8)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: AuroraRadius.lg, style: .continuous)
                 .fill(isSelected ? c.accentSoft : c.surface)
