@@ -405,7 +405,10 @@ final class VoiceStudioViewModel: ObservableObject {
         ensureGeneratedAudioDirectoryExists()
         let tempAudioURL = generatedAudioDirectoryURL().appendingPathComponent(tempFileName)
 
-        Task {
+        // 显式声明强捕获：生成结束要写回 isGenerating / generatedAudioURL 等状态，
+        // 弹窗关闭后还要靠 generationCompletedSignal 唤起，Task 期间 self 必须存活。
+        // onAudio 内的 weak 是有意的：取消后残留的 WebSocket 回调应安全失效。
+        Task { [self] in
             do {
                 // 每个片段的进度窗口：片段 i 占 [i/n, (i+1)/n]，映射到 0.05 -> 0.95，
                 // 保证整体进度单调递增（不会因为切段而回退）。
@@ -478,8 +481,8 @@ final class VoiceStudioViewModel: ObservableObject {
                 try? FileManager.default.moveItem(at: tempAudioURL, to: finalAudioURL)
                 Log(message: "文件重命名为: \(finalFileName)")
 
-                // 计算真实时长
-                let duration = AudioDuration.read(
+                // 计算真实时长（AVAsset 回退分支走异步 load，整条链改为 async）
+                let duration = await AudioDuration.read(
                     url: finalAudioURL,
                     sampleRate: self.sampleRate,
                     bytes: audioData.count,

@@ -247,19 +247,21 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
         // 监听播放状态
         playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+            // 先在并发闭包外层把 weak var 解包成 let，Task 内不再捕获可变的 self
+            guard let self else { return }
             Task { @MainActor in
                 switch item.status {
                 case .readyToPlay:
-                    self?.duration = item.duration.seconds.isNaN ? 0 : item.duration.seconds
-                    self?.isPlaying = true
-                    self?.isFinished = false
+                    self.duration = item.duration.seconds.isNaN ? 0 : item.duration.seconds
+                    self.isPlaying = true
+                    self.isFinished = false
                     newPlayer.play()
-                    self?.startProgressTimer()
+                    self.startProgressTimer()
                     Log(message: "AudioPreviewPlayer: AVPlayer ready and playing \(url.lastPathComponent)")
                 case .failed:
                     Log(message: "AudioPreviewPlayer: AVPlayer item failed: \(item.error?.localizedDescription ?? "unknown error")")
-                    self?.isPlaying = false
-                    self?.playingKey = nil
+                    self.isPlaying = false
+                    self.playingKey = nil
                 case .unknown:
                     break
                 @unknown default:
@@ -274,12 +276,13 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             object: playerItem,
             queue: .main
         ) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
-                self?.isPlaying = false
-                self?.isPaused = false
-                self?.isFinished = true
-                self?.playingKey = nil
-                self?.stopProgressTimer()
+                self.isPlaying = false
+                self.isPaused = false
+                self.isFinished = true
+                self.playingKey = nil
+                self.stopProgressTimer()
             }
         }
 
@@ -431,8 +434,9 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private func startProgressTimer() {
         stopProgressTimer()
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
-                self?.updateProgress()
+                self.updateProgress()
             }
         }
         RunLoop.main.add(timer, forMode: .common)

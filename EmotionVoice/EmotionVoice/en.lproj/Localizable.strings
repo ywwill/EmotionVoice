@@ -409,7 +409,6 @@
 "%d 积分" = "%d Credits";
 "购买中…" = "Purchasing…";
 "立即购买" = "Buy Now";
-"购买成功，+%@ 积分已到账" = "Purchase successful, +%@ credits added";
 
 // iOS · 创作台标签栏
 "语气" = "Tone";

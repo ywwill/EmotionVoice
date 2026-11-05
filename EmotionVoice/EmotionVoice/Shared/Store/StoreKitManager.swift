@@ -285,8 +285,8 @@ final class StoreKitManager: NSObject, ObservableObject {
                     if let creditProduct = CreditProduct(rawValue: transaction.productID) {
                         let credits = creditProduct.creditsAmount
                         await CreditManager.shared.addCredits(Double(credits))
-                        // 保存购买记录
-                        CreditsService.shared.addPurchaseRecord(quantity: credits)
+                        // 保存购买记录（detached 任务里访问 MainActor 隔离的 CreditsService 需 await）
+                        await CreditsService.shared.addPurchaseRecord(quantity: credits)
                         Log(messageType: "StoreKit", message: "✅ 恢复交易，获得 \(credits) 积分")
                     }
                     

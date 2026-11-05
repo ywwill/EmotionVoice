@@ -14,9 +14,12 @@ import UIKit
 
 /// 从音频文件抽取真实振幅包络（峰值 × RMS 混合），结果按「路径 + 大小 + 条数」缓存
 enum AudioWaveformExtractor {
-    private static let cache = NSCache<NSString, NSArray>()
+    /// 工程设了 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor，所有声明默认隔离到主线程。
+    /// 本 enum 是纯计算工具，缓存与三个计算方法都必须显式 nonisolated 才能留在后台线程。
+    /// NSCache 自身线程安全（多线程读写无需加锁）但非 Sendable，所以用 nonisolated(unsafe)。
+    nonisolated(unsafe) private static let cache = NSCache<NSString, NSArray>()
 
-    static func envelope(url: URL, barCount: Int) -> [CGFloat] {
+    nonisolated static func envelope(url: URL, barCount: Int) -> [CGFloat] {
         let key = cacheKey(url, barCount: barCount)
         if let hit = cache.object(forKey: key as NSString) as? [NSNumber] {
             return hit.map { CGFloat($0.doubleValue) }
@@ -29,13 +32,13 @@ enum AudioWaveformExtractor {
         return values
     }
 
-    private static func cacheKey(_ url: URL, barCount: Int) -> String {
+    private nonisolated static func cacheKey(_ url: URL, barCount: Int) -> String {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
         return "\(url.path)#\(size)#\(barCount)"
     }
 
-    private static func extract(url: URL, barCount: Int) -> [CGFloat] {
+    private nonisolated static func extract(url: URL, barCount: Int) -> [CGFloat] {
         guard barCount > 0,
               let file = try? AVAudioFile(forReading: url) else { return [] }
         let totalFrames = Int(file.length)

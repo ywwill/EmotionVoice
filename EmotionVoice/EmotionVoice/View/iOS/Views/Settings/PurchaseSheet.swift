@@ -255,7 +255,7 @@ struct PurchaseSheet: View {
         switch state {
         case .success(let credits):
             appState.refreshCredits()
-            uiState.showToast(.success("购买成功，+%@ 积分已到账".localized(formatCredits(Double(credits)))))
+            uiState.showToast(.success("已到账 %d 积分".localized(credits)))
             store.resetPurchaseState()
             dismiss()
         case .failed(let message):

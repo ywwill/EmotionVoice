@@ -33,6 +33,15 @@ final class BailianTTSService {
     // 连接复用锁
     private let connectionLock = NSLock()
 
+    /// NSLock 的 lock()/unlock() 在 Swift 6 里不允许出现在 async 函数体中
+    /// （跨 await 持锁可能死锁）。把所有加锁收敛到这个同步 scoped helper，
+    /// async 调用方只传一个不跨 await 的闭包。
+    private func withConnectionLock<T>(_ body: () throws -> T) rethrows -> T {
+        connectionLock.lock()
+        defer { connectionLock.unlock() }
+        return try body()
+    }
+
     private init() {}
 
     // MARK: - 公开接口
@@ -171,9 +180,7 @@ final class BailianTTSService {
     ) async throws -> Data {
         // 生成任务 ID（仅同步修改本地状态，无需长持锁）
         let taskId = UUID().uuidString
-        connectionLock.lock()
-        currentTaskId = taskId
-        connectionLock.unlock()
+        withConnectionLock { currentTaskId = taskId }
 
         var completeAudioData = Data()
 
@@ -443,11 +450,10 @@ final class BailianTTSService {
     }
 
     func closeConnection() {
-        connectionLock.lock()
-        defer { connectionLock.unlock() }
-
-        closeConnectionInternal()
-        Log(message: "WebSocket 连接已关闭")
+        withConnectionLock {
+            closeConnectionInternal()
+            Log(message: "WebSocket 连接已关闭")
+        }
     }
 
     func ping() {

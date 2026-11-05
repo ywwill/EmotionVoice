@@ -3,7 +3,9 @@
 //  EmotionVoice
 //
 //  计算写入磁盘后的音频时长（秒）。
-//  优先用 AVAudioFile 读取真实 PCM 帧数；失败时按 WAV header 精确计算。
+//  优先用 AVAudioFile 读取真实 PCM 帧数；失败时按 WAV header 精确计算；
+//  再失败则用 AVAsset 异步 load(.duration)，最后才按容器格式估算。
+//  整条链是 async 的，调用方需 await。
 //
 
 import Foundation
@@ -18,7 +20,7 @@ enum AudioDuration {
     ///   - bytes: 音频原始字节数（用于粗估）
     ///   - format: 文件扩展名（wav/mp3/m4a …）
     /// - Returns: 时长（秒）；任何错误都返回 0
-    static func read(url: URL, sampleRate: Int, bytes: Int, format: String) -> Double {
+    static func read(url: URL, sampleRate: Int, bytes: Int, format: String) async -> Double {
         // 1. 优先尝试 AVAudioFile（支持 WAV/AIFF/CAF/MP3/M4A）
         if let d = readViaAVAudioFile(url: url) {
             Log(message: "AudioDuration.AVAudioFile 读取成功: \(d)s (file: \(url.lastPathComponent))")
@@ -33,8 +35,8 @@ enum AudioDuration {
             }
         }
         
-        // 3. 尝试使用 AVAsset 读取时长（支持更多格式）
-        if let d = readViaAVAsset(url: url) {
+        // 3. 尝试使用 AVAsset 异步读取时长（支持更多格式）
+        if let d = await readViaAVAsset(url: url) {
             Log(message: "AudioDuration.AVAsset 读取成功: \(d)s (file: \(url.lastPathComponent))")
             return d
         }
@@ -62,16 +64,19 @@ enum AudioDuration {
     }
     
     /// AVAsset 读取（备用方案，支持更多格式）
-    private static func readViaAVAsset(url: URL) -> Double? {
+    /// `duration` 同步属性自 iOS 16 / macOS 13 起废弃，改用 `load(.duration)` 异步加载：
+    /// 它是按需读取属性，不会像旧属性那样隐式同步阻塞当前线程。
+    private static func readViaAVAsset(url: URL) async -> Double? {
         let asset = AVURLAsset(url: url)
-        let duration = asset.duration
-        if duration.isValid && !duration.isIndefinite {
-            let seconds = CMTimeGetSeconds(duration)
-            Log(message: "AudioDuration.AVAsset duration=\(seconds)s")
-            return seconds
+        guard let duration = try? await asset.load(.duration),
+              duration.isValid,
+              !duration.isIndefinite else {
+            Log(message: "AudioDuration.AVAsset 无法获取有效时长")
+            return nil
         }
-        Log(message: "AudioDuration.AVAsset 无法获取有效时长")
-        return nil
+        let seconds = CMTimeGetSeconds(duration)
+        Log(message: "AudioDuration.AVAsset duration=\(seconds)s")
+        return seconds
     }
     
     /// 直接解析 WAV header 获取时长

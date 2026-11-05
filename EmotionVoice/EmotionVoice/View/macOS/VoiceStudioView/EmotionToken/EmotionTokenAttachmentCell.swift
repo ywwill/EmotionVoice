@@ -50,27 +50,28 @@ final class EmotionTokenAttachmentCell: NSTextAttachmentCell {
     /// 宽度取 `toneMarkerWidth`（5pt）而不是 1pt：
     /// 这是相邻两个语气作用域之间唯一的物理间距，靠它 `resolveCapsuleSeams` 才切得出
     /// 真正的 `capsuleSeamGap` 间隙（1pt 时两段文本几乎贴死，两侧 8pt 内边距必然重叠）。
+    /// ⚠️ 尺寸计算由 AppKit 在 nonisolated 上下文调用，必须走 nonisolated 几何常量：
+    /// `EmotionTokenStyle.default` 含 NSFont/NSColor，被推断为 @MainActor，
+    /// 在这里引用会在 Swift 6 报错。常量与实例属性默认值共用同一份数值。
     private nonisolated func toneCellSize() -> NSSize {
-        NSSize(width: EmotionTokenStyle.default.toneMarkerWidth, height: 1)
+        NSSize(width: EmotionTokenStyle.toneMarkerWidthValue, height: 1)
     }
 
     private nonisolated func soundCellSize() -> NSSize {
-        let style = EmotionTokenStyle.default
-        let f = NSFont.systemFont(ofSize: style.soundFontSize, weight: .medium)
+        let f = NSFont.systemFont(ofSize: EmotionTokenStyle.soundFontSizeValue, weight: .medium)
         let name = tokenLabel as NSString
         let nameSize = name.size(withAttributes: [.font: f])
         // v5：去掉播放三角（点击并不真的播放，图标会误导），只剩名称
-        let width = ceil(style.soundHorizontalPadding * 2 + nameSize.width)
+        let width = ceil(EmotionTokenStyle.soundHorizontalPaddingValue * 2 + nameSize.width)
         let emH = ceil(f.ascender - f.descender)
-        let height = emH + style.soundVerticalPadding * 2
+        let height = emH + EmotionTokenStyle.soundVerticalPaddingValue * 2
         return NSSize(width: max(width, 1), height: height)
     }
 
     nonisolated override func cellBaselineOffset() -> NSPoint {
-        let style = EmotionTokenStyle.default
         if tokenCategory == .richLanguage {
-            let f = NSFont.systemFont(ofSize: style.soundFontSize, weight: .medium)
-            return NSPoint(x: 0, y: f.descender - style.soundVerticalPadding - 1)
+            let f = NSFont.systemFont(ofSize: EmotionTokenStyle.soundFontSizeValue, weight: .medium)
+            return NSPoint(x: 0, y: f.descender - EmotionTokenStyle.soundVerticalPaddingValue - 1)
         }
         // 语气标记：1×1 的不可见占位，基线直接对齐正文即可。
         return .zero

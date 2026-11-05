@@ -76,7 +76,7 @@ struct EmotionTokenStyle {
     /// 再怎么收敛都留不出缝隙。把它加宽到 5px（≈1/3 个汉字）后，
     /// `resolveCapsuleSeams` 才能在接缝处切出真正的 `capsuleSeamGap` 间隙。
     /// 设计稿里这一步是 CSS 的 `margin: 0 4px`（两段之间共 8px），这里是 AppKit 版的等价物。
-    var toneMarkerWidth: CGFloat = 5
+    var toneMarkerWidth: CGFloat = EmotionTokenStyle.toneMarkerWidthValue
     /// 胶囊垂直内边距：文本上下各留这么多（v12 由 4 → 6，文本不再贴着描边）
     var capsuleVerticalPadding: CGFloat = 6
     /// 胶囊填充不透明度：常态 0.13，悬停抬到 0.20
@@ -117,15 +117,15 @@ struct EmotionTokenStyle {
     /// 声音标记圆角（v12：8 → 6，更轻）
     var soundCornerRadius: CGFloat = 6
     /// 声音标记内边距（v12：9 / 3 → 7 / 1.5，不再撑行）
-    var soundHorizontalPadding: CGFloat = 7
-    var soundVerticalPadding: CGFloat = 1.5
+    var soundHorizontalPadding: CGFloat = EmotionTokenStyle.soundHorizontalPaddingValue
+    var soundVerticalPadding: CGFloat = EmotionTokenStyle.soundVerticalPaddingValue
     /// 拟声 pill 的绘制 / 接缝内缩。
     ///
     /// cell 的 advance 宽度不变，但 pill 只画在中间：左右各让出 3pt 给两边的语气胶囊收尾，
     /// 否则胶囊的 8px 内边距会直接压到 pill 底下（pill 画在上层，看得见一道重叠的描边）。
     var soundEdgeInset: CGFloat = 3
     /// 声音标记名称字号（v12：13 → 12）
-    var soundFontSize: CGFloat = 12
+    var soundFontSize: CGFloat = EmotionTokenStyle.soundFontSizeValue
     /// 居中浮出的 × 圆钮直径（v12：16 → 14）
     var soundDeleteButtonDiameter: CGFloat = 14
 
@@ -151,6 +151,17 @@ struct EmotionTokenStyle {
 
     /// 拟声类（richLanguage）用虚线描边，与「语气」类的实线描边区分开。
     var dashedBorder: Bool = false
+
+    // MARK: - nonisolated 几何常量
+
+    /// `cellSize()` / `cellBaselineOffset()` 由 AppKit 在 nonisolated 上下文调用，
+    /// 不能引用被推断为 @MainActor 的 `default`（本结构体含 NSFont / NSColor）。
+    /// 尺寸计算只用到这几个 CGFloat，单独提升为 nonisolated 常量；实例属性默认值
+    /// 引用它们，保证几何参数仍是单一数据源。
+    nonisolated static let toneMarkerWidthValue: CGFloat = 5
+    nonisolated static let soundFontSizeValue: CGFloat = 12
+    nonisolated static let soundHorizontalPaddingValue: CGFloat = 7
+    nonisolated static let soundVerticalPaddingValue: CGFloat = 1.5
 
     // MARK: - 默认值
 
