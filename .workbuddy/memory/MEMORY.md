@@ -7,6 +7,7 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 - `View/iOS/Views/` 已按职责拆分：`HistoryComponents`（统计条/筛选/分组头/空态）、`HistoryRowViews`（行卡片）、`HistoryOverlays`（mini player/菜单/Toast）、`ProjectsOverlays`（重命名/呼吸条）、`PlayerDetailControls`、`GenerationDialogControls`、`Services/AudioFileSupport`（波形提取/导出/ShareSheet，跨页共用放 Services）。单一 View 只是 body 长的（`StudioView`）和 UITextView 强耦合的（`TokenTextEditor`/`TokenCapsuleOverlay`）不拆。
 - SQLite（Documents/emotionvoice.sqlite3）**永不迁移**：改 `createTables()` 就 bump `currentSchemaVersion`，不符 DROP 重建。
 - 真构建 `bash tools/ios_build.sh`（`mac` 可回归双 target）；类型检查 `bash tools/ios_typecheck/typecheck.sh`（`Shims.swift` 替身，给真实类加方法须同步加桩）。三 workaround：`IDEPackageSupportDisableManifestSandbox`／`OTHER_SWIFT_FLAGS='$(inherited) -disable-sandbox'`／`ONLY_ACTIVE_ARCH=YES`。既有问题：`CreditsService.swift` 4 条 Swift6 报错、`PackageCardView.swift` 孤儿文件。
+- macOS 首屏窗口一次成型（`View/macOS/EmotionVoiceApp.swift`）：`.defaultSize(visibleFrame)` + `viewDidMoveToWindow()` 同步配置，⚠️ 禁再用 `DispatchQueue.main.async` 延迟 setFrame；启动清 `NSWindow Frame *` 并 `setFrameAutosaveName("")`，语义为「每次启动铺满可视区域」。AppKit 无 `NSWindow.didBecomeVisibleNotification`，首帧兜底用 `didBecomeMain`/`didBecomeKey`。细节见 2026-11-05.md。
 
 ## TTS / 本地化
 - 无密钥 `wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，单条 `{"action":"synthesize"}`，其余在 `bailian-tts/index.ts`；断线不可续传；Deno<2.5 用 `dialUpstream()` 两级拨号。

@@ -3095,13 +3095,13 @@
 			isa = PBXGroup;
 			children = (
 				6F209383303EC80500A770BB /* EmotionVoiceApp.swift */,
+				6F209382303EC80500A770BB /* ContentView.swift */,
 				6F20937C303EC80500A770BB /* Components.swift */,
 				6FE1A0A12EA0000100F0A001 /* GenerationOverlay.swift */,
 				6FD0A7C02EA2000100F0A001 /* DataReceiveGridView.swift */,
 				6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */,
 				6F20937E303EC80500A770BB /* FlowLayout.swift */,
 				6F20937F303EC80500A770BB /* Sidebar.swift */,
-				6F209382303EC80500A770BB /* ContentView.swift */,
 				6F20937B303EC80500A770BB /* VoiceStudioView */,
 				6F209376303EC80500A770BB /* VoicesLibraryView */,
 				6F209361303EC80500A770BB /* CreditsView */,
