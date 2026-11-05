@@ -82,7 +82,7 @@ struct CreditsView: View {
             reload()
             showFeedback(
                 credits > 0
-                    ? PurchaseFeedback(kind: .success, text: "已到账 %d 积分".localized(credits))
+                    ? PurchaseFeedback(kind: .success, text: "已到账 %@ 积分".localized(formatCredits(credits)))
                     : PurchaseFeedback(kind: .success, text: "购买已完成".localized())
             )
 

@@ -28,24 +28,51 @@ func Log<T>(messageType: String? = nil, message: T, fileName: String = #file, me
 #endif
 }
 
-// MARK: - 积分格式化
+// MARK: - 积分格式化（全项目唯一入口）
 
-/// 格式化积分显示（整数显示整数，一位小数显示一位，最多两位小数）
-/// - Parameter value: 积分值
-/// - Returns: 格式化的字符串，如 "100"、"12.5" 或 "12.34"
-func formatCredits(_ value: Double) -> String {
-    if value.truncatingRemainder(dividingBy: 1) == 0 {
-        // 整数
-        return String(format: "%.0f", value)
-    } else {
-        // 检测是否只有一位小数
-        let oneDecimal = (value * 10).rounded() / 10
-        if abs(value - oneDecimal) < 0.001 {
-            return String(format: "%.1f", value)
-        } else {
-            return String(format: "%.2f", value)
-        }
-    }
+/// 积分展示统一口径：**走 `NumberFormatter`，按系统地区本地化**。
+///
+///  - 本地化依据是 `Locale.current`（系统「语言与地区」），分组符与小数点都交给它：
+///    en_US `2,300` / `12.5`、de_DE `2.300` / `12,5`、fr_FR `2 300` / `12,5`；
+///  - 中文地区按阅读习惯不分组：`zh_*` → `2300` / `12.5`；
+///  - 整数不带小数点、最多 2 位小数且去掉末尾的 0，由 formatter 的
+///    `minimumFractionDigits = 0` / `maximumFractionDigits = 2` 负责。
+///
+/// ⚠️ 所有积分数字（余额 / 消耗 / 套餐面额 / 记录 / 滚动动画）都必须走这里：
+///  - 不要写 `Text("\(intValue)")`：`LocalizedStringKey` 插值会绕开统一口径；
+///  - 不要各自新建 `NumberFormatter()`：分组规则会不一致；
+///  - 不要退回 `String(format: "%.2f", ...)`：那会把小数点锁成英文的 `.`。
+///
+/// 返回的是 `String`，直接传给 `Text` 是 verbatim，不会被 SwiftUI 二次格式化。
+/// `nonisolated`：纯计算，日志/后台线程拼文案也能调（项目默认 MainActor 隔离）。
+nonisolated func formatCredits(_ value: Double) -> String {
+    guard value.isFinite else { return "0" }
+    // 与 CreditPrecision.normalize 同口径，压掉 0.30000000000000004 这类浮点尾数
+    let normalized = (value * 100).rounded() / 100
+    if abs(normalized) < 0.005 { return "0" }
+    return makeCreditDisplayFormatter().string(from: NSNumber(value: normalized)) ?? "0"
+}
+
+/// Int 版（套餐面额 / 到账积分）：统一走同一入口。
+nonisolated func formatCredits(_ value: Int) -> String {
+    formatCredits(Double(value))
+}
+
+/// 积分数字格式化器：`formatCredits` 与 `AnimatedCreditText` 共用的唯一配置。
+///
+/// 每次返回新实例：`NumberFormatter` 非线程安全且不共享；包内部还会 `copy()` 一份。
+/// ⚠️ 不设死 `en_US_POSIX`：那会把所有地区的小数点 / 分组符锁成英文，失去本地化。
+/// ⚠️ 不覆盖 `groupingSeparator` / `decimalSeparator`：让 locale 自己决定。
+nonisolated func makeCreditDisplayFormatter() -> NumberFormatter {
+    let f = NumberFormatter()
+    f.locale = Locale.current
+    f.numberStyle = .decimal
+    f.minimumFractionDigits = 0
+    f.maximumFractionDigits = 2
+    f.roundingMode = .halfUp
+    // 中文地区不分组；其它地区保留该 locale 的默认分组符
+    f.usesGroupingSeparator = !Locale.current.identifier.hasPrefix("zh")
+    return f
 }
 
 // MARK: - 文件名清洗

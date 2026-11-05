@@ -10,6 +10,10 @@
 
 import SwiftUI
 
+#if canImport(AnimateNumberText)
+import AnimateNumberText
+#endif
+
 // MARK: - 卡片
 
 /// 卡片容器：Surface 底 + 细描边 + 圆角
@@ -620,5 +624,46 @@ struct SheetNavBar<Leading: View, Trailing: View>: View {
             .padding(.horizontal, 16)
             .frame(height: 42)
         }
+    }
+}
+
+// MARK: - 积分数字滚动
+
+/// 积分数字：值变化时逐位滚动（购买到账 / 生成扣费都走这里）。
+///
+/// ⚠️ `font` 与 `weight` 必须分开传：包内部对每个数字列执行 `.fontWeight(weight)`，
+///    只给 `AuroraFont.balance`（bold）而不传 weight 会把字重覆盖成 regular。
+/// ⚠️ 数字口径统一由 `makeCreditDisplayFormatter()` 提供（按系统地区本地化、
+///    最多 2 位小数），绝不能让 `AnimateNumberText` 用默认 formatter —— 默认最多 16 位小数。
+struct AnimatedCreditText: View {
+    let value: Double
+    var font: Font = AuroraFont.balance
+    var weight: Font.Weight = .bold
+    var color: Color = .primary
+    /// 包一层本地化格式串，如 `NSLocalizedString("剩余 %@", comment: "")`；nil = 只显示数字。
+    /// ⚠️ 占位符必须是 `%@`（参数是已格式化的字符串），不要用 `%d` / `%.2f`。
+    var stringFormat: String? = nil
+
+    /// 每次 body 取一份：系统地区在 app 运行中被改动时，别让缓存的 formatter
+    /// 停在旧 locale（静态文字走 `formatCredits`，本来就是每次新建）。
+    private var formatter: NumberFormatter { makeCreditDisplayFormatter() }
+
+    /// VoiceOver 读完整的本地化句子（如「剩余 2300」），而不是逐列数字
+    private var accessibilityText: String {
+        guard let stringFormat else { return formatCredits(value) }
+        return String(format: stringFormat, formatCredits(value))
+    }
+
+    var body: some View {
+        AnimateNumberText(
+            font: font,
+            weight: weight,
+            value: value,
+            textColor: color,
+            numberFormatter: formatter,
+            stringFormatter: stringFormat
+        )
+        // 逐列 HStack 对 VoiceOver 不是一句话，补一个完整标签
+        .accessibilityLabel(accessibilityText)
     }
 }

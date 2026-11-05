@@ -866,7 +866,7 @@ struct VoiceStudioView: View {
 
     /// 生成栏：生成按钮 + 积分信息
     /// - 生成音频按钮（主操作）
-    /// - 总积分余额 / 本月已用 / 预计消耗
+    /// - 总积分余额 / 本月已用 / 预计
     /// - 跳转积分中心入口
     private var generateBar: some View {
         let state = appState
@@ -897,13 +897,13 @@ struct VoiceStudioView: View {
             HStack(spacing: 5) {
                 
                 VStack(alignment: .leading) {
-                    // 剩余积分
+                    // 剩余
                     HStack {
-                        Text("剩余积分")
+                        Text("剩余")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
                         Text(formatCredits(state.creditsBalance))
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(AppColor.accentPrimary)
                     }
                     
@@ -911,13 +911,13 @@ struct VoiceStudioView: View {
                         .fill(AppColor.borderSubtle)
                         .frame(height: 1)
                     
-                    // 预计消耗
+                    // 预计
                     HStack {
-                        Text("预计消耗")
+                        Text("预计")
                             .font(AppFont.monoSmall)
                             .foregroundStyle(AppColor.textTertiary)
-                        Text("≈ \(formatCredits(vm.estimatedPoints))")
-                            .font(.system(size: 14, weight: .semibold))
+                        Text(formatCredits(vm.estimatedPoints))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(vm.estimatedPoints > state.creditsBalance ? Color.red : AppColor.textPrimary)
                     }
                 }

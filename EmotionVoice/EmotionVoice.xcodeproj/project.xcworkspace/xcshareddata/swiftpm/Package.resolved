@@ -1,6 +1,15 @@
 {
-  "originHash" : "200ace8090aee9da04a5f3a7edaace93fc3563686a3194c76cf99acc1b154d02",
+  "originHash" : "79f9cf93fe3bba1c7b49dddfa21d3ae519b387db9940e68d8844bd0c34b34a00",
   "pins" : [
+    {
+      "identity" : "animatenumbertext",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swift-man/AnimateNumberText",
+      "state" : {
+        "revision" : "b810afc7e2368765275cf51eb039a71a6105c4e9",
+        "version" : "0.7.2"
+      }
+    },
     {
       "identity" : "keyboardshortcuts",
       "kind" : "remoteSourceControl",

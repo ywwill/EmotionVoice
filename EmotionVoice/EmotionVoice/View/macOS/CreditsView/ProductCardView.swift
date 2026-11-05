@@ -143,7 +143,7 @@ struct ProductCardView: View {
 
             // 积分
             HStack(spacing: 6) {
-                Text("\(points)")
+                Text(formatCredits(points))
                     .font(.title2)
                     .fontWeight(.bold)
                 Text("积分")

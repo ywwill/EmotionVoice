@@ -284,7 +284,7 @@ struct PurchaseProductRow: View {
                             .fixedSize()
                     }
 
-                    Text("\(creditProduct?.creditsAmount ?? 0) " + "积分".localized())
+                    Text(formatCredits(creditProduct?.creditsAmount ?? 0) + " " + "积分".localized())
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppColor.accentGlow)
                         .fixedSize()

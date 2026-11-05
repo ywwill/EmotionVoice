@@ -93,11 +93,10 @@ struct SettingsView: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(formatCredits(appState.creditsBalance))
-                    .font(AuroraFont.balance)
-                    .foregroundStyle(c.accent)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
+                AnimatedCreditText(value: appState.creditsBalance,
+                                   font: AuroraFont.balance,
+                                   weight: .bold,
+                                   color: c.accent)
                 Text("积分".localized())
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(c.textSecondary)

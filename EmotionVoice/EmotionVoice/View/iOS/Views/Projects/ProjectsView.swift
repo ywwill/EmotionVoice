@@ -7,7 +7,7 @@
 //  按 UI/iOS/history-redesign.html v2 重做：
 //  - 大标题「历史记录」+ 副标题；标签栏仍叫「项目」（D1 默认不改标签名）
 //  - 全库检索（名称 / 文案 / 音色）+ 范围 chip + 命中高亮 + 结果计数
-//  - 统计条 / 全部·收藏筛选 / 时间分组（今天·昨天·本周·更早，组头吸顶）
+//  - 统计条 / 全部·收藏筛选 / 时间分组（今天·昨天·其余按日 yyyy.MM.dd，组头吸顶）
 //  - 行内 32pt 就地试听 ≠ 点行进详情；mini player 全局常驻
 //  - 删除 = 移入最近删除（30 天）+ 5 秒撤销 Toast，不再是永久删除
 //  - 左滑四操作 / 多选工具条图标+文字 / 空态引导 / 骨架屏
@@ -206,6 +206,15 @@ struct ProjectsView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
+        // ⚠️ `.plain` List 从 iOS 15 起会给每个 section header 补一段系统留白
+        //    （UIKit sectionHeaderTopPadding / headerTopPadding，约 20pt+），首个 section
+        //    还要加上 scroll content 的顶部 margin 与 header 最小高度。叠在 chips 的
+        //    10pt 底部内边距上，筛选栏到「今天」分组头之间就会凭空多出一大截空白。
+        //    这里把系统间距全部清零，垂直节奏只由 HistoryFilterChips /
+        //    HistorySectionHeader 自己的 padding 决定（对齐设计稿 10 + 13）。
+        .listSectionSpacing(0)
+        .environment(\.defaultMinListHeaderHeight, 0)
+        .contentMargins(.top, 0, for: .scrollContent)
         // ⚠️ `.id` 只负责滚动复位；过渡靠可动画属性，不用容器 .transition
         .id(scrollResetID)
         .opacity(contentVisible ? 1 : 0)

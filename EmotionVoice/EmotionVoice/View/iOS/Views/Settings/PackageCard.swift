@@ -47,7 +47,7 @@ struct PackageCard: View {
             .padding(.bottom, 10)
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text("\(product.creditsAmount)")
+                Text(formatCredits(product.creditsAmount))
                     .font(.system(size: 25, weight: .bold, design: .monospaced))
                     .foregroundStyle(c.textPrimary)
                 Text("积分".localized())

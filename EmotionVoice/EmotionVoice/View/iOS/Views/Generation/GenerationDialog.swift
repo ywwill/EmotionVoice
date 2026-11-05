@@ -80,6 +80,9 @@ struct GenerationDialog: View {
     @State private var bytesPerCell = 4096
     @State private var gridRemainder = 0
     @State private var remainingCredits: Double = 0
+    /// 完成态「剩余」的动画值：生成中是扣费前余额，完成后滚到扣费后余额。
+    /// 直接绑 remainingCredits 的话，完成态是新建视图，首帧就是终值，看不到变化。
+    @State private var animatedRemaining: Double = 0
 
     // 完成态
     @State private var displayName: String = ""
@@ -115,6 +118,13 @@ struct GenerationDialog: View {
                    value: vm.isGenerating)
         .onAppear(perform: prepare)
         .task(id: vm.generatedAudioURL) { await loadWaveform() }
+        .task(id: hasResult) {
+            guard hasResult else { return }
+            // 等完成态首帧落地，再把「扣费前余额」滚到「扣费后余额」。
+            // 80ms 是为了跨过一次渲染周期：同周期内合并两次 @State 写入会没有动画。
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            animatedRemaining = remainingCredits
+        }
         .onChange(of: stats.receivedBytes) { _, _ in feedGrid() }
         .onChange(of: vm.isGenerating) { _, generating in
             if generating {
@@ -337,13 +347,15 @@ struct GenerationDialog: View {
                 Text("消耗".localized())
                     .font(.system(size: 12))
                     .foregroundStyle(c.textTertiary)
-                Text("\(formatCredits(chargedPoints))")
+                Text(formatCredits(chargedPoints))
                     .font(AuroraFont.mono15)
                     .foregroundStyle(AuroraDecor.creditB)
                 Spacer(minLength: 0)
-                Text("剩余 %@".localized(formatCredits(remainingCredits)))
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(c.textTertiary)
+                AnimatedCreditText(value: animatedRemaining,
+                                   font: .system(size: 11.5, design: .monospaced),
+                                   weight: .regular,
+                                   color: c.textTertiary,
+                                   stringFormat: NSLocalizedString("剩余 %@", comment: ""))
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -419,7 +431,7 @@ struct GenerationDialog: View {
                     onDismiss()
                 }
             } else {
-                SecondaryButton(title: "隐藏窗口".localized(), systemImage: "person.crop.circle") {
+                SecondaryButton(title: "隐藏窗口".localized(), systemImage: "") {
                     onBackground()
                 }
             }
@@ -502,6 +514,10 @@ struct GenerationDialog: View {
         gridModel.reset()
         litCells = 0
         remainingCredits = CreditManager.shared.balance
+        // 生成中：动画起点取扣费前余额；完成态才新建的弹窗直接落终值，不造假起点
+        animatedRemaining = vm.isGenerating
+            ? remainingCredits + chargedPoints
+            : remainingCredits
 
         if let started = vm.generationStartedAt {
             ticker.start(at: started)

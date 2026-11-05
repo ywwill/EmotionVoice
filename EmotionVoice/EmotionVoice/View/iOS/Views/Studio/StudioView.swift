@@ -456,10 +456,10 @@ struct StudioView: View {
     private var generateBar: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("预计消耗".localized())
+                Text("预计".localized())
                     .font(.system(size: 11))
                     .foregroundStyle(c.textTertiary)
-                Text("≈ \(formatCredits(estimatedPoints))")
+                Text("≈ " + formatCredits(estimatedPoints))
                     .font(AuroraFont.mono17)
                     .foregroundStyle(c.textPrimary)
             }
@@ -528,13 +528,13 @@ struct StudioView: View {
         .opacity(isEditingText ? 1 : 0.55)
     }
 
-    /// 「语音指令」图标键的宽度：这一行要挤下「预计消耗 + 图标 + 生成音频 + 完成」四组，
+    /// 「语音指令」图标键的宽度：这一行要挤下「预计 + 图标 + 生成音频 + 完成」四组，
     /// 窄屏（< 375pt）再让 6pt 出来。
     private var barIconWidth: CGFloat { metrics.width < 375 ? 40 : 46 }
 
     /// 「生成音频」的固定宽度。
     ///
-    /// ⚠️ 它原来是 `isFullWidth` 撑满剩余宽度 —— 于是「预计消耗」的数字多一位、
+    /// ⚠️ 它原来是 `isFullWidth` 撑满剩余宽度 —— 于是「预计」的数字多一位、
     /// 或者换个屏幕宽度，主操作按钮就跟着变长变短，看着像界面在抖。固定之后
     /// 这一行只有「完成」在键盘弹出时切换透明度，宽度不再变。
     /// 窄屏（< 375pt）按 375 算过：343 − 字数 90 − 图标 40 − 完成 66 − 三处间距 30 ≈ 117，取 112。
@@ -561,21 +561,7 @@ struct StudioView: View {
 
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 6) {
-                Button { uiState.purchaseSheetPresented = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "diamond.fill")
-                            .font(.system(size: 11))
-                        Text(formatCredits(appState.creditsBalance))
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    }
-                    .foregroundStyle(c.accent)
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
-                    .background(Capsule(style: .continuous).fill(c.accentSoft))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("购买积分".localized())
+                StudioCreditCapsule()
 
                 Button { router.openSettings() } label: {
                     Image(systemName: "gearshape.fill")
@@ -689,7 +675,7 @@ struct StudioView: View {
 
     /// 二次确认的具体内容：**音色 + 本次要扣的积分**。
     ///
-    /// ⚠️ 字数不进弹窗 —— 底部条上已经常显「预计消耗」，弹窗里重复一遍只会挤掉重点。
+    /// ⚠️ 字数不进弹窗 —— 底部条上已经常显「预计」，弹窗里重复一遍只会挤掉重点。
     private var generateConfirmMessage: String {
         let name = currentVoice?.localizedName ?? "未选择音色".localized()
         return "音色：%@\n消耗：%@ 积分".localized(name, formatCredits(estimatedPoints))
@@ -712,4 +698,42 @@ struct StudioView: View {
 private struct ContentBottomKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// 导航栏积分胶囊。
+///
+/// ⚠️ 必须是独立 View 且**自己订阅** appState：`.toolbar` 内容由 UIKit 托管，
+/// 从 StudioView 闭包里捕获的 `appState.creditsBalance` 不会随启动后的云端同步
+/// 重新求值，余额会一直停在初始值。子 View 自带 `@EnvironmentObject` 后，
+/// SwiftUI 会单独跟踪依赖，积分一到账立刻刷新。
+///
+/// ⚠️ 这里不用 `AnimateNumberText`：它靠 `onAppear` / `.task(id:)` 初始化内部
+/// `@State`、靠 `GeometryReader` 测字宽，在 ToolbarItem 的紧凑托管环境里可能
+/// 渲染出空列。改用系统 `.numericText` 过渡，同样是逐位滚动，且不依赖生命周期。
+private struct StudioCreditCapsule: View {
+    @Environment(\.aurora) private var c
+    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var uiState: IOSUIState
+
+    var body: some View {
+        Button { uiState.purchaseSheetPresented = true } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "diamond.fill")
+                    .font(.system(size: 11))
+                Text(formatCredits(appState.creditsBalance))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .contentTransition(.numericText(value: appState.creditsBalance))
+                    .animation(.smooth(duration: 0.45), value: appState.creditsBalance)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .foregroundStyle(c.accent)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(Capsule(style: .continuous).fill(c.accentSoft))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("购买积分".localized())
+    }
 }

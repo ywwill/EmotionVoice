@@ -92,6 +92,8 @@ struct HistoryFilterChips: View {
         // ⚠️ VStack 默认 .center：不显式撑满，两个胶囊会整体居中而不是左对齐
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
+        // 设计稿 .chips{padding:0 16px 10px}：下方留白由这 10pt 和分组头的
+        // 13pt 上内边距共同构成；List 的系统 section 间距已在 listArea 清零，别再叠加。
         .padding(.bottom, 10)
     }
 
@@ -201,7 +203,10 @@ struct HistorySectionHeader: View {
             Rectangle().fill(c.line).frame(height: 0.5)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 7)
+        // 设计稿 .group{padding:13px 16px 7px}：顶部 13pt 是分组之间的呼吸，
+        // 底部 7pt 贴合首行卡片；不用 .vertical 对称值，否则组头离上一组太近。
+        .padding(.top, 13)
+        .padding(.bottom, 7)
         .background(c.backgroundGrouped)
     }
 }

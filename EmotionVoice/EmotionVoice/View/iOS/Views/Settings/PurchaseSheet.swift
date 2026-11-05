@@ -26,9 +26,16 @@ struct PurchaseSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var uiState: IOSUIState
 
     @ObservedObject private var store = StoreKitManager.shared
+
+    /// 购买结果反馈。⚠️ 全局 Toast 挂在根视图上，会被本 Sheet 整块盖住 ——
+    /// 失败 / 取消 / 待确认必须在本页内提示，否则用户什么提示都看不到。
+    /// 购买成功不弹提示：余额卡的滚动动画已经表达到账，再加横幅是重复反馈。
+    @State private var feedback: PurchaseFeedback?
+    @State private var feedbackHideTask: Task<Void, Never>?
+    /// 已成功到账后不再展示「积分不足」横幅（钱到了还挂缺口提示自相矛盾）
+    @State private var purchaseSucceeded = false
 
     /// 余额不足提示：由外部传入（工作台按缺口算），为 nil 时不显示
     var shortfallHint: String? = nil
@@ -63,7 +70,7 @@ struct PurchaseSheet: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 6)
 
-                    if let hint = shortfallHint {
+                    if let hint = shortfallHint, !purchaseSucceeded {
                         shortfallBanner(hint)
                             .padding(.horizontal, 16)
                             .padding(.top, 12)
@@ -105,6 +112,18 @@ struct PurchaseSheet: View {
         .onChange(of: store.purchaseState) { _, state in
             handle(state)
         }
+        // 页内结果浮层：不占布局高度，压在内容之上（与 macOS 积分中心同语义）
+        .overlay(alignment: .top) {
+            if let feedback {
+                feedbackToast(feedback)
+                    // 让开 SheetNavBar（抓手 5 + 标题行 42 + 上下留白）
+                    .padding(.top, 58)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(10)
+            }
+        }
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: feedback?.id)
+        .onDisappear { feedbackHideTask?.cancel() }
     }
 
     // MARK: 顶部余额卡
@@ -124,11 +143,11 @@ struct PurchaseSheet: View {
                 Text("当前余额".localized())
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
-                Text(formatCredits(appState.creditsBalance))
-                    .font(AuroraFont.balance)
-                    .foregroundStyle(.white)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
+                // 到账/扣费都走 AppState.creditsBalance：值一变就逐位滚动到新余额
+                AnimatedCreditText(value: appState.creditsBalance,
+                                   font: AuroraFont.balance,
+                                   weight: .bold,
+                                   color: .white)
             }
 
             Spacer(minLength: 0)
@@ -253,17 +272,87 @@ struct PurchaseSheet: View {
 
     private func handle(_ state: PurchaseState) {
         switch state {
-        case .success(let credits):
+        case .success(_):
+            // StoreKitManager 已把积分写进 CreditManager，这里补一次展示值刷新，
+            // AnimatedCreditText 从旧余额滚到新余额 —— 这就是唯一的成功反馈。
             appState.refreshCredits()
-            uiState.showToast(.success("已到账 %d 积分".localized(credits)))
+            purchaseSucceeded = true
+            clearFeedback()
             store.resetPurchaseState()
-            dismiss()
+            // ⚠️ 不 dismiss：留在购买页看余额滚动，关闭只由 X / 下拉触发。
         case .failed(let message):
-            uiState.showToast(.failure(message))
+            let kind: PurchaseFeedback.Kind
+            let text: String
+            if message == StoreError.userCancelled.localizedDescription {
+                kind = .info
+                text = "已取消购买".localized()
+            } else if message == StoreError.pending.localizedDescription {
+                kind = .info
+                text = "等待确认，到账后自动发放".localized()
+            } else {
+                kind = .failure
+                text = "购买失败".localized() + "：\(message)"
+            }
+            showFeedback(PurchaseFeedback(kind: kind, text: text))
             store.resetPurchaseState()
-        case .idle, .loading, .purchasing:
+        case .purchasing:
+            clearFeedback()
+        case .idle, .loading:
+            // resetPurchaseState() 会再发一次 .idle，这里刻意不清提示，
+            // 否则刚显示的失败/取消提示会被状态重置抹掉。
             break
         }
+    }
+
+    // MARK: 购买结果页内反馈
+
+    private func showFeedback(_ item: PurchaseFeedback) {
+        feedbackHideTask?.cancel()
+        withAnimation(.easeOut(duration: 0.18)) { feedback = item }
+        // 失败留久一点看清原因，取消 / 待确认 4s
+        let delay: UInt64 = item.kind == .failure ? 8 : 4
+        feedbackHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) { feedback = nil }
+        }
+    }
+
+    private func clearFeedback() {
+        feedbackHideTask?.cancel()
+        feedbackHideTask = nil
+        feedback = nil
+    }
+
+    private func feedbackToast(_ item: PurchaseFeedback) -> some View {
+        let tint: Color = {
+            switch item.kind {
+            case .failure: return c.danger
+            case .info:    return c.warning
+            }
+        }()
+        return HStack(spacing: 9) {
+            Image(systemName: item.icon)
+                .font(.system(size: 16, weight: .semibold))
+            Text(item.text)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                .fill(c.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
+                        .strokeBorder(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 16)
+        .shadow(color: c.shadow.opacity(0.6), radius: 16, x: 0, y: 6)
     }
 
     // MARK: 展示
@@ -307,6 +396,22 @@ struct PurchaseSheet: View {
         case .credits400:  return Color(hex: 0xF2A03D)
         case .credits900:  return Color(hex: 0xFF7A6B)
         case .credits1500: return Color(hex: 0x918DF5)
+        }
+    }
+}
+
+/// 购买结果反馈模型（id 用于驱动浮层的插入 / 移除动画）
+/// 仅承载失败 / 取消 / 待确认；成功由余额滚动动画表达，不产生反馈。
+private struct PurchaseFeedback: Identifiable {
+    enum Kind { case failure, info }
+    let id = UUID()
+    let kind: Kind
+    let text: String
+
+    var icon: String {
+        switch kind {
+        case .failure: return "exclamationmark.triangle.fill"
+        case .info:    return "info.circle.fill"
         }
     }
 }

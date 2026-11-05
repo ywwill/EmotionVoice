@@ -78,13 +78,13 @@ struct CreditRecordsView: View {
                 .foregroundStyle(c.textTertiary)
             Spacer(minLength: 0)
             HStack(spacing: 5) {
-                Text("+\(formatCredits(totalIncome))")
+                Text("+" + formatCredits(totalIncome))
                     .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(c.success)
                 Text("/")
                     .font(.system(size: 12.5))
                     .foregroundStyle(c.line2)
-                Text("−\(formatCredits(totalExpense))")
+                Text("−" + formatCredits(totalExpense))
                     .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(c.danger)
             }

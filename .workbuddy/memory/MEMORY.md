@@ -13,6 +13,7 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 ## TTS / 本地化
 - 无密钥 `wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，单条 `{"action":"synthesize"}`，其余在 `bailian-tts/index.ts`；断线不可续传；Deno<2.5 用 `dialUpstream()` 两级拨号。
 - `.localized()` 中文原文当 key；⚠️ 禁 `String(format:"…%@…".localized(), arg)`（零参已填 `(null)`），须 `"…%@".localized(arg)`。三语 zh-Hans/zh-HK/en；新增 lproj 改 pbxproj `knownRegions`+PBXVariantGroup，`plutil -lint`。
+- ⚠️ 改中文 key 时**三份 strings + macOS/iOS 两端引用必须一起改**：macOS `Text("字面量")` 走 SwiftUI `LocalizedStringKey` 隐式查表，iOS `.localized()` 走 `NSLocalizedString`，共用同一组 key；漏改任一端，繁中/英文界面会 fallback 显示简体原 key。2026-11-05 已把「剩余积分/预计消耗」→「剩余/预计」。
 - 音色文案 `<lproj>/VoiceCatalog.strings` + `lprojCandidates(for:)`；繁体按香港习惯（OpenCC `s2t`+覆写，**别用 s2hk**）。
 
 ## 音色 / 标签
@@ -39,6 +40,8 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 - 播放跨页保留：`PlayerDetailView` 不 `onDisappear{stop()}`；一律 `identifier=item.fileName` 经 `NowPlayingStore.toggle/start`。底部浮层互斥链（撤销 Toast > 后台接收条 > mini player）。删除统一「移入最近删除」，撤销后 `uiState.requestHistoryReload()` → `vm.load()`。
 - ⚠️ `MiniPlayerView` 全局浮层品牌渐变底+白字（**别退回白底**），`static let height = 56`；`ProjectsView` 按 `miniPlayerVisible` 在 List 末尾插透明占位 Section（height+28）。⚠️ 卡片底部进度条只 `scaleEffect(x:,anchor:.leading)`，**绝不自加 `.clipShape`**。
 - 上拉追加先写本地 `page` 再 `syncToVM()`；项目增删磁盘 IO 必须在动画事务外（`stageDuplicatedFile` nonisolated + `finishDuplicate`）。
+- ⚠️ `ProjectsView.listArea` 的 `.plain` List 必须清零系统 section 留白（`.listSectionSpacing(0)` + `.environment(\.defaultMinListHeaderHeight, 0)` + `.contentMargins(.top, 0, for: .scrollContent)`），否则筛选栏到分组头多出 20pt+ 空白；垂直节奏**只**由 `HistoryFilterChips` 底 10pt + `HistorySectionHeader` 顶 13pt/底 7pt 决定（设计稿数值），别用负 `listRowInsets` 或全局 `UITableView.appearance()` 抵消。细节见 2026-11-05.md。
+- 时间分组**按自然日**：今天 / 昨天各一组，其余每天一组、组头 `yyyy.MM.dd`（`dayTitleFormatter` 固定 POSIX+公历+本地时区），不再有「本周 / 更早」聚合桶；桶 key 用 `Calendar.current.startOfDay`，组顺序与组内都跟随 `sortOrder`，id 为 `today`/`yesterday`/`day-<日期>` 而非 title。统计条「%d 条本月」、行内 `rowTime`、最近删除页不受影响。细节见 2026-11-05.md。
 
 ## 积分 / 生成弹窗
 - 积分全链路 Double(≤2位)：`CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5），`TextSplitter.calculateCharCount`（CJK 算2），云端 `numeric(10,2)`。

@@ -20,6 +20,43 @@ import Foundation
 import SwiftUI
 import Combine
 
+// MARK: - AnimateNumberText 替身（typecheck 时拿不到 SPM module）
+//
+// 真构建时本文件不进 target，AuroraComponents.swift 会 `import AnimateNumberText`
+// 用真包；这里只给 `swiftc -typecheck` 一份同签名的 View，
+// 保证 `AnimatedCreditText` 的调用代码（参数名 / 类型）同样被类型检查。
+#if !canImport(AnimateNumberText)
+struct AnimateNumberText: View {
+    let font: Font
+    let weight: Font.Weight
+    let value: Double
+    let textColor: Color
+    let numberFormatter: NumberFormatter?
+    let stringFormatter: String?
+
+    init(font: Font = .largeTitle,
+         weight: Font.Weight = .regular,
+         value: Double,
+         textColor: Color = .primary,
+         numberFormatter: NumberFormatter? = nil,
+         stringFormatter: String? = nil) {
+        self.font = font
+        self.weight = weight
+        self.value = value
+        self.textColor = textColor
+        self.numberFormatter = numberFormatter
+        self.stringFormatter = stringFormatter
+    }
+
+    var body: some View {
+        Text(formatCredits(value))
+            .font(font)
+            .fontWeight(weight)
+            .foregroundColor(textColor)
+    }
+}
+#endif
+
 // MARK: - 通用分页结果（与 Services/CreditsService.swift 中定义一致）
 
 struct PagedResult<T> {

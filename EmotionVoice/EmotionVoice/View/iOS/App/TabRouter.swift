@@ -84,7 +84,7 @@ final class TabRouter: ObservableObject {
     func push(_ route: Route) {
         // ⚠️ 进栈前必须先把键盘收掉：**键盘还在屏上时直接 push**，返回后 SwiftUI 的键盘
         // 避让会失效 —— 内容区拿不到「键盘高度」这条安全区 inset，创作页底部那条
-        // 「预计消耗 / 生成音频 / 完成」会被压到键盘底下（看着就是按钮全没了），
+        // 「预计 / 生成音频 / 完成」会被压到键盘底下（看着就是按钮全没了），
         // 而键盘本身又没有合适的退场时机。先 resign，回来时一切从干净状态重建。
         resignFirstResponder()
         // ⚠️ withAnimation 包住进栈：标签栏的隐藏要落在一个带动画的事务里

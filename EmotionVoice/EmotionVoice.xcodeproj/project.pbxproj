@@ -1366,6 +1366,7 @@
 		7A1000000000000000000040 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D7F3060F2FB0005713F /* Realtime */; };
 		7A1000000000000000000041 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D793060F2FB0005713F /* Auth */; };
 		7A1000000000000000000042 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 6FCA9D7D3060F2FB0005713F /* PostgREST */; };
+		7B3A0000000000000000A001 /* AnimateNumberText in Frameworks */ = {isa = PBXBuildFile; productRef = 7B3A0000000000000000A002 /* AnimateNumberText */; };
 		7B3A00000000000000000002 /* AudioFlagStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000001 /* AudioFlagStore.swift */; };
 		7B3A00000000000000000004 /* HistoryListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000003 /* HistoryListViewModel.swift */; };
 		7B3A00000000000000000006 /* HistoryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3A00000000000000000005 /* HistoryComponents.swift */; };
@@ -2145,6 +2146,7 @@
 				7A1000000000000000000040 /* Realtime in Frameworks */,
 				7A1000000000000000000041 /* Auth in Frameworks */,
 				7A1000000000000000000042 /* PostgREST in Frameworks */,
+				7B3A0000000000000000A001 /* AnimateNumberText in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3200,6 +3202,7 @@
 				6FCA9D7F3060F2FB0005713F /* Realtime */,
 				6FCA9D793060F2FB0005713F /* Auth */,
 				6FCA9D7D3060F2FB0005713F /* PostgREST */,
+				7B3A0000000000000000A002 /* AnimateNumberText */,
 			);
 			productName = iOSEmora;
 			productReference = 6F3AE79A309055CE007975DD /* iOSEmora.app */;
@@ -3267,6 +3270,7 @@
 				6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */,
 				6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				6FA68B6B309C665600963DB6 /* XCRemoteSwiftPackageReference "AnimateNumberText" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6FEE97EC302705C600C39C26 /* Products */;
@@ -5038,6 +5042,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		6FA68B6B309C665600963DB6 /* XCRemoteSwiftPackageReference "AnimateNumberText" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swift-man/AnimateNumberText";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.7.2;
+			};
+		};
 		6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/evgenyneu/keychain-swift";
@@ -5119,6 +5131,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		7B3A0000000000000000A002 /* AnimateNumberText */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FA68B6B309C665600963DB6 /* XCRemoteSwiftPackageReference "AnimateNumberText" */;
+			productName = AnimateNumberText;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

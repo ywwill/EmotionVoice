@@ -7,7 +7,7 @@
 //  与 macOS 共用的 `HistoryViewModel` 保持原样（那边是「分页 + 已加载数据里过滤」）：
 //  - 本 VM 一次拉全量（`fetchAllAudios`），**全库检索**覆盖 名称 / 文案 / 音色；
 //  - 搜索态不分页（命中即全显），默认列表按 50 条一批上拉追加；
-//  - 时间分组（今天 / 昨天 / 本周 / 更早）+ 统计条，统计恒为全量；
+//  - 时间分组（今天 / 昨天 / 其余按自然日，组头 yyyy.MM.dd）+ 统计条，统计恒为全量；
 //  - 收藏 / 软删交给 `AudioFlagStore`，本 VM 只负责把标记排除出数据源。
 //
 //  ⚠️ 刷新节奏（淡出 0.1s → 换数据 → 淡入 0.28s / 滚动复位）由 `ProjectsView` 驱动，
@@ -55,7 +55,7 @@ enum HistorySortOrder: String, CaseIterable {
 struct HistorySection: Identifiable {
     let id: String
     let title: String
-    /// 组头右侧的补充说明（更早组带日期）
+    /// 组头右侧的补充说明；按日分组下不用（日期已在 title 里），保留给其他列表
     var detail: String? = nil
     let count: Int
     var items: [AudioItem]
@@ -213,42 +213,43 @@ final class HistoryListViewModel: ObservableObject {
 
     // MARK: 分组
 
+    /// 时间分组：今天 / 昨天各一组，其余记录**按自然日一天一组**，组头直接写
+    /// `yyyy.MM.dd`（例 2026.11.05）。不再按周 / 月 / 「更早」做粗粒度聚合。
+    /// ⚠️ 桶 key 用 `startOfDay`：同一天的记录必须落在同一组，别用「距今天数」或时间段比较。
     private func makeSections(_ items: [AudioItem]) -> [HistorySection] {
         let cal = Calendar.current
-        let now = Date()
-        let startToday = cal.startOfDay(for: now)
+        let startToday = cal.startOfDay(for: Date())
         let startYesterday = cal.date(byAdding: .day, value: -1, to: startToday) ?? startToday
-        let startWeek = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? startToday
 
-        var today: [AudioItem] = []
-        var yesterday: [AudioItem] = []
-        var week: [AudioItem] = []
-        var older: [AudioItem] = []
+        var buckets: [Date: [AudioItem]] = [:]
         for item in items {
-            if item.createdAt >= startToday { today.append(item) }
-            else if item.createdAt >= startYesterday { yesterday.append(item) }
-            else if item.createdAt >= startWeek { week.append(item) }
-            else { older.append(item) }
+            buckets[cal.startOfDay(for: item.createdAt), default: []].append(item)
         }
 
+        // 组顺序跟随排序：最新优先 = 今天在最前；最早优先 = 整条时间线反过来。
         let ascending = sortOrder == .oldest
-        func arrange(_ list: [AudioItem]) -> [AudioItem] {
-            ascending ? list.sorted { $0.createdAt < $1.createdAt }
-                      : list.sorted { $0.createdAt > $1.createdAt }
-        }
+        let days = buckets.keys.sorted { ascending ? $0 < $1 : $0 > $1 }
 
-        var groups: [(String, String?, [AudioItem])] = [
-            ("今天".localized(), nil, arrange(today)),
-            ("昨天".localized(), nil, arrange(yesterday)),
-            ("本周".localized(), nil, arrange(week)),
-            ("更早".localized(), older.first.map { Self.monthDay($0.createdAt) }, arrange(older))
-        ]
-        if ascending { groups.reverse() }
-
-        return groups.compactMap { title, detail, list in
-            guard !list.isEmpty else { return nil }
-            return HistorySection(id: title, title: title, detail: detail,
-                                  count: list.count, items: list)
+        return days.compactMap { day -> HistorySection? in
+            guard let list = buckets[day], !list.isEmpty else { return nil }
+            // 组身份不跟标题文本走：切换语言时「今天 / 昨天」会变，id 保持不变。
+            let title: String
+            let id: String
+            if day == startToday {
+                title = "今天".localized()
+                id = "today"
+            } else if day == startYesterday {
+                title = "昨天".localized()
+                id = "yesterday"
+            } else {
+                title = Self.dayTitleFormatter.string(from: day)
+                id = "day-\(title)"
+            }
+            return HistorySection(id: id, title: title, detail: nil,
+                                  count: list.count,
+                                  items: ascending
+                                    ? list.sorted { $0.createdAt < $1.createdAt }
+                                    : list.sorted { $0.createdAt > $1.createdAt })
         }
     }
 
@@ -266,22 +267,30 @@ final class HistoryListViewModel: ObservableObject {
         return f
     }()
 
+    /// 组头完整日期，固定 `yyyy.MM.dd`（例 2026.11.05）。POSIX locale + 公历，
+    /// 保证三语下都是同一串数字；时区跟本地，与分桶用的 Calendar.current 午夜边界一致。
+    private static let dayTitleFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = .current
+        f.calendar = gregorian
+        f.dateFormat = "yyyy.MM.dd"
+        return f
+    }()
+
     private static let fullDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "M月d日 HH:mm"
         return f
     }()
 
-    /// 行内右上的时间锚点：今天=时分 / 昨天=「昨天」/ 更早=MM-dd
+    /// 行内右上的时间锚点：今天=时分 / 昨天=「昨天」/ 其余=MM-dd
     static func rowTime(_ date: Date) -> String {
         let cal = Calendar.current
         if cal.isDateInToday(date) { return timeFormatter.string(from: date) }
         if cal.isDateInYesterday(date) { return "昨天".localized() }
         return monthDayFormatter.string(from: date)
-    }
-
-    static func monthDay(_ date: Date) -> String {
-        monthDayFormatter.string(from: date)
     }
 
     /// 最近删除页：「今天 14:32 移入」/「10月24日 移入」
