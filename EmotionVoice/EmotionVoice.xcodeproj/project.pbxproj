@@ -37,7 +37,6 @@
 		6F2093A2303EC80500B770BB /* ProductCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209360303EC80500B770BB /* ProductCardView.swift */; };
 		6F2093AC303EC80500A770BB /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20936D303EC80500A770BB /* SettingsView.swift */; };
 		6F2093AD303EC80500A770BB /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20936F303EC80500A770BB /* StatsView.swift */; };
-		6F2093AE303EC80500A770BB /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209371303EC80500A770BB /* RangeSlider.swift */; };
 		6F2093AF303EC80500A770BB /* StaticButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209372303EC80500A770BB /* StaticButtonStyle.swift */; };
 		6F2093B0303EC80500A770BB /* VoiceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209373303EC80500A770BB /* VoiceCard.swift */; };
 		6F2093B1303EC80500A770BB /* VoiceLibraryEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209374303EC80500A770BB /* VoiceLibraryEnvironment.swift */; };
@@ -1428,7 +1427,6 @@
 		6F209360303EC80500B770BB /* ProductCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductCardView.swift; sourceTree = "<group>"; };
 		6F20936D303EC80500A770BB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		6F20936F303EC80500A770BB /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
-		6F209371303EC80500A770BB /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
 		6F209372303EC80500A770BB /* StaticButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticButtonStyle.swift; sourceTree = "<group>"; };
 		6F209373303EC80500A770BB /* VoiceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCard.swift; sourceTree = "<group>"; };
 		6F209374303EC80500A770BB /* VoiceLibraryEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLibraryEnvironment.swift; sourceTree = "<group>"; };
@@ -2280,7 +2278,6 @@
 		6F209376303EC80500A770BB /* VoicesLibraryView */ = {
 			isa = PBXGroup;
 			children = (
-				6F209371303EC80500A770BB /* RangeSlider.swift */,
 				6F209372303EC80500A770BB /* StaticButtonStyle.swift */,
 				6F209373303EC80500A770BB /* VoiceCard.swift */,
 				6F209374303EC80500A770BB /* VoiceLibraryEnvironment.swift */,
@@ -4646,7 +4643,6 @@
 				6F2093A2303EC80500B770BB /* ProductCardView.swift in Sources */,
 				6F2093AC303EC80500A770BB /* SettingsView.swift in Sources */,
 				6F2093AD303EC80500A770BB /* StatsView.swift in Sources */,
-				6F2093AE303EC80500A770BB /* RangeSlider.swift in Sources */,
 				6F2093AF303EC80500A770BB /* StaticButtonStyle.swift in Sources */,
 				6F2093B0303EC80500A770BB /* VoiceCard.swift in Sources */,
 				6F2DB01B3062649F0086FD6F /* AudioRowItem.swift in Sources */,
@@ -4921,7 +4917,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 5;
@@ -4968,7 +4963,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 5;

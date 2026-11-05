@@ -58,6 +58,10 @@
 "🌐 语言" = "🌐 Language";
 "从列表中选择要播放的音频" = "Select the audio to play from the list.";
 "从头播放" = "Play from Beginning";
+"后退 15 秒" = "Skip Back 15 Seconds";
+"后退 5 秒" = "Skip Back 5 Seconds";
+"前进 5 秒" = "Skip Forward 5 Seconds";
+"前进 15 秒" = "Skip Forward 15 Seconds";
 "空格" = "Space";
 "播放 / 暂停" = "Play / Pause";
 "5 秒" = "5 Seconds";

@@ -8,6 +8,8 @@
 //  - macOS 的四列 meta 条在 iPhone 上折成 **2×2**（宽屏回到 4 列）
 //  - 底部状态栏**去掉三组键帽提示**（iOS 没有键盘快捷键），只留播放状态
 //  - 倍速菜单 0.5–2x 六档保留（macOS 的 `playbackRateOptions`）
+//  - 走带与 macOS `PlayerTransportView` 同构：后退 15 / 5、播放、前进 5 / 15；
+//    「从头播放」留在下方工具行（iOS 触摸热区统一 44pt，图标比 macOS 略收）
 //  - 波形整卡可点击 / 拖动定位（44pt 触摸高度）
 //  - 时间行改成音频播放器的常规排布：**左边已播放 / 右边总时长**；
 //    拖动频谱时左边跟着手指实时走，并在频谱上方浮出当前落点的时间气泡，松手即恢复。
@@ -48,9 +50,6 @@ struct PlayerDetailView: View {
     /// 断句数只算一次。原来写在 `textCard` 的计算属性里，播放器 0.1s 一次进度刷新
     /// 会把整段文案反复 `components(separatedBy:)` + trim，长文案下是白烧主线程。
     @State private var sentenceCount: Int = 0
-
-    /// 快进 / 快退步长（秒）。详情页是精听场景，15 秒太粗，5 秒刚好够定位一句话。
-    private static let skipStep: Double = 5
 
     private var url: URL { item.absoluteURL }
 
@@ -245,12 +244,16 @@ struct PlayerDetailView: View {
         .frame(height: 24)
     }
 
-    // MARK: 走带
+    // MARK: 走带（与 macOS PlayerTransportView 同构：±15 / ±5；15 秒档也是锁屏远程命令的步长）
 
     private var transportRow: some View {
         HStack(spacing: 22) {
-            transportButton("backward.end.fill", size: 30) { player.seek(to: 0) }
-            transportButton("gobackward.5", size: 24) { player.skip(by: -Self.skipStep) }
+            transportButton("gobackward.15", size: 32, title: "后退 15 秒".localized()) {
+                player.skip(by: -15)
+            }
+            transportButton("gobackward.5", size: 24, title: "后退 5 秒".localized()) {
+                player.skip(by: -5)
+            }
 
             Button {
                 player.togglePlayback(url: url, identifier: item.fileName)
@@ -269,9 +272,11 @@ struct PlayerDetailView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isThisPlaying ? "暂停".localized() : "播放".localized())
 
-            transportButton("goforward.5", size: 24) { player.skip(by: Self.skipStep) }
-            transportButton("forward.end.fill", size: 30) {
-                player.seek(to: max(player.duration, item.duration))
+            transportButton("goforward.5", size: 24, title: "前进 5 秒".localized()) {
+                player.skip(by: 5)
+            }
+            transportButton("goforward.15", size: 32, title: "前进 15 秒".localized()) {
+                player.skip(by: 15)
             }
         }
         .padding(.top, 16)
@@ -279,7 +284,9 @@ struct PlayerDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func transportButton(_ systemName: String, size: CGFloat,
+    /// 15 秒档的图标比 5 秒档大（32 / 24），对应 macOS 的 34 / 24 层级；
+    /// 热区统一 44pt。SF Symbol 名字不会被 VoiceOver 正确朗读，所以要显式给标签。
+    private func transportButton(_ systemName: String, size: CGFloat, title: String,
                                  action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
@@ -289,6 +296,7 @@ struct PlayerDetailView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 
     // MARK: 倍速 / 剩余 / 从头播放
