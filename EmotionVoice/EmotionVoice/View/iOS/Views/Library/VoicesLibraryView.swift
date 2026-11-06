@@ -50,6 +50,8 @@ struct VoicesLibraryView: View {
     @State private var totalCount: Int = 0
     @State private var didLoad = false
     @State private var isAppending = false
+    /// 是否已经出现过一次：切回标签时的空态自愈不能打断首屏骨架淡入
+    @State private var didAppearOnce = false
 
     @State private var sheetPresented = false
 
@@ -189,6 +191,15 @@ struct VoicesLibraryView: View {
             .presentationDragIndicator(.visible)
         }
         .task { initialLoad() }
+        .onAppear {
+            defer { didAppearOnce = true }
+            // 切回标签时的空态自愈：旧版本 / 其它取消路径可能留下
+            // 「didLoad = true 但 voices 为空」。VM 的 totalCount 是同步查库得到的，
+            // 不受 swapTask 影响，可据此区分「没落地」和「搜索确实无结果」。
+            // 首次出现不干预，避免把骨架 → 卡片的淡入动画吃掉。
+            guard didAppearOnce, didLoad, voices.isEmpty, vm.totalCount > 0 else { return }
+            reload(animated: false)
+        }
         // ⚠️ 筛选一变就写进程内 store，不等 reload：Sheet 的刷新排在 0.25s 之后，
         //   用户完全可能在这之前切标签 / 跳走，那时状态必须已经安全落地。
         .onChange(of: searchText) { _, _ in
@@ -461,25 +472,38 @@ struct VoicesLibraryView: View {
     ///
     /// ⚠️ 换数据的瞬间 `contentVisible` 已经是 0，所以 `.id` 那一次硬替换看不见；
     ///    紧接着把它置回 1，用户看到的就是「旧列表淡出 → 新列表浮上来」。
+    ///
+    /// ⚠️ **取消只代表「不做动画」，绝不代表「数据不要了」**：
+    ///    `onDisappear` 会取消 `swapTask`，早先这里 `guard !Task.isCancelled { return }`
+    ///    直接把这批数据丢掉，`didLoad` 却已是 true、`.task` 又不会重跑 ——
+    ///    切回标签就是「分类是全部、一个音色都没有」的永久空态。
     private func apply(_ fresh: [Voice], _ total: Int, animated: Bool = true) {
         guard animated else {
-            voices = fresh
-            totalCount = total
-            scrollResetID += 1
+            commit(fresh, total)
             return
         }
         withAnimation(Self.fadeOutAnimation) { contentVisible = false }
         swapTask?.cancel()
         swapTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: Self.fadeOutNanos)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                // 离屏期间被取消：无动画同步落地，回来时列表必须已经有数据、且不透明
+                commit(fresh, total)
+                contentVisible = true
+                return
+            }
             withAnimation(Self.swapAnimation) {
-                voices = fresh
-                totalCount = total
-                scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
+                commit(fresh, total)
                 contentVisible = true
             }
         }
+    }
+
+    /// 数据落地与动画解耦：任何路径（正常淡入 / 被取消 / 无动画）都走这里
+    private func commit(_ fresh: [Voice], _ total: Int) {
+        voices = fresh
+        totalCount = total
+        scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
     }
 
     /// 追加下一页

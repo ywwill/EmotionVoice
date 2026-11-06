@@ -420,25 +420,34 @@ struct VoicePickerSheet: View {
     }
 
     /// 落地一页新数据：淡出 → 换 → 淡入（换的瞬间内容已经是透明的，硬替换看不见）
+    ///
+    /// ⚠️ 与 `VoicesLibraryView` 同口径：被取消只代表不做动画，数据必须照样落地，
+    ///    否则 `onDisappear` 一取消就留下「didLoad = true + voices 为空」的空态。
     private func apply(_ fresh: [Voice], _ total: Int, animated: Bool = true) {
         guard animated else {
-            voices = fresh
-            totalCount = total
-            scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
+            commit(fresh, total)
             return
         }
         withAnimation(Self.fadeOutAnimation) { contentVisible = false }
         swapTask?.cancel()
         swapTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: Self.fadeOutNanos)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                commit(fresh, total)
+                contentVisible = true
+                return
+            }
             withAnimation(Self.swapAnimation) {
-                voices = fresh
-                totalCount = total
-                scrollResetID += 1
+                commit(fresh, total)
                 contentVisible = true
             }
         }
+    }
+
+    private func commit(_ fresh: [Voice], _ total: Int) {
+        voices = fresh
+        totalCount = total
+        scrollResetID += 1   // 换掉 ScrollView 的 id → 滚动复位到顶部
     }
 
     /// 追加下一页
