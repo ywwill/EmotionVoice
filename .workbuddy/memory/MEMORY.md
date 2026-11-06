@@ -47,3 +47,8 @@ Swift+SwiftUI，target `Emora`(macOS)/`iOSEmora`(iOS 18.6)；SPM: SQLite.swift /
 - 积分全链路 Double(≤2位)：`CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5），`TextSplitter.calculateCharCount`（CJK 算2），云端 `numeric(10,2)`。
 - `GenerationDialog` 完成态 `displayName = defaultAudioName(from: vm.plainText)`；`commitName()` 清空必须写 `displayName: nil` 才回退时间戳；`hasResult = generatedAudioURL != nil && !isGenerating`；macOS 只 `Views/GenerationOverlay.swift` 订阅 VM。
 - ⚠️ `PackageCard`（iOS 套餐卡）副标题**禁 `.lineLimit(1)`**：2 列卡片最窄内容区 110pt（320pt 屏），英文译文最长 178.8pt 会被截成「…」；中文/繁中 71.5pt 本就放得下，别改中文文案。已用 `lineLimit(2)`+`fixedSize(horizontal:false,vertical:true)`+`Spacer(minLength:0)`+`maxHeight:.infinity` 等高兜底，并缩短 en.lproj 三条长译文（2026-11-05）。
+
+## iOS 创作参数持久化
+- `StudioParamStore`（定义在已有 `View/iOS/Views/Studio/StudioParamSheet.swift` 内，避免改 pbxproj）管语速/音量/格式/采样率，独立键 `iosStudioParam.*`；`StudioView.onAppear` → `restoreIfNeeded`（进程内一次）、4 个 `.onChange` → `save`；「重置」按钮在 `audioControlHeader`（自绘 GroupTitle 样式，别塞 `SheetNavBar`）→ `reset`。细节见 2026-11-06.md。
+- ⚠️ **禁复用 `AppState.defaultFormat` / `defaultSampleRate`**：那是 macOS「设置页默认值」语义（iOS 设置页照搬同键），工作台调参数不该改写全局默认设置；iOS 工作台本来也不读它们（macOS `VoiceStudioView.onAppear` 才读）。
+- 恢复时四项全校验（缺键用 `object(forKey:) != nil` 判，别用 `double(forKey:)`——缺键返回 0 会误判成音量 0）；重置回出厂常量 `1.0 / 100 / wav / 22050`，只覆盖这 4 项，音色与语音指令不动。

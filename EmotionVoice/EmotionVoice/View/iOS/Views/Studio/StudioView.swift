@@ -2,29 +2,11 @@
 //  StudioView.swift
 //  iOSEmora
 //
-//  创作工作台（对应 macOS「语音合成」）
-//
-//  macOS 的「左 980pt 编辑区 + 右 350pt 参数栏」在 iPhone 上收成单列。
-//
-//  ⚠️ iPhone 垂直空间极其紧张：**一切能给编辑器的都要给编辑器**。
-//  键盘 + accessory 吃掉 ~450pt，再减掉导航栏 / 底部生成条，内容区只剩 200~250pt。所以：
-//   ① 音色切换 → 导航栏左侧一个 🎭 图标按钮（`.topBarLeading`），彻底移出内容流；
-//   ② 音频参数 → 顶部一条 34pt 摘要条，点开参数 Sheet 才有全量控件；
-//   ③ 文本卡标题行（含字数）也是非必要装饰；
-//   ②③ 在键盘弹出时收成 0 高，字数挪到底部生成条（bottom bar 不会被键盘压住）。
-//  展开态（iPhone Duo / iPad）`usesTwoColumnStudio` 为真 → 回到「左编辑 + 右参数」两栏，不参与收缩。
-//
+//  创作工作台
 
 import SwiftUI
 import UIKit
 
-/// 性能排查开关。
-///
-/// `usePlainTextEditor = true` 时，创作页用系统原生 `TextEditor` 顶替自绘编辑器
-/// （不加载 `TokenCapsuleOverlay`、不挂键盘 accessory 的 UIHostingController）。
-/// 用来判定「输入 / 切标签卡顿」是否与 `TokenTextEditor` 有关：
-///  * 换成原生后依旧卡 → 与编辑器无关，去查 `RootTabView` 与各标签页 body；
-///  * 换成原生后流畅 → 瓶颈确实在自绘编辑器（胶囊层绘制 / accessory）。
 enum IOSPerfDebug {
     static let usePlainTextEditor = false
 }
@@ -43,11 +25,6 @@ struct StudioView: View {
     @StateObject private var nowPlaying = NowPlayingStore.shared
 
     // MARK: 编辑器状态
-
-    /// 编辑器内容仓库。
-    /// ⚠️ 内容刻意不放 `@State`：那样每敲一个字都会让整个 StudioView body（含
-    /// UIViewRepresentable 的 updateUIView、键盘 accessory 的 SwiftUI 树）重算一次。
-    /// 仓库里只有「字数」这种低频值会发布，且做了 0.25s 合并。
     @StateObject private var editor = TokenEditorStore()
 
     /// 仅 `IOSPerfDebug.usePlainTextEditor` 打开时使用的对照用文本
@@ -61,8 +38,6 @@ struct StudioView: View {
     @State private var paramsPresented = false
     @State private var voicePickerPresented = false
     @State private var alertItem: AlertItem? = nil
-    /// 「生成音频」的二次确认。生成要扣积分，误触代价高 —— 前置校验通过后先弹窗，
-    /// 用户确认才真正走 `startGeneration()`。
     @State private var confirmGenerate = false
 
     // MARK: 键盘让位（底部条不能压到 accessory）
@@ -130,6 +105,8 @@ struct StudioView: View {
                   dismissButton: .default(Text("好".localized())))
         }
         .onAppear {
+            // 四项音频参数冷启动恢复（只跑一次，见 Store 里的 didRestore）
+            StudioParamStore.shared.restoreIfNeeded(to: vm)
             restoreFromViewModel()
             restoreSelectedVoice()
         }
@@ -138,6 +115,14 @@ struct StudioView: View {
         .onChange(of: vm.selectedVoiceKey) { _, _ in
             if let voice = vm.voice { appState.selectedVoice = voice }
         }
+        // 四项参数实时落盘：Sheet 里拖完 slider 立刻杀进程也不丢。
+        // ⚠️ 挂在常驻的 StudioView 而不是 Sheet 上：Sheet 只在打开期间存在，
+        //    且冷启动恢复写进 VM 的这一步也靠它们把值补齐到磁盘。
+        // ⚠️ paramsText / sampleRateText 本来就已经读过这四个属性，不会新增订阅成本。
+        .onChange(of: vm.rate) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.volume) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.selectedFormat) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
         // ⚠️ 只要离开创作页就收键盘：键盘还在屏上时进二级页，返回后底部那条会错位
         // （成因与统一收口见 `TabRouter.push`）。这里同时兜住「切标签」这类不走 push 的离开。
         .onDisappear(perform: finishEditing)

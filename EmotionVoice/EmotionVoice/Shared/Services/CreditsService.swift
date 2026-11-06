@@ -87,7 +87,7 @@ final class CreditsService {
     var monthlyUsed: Double {
         get {
             let v = UserDefaults.standard.double(forKey: monthlyUsedKey)
-            return v == 0 ? Double(Constants.defaultMonthlyUsed) : v
+            return v 
         }
         set {
             UserDefaults.standard.set(newValue, forKey: monthlyUsedKey)

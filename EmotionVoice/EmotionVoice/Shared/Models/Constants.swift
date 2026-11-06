@@ -57,17 +57,11 @@ enum Constants {
 
     // MARK: - 默认采样率
     static let defaultSampleRate = 22050
-    static let defaultFormat = "wav"
+    static let defaultFormat = "mp3"
 
     // MARK: - 积分换算
     /// 每 1000 字符 = 1 积分，最低 1 积分
     static let pointsPerThousandChars = 1.0
-
-    /// 当前用户积分余额（演示用，本地存储）
-    static let defaultCreditsBalance = 1280
-
-    /// 当前用户本月已用积分（演示用）
-    static let defaultMonthlyUsed = 4560
 
     // MARK: - 情感标签
     /// 控制类情感标签
