@@ -508,64 +508,10 @@ struct VoiceAvatar: View {
 
     // MARK: 配色
 
-    /// 配色由 seed 确定性生成（同一音色永远同色），不再是 8 组色对轮换 ——
-    /// 599 个音色时 8 组平均每组撞 75 次，列表里到处是同色方块。
-    ///
-    /// - 色相：黄金角 137.508° 步进散开，相邻哈希值必落在色环两端；
-    ///   并跳过 38°–85°（黄 → 黄绿）：白字在那个区间无论明度都只能压成橄榄/土黄。
-    /// - 饱和度 0.78–0.94、明度按曲线 ±0.03 抖动 → 可区分配色量级 10⁴。
-    ///   实测 599 个音色得到 595 种互不相同的中点色（旧版只有 8 种，一屏 20 个必有重复）。
-    /// - 明度查 `brightnessCurve`（按「渐变中点 vs 白字对比度 ≈ 3.3:1」反解而来）：
-    ///   草绿/青色天然偏亮，自动压暗后白字才读得清；紫/蓝深色系提到最亮保持通透。
-    ///   实测对比度 2.7–8.0，平均 3.8（旧色板最差的亮蓝/亮黄只有 1.4–2.1）。
+    /// 配色由 seed 确定性生成（同一音色永远同色）。
+    /// 实际算法见 `VoiceAvatarPalette`（macOS / iOS 共用，保证两端同音色同色、且整体调成更鲜明的 Aurora 紫粉调性）。
     static func gradient(for seed: String) -> [Color] {
-        let h = fingerprint(seed)
-        let hue = baseHue(for: Double(h % 1024) / 1024)
-        let sat = 0.78 + Double((h >> 10) % 17) * 0.01
-        let bri = min(max(baseBrightness(for: hue) + Double((h >> 20) % 7) * 0.01 - 0.03, 0.62), 0.88)
-        // 上浅下深（沿用旧色板走向）：顶部降饱和提亮、底部加饱和压暗，色相各偏 5° 让渐变有层次
-        return [
-            Color(hue: wrap(hue - 5) / 360, saturation: sat * 0.84, brightness: min(bri + 0.11, 1)),
-            Color(hue: wrap(hue + 5) / 360, saturation: sat, brightness: bri),
-        ]
-    }
-
-    /// 0…1 均匀取值 → 色相，跳过 38°–85° 的黄/黄绿死区
-    private static func baseHue(for unit: Double) -> Double {
-        let skipLow = 38.0, skipHigh = 85.0
-        let split = skipLow / (360 - (skipHigh - skipLow))
-        if unit < split { return unit / split * skipLow }
-        return skipHigh + (unit - split) / (1 - split) * (360 - skipHigh)
-    }
-
-    /// 色相 0°、15° … 345° 共 24 档底座明度，档间线性插值
-    /// （45°–75° 三档落在被跳过色区里，数值只作为边界插值用）
-    private static let brightnessCurve: [Double] = [
-        1.00, 0.88, 0.74, 0.70, 0.60, 0.58, 0.58, 0.58,
-        0.59, 0.58, 0.58, 0.57, 0.58, 0.69, 0.89, 1.00,
-        1.00, 1.00, 1.00, 1.00, 0.94, 0.97, 1.00, 1.00,
-    ]
-
-    private static func baseBrightness(for hue: Double) -> Double {
-        let step = hue / 15
-        let i = min(Int(step), brightnessCurve.count - 1)
-        let j = (i + 1) % brightnessCurve.count
-        let t = step - Double(i)
-        return brightnessCurve[i] + (brightnessCurve[j] - brightnessCurve[i]) * t
-    }
-
-    private static func wrap(_ hue: Double) -> Double {
-        (hue + 360).truncatingRemainder(dividingBy: 360)
-    }
-
-    /// FNV-1a：跨进程稳定的 64 位哈希。`hashValue` 每次启动都变，不能拿来上色
-    private static func fingerprint(_ seed: String) -> UInt64 {
-        var hash: UInt64 = 1469598103934665603
-        for byte in seed.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 1099511628211
-        }
-        return hash
+        VoiceAvatarPalette.gradient(for: seed)
     }
 }
 

@@ -19,7 +19,7 @@ struct VoiceRow: View {
     var body: some View {
         HStack(spacing: 10) {
             // 头像
-            AvatarView(text: voice.localizedAvatar, size: 28)
+            AvatarView(text: voice.localizedAvatar, size: 28, seed: voice.key)
 
             // 名称 / 描述
             VStack(alignment: .leading, spacing: 1) {

@@ -459,7 +459,7 @@ struct VoiceStudioView: View {
             // 当前音色
             if let voice = vm.voice {
                 HStack(spacing: 10) {
-                    AvatarView(text: voice.localizedAvatar, size: 40)
+                    AvatarView(text: voice.localizedAvatar, size: 40, seed: voice.key)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
                             Text(voice.localizedName)

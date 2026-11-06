@@ -263,14 +263,33 @@ struct WaveBar: View {
 struct AvatarView: View {
     let text: String
     var size: CGFloat = 32
+    /// 取色种子，默认用显示文本；调用方应传 `voice.key` 以保证两端同音色同色
+    var seed: String? = nil
     var gradientColors: [Color]? = nil
+
+    /// `.redacted(.placeholder)` 只能灰化文本 / 图标，**不会**灰化 Shape 上的渐变填充。
+    /// 骨架屏复用了真实 VoiceCard，若不处理，20 张骨架卡的头像会一起露出
+    /// `__skeleton__` 算出的紫色方块，整屏看起来像「紫色骨架」。
+    /// 这里在占位态显式降级为中性冷灰蓝，与 SkeletonBlock 的灰占位观感一致，
+    /// 且与调色板算法解耦：以后算法落点怎么变，骨架都不会再冒出彩色。
+    @Environment(\.redactionReasons) private var redactionReasons
+
+    private var resolvedColors: [Color] {
+        if redactionReasons.contains(.placeholder) { return Self.placeholderColors }
+        return gradientColors ?? VoiceAvatarPalette.gradient(for: seed ?? text)
+    }
+
+    private static let placeholderColors: [Color] = [
+        Color(hue: 212/360, saturation: 0.10, brightness: 0.34),
+        Color(hue: 212/360, saturation: 0.13, brightness: 0.26),
+    ]
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: AppRadius.small)
                 .fill(
                     LinearGradient(
-                        colors: gradientColors ?? resolvedGradient,
+                        colors: resolvedColors,
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -280,19 +299,6 @@ struct AvatarView: View {
                 .foregroundStyle(.white)
         }
         .frame(width: size, height: size)
-    }
-
-    // 哈希色板缓存：避免每次 body 都重新计算 hash & 选取颜色对
-    private var resolvedGradient: [Color] {
-        let palettes: [[Color]] = [
-            [Color(hex: 0xE8A968), Color(hex: 0xD49559)],
-            [Color(hex: 0x6A9FB0), Color(hex: 0x4D8499)],
-            [Color(hex: 0xB07A9F), Color(hex: 0x955A82)],
-            [Color(hex: 0x8AA868), Color(hex: 0x6B8A4D)],
-            [Color(hex: 0xC68F6B), Color(hex: 0xA0714D)],
-            [Color(hex: 0x7A8AB0), Color(hex: 0x5A6A90)],
-        ]
-        return palettes[abs(text.hashValue) % palettes.count]
     }
 }
 

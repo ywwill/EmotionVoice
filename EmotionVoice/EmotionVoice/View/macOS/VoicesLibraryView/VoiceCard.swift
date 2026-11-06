@@ -127,7 +127,7 @@ struct VoiceCard: View {
 
     private var header: some View {
         HStack(alignment: .top) {
-            AvatarView(text: item.avatar, size: 40)
+            AvatarView(text: item.avatar, size: 40, seed: item.id)
             
             Spacer()
             
