@@ -632,3 +632,132 @@ struct AlertItem: Identifiable, Equatable {
     let title: String
     let message: String
 }
+
+// MARK: - 创作参数持久化（iOS / macOS 共用）
+
+/// 工作台四项音频参数的一组默认值。
+///
+/// iOS 没有「设置页默认值 → 工作台」这条联动，用 `.factory`（出厂常量）；
+/// macOS 设置页能配「默认格式 / 采样率」，由 `VoiceStudioView` 注入那两项，
+/// 语速 / 音量仍用出厂值。设置页因此仍是「重置目标 + 全新安装的起始参数」。
+struct StudioParamValues {
+    var rate: Double
+    var volume: Double
+    var format: String
+    var sampleRate: Int
+
+    static var factory: StudioParamValues {
+        StudioParamValues(rate: 1.0,
+                          volume: 100,
+                          format: Constants.defaultFormat.lowercased(),
+                          sampleRate: Constants.defaultSampleRate)
+    }
+}
+
+/// 工作台四项音频参数（语速 / 音量 / 格式 / 采样率）的持久化。
+///
+/// ⚠️ 刻意**不把 `AppState.defaultFormat` / `defaultSampleRate` 当存储**：
+/// 那是「设置页默认值」语义，工作台调参数不该改写用户的全局默认设置。
+/// 这里存的是「上次用的参数」；macOS 只在「无存档起点」时读设置页的值，
+/// 「重置」两端一律回 `.factory` 出厂默认（当前 mp3）—— 重置不该被设置页旧值污染。
+/// ⚠️ 放在已有 Shared 文件里：新增 .swift 要手工改 pbxproj 四处 × 两个 target。
+@MainActor
+final class StudioParamStore {
+
+    static let shared = StudioParamStore()
+
+    private enum Key {
+        static let rate = "studioParam.rate"
+        static let volume = "studioParam.volume"
+        static let format = "studioParam.format"
+        static let sampleRate = "studioParam.sampleRate"
+    }
+
+    /// 2026-11-06 首版只在 iOS 落地时用的键。统一到平台无关命名后搬一次，
+    /// 免得已经调过参数的用户升级后「记忆丢了」。
+    private enum LegacyKey {
+        static let rate = "iosStudioParam.rate"
+        static let volume = "iosStudioParam.volume"
+        static let format = "iosStudioParam.format"
+        static let sampleRate = "iosStudioParam.sampleRate"
+    }
+
+    private let ud = UserDefaults.standard
+    /// 冷启动只恢复一次：切标签 / 切换侧边栏回来 `onAppear` 会再跑，
+    /// 那时 VM 里是本次会话的实时值，不能被磁盘上的旧值重新盖掉。
+    private var didRestore = false
+
+    private init() { migrateLegacyKeysIfNeeded() }
+
+    private func migrateLegacyKeysIfNeeded() {
+        let pairs = [(LegacyKey.rate, Key.rate),
+                     (LegacyKey.volume, Key.volume),
+                     (LegacyKey.format, Key.format),
+                     (LegacyKey.sampleRate, Key.sampleRate)]
+        for (old, new) in pairs {
+            guard ud.object(forKey: new) == nil,
+                  let value = ud.object(forKey: old) else { continue }
+            ud.set(value, forKey: new)
+            ud.removeObject(forKey: old)
+        }
+    }
+
+    /// 把调用方给的默认值净化到工作台 UI 能表达的范围。
+    /// 例：macOS 设置页能选 PCM / Opus，但工作台只有 MP3 / WAV 两个按钮，
+    /// 原样塞进去会出现「两个都不选中」。
+    private func sanitize(_ d: StudioParamValues) -> StudioParamValues {
+        var result = d
+        let format = d.format.lowercased()
+        result.format = ["mp3", "wav"].contains(format) ? format : StudioParamValues.factory.format
+        if !(0.5...2.0).contains(result.rate) { result.rate = StudioParamValues.factory.rate }
+        if !(0.0...100.0).contains(result.volume) { result.volume = StudioParamValues.factory.volume }
+        if !Constants.sampleRates.contains(where: { $0.rate == result.sampleRate }) {
+            result.sampleRate = StudioParamValues.factory.sampleRate
+        }
+        return result
+    }
+
+    /// 从磁盘恢复到 VM。缺键 / 越界 / 非法枚举值都回落到 `defaults`。
+    func restoreIfNeeded(to vm: VoiceStudioViewModel, defaults: StudioParamValues? = nil) {
+        guard !didRestore else { return }
+        didRestore = true
+        let d = sanitize(defaults ?? StudioParamValues.factory)
+
+        // 用 object(forKey:) 判「有没有存过」：double/integer(forKey:) 缺键时返回 0，
+        // 那正好是合法的音量值，直接读会把「从没存过」误判成「用户存了 0」。
+        let rate: Double? = ud.object(forKey: Key.rate) != nil ? ud.double(forKey: Key.rate) : nil
+        let volume: Double? = ud.object(forKey: Key.volume) != nil ? ud.double(forKey: Key.volume) : nil
+        let format = ud.string(forKey: Key.format)?.lowercased()
+        let sampleRate: Int? = ud.object(forKey: Key.sampleRate) != nil ? ud.integer(forKey: Key.sampleRate) : nil
+
+        vm.rate = rate.flatMap { (0.5...2.0).contains($0) ? $0 : nil } ?? d.rate
+        vm.volume = volume.flatMap { (0.0...100.0).contains($0) ? $0 : nil } ?? d.volume
+        vm.selectedFormat = format.flatMap { ["mp3", "wav"].contains($0) ? $0 : nil } ?? d.format
+
+        if let sampleRate, Constants.sampleRates.contains(where: { $0.rate == sampleRate }) {
+            vm.sampleRate = sampleRate
+        } else {
+            vm.sampleRate = d.sampleRate
+        }
+    }
+
+    /// 实时落盘。四项一起写，保证任意一项在别处被改动也不会漏。
+    func save(from vm: VoiceStudioViewModel) {
+        ud.set(vm.rate, forKey: Key.rate)
+        ud.set(vm.volume, forKey: Key.volume)
+        ud.set(vm.selectedFormat.lowercased(), forKey: Key.format)
+        ud.set(vm.sampleRate, forKey: Key.sampleRate)
+    }
+
+    /// 「重置」：四项一起回 `defaults`（不传即 `.factory` 出厂默认）并立刻落盘，
+    /// 否则重启后又变回旧参数。音色、语音指令、语言 / 预设不在重置范围内。
+    /// ⚠️ 调用方一般不要传 `defaults`：设置页配的 WAV / PCM 会让「重置」看起来没生效。
+    func reset(on vm: VoiceStudioViewModel, to defaults: StudioParamValues? = nil) {
+        let d = sanitize(defaults ?? StudioParamValues.factory)
+        vm.rate = d.rate
+        vm.volume = d.volume
+        vm.selectedFormat = d.format
+        vm.sampleRate = d.sampleRate
+        save(from: vm)
+    }
+}

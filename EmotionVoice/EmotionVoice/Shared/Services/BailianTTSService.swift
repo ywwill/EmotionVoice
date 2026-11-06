@@ -46,6 +46,12 @@ final class BailianTTSService {
 
     // MARK: - 公开接口
 
+    // ⚠️ 下面两个入口的默认实参一律读 `Constants`：默认音频格式 / 采样率的
+    // 唯一数据源在 `Constants.defaultFormat` / `Constants.defaultSampleRate`
+    // （当前为 mp3 / 22050Hz）。别在这里写死 "wav" / 48000 —— 设置页与工作台
+    // 都已经跟随常量，写死会让「省略参数」的调用路径悄悄用回旧默认值。
+    // 正常生成流程会把 vm 里的四项显式传进来，默认实参只是兜底。
+
     /// 语音合成（流式接收）
     func synthesize(
         text: String,
@@ -53,8 +59,8 @@ final class BailianTTSService {
         emotion: String? = nil,
         rate: Double = 1.0,
         volume: Double = 100,
-        sampleRate: Int = 48000,
-        format: String = "wav",
+        sampleRate: Int = Constants.defaultSampleRate,
+        format: String = Constants.defaultFormat,
         nlInstruction: String? = nil
     ) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
@@ -82,8 +88,8 @@ final class BailianTTSService {
         emotion: String? = nil,
         rate: Double = 1.0,
         volume: Double = 100,
-        sampleRate: Int = 48000,
-        format: String = "wav",
+        sampleRate: Int = Constants.defaultSampleRate,
+        format: String = Constants.defaultFormat,
         nlInstruction: String? = nil,
         onAudio: ((Data) -> Void)? = nil,
         completion: @escaping (Result<Data, Error>) -> Void

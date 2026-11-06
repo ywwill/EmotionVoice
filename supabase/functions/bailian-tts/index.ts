@@ -144,6 +144,13 @@ interface TTSRequest {
   instruction?: string | null;
 }
 
+// 客户端省略 format / sample_rate 时的兜底，与 Swift 侧
+// `Constants.defaultFormat` / `Constants.defaultSampleRate` 保持一致（mp3 / 22050）。
+// 正常生成流程客户端会显式带上这两项；改默认值只影响旧客户端或手工调用。
+// ⚠️ 这两项若调整，记得同步 `EmotionVoice/Shared/Models/Constants.swift`。
+const DEFAULT_FORMAT = "mp3";
+const DEFAULT_SAMPLE_RATE = 22050;
+
 function buildRunTaskEvent(
   taskId: string,
   req: TTSRequest,
@@ -151,8 +158,8 @@ function buildRunTaskEvent(
   const parameters: Record<string, unknown> = {
     text_type: "PlainText",
     voice: req.voice ?? "",
-    format: (req.format ?? "wav").toLowerCase(),
-    sample_rate: req.sample_rate ?? 48000,
+    format: (req.format ?? DEFAULT_FORMAT).toLowerCase(),
+    sample_rate: req.sample_rate ?? DEFAULT_SAMPLE_RATE,
     volume: Math.trunc(req.volume ?? 100),
     rate: req.rate ?? 1.0,
     pitch: 1.0,

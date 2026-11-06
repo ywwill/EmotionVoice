@@ -8,87 +8,8 @@
 
 import SwiftUI
 
-// MARK: - 创作参数持久化
-
-/// iOS 工作台四项音频参数（语速 / 音量 / 格式 / 采样率）的持久化。
-///
-/// ⚠️ 刻意**不复用** `AppState.defaultFormat` / `defaultSampleRate`：那两项是
-/// macOS「设置页默认值」语义（iOS 设置页照搬了同一组 UserDefaults 键），
-/// 在工作台里调参数不该改写用户的全局默认设置。这里记的是「上次用的参数」，
-/// 两套状态彼此独立，macOS 端完全不受影响。
-/// ⚠️ 定义在本文件而不是新建 .swift：新增 iOS 文件要手工改 pbxproj 四处。
-@MainActor
-final class StudioParamStore {
-
-    static let shared = StudioParamStore()
-
-    /// 出厂默认：与 `VoiceStudioViewModel` 的初始值、`Constants` 保持一致
-    static let defaultRate: Double = 1.0
-    static let defaultVolume: Double = 100
-    static let defaultFormat: String = Constants.defaultFormat.lowercased()
-    static let defaultSampleRate: Int = Constants.defaultSampleRate
-
-    private enum Key {
-        static let rate = "iosStudioParam.rate"
-        static let volume = "iosStudioParam.volume"
-        static let format = "iosStudioParam.format"
-        static let sampleRate = "iosStudioParam.sampleRate"
-    }
-
-    private let ud = UserDefaults.standard
-    /// 冷启动只恢复一次：切 tab 回来 `StudioView.onAppear` 会再跑，
-    /// 那时 VM 里是本次会话的实时值，不能被磁盘上的旧值重新盖掉。
-    private var didRestore = false
-
-    private init() {}
-
-    /// 从磁盘恢复到 VM。字段一律校验：缺键 / 越界 / 非法枚举值都回落到出厂默认，
-    /// 避免旧版本或手工改过 plist 之后 slider / segmented 落在无选项的状态。
-    func restoreIfNeeded(to vm: VoiceStudioViewModel) {
-        guard !didRestore else { return }
-        didRestore = true
-
-        // 用 object(forKey:) 判「有没有存过」：double/integer(forKey:) 缺键时返回 0，
-        // 那正好是合法的音量值，直接读会把「从没存过」误判成「用户存了 0」。
-        let rate: Double? = ud.object(forKey: Key.rate) != nil ? ud.double(forKey: Key.rate) : nil
-        let volume: Double? = ud.object(forKey: Key.volume) != nil ? ud.double(forKey: Key.volume) : nil
-        let format = ud.string(forKey: Key.format)?.lowercased()
-        let sampleRate: Int? = ud.object(forKey: Key.sampleRate) != nil ? ud.integer(forKey: Key.sampleRate) : nil
-
-        vm.rate = rate.flatMap { (0.5...2.0).contains($0) ? $0 : nil } ?? Self.defaultRate
-        vm.volume = volume.flatMap { (0.0...100.0).contains($0) ? $0 : nil } ?? Self.defaultVolume
-
-        if let format, ["mp3", "wav"].contains(format) {
-            vm.selectedFormat = format
-        } else {
-            vm.selectedFormat = Self.defaultFormat
-        }
-
-        if let sampleRate, Constants.sampleRates.contains(where: { $0.rate == sampleRate }) {
-            vm.sampleRate = sampleRate
-        } else {
-            vm.sampleRate = Self.defaultSampleRate
-        }
-    }
-
-    /// 实时落盘。四项一起写，保证任意一项在别处被改动也不会漏。
-    func save(from vm: VoiceStudioViewModel) {
-        ud.set(vm.rate, forKey: Key.rate)
-        ud.set(vm.volume, forKey: Key.volume)
-        ud.set(vm.selectedFormat.lowercased(), forKey: Key.format)
-        ud.set(vm.sampleRate, forKey: Key.sampleRate)
-    }
-
-    /// 「重置」：四项一起回出厂默认，并立刻落盘 —— 否则重启后又变回旧参数。
-    /// 音色、语音指令、语言 / 预设不在本次重置范围内。
-    func reset(on vm: VoiceStudioViewModel) {
-        vm.rate = Self.defaultRate
-        vm.volume = Self.defaultVolume
-        vm.selectedFormat = Self.defaultFormat
-        vm.sampleRate = Self.defaultSampleRate
-        save(from: vm)
-    }
-}
+// 四项参数的持久化走 `Shared/ViewModels/VoiceStudioViewModel.swift` 里的
+// `StudioParamStore`（iOS / macOS 共用），本文件不再重复定义。
 
 struct StudioParamSheet: View {
     @Environment(\.aurora) private var c

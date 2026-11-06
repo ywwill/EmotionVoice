@@ -60,9 +60,11 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = appState.defaultVoiceKey
                 appState.selectedVoice = appState.defaultVoice
             }
-            // 从设置中读取默认采样率和格式
-            vm.sampleRate = appState.defaultSampleRate
-            vm.selectedFormat = appState.defaultFormat
+            // 四项音频参数：记住「上次用的」而不是「设置页默认值」。
+            // 设置页配的格式 / 采样率只作为「无存档时的起点」传进去；
+            // ⚠️ 不要把它传给 reset ——「重置」必须回出厂值（mp3），否则设置页
+            //    存过 WAV 时点重置会回到 WAV，与 iOS 不一致。见 audioControlCard。
+            StudioParamStore.shared.restoreIfNeeded(to: vm, defaults: studioParamDefaults)
         }
         .onChange(of: appState.selectedVoice?.key) { _, newKey in
             // 从音色库跳转过来时同步选中音色
@@ -70,6 +72,24 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = newKey
             }
         }
+        // 四项参数实时落盘：改完即使立刻退出 App 也不丢。
+        // ⚠️ 不再像以前那样回写 `appState.defaultFormat` / `defaultSampleRate`：
+        //    工作台调参数不该改写用户在设置页配的全局默认值（与 iOS 一致）。
+        .onChange(of: vm.rate) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.volume) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.selectedFormat) { _, _ in StudioParamStore.shared.save(from: vm) }
+        .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
+    }
+
+    /// macOS 专属：设置页能配「默认格式 / 采样率」，语速 / 音量没有对应设置项，用出厂值。
+    /// ⚠️ 只用于 `restoreIfNeeded` 的「无存档起点」，**不要传给 `reset`**：
+    ///    重置必须回出厂 mp3，否则设置页存过 WAV 就永远重置不回来。
+    /// `StudioParamStore.sanitize` 会把设置页里工作台不支持的格式（PCM / Opus）净化掉。
+    private var studioParamDefaults: StudioParamValues {
+        StudioParamValues(rate: StudioParamValues.factory.rate,
+                          volume: StudioParamValues.factory.volume,
+                          format: appState.defaultFormat,
+                          sampleRate: appState.defaultSampleRate)
     }
 
     /// 工作台主体（不含生成弹窗）
@@ -568,6 +588,29 @@ struct VoiceStudioView: View {
                 Text("🎚️ 音频控制".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
+                // 「重置」覆盖下面语速 / 音量 / 格式 / 采样率四项，与 iOS 参数 Sheet 同构。
+                // 音色、语音指令不参与重置。
+                // ⚠️ 别传 studioParamDefaults：设置页里存过 WAV 会让「重置」回到 WAV。
+                //    重置的语义是「恢复出厂默认」（当前 mp3 / 22050 / 1.0x / 100%），
+                //    设置页那两项只影响「首次启动、无存档」时的起点。
+                Button {
+                    StudioParamStore.shared.reset(on: vm)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("重置".localized())
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(AppColor.accentPrimary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .accessibilityLabel("重置".localized())
+                .accessibilityHint("恢复语速、音量、格式与采样率的默认参数".localized())
             }
 
             VStack(alignment: .leading, spacing: 14) {
@@ -599,7 +642,6 @@ struct VoiceStudioView: View {
                         let selected = vm.selectedFormat.lowercased() == format.lowercased()
                         Button {
                             vm.selectedFormat = format.uppercased()
-                            appState.defaultFormat = format.uppercased()
                         } label: {
                             Text(format.uppercased())
                                 .font(AppFont.monoSmall)
@@ -634,7 +676,6 @@ struct VoiceStudioView: View {
                     let selected = vm.sampleRate == item.rate
                     Button {
                         vm.sampleRate = item.rate
-                        appState.defaultSampleRate = item.rate
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
