@@ -134,14 +134,96 @@ struct ProjectsView: View {
                           placeholder: "搜索名称、文案或音色".localized()) {
             commitSearch()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         .padding(.vertical, 9)
     }
 
     // MARK: - 列表
 
+    /// iPad 大屏走多列网格；其余设备（含 iPad 分屏，宽度不够）保持原 `.plain` List 逐字不变。
     @ViewBuilder
     private var listArea: some View {
+        if metrics.isPadClass {
+            gridArea
+        } else {
+            phoneListArea
+        }
+    }
+
+    private var historyColumns: [GridItem] {
+        let contentWidth = metrics.width - 2 * metrics.pageMargin
+        return Array(repeating: GridItem(.flexible(), spacing: 10),
+                     count: metrics.historyGridColumns(forContentWidth: contentWidth))
+    }
+
+    /// iPad 大屏：按自然日分组，每组内一个多列网格。
+    ///
+    /// ⚠️ 三条 List 专属能力换了实现方式，功能不丢：
+    ///   ① `.swipeActions` 只能在 List 用 → 卡片改挂 `.contextMenu`（长按）提供同一组四操作；
+    ///   ② 分组头吸顶改用 `LazyVStack(pinnedViews: [.sectionHeaders])`；
+    ///   ③ mini player 占位由透明 Section 换成 ScrollView 末尾的等高占位。
+    /// 刷新过渡（`.id` / opacity / offset / 动画参数）与 `phoneListArea` 完全一致。
+    private var gridArea: some View {
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                if vm.isLoading && vm.sections.isEmpty {
+                    LazyVGrid(columns: historyColumns, spacing: 10) {
+                        ForEach(0..<6, id: \.self) { _ in HistorySkeletonRow() }
+                    }
+                    .padding(.horizontal, metrics.pageMargin)
+                    .padding(.top, 13)
+                } else {
+                    ForEach(vm.sections) { section in
+                        Section {
+                            LazyVGrid(columns: historyColumns, spacing: 10) {
+                                ForEach(section.items) { audio in
+                                    gridRow(audio)
+                                        .id(audio.id)
+                                }
+                            }
+                            .padding(.horizontal, metrics.pageMargin)
+                            // 组头底部 7pt 由 HistorySectionHeader 自己给，这里不再叠
+                        } header: {
+                            HistorySectionHeader(section: section)
+                        }
+                    }
+
+                    if showEmpty {
+                        HistoryEmptyState(isSearching: vm.isSearching,
+                                          onCreate: { router.selection = .studio },
+                                          onClearSearch: { clearSearch() },
+                                          onClearFilter: { clearFilter() })
+                    }
+
+                    if vm.hasMoreVisible && !vm.isSearching {
+                        loadMoreRow
+                    }
+                }
+
+                // ⚠️ mini player 是 RootTabView 的全局浮层，不参与 ScrollView 的 safe area，
+                //    不给底部留占位，最后一行滚到底仍会被盖住。
+                if miniPlayerVisible {
+                    Color.clear.frame(height: MiniPlayerView.height + 28)
+                }
+            }
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .id(scrollResetID)
+        .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 12)
+        .animation(.easeOut(duration: 0.28), value: contentVisible)
+        .animation(.spring(response: 0.34, dampingFraction: 0.9), value: vm.sections.count)
+        .animation(RootTabView.dockAnimation, value: miniPlayerVisible)
+    }
+
+    /// 网格卡片：List 的 `.swipeActions` 在这里不可用，改成长按菜单保留四个操作。
+    private func gridRow(_ audio: AudioItem) -> some View {
+        row(audio)
+            .contextMenu { swipeButtons(audio) }
+    }
+
+    @ViewBuilder
+    private var phoneListArea: some View {
         List {
             if vm.isLoading && vm.sections.isEmpty {
                 ForEach(0..<3, id: \.self) { _ in

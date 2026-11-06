@@ -39,7 +39,7 @@ struct RootTabView: View {
     private var palette: AuroraPalette { AuroraPalette(scheme: scheme) }
 
     var body: some View {
-        ScreenMetricsReader { _ in
+        ScreenMetricsReader { metrics in
             ZStack(alignment: .bottom) {
                 TabView(selection: $router.selection) {
                     stack(for: .studio) { StudioView() }
@@ -49,7 +49,7 @@ struct RootTabView: View {
                 .tint(palette.accent)
 
                 // 底部浮层三选一（互斥，不叠放）：撤销 Toast > 后台接收浮条 > mini player
-                bottomDock
+                bottomDock(tabBarClearance: metrics.tabBarClearance)
                     // ⚠️ 这段动画是浮层「进 / 出场」唯一的事务来源：三条分支各自的
                     //    `.transition` 只在状态变化落在带动画的事务里才生效，否则瞬切。
                     //    用 `dockKind` 这个粗粒度字符串做 value —— 只关心「换成了哪一种」，
@@ -69,9 +69,11 @@ struct RootTabView: View {
             // 音色库 / 项目页整体往下推。
             // ⚠️ 让开导航栏：根容器顶边就在状态栏下方，inline 导航栏（44pt）正好占前 44pt，
             //    直接贴顶会盖住「创作」标题和左右 toolbar 按钮，所以下移一个导航栏高度。
+            //    iPadOS 18 把标签栏也并进这一行（胶囊分段控件），顶栏比 iPhone 高约 8pt。
             .overlay(alignment: .top) {
                 updateBannerLayer
-                    .padding(.top, AppUpdateBanner.navBarClearance)
+                    .padding(.top, metrics.isPadClass ? AppUpdateBanner.navBarClearance + 8
+                                                     : AppUpdateBanner.navBarClearance)
                     .animation(.easeInOut(duration: 0.22), value: updateManager.showsBanner)
             }
             .overlay { generationOverlay }
@@ -223,12 +225,14 @@ struct RootTabView: View {
     /// 优先级：撤销 Toast > 后台接收浮条 > mini player。
     /// ⚠️ 三者都占「标签栏之上」同一位置，叠放会互相盖住；多选工具条自己在
     ///    `ProjectsView.safeAreaInset` 里，靠 `uiState.hideMiniPlayer` 让出位置。
+    /// `tabBarClearance` 由 `ScreenMetrics` 按平台给出：iPhone 底部标签栏 58pt，
+    /// iPad（标签栏在顶部）贴底 18pt —— 硬写 58 会让浮层悬在半空。
     @ViewBuilder
-    private var bottomDock: some View {
+    private func bottomDock(tabBarClearance: CGFloat) -> some View {
         if let undo = uiState.undoToast {
             UndoToastView(message: undo) { uiState.consumeUndoToast() }
                 .padding(.horizontal, 12)
-                .padding(.bottom, router.activePath.isEmpty ? 58 : 18)
+                .padding(.bottom, router.activePath.isEmpty ? tabBarClearance : 18)
                 .transition(Self.dockTransition)
                 .zIndex(4)
         } else if !keyboardVisible && studioVM.isGenerating && !appState.showGenerationModal {
@@ -238,7 +242,7 @@ struct RootTabView: View {
             }
             .padding(.horizontal, 16)
             // 抬到标签栏之上；二级界面标签栏已隐藏，贴底即可
-            .padding(.bottom, router.activePath.isEmpty ? 58 : 18)
+            .padding(.bottom, router.activePath.isEmpty ? tabBarClearance : 18)
             .transition(Self.dockTransition)
             .zIndex(2)
         } else if !keyboardVisible && router.activePath.isEmpty && !uiState.hideMiniPlayer,
@@ -257,7 +261,7 @@ struct RootTabView: View {
                            onToggle: { NowPlayingStore.shared.toggle(item) },
                            onClose: { NowPlayingStore.shared.close() })
                 .padding(.horizontal, 12)
-                .padding(.bottom, 58)
+                .padding(.bottom, tabBarClearance)
                 .transition(Self.dockTransition)
                 .zIndex(2)
         }

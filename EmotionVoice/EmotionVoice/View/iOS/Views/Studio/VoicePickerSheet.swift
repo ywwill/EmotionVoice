@@ -64,9 +64,14 @@ struct VoicePickerSheet: View {
     ///    直接改 `opacity` / `offset` 这种可动画属性必然出效果。
     @State private var contentVisible = true
 
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 10),
-              count: metrics.voiceGridColumns)
+    /// ⚠️ 列数按**实测的 sheet 宽度**再封顶：Sheet 的环境值继承的是全屏
+    ///    `ScreenMetrics`，而 iPad 上的 sheet 可能比屏幕窄，直接套 `voiceGridColumns`
+    ///    会把 4~5 列硬塞进细卡片（见 `ScreenMetrics.voiceGridColumns(forContentWidth:)`）。
+    private func columns(forAvailableWidth availableWidth: CGFloat) -> [GridItem] {
+        let capped = min(availableWidth, metrics.voiceGridMaxWidth ?? .infinity)
+        let contentWidth = capped - 2 * metrics.pageMargin
+        return Array(repeating: GridItem(.flexible(), spacing: 10),
+                     count: metrics.voiceGridColumns(forContentWidth: contentWidth))
     }
 
     private var pageSize: Int { metrics.voiceGridColumns * 4 }
@@ -105,7 +110,11 @@ struct VoicePickerSheet: View {
                     searchBar
                     filterBar
                     resultBar
-                    grid
+                    // ⚠️ GeometryReader 在 VStack 里正好吃掉剩余高度（ScrollView 本来也要占满），
+                    //    顺带把 sheet 的真实宽度交给列数计算 —— iPad 的 sheet 未必是全屏宽。
+                    GeometryReader { geo in
+                        grid(availableWidth: geo.size.width)
+                    }
                 }
                 .transition(.opacity)
             }
@@ -302,9 +311,9 @@ struct VoicePickerSheet: View {
 
     // MARK: 网格
 
-    private var grid: some View {
+    private func grid(availableWidth: CGFloat) -> some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 10) {
+            LazyVGrid(columns: columns(forAvailableWidth: availableWidth), spacing: 10) {
                     if didLoad {
                         ForEach(voices) { voice in
                             VoiceCardGrid(
@@ -329,10 +338,11 @@ struct VoicePickerSheet: View {
                             }
                         }
                     } else {
-                        ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
+                        // 骨架数量跟着列数走：iPad 4/5 列只放 8 张会先矮两行、换数据再跳高
+                        ForEach(0..<max(8, pageSize), id: \.self) { _ in VoiceCardSkeleton() }
                     }
                 }
-                .pagePadding()
+                .voiceGridPadding()
                 .padding(.bottom, 4)
 
                 if didLoad && hasMore {

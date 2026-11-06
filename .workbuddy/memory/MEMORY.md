@@ -22,6 +22,9 @@
 
 ## iOS UI / 编辑器
 - `ScreenMetrics` 分档 <375/375–659/**660–1023**/≥1024；两栏 `width>=740 && isWide`；3 标签+各自导航栈；二级页隐藏 tabBar 由 `TabRouter.isTabBarHidden` 驱动；Sheet 统一 `SheetNavBar`；同层不挂两个 `.alert`。
+- ⚠️ **iPad 适配**：`isPadClass = width>=740 && height>=700`（隔开 Duo 横屏 669 与 iPad mini 横屏 744；别用 `sizeClass==.regular`，分屏也是 regular）。两栏编辑卡高度**必须由 GeometryReader 实测** `geo.height-20`，`editorMinHeight` 只兜底、**禁再夹 520 上限**；`wideLayout` 只加一层 `.padding(.horizontal,pageMargin)`，`pagePadding()` 与子视图内边距二选一，叠了会变 48pt。
+- ⚠️ **iPadOS 18 TabView 的标签栏在顶部**（胶囊居中、toolbar 分列两侧），底部无 tabBar：浮层用 `metrics.tabBarClearance`（iPad 18 / iPhone 58），禁硬写 58；顶部更新横幅让位 +8pt。
+- ⚠️ **参数面板单一数据源**：`StudioParamSheet.swift` 里 `StudioParamContent` = 完整参数正文（音色/音频控制/采样率/语音指令），`StudioParamSheet` 只包 `SheetNavBar`。iPad 侧栏直接铺 `StudioParamContent`（`sampleRateColumns: 2`，高度**必须**钉 `editorHeight`，否则内层 ScrollView 撑爆两栏）；iPhone 仍走「摘要条 → Sheet」；折叠屏横屏（非 `isPadClass`）保留 `voiceRow+paramsSummary`。侧栏宽 360。改参数控件只改 Content 一处。
 - ⚠️ 打字不经过 SwiftUI：`TokenEditorStore`（`doc`/`marks` 非 @Published）；accessory 只在 `isDark` 翻转重建；overlay 字段加相等判断才重绘。三类标记各占 1 个 U+FFFC。
 - 底部条不压 accessory：`onKeyboardTopChanged` 报 min(键盘, accessory) → `keyboardSeam`；容器 didSet 自改 frame、`safeAreaInsets=.zero`。
 

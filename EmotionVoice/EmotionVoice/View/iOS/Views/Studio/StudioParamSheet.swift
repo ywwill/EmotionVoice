@@ -2,8 +2,11 @@
 //  StudioParamSheet.swift
 //  iOSEmora
 //
-//  参数 Sheet：macOS 右侧三张卡（音色切换 / 音频控制 / 语音指令）在 iPhone 上合成一张，
-//  medium detent 起步、可上拉到 large。
+//  参数面板：macOS 右侧三张卡（音色切换 / 音频控制 / 语音指令）在 iPhone 上合成一张
+//  medium detent 的 `StudioParamSheet`；iPad 工作台侧栏直接铺开同一份 `StudioParamContent`。
+//
+//  ⚠️ 两者共用一份正文，改参数控件只改一处；`StudioParamSheet` 只负责 SheetNavBar 外壳。
+//     iPhone 的 Sheet 层级、间距、控件行为与拆分前逐字一致。
 //
 
 import SwiftUI
@@ -11,18 +14,14 @@ import SwiftUI
 // 四项参数的持久化走 `Shared/ViewModels/VoiceStudioViewModel.swift` 里的
 // `StudioParamStore`（iOS / macOS 共用），本文件不再重复定义。
 
+// MARK: - iPhone 用的 Sheet
+
 struct StudioParamSheet: View {
     @Environment(\.aurora) private var c
-    @Environment(\.screenMetrics) private var metrics
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject var vm: VoiceStudioViewModel
     @Binding var voicePickerPresented: Bool
-
-    @State private var languagesExpanded = false
-    @State private var showInstructionGuide = false
-
-    private static let instructionLimit = 1000
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,18 +49,43 @@ struct StudioParamSheet: View {
                 }
             )
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    voiceSection
-                    audioControlHeader
-                    audioControlCard
-                    sampleRateSection
-                    instructionSection
-                    Spacer(minLength: 20)
-                }
-            }
+            // 正文与 iPad 侧栏共用
+            StudioParamContent(vm: vm, voicePickerPresented: $voicePickerPresented)
         }
         .background(c.backgroundGrouped)
+    }
+}
+
+// MARK: - 共用正文（iPhone Sheet / iPad 工作台侧栏）
+
+/// 参数正文：不含 SheetNavBar，也不假设自己被 presented。
+///
+/// `sampleRateColumns` 只给 iPad 侧栏传 2 —— 侧栏比 Sheet 窄，3 列会把
+/// 「采样率 + 用途」两行字挤到换行；不传就按 `metrics.sampleRateColumns` 走档位默认。
+struct StudioParamContent: View {
+    @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
+
+    @ObservedObject var vm: VoiceStudioViewModel
+    @Binding var voicePickerPresented: Bool
+    var sampleRateColumns: Int? = nil
+
+    @State private var languagesExpanded = false
+    @State private var showInstructionGuide = false
+
+    private static let instructionLimit = 1000
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                voiceSection
+                audioControlHeader
+                audioControlCard
+                sampleRateSection
+                instructionSection
+                Spacer(minLength: 20)
+            }
+        }
         .sheet(isPresented: $showInstructionGuide) {
             InstructionGuideSheet()
                 .presentationDetents([.medium, .large])
@@ -234,7 +258,7 @@ struct StudioParamSheet: View {
             .padding(.top, 16)
 
             let columns = Array(repeating: GridItem(.flexible(), spacing: 8),
-                                count: metrics.sampleRateColumns)
+                                count: sampleRateColumns ?? metrics.sampleRateColumns)
             LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(Constants.sampleRates) { item in
                     Button { vm.sampleRate = item.rate } label: {

@@ -52,16 +52,23 @@ struct StudioView: View {
     var body: some View {
         VStack(spacing: 0) {
             if metrics.usesTwoColumnStudio {
-                ScrollView {
-                    wideLayout
-                        .padding(.bottom, 10)
+                // ⚠️ GeometryReader 量的是「generateBar 之上」的真实可用高度，直接喂给编辑卡。
+                //    用 ScreenMetrics.height 减固定开销只能靠猜：iPad 竖屏 820×1180 上
+                //    editorMinHeight 原先把高度夹在 520pt，下半屏整整空掉四百多 pt。
+                //    实测高度下 ScrollView 内容刚好一屏（不产生滚动），滑动收键盘仍保留。
+                GeometryReader { geo in
+                    ScrollView {
+                        wideLayout(editorHeight: max(geo.size.height - 20,
+                                                     metrics.editorMinHeight))
+                            .padding(.bottom, 10)
+                    }
+                    // 滚动 = 在浏览、不在打字 → 一开始滚就收键盘，把空间还给正文。
+                    // ⚠️ 用 `.immediately` 而不是 `.interactively`：本页的键盘让位（见 `keyboardSeam`）
+                    // 是「按实测差值 + 0.25s 动画」算出来的，interactive 那种键盘跟手走的过程
+                    // 会让底部条一路追着手指重排（抖），一次性收起反而干净。
+                    // 编辑器内部（窄屏）的滚动收起由 `TokenTextEditor` 的 `keyboardDismissMode` 负责。
+                    .scrollDismissesKeyboard(.immediately)
                 }
-                // 滚动 = 在浏览、不在打字 → 一开始滚就收键盘，把空间还给正文。
-                // ⚠️ 用 `.immediately` 而不是 `.interactively`：本页的键盘让位（见 `keyboardSeam`）
-                // 是「按实测差值 + 0.25s 动画」算出来的，interactive 那种键盘跟手走的过程
-                // 会让底部条一路追着手指重排（抖），一次性收起反而干净。
-                // 编辑器内部（窄屏）的滚动收起由 `TokenTextEditor` 的 `keyboardDismissMode` 负责。
-                .scrollDismissesKeyboard(.immediately)
             } else {
                 // 窄屏不套 ScrollView：音色行 + 参数行是固定高度，
                 // 输入框独占剩余空间撑到底部，与 generateBar 只隔 10pt。
@@ -152,21 +159,40 @@ struct StudioView: View {
     private var narrowLayout: some View {
         VStack(spacing: 0) {
             paramsStrip
-            textCard
+            textCard(horizontalInset: metrics.pageMargin)
         }
     }
 
-    private var wideLayout: some View {
+    /// 宽屏两栏（左编辑 + 右参数）。
+    ///
+    /// `editorHeight` 由外层 GeometryReader 实测传入：ScrollView 里高度本来是无界的，
+    /// 不给确定值的话 `textCard` 里的 GeometryReader / UITextView 会塌成 0。
+    /// ⚠️ 水平边距只在最外层加一次；`pagePadding()` 会再叠一层（共 48pt），
+    /// 且 iPad 大屏下还会触发 `contentMaxWidth` 把两栏夹窄 —— 两栏必须自己管边距。
+    /// ⚠️ 侧栏按设备分流：**iPad 大屏**直接铺开 `StudioParamContent`（原 Sheet 的完整正文），
+    /// 不再用「摘要条 → 点开 Sheet」；折叠屏展开态横屏（高度只有 669pt）仍走摘要条，
+    /// 免得把本来就不够用的纵向空间吃光。
+    private func wideLayout(editorHeight: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            // 宽屏在 ScrollView 里，高度是无界的 —— 必须给个下限，否则撑满修饰会塌成 0
-            VStack(spacing: 0) { textCard.frame(minHeight: metrics.editorMinHeight) }
-            VStack(spacing: 12) {
-                voiceRow
-                paramsSummary
+            textCard(horizontalInset: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: editorHeight)
+            if metrics.isPadClass {
+                // 高度必须钉死：外层是 ScrollView（提案高度无界），侧栏自己的
+                // ScrollView 不定高就会按整份参数内容撑开，把两栏一起顶飞。
+                StudioParamContent(vm: vm,
+                                   voicePickerPresented: $voicePickerPresented,
+                                   sampleRateColumns: 2)
+                    .frame(width: metrics.studioSidebarWidth, height: editorHeight)
+            } else {
+                VStack(spacing: 12) {
+                    voiceRow
+                    paramsSummary
+                }
+                .frame(width: metrics.studioSidebarWidth)
             }
-            .frame(width: 300)
         }
-        .pagePadding()
+        .padding(.horizontal, metrics.pageMargin)
     }
 
     // MARK: 音色行（仅宽屏侧栏；窄屏由导航栏左侧胶囊承担）
@@ -210,7 +236,6 @@ struct StudioView: View {
             .background(cardBackground(radius: AuroraRadius.lg))
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 10)
         .padding(.bottom, 10)
     }
@@ -246,7 +271,7 @@ struct StudioView: View {
     /// 窄屏顶部唯一的横条：音频参数总览 + 语音指令状态，点开完整参数 Sheet。
     ///
     /// ⚠️ 键盘弹出时整条连同上下间距收成 0 高 —— 打字时可视区只剩两百出头，
-    /// 这 52pt 是最该让出来的空间（`collapseChrome`）。宽屏侧栏走 `paramsSummary`，不参与收缩。
+    /// 这 52pt 是最该让出来的空间（`collapseChrome`）。宽屏侧栏不参与收缩。
     private var paramsStrip: some View {
         paramsStripContent
             .padding(.horizontal, metrics.pageMargin)
@@ -296,7 +321,8 @@ struct StudioView: View {
         .background(Capsule(style: .continuous).fill(c.accentSoft))
     }
 
-    /// 宽屏（两栏）侧栏里的参数卡
+    /// 宽屏（非 iPad 大屏）侧栏里的参数卡：点开完整参数 Sheet。
+    /// iPad 侧栏走 `StudioParamContent` 直接铺开，用不到这张摘要卡。
     private var paramsSummary: some View {
         Button { paramsPresented = true } label: {
             HStack(spacing: 10) {
@@ -307,6 +333,9 @@ struct StudioView: View {
                     .font(AuroraFont.mono13)
                     .foregroundStyle(c.textSecondary)
                     .lineLimit(1)
+                    // 侧栏放宽后「… · 22.05 kHz」在 iPad 上仍差两三个字；
+                    // 缩一档显示全，比尾部截成「22.05 k…」可读。
+                    .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
@@ -317,7 +346,6 @@ struct StudioView: View {
             .background(cardBackground(radius: AuroraRadius.md))
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, metrics.pageMargin)
         .padding(.bottom, 10)
     }
 
@@ -336,7 +364,8 @@ struct StudioView: View {
 
     // MARK: 文本卡
 
-    private var textCard: some View {
+    /// `horizontalInset`：窄屏自己带页面边距；两栏由 `wideLayout` 在外层统一加一次。
+    private func textCard(horizontalInset: CGFloat) -> some View {
         VStack(spacing: 0) {
             cardHeader
 
@@ -373,15 +402,15 @@ struct StudioView: View {
         }
         .background(cardBackground(radius: AuroraRadius.lg))
         .clipShape(RoundedRectangle(cornerRadius: AuroraRadius.lg, style: .continuous))
-        .padding(.horizontal, metrics.pageMargin)
+        .padding(.horizontal, horizontalInset)
         .padding(.bottom, 10)          // 与底部 generateBar 只隔 10pt
         .frame(maxHeight: .infinity)   // 窄屏独占剩余高度
     }
 
     /// 标题 + 当前音色 + 字数（32.5pt）。键盘弹出时收成 0 高，字数由底部生成条接着显示。
     ///
-    /// 窄屏没有侧栏的 `voiceRow`，已选音色名无处常驻 —— 收进这行的中间：
-    /// 既不被工具栏标题挤占，又随手可点换音色。宽屏两栏在侧栏已有 `voiceRow`，这里不重复。
+    /// 窄屏没有侧栏的音色区，已选音色名无处常驻 —— 收进这行的中间：
+    /// 既不被工具栏标题挤占，又随手可点换音色。宽屏两栏侧栏已有音色区，这里不重复。
     private var cardHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
@@ -455,11 +484,15 @@ struct StudioView: View {
             // 不吃掉的话 HStack 会把它摊给各子视图，固定宽就白设了。
             Spacer(minLength: 8)
 
-            SecondaryButton(title: "", systemImage: "sparkles", height: 44, isFullWidth: false) {
-                paramsPresented = true
+            // iPad 侧栏已常驻完整参数面板（含语音指令输入），不需要再开一次 Sheet。
+            // iPhone / 折叠屏横屏仍留这个入口。
+            if !metrics.isPadClass {
+                SecondaryButton(title: "", systemImage: "sparkles", height: 44, isFullWidth: false) {
+                    paramsPresented = true
+                }
+                .frame(width: barIconWidth)
+                .accessibilityLabel("语音指令".localized())
             }
-            .frame(width: barIconWidth)
-            .accessibilityLabel("语音指令".localized())
 
             PrimaryButton(title: "生成音频".localized(), systemImage: "waveform",
                           width: generateButtonWidth) {
@@ -541,7 +574,7 @@ struct StudioView: View {
     private var toolbarContent: some ToolbarContent {
         // 左侧：音色切换入口（纯图标，不占横向空间）。
         // 音色名与头像一律不进导航栏 —— 窄屏横向空间全留给编辑区，
-        // 当前音色的展示交给宽屏侧栏的 voiceRow 与音色 Sheet 自己。
+        // 当前音色的展示交给宽屏侧栏的音色区与音色 Sheet 自己。
         ToolbarItem(placement: .topBarLeading) { voiceSwapButton }
 
         ToolbarItem(placement: .topBarTrailing) {

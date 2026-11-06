@@ -160,13 +160,13 @@ extension SupabaseManager {
                 }
                 return (user.credits, self.cachedUserData)
             } else {
-                // 新用户，创建并赠送50积分作为试用
+                // 新用户，创建并赠送30积分作为试用
                 let regionCode = RegionManager.getCurrentRegionCode()
-                let newUser = UserCreditsModel(deviceId: deviceId, credits: 50, region: regionCode, deviceInfo: DeviceInfo.current())
+                let newUser = UserCreditsModel(deviceId: deviceId, credits: 30, region: regionCode, deviceInfo: DeviceInfo.current())
                 try await saveOrUpdateUser(newUser)
-                Log(messageType: "Supabase", message: "✅ 新用户已创建，区域: \(regionCode)，设备: \(newUser.deviceInfo ?? "")，赠送50积分")
+                Log(messageType: "Supabase", message: "✅ 新用户已创建，区域: \(regionCode)，设备: \(newUser.deviceInfo ?? "")，赠送30积分")
                 self.cachedUserData = newUser
-                return (50.0, newUser)
+                return (30.0, newUser)
             }
         }
         

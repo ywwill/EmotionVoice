@@ -52,7 +52,12 @@ final class TabRouter: ObservableObject {
         }
     }
 
-    @Published var selection: Tab = .studio
+    @Published var selection: Tab = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("tab=library") { return .library }
+        if args.contains("tab=projects") { return .projects }
+        return .studio
+    }()
     @Published var studioPath = NavigationPath()
     @Published var libraryPath = NavigationPath()
     @Published var projectsPath = NavigationPath()

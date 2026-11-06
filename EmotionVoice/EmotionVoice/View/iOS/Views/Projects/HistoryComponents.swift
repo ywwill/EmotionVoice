@@ -15,6 +15,7 @@ import Combine
 /// 总条数 / 占用空间 / 本月新增，三等分。数值恒为全量（不含已软删条目）。
 struct HistoryStatBar: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let count: Int
     let bytes: Int
     let monthly: Int
@@ -37,7 +38,7 @@ struct HistoryStatBar: View {
                         .strokeBorder(c.line, lineWidth: 0.5)
                 )
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         .padding(.bottom, 9)
     }
 
@@ -77,6 +78,7 @@ struct HistoryStatBar: View {
 ///    选完分类不再出现 ×，清除走「全部」。
 struct HistoryFilterChips: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let allCount: Int
     let favoriteCount: Int
     let selection: HistoryFilter
@@ -91,7 +93,7 @@ struct HistoryFilterChips: View {
         }
         // ⚠️ VStack 默认 .center：不显式撑满，两个胶囊会整体居中而不是左对齐
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         // 设计稿 .chips{padding:0 16px 10px}：下方留白由这 10pt 和分组头的
         // 13pt 上内边距共同构成；List 的系统 section 间距已在 listArea 清零，别再叠加。
         .padding(.bottom, 10)
@@ -131,6 +133,7 @@ struct HistoryFilterChips: View {
 
 struct HistoryScopeChips: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let selection: HistorySearchScope
     let onSelect: (HistorySearchScope) -> Void
 
@@ -156,13 +159,14 @@ struct HistoryScopeChips: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         .padding(.bottom, 8)
     }
 }
 
 struct HistoryResultBar: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let count: Int
     let sortOrder: HistorySortOrder
 
@@ -176,7 +180,7 @@ struct HistoryResultBar: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(c.textTertiary)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         .padding(.bottom, 9)
     }
 }
@@ -185,6 +189,7 @@ struct HistoryResultBar: View {
 
 struct HistorySectionHeader: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let section: HistorySection
 
     var body: some View {
@@ -202,7 +207,7 @@ struct HistorySectionHeader: View {
                 .foregroundStyle(c.textTertiary.opacity(0.8))
             Rectangle().fill(c.line).frame(height: 0.5)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, metrics.pageMargin)
         // 设计稿 .group{padding:13px 16px 7px}：顶部 13pt 是分组之间的呼吸，
         // 底部 7pt 贴合首行卡片；不用 .vertical 对称值，否则组头离上一组太近。
         .padding(.top, 13)
@@ -215,6 +220,7 @@ struct HistorySectionHeader: View {
 
 struct HistoryEmptyState: View {
     @Environment(\.aurora) private var c
+    @Environment(\.screenMetrics) private var metrics
     let isSearching: Bool
     let onCreate: () -> Void
     let onClearSearch: () -> Void

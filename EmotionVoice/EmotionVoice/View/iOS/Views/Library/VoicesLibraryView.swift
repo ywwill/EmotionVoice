@@ -82,8 +82,13 @@ struct VoicesLibraryView: View {
     @State private var didResignOnDrag = false
 
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 10),
-              count: metrics.voiceGridColumns)
+        // 全屏标签页的可视宽度就是 ScreenMetricsReader 实测的窗口宽度；
+        // 扣掉 voiceGridPadding() 的限宽与左右边距，才是网格真正拿到手的宽度。
+        // iPad 大屏放开限宽后这里自然从 3 列升到 4/5 列，其余档位逐项保持原值。
+        let capped = min(metrics.width, metrics.voiceGridMaxWidth ?? .infinity)
+        let contentWidth = capped - 2 * metrics.pageMargin
+        return Array(repeating: GridItem(.flexible(), spacing: 10),
+                     count: metrics.voiceGridColumns(forContentWidth: contentWidth))
     }
 
     private var pageSize: Int { metrics.voiceGridColumns * 4 }
@@ -125,10 +130,11 @@ struct VoicesLibraryView: View {
                                 }
                             }
                         } else {
-                            ForEach(0..<8, id: \.self) { _ in VoiceCardSkeleton() }
+                            // 骨架数量跟着列数走：iPad 4/5 列只放 8 张会先矮两行、换数据再跳高
+                            ForEach(0..<max(8, pageSize), id: \.self) { _ in VoiceCardSkeleton() }
                         }
                     }
-                    .pagePadding()
+                    .voiceGridPadding()
                     .padding(.bottom, 4)
 
                     if didLoad && hasMore {
