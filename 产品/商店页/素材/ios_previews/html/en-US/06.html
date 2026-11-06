@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1320px;height:2868px;overflow:hidden;position:relative;
+  font-family:-apple-system,'PingFang SC','Helvetica Neue',sans-serif;
+  background:radial-gradient(1000px 780px at 88% 4%,rgba(138,91,255,.17),transparent 62%),
+             radial-gradient(820px 700px at 2% 42%,rgba(255,95,162,.11),transparent 60%),
+             radial-gradient(760px 640px at 96% 90%,rgba(46,217,191,.12),transparent 62%),
+             linear-gradient(165deg,#F8F5FF 0%,#FFFFFF 52%,#F3EFFC 100%)}
+.head{position:absolute;left:120px;right:120px;top:36px}
+h1{font-size:106px;font-weight:800;line-height:1.22;
+   letter-spacing:-2px;color:#1B1533}
+h1 em{font-style:normal;background:linear-gradient(100deg,#5B2EDB,#CE2B72);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin-top:24px;font-size:42px;line-height:1.5;color:#5C5780;letter-spacing:.5px}
+.stage{position:absolute;left:0;right:0;top:538px;display:flex;justify-content:center}
+.device{position:relative;width:1033px;height:2240px;border-radius:112px;padding:13px;
+  background:linear-gradient(150deg,#FFFFFF,#E9E3F8);
+  box-shadow:0 60px 140px rgba(60,30,130,.20),0 8px 30px rgba(60,30,130,.10),
+             inset 0 0 0 2px rgba(255,255,255,.92)}
+.screen{width:100%;height:100%;border-radius:99px;overflow:hidden;
+        position:relative;background:#F5F1FE}
+.screen img{width:100%;height:100%;display:block;object-fit:cover}
+.dots{position:absolute;left:0;right:0;bottom:40px;display:flex;
+      justify-content:center;gap:16px}
+.dots i{width:14px;height:14px;border-radius:999px;background:#D8CFEE;display:block}
+.dots i.on{width:46px;background:linear-gradient(90deg,#5B2EDB,#CE2B72)}
+
+/* 英文页走西文字体栈：PingFang 渲染拉丁字母偏宽，会让 H1 两行折成三行 */
+body,h1,.sub{font-family:-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif!important}
+.sub{letter-spacing:0!important}
+</style></head><body>
+<div class="head">
+  <h1>All your audio,<br><em>kept for you</em></h1>
+  <div class="sub">Grouped by day, easy to search, replay and export</div>
+</div>
+<div class="stage"><div class="device">
+  <div class="screen"><img src="../../raw/en-US/shot-default.png"></div>
+</div></div>
+<div class="dots"><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="on"></i></div>
+</body></html>

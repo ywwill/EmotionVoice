@@ -1,0 +1,52 @@
+{
+  "platform": "iOS",
+  "version": "ios-v2",
+  "date": "2026-11-06",
+  "based_on": "关键词/ 目录 10 份竞品关键词覆盖数据（2026-11-06 导出）",
+  "limits": { "name": 30, "subtitle": 30, "keywords": 100 },
+  "keyword_unit": "characters_including_commas",
+  "locales": {
+    "zh-Hans": {
+      "name": "Emora AI 情感配音：文字转语音、语音合成、方言与朗读",
+      "subtitle": "有声书、播客、短视频与课件配音，按句调情绪，一键导出",
+      "subtitle_alt_ppo": "有声书、播客、短视频、课件与广告配音，按句调情绪，一键导出",
+      "keywords": "配音app,旁白,口播,广告配音,视频配音,短视频配音,有声小说,听书,TTS,音色,配音软件,四川话,东北话,有声书配音,朗读配音,动画配音,播音,文案配音,配音专家,粤语配音,文字朗读,儿童配音",
+      "keywords_bytesafe": "配音app,旁白,口播,播音,TTS,音色,听书,有声小说,粤语配音,东北话,广告配音"
+    },
+    "zh-Hant": {
+      "name": "Emora AI 情感配音：文字轉語音、語音合成、方言與朗讀",
+      "subtitle": "有聲書、播客、短影片與教材配音，按句調情緒，一鍵匯出",
+      "subtitle_alt_ppo": "有聲書、播客、短影片、教材與廣告配音，按句調情緒，一鍵匯出",
+      "keywords": "配音App,旁白,口播,口白,廣告配音,影片配音,短影片配音,有聲小說,聽書,TTS,音色,配音軟體,四川話,東北話,有聲書配音,朗讀配音,動畫配音,文案配音,配音專家,粵語配音,文字朗讀,兒童配音",
+      "keywords_bytesafe": "配音App,旁白,口播,口白,聽書,音色,有聲小說,動畫配音,粵語配音,朗讀配音"
+    },
+    "en-US": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,dialect,narrator"
+    },
+    "en-GB": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,voice over,story"
+    },
+    "en-AU": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,voice over,audio"
+    },
+    "en-CA": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,french,narrator"
+    }
+  },
+  "notes": [
+    "v2 依据 10 份竞品关键词覆盖数据重排；名称与副标题沿用 v1 未改",
+    "中文/繁中：换入「有声书配音」「朗读配音」「文字朗读」「动画配音」「播音」「文案配音」「配音专家」「粤语配音」「儿童配音」，移除「主播」「电子书」「有声读物」「讲故事」「有声制作」「视频旁白」「声音定制」「音频导出」「儿童故事」「旁白以外的泛词」",
+    "英文四区共用名称与副标题，核心 9 词 83 字符四区共有，另 16–17 字符做地区变体",
+    "英文核心以 emotion 替换 v1 的 dialect，dialect 下放到 US/GB 变体；chinese/mandarin/cantonese 三词四区都持有",
+    "iOS 端没有声音复刻/克隆入口，相关词一律禁用",
+    "Apple 官方对关键词同时存在 100 characters 与 100 bytes 两种表述，中文/繁中备有 bytesafe 版"
+  ]
+}

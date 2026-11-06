@@ -1,0 +1,49 @@
+{
+  "platform": "iOS",
+  "version": "ios-v1",
+  "date": "2026-11-06",
+  "limits": { "name": 30, "subtitle": 30, "keywords": 100 },
+  "keyword_unit": "characters_including_commas",
+  "locales": {
+    "zh-Hans": {
+      "name": "Emora AI 情感配音：文字转语音、语音合成、方言与朗读",
+      "subtitle": "有声书、播客、短视频与课件配音，按句调情绪，一键导出",
+      "subtitle_alt_ppo": "有声书、播客、短视频、课件与广告配音，按句调情绪，一键导出",
+      "keywords": "配音app,旁白,主播,口播,广告配音,视频配音,短视频配音,粤语,四川话,东北话,儿童故事,有声读物,电子书,有声小说,音色,TTS,配音软件,讲故事,听书,有声制作,视频旁白,声音定制,音频导出",
+      "keywords_bytesafe": "配音app,旁白,口播,视频配音,粤语,四川话,东北话,TTS,音色,讲故事,有声小说"
+    },
+    "zh-Hant": {
+      "name": "Emora AI 情感配音：文字轉語音、語音合成、方言與朗讀",
+      "subtitle": "有聲書、播客、短影片與教材配音，按句調情緒，一鍵匯出",
+      "subtitle_alt_ppo": "有聲書、播客、短影片、教材與廣告配音，按句調情緒，一鍵匯出",
+      "keywords": "配音App,旁白,主播,口播,廣告配音,影片配音,短影片配音,粵語,四川話,東北話,兒童故事,有聲讀物,電子書,有聲小說,音色,TTS,配音軟體,說故事,聽書,有聲製作,影片旁白,聲音訂製,音檔匯出",
+      "keywords_bytesafe": "配音App,旁白,口播,影片配音,粵語,四川話,東北話,TTS,音色,說故事,有聲小說"
+    },
+    "en-US": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,dialect,mandarin,cantonese,chinese,read aloud,narrator,story"
+    },
+    "en-GB": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,dialect,mandarin,cantonese,chinese,read aloud,voice over,story"
+    },
+    "en-AU": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,dialect,mandarin,cantonese,chinese,read aloud,voice over,audio"
+    },
+    "en-CA": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,dialect,mandarin,cantonese,chinese,read aloud,french,narrator"
+    }
+  },
+  "notes": [
+    "英文四区共用名称与副标题，关键词四套独立（ASC 索引按 storefront 计算）",
+    "名称与副标题中出现过的词不进关键词",
+    "iOS 端没有声音复刻/克隆入口，相关词一律禁用",
+    "Apple 官方对关键词同时存在 100 characters 与 100 bytes 两种表述，中文/繁中备有 bytesafe 版"
+  ]
+}

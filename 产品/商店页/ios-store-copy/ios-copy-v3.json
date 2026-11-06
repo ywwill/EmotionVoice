@@ -1,0 +1,52 @@
+{
+  "platform": "iOS",
+  "version": "ios-v3",
+  "date": "2026-11-06",
+  "supersedes": "ios-v2",
+  "change": "中文/繁中关键词改为纯修饰词（去重版），消除 12 个「XX配音」短语造成的重复词警告",
+  "limits": { "name": 30, "subtitle": 30, "keywords": 100 },
+  "keyword_unit": "characters_including_commas",
+  "locales": {
+    "zh-Hans": {
+      "name": "Emora AI 情感配音：文字转语音、语音合成、方言与朗读",
+      "subtitle": "有声书、播客、短视频与课件配音，按句调情绪，一键导出",
+      "subtitle_alt_ppo": "有声书、播客、短视频、课件与广告配音，按句调情绪，一键导出",
+      "keywords": "旁白,口播,播音,广告,动画,影视,电影,电视剧,电台,有声小说,广播剧,听书,音色,TTS,儿童,故事,文案,游戏,台词,绘本,教材,文本,txt,粤语,四川话,东北话,上海话,闽南语,动漫,专家",
+      "keywords_bytesafe": "旁白,口播,播音,广告,动画,电影,听书,音色,TTS,儿童,故事,粤语,四川话"
+    },
+    "zh-Hant": {
+      "name": "Emora AI 情感配音：文字轉語音、語音合成、方言與朗讀",
+      "subtitle": "有聲書、播客、短影片與教材配音，按句調情緒，一鍵匯出",
+      "subtitle_alt_ppo": "有聲書、播客、短影片、教材與廣告配音，按句調情緒，一鍵匯出",
+      "keywords": "旁白,口播,口白,播音,廣告,動畫,影視,電影,電視劇,電台,有聲小說,廣播劇,聽書,音色,TTS,兒童,故事,文案,遊戲,台詞,繪本,文本,txt,粵語,四川話,東北話,上海話,閩南語,動漫,專家",
+      "keywords_bytesafe": "旁白,口播,口白,播音,廣告,電影,聽書,音色,TTS,兒童,故事,粵語,四川話"
+    },
+    "en-US": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,dialect,narrator"
+    },
+    "en-GB": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,voice over,story"
+    },
+    "en-AU": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,voice over,audio"
+    },
+    "en-CA": {
+      "name": "Emora AI Voice, Text to Speech",
+      "subtitle": "Audiobook, Podcast & Voiceover",
+      "keywords": "tts,voice generator,narration,dubbing,mandarin,cantonese,chinese,read aloud,emotion,french,narrator"
+    }
+  },
+  "notes": [
+    "v3 只改中文/繁中关键词：12 个「XX配音」短语全部拆成裸修饰词，关键词侧对标题零重复",
+    "标题（名称+副标题）六个语种零改动",
+    "剩余 2 个警告词（配音 2 次、语音 2 次）全部落在标题内部，改标题才能消除，不划算",
+    "英文四区不动：voice 重复 3-4 次属复合词必要性（voice generator / voice over 拆开无语义）",
+    "iOS 端没有声音复刻/克隆入口，相关词一律禁用"
+  ]
+}
