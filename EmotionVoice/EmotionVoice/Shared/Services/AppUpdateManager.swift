@@ -34,10 +34,10 @@ enum AppStoreLink {
 
 #if os(macOS)
     /// macOS（Emora for Mac）
-    static let appID = "6757685617"
+    static let appID = "6814391961"
 #else
     /// iOS（Emora）
-    static let appID = "6757685617"
+    static let appID = "6829576429"
 #endif
 
     static var url: URL {
