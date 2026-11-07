@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>EmotionVoice · iPad 横屏设计稿（预览图用）</title>
+<style>
+/* ============================================================
+   EmotionVoice iPad 横屏界面稿 —— 仅供 App Store 预览图取界面
+   画布：1376 × 1032 pt（iPad Pro 13" 横屏逻辑分辨率，@2x = 2752 × 2064）
+   布局依据 ScreenMetrics.swift：
+     · isPadClass(width>=740 && height>=700)  → 两栏工作台
+     · studioSidebarWidth = 360（iPad 铺完整参数面板）
+     · voiceGridColumns  width>=1000 → 5 列
+     · historyGridColumns width>=1000 → 3 列
+     · sampleRateColumns 宽屏 → 3，侧栏内为 2
+     · iPadOS 18 TabView 标签栏在顶部（胶囊居中，积分/设置分列两侧）
+   设计语言沿用 emotionvoice-ios-design.html 的 Aurora Pop 令牌。
+   ============================================================ */
+:root{
+  --bg:#FFFFFF; --bg-grouped:#F5F1FE; --surface:#FFFFFF;
+  --surface-2:#F7F4FE; --surface-3:#EDE8FB;
+  --text-1:#1B1533; --text-2:#5C5780; --text-3:#736D8F;
+  --line:rgba(88,63,178,.11); --line-2:rgba(88,63,178,.20);
+  --fill:rgba(109,59,245,.055); --fill-2:rgba(109,59,245,.10);
+  --accent:#6D3BF5; --accent-soft:rgba(109,59,245,.12);
+  --cta-a:#5B2EDB; --cta-b:#CE2B72; --cta-fg:#fff;
+  --grad-cta:linear-gradient(135deg,#5B2EDB 0%,#CE2B72 100%);
+  --success:#0FA36B; --warn:#B87200; --danger:#E0344B; --info:#2E7BE0;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-full:999px;
+}
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{margin:0;padding:0;background:#EDE9F8;font-family:var(--font);color:var(--text-1)}
+
+/* 评审外壳（截图时被 genscript 隐藏） */
+.screen{display:none}
+.screen.active{display:block}
+.screen-head{display:none}
+.stage{display:flex;gap:28px;padding:28px}
+.cap{display:none}
+.frame{margin:0}
+
+/* ---------- 平板画布 ---------- */
+.tablet{width:1376px;height:1032px;position:relative;overflow:hidden;
+  background:var(--bg-grouped);display:flex;flex-direction:column}
+.status{height:26px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 30px;font-size:13px;font-weight:600;color:var(--text-1)}
+.status .r{display:flex;align-items:center;gap:7px}
+
+/* iPadOS 18 顶部标签栏 */
+.tabbar{height:56px;flex:none;display:flex;align-items:center;padding:0 24px;gap:12px;
+  background:rgba(255,255,255,.72);border-bottom:1px solid var(--line)}
+.tb-left{flex:1;display:flex;align-items:center;gap:10px}
+.tb-mid{display:flex;align-items:center;gap:4px;background:var(--fill);border-radius:var(--r-full);
+  padding:4px;border:1px solid var(--line)}
+.tb-mid span{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;
+  color:var(--text-2);padding:7px 20px;border-radius:var(--r-full)}
+.tb-mid span.on{background:var(--surface);color:var(--text-1);
+  box-shadow:0 2px 8px rgba(78,44,160,.10)}
+.tb-right{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.pill-credit{display:flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:var(--r-full);
+  background:var(--fill-2);font-size:13px;font-weight:650;color:var(--text-1)}
+.pill-credit i{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#FF9838,#FF5FA2);
+  display:block}
+.gearbtn{width:34px;height:34px;border-radius:var(--r-full);display:grid;place-items:center;
+  background:var(--fill-2);color:var(--accent)}
+
+.body{flex:1;min-height:0;display:flex;padding:14px 20px 16px;gap:16px}
+
+/* ---------- 通用块 ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0}
+.card-h .t{font-size:14px;font-weight:700}
+.card-h .s{font-size:12px;color:var(--text-3);font-family:var(--mono)}
+.sec{font-size:13px;font-weight:700;color:var(--text-2);margin:0 0 9px}
+
+/* 头像 / 音色 */
+.avatar{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+  color:#fff;font-size:17px;font-weight:700;background:linear-gradient(145deg,#B79AFF,#7A4BE0);flex:none}
+.vrow{display:flex;align-items:center;gap:11px;padding:12px 14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-lg)}
+.vrow .nm{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}
+.vrow .ds{font-size:12px;color:var(--text-2);margin-top:3px}
+.badge-star{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:650;
+  font-family:var(--mono);color:var(--warn);background:rgba(255,180,87,.16);
+  padding:2px 7px;border-radius:var(--r-full)}
+.mini-btn{height:30px;padding:0 13px;border-radius:var(--r-full);border:1px solid var(--line-2);
+  display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--text-2);
+  background:var(--surface);flex:none}
+
+/* 参数摘要条 */
+.summary{display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  font-size:12.5px;font-family:var(--mono);color:var(--text-2)}
+.summary .sp{flex:1}
+
+/* 编辑器 */
+.editor{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.editor .hd{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;border-bottom:1px solid var(--line);font-size:13px;font-weight:650;color:var(--text-2)}
+.editor .cnt{font-family:var(--mono);font-size:12px;color:var(--text-3)}
+.editor .inner{flex:1;min-height:0;padding:16px 20px;display:flex;flex-direction:column;
+  justify-content:flex-start;gap:13px;overflow:hidden}
+.para{font-size:17px;line-height:1.9;color:var(--text-1);margin:0}
+.capsule{background:color-mix(in srgb,var(--c) 20%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 46%,transparent);
+  border-radius:8px;padding:1px 5px;margin:0 1px}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:650;
+  color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);
+  border-radius:var(--r-full);padding:2px 8px;margin-right:5px;vertical-align:2px}
+.badge .x,.sfx .x{opacity:.55;font-size:10px}
+.sfx{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;
+  color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);
+  border-radius:var(--r-full);padding:2px 8px;margin-left:4px;vertical-align:2px}
+.caret{display:inline-block;width:2px;height:18px;background:var(--accent);
+  vertical-align:-3px;border-radius:2px}
+
+/* 生成条 */
+.genbar{height:56px;flex:none;display:flex;align-items:center;gap:14px;padding:0 14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)}
+.genbar .est{font-size:12.5px;color:var(--text-2)}
+.genbar .est b{font-family:var(--mono);color:var(--text-1)}
+.cta{height:40px;padding:0 26px;border-radius:var(--r-full);background:var(--grad-cta);
+  color:#fff;font-size:14.5px;font-weight:700;display:inline-flex;align-items:center;gap:8px;
+  box-shadow:0 8px 20px rgba(109,59,245,.28);border:0}
+
+/* 侧栏 */
+.sidebar{width:360px;flex:none;display:flex;flex-direction:column;gap:12px;min-height:0}
+.side-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px}
+.side-card .h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.side-card .h .t{font-size:14px;font-weight:700}
+.side-card .h .s{font-size:11.5px;color:var(--text-3);font-family:var(--mono)}
+
+/* 滑块 */
+.slider-row{margin-bottom:14px}
+.slider-row .top{display:flex;align-items:baseline;justify-content:space-between;font-size:12.5px;
+  color:var(--text-2);margin-bottom:8px}
+.slider-row .top b{font-family:var(--mono);font-size:13px;color:var(--text-1)}
+.track{height:4px;border-radius:999px;background:var(--surface-3);position:relative}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent)}
+.knob{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;background:#fff;
+  border:1px solid var(--line-2);box-shadow:0 2px 8px rgba(78,44,160,.20);transform:translate(-50%,-50%)}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);
+  font-family:var(--mono);margin-top:7px}
+
+/* 段控 */
+.seg{display:flex;gap:6px;background:var(--surface-3);border-radius:var(--r-md);padding:4px}
+.seg span{flex:1;text-align:center;font-size:13px;font-weight:650;color:var(--text-2);
+  padding:7px 0;border-radius:8px}
+.seg span.on{background:var(--surface);color:var(--text-1);box-shadow:0 2px 6px rgba(78,44,160,.12)}
+
+/* 采样率网格 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{border:1px solid var(--line-2);border-radius:var(--r-md);padding:9px 11px;background:var(--surface);
+  display:flex;flex-direction:column;justify-content:center}
+.tile .v{font-size:14px;font-weight:700;font-family:var(--mono)}
+.tile .k{font-size:11px;color:var(--text-3);margin-top:2px}
+.tile.on{border-color:var(--accent);background:var(--accent-soft);position:relative}
+.tile.on .v,.tile.on .k{color:var(--accent)}
+.tile.on::after{content:"";position:absolute;right:9px;top:11px;width:12px;height:12px;border-radius:50%;
+  background:var(--accent)}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:13.5px;font-weight:600;color:var(--text-2);background:var(--surface-3);
+  border-radius:var(--r-full);padding:8px 15px}
+.chip.on{background:var(--accent);color:#fff;box-shadow:0 4px 12px rgba(109,59,245,.30)}
+
+/* 语音指令输入 */
+.cmdbox{margin-top:12px;background:var(--surface-3);border:1px solid var(--line);
+  border-radius:var(--r-md);padding:15px 15px;font-size:14.5px;line-height:1.7;color:var(--text-1)}
+.cmdbox .meta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;
+  font-size:11px;color:var(--text-3);font-family:var(--mono)}
+.tip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-2);margin-top:9px}
+.tip.warn{color:var(--warn)}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ 01 创作工作台 -->
+<div class="screen active" data-label="创作">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <div class="tabbar">
+      <div class="tb-left"></div>
+      <div class="tb-mid"><span class="on">✦ 创作</span><span>♪ 音色库</span><span>▤ 项目</span></div>
+      <div class="tb-right"><span class="pill-credit"><i></i>128</span><span class="gearbtn">⚙</span></div>
+    </div>
+
+    <div class="body">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div class="vrow">
+          <div class="avatar">心</div>
+          <div style="flex:1;min-width:0">
+            <div class="nm">龙安灵心 <span class="badge-star">⭐ 旗舰</span></div>
+            <div class="ds">温柔知性 · 日常对话 · 26 岁</div>
+          </div>
+          <span class="mini-btn">更换 ›</span>
+        </div>
+
+        <div class="summary">
+          <span>⇅ 1.0x</span><span>·</span><span>100%</span><span>·</span><span>WAV</span>
+          <span>·</span><span>22.05 kHz</span><span class="sp"></span><span>›</span>
+        </div>
+
+        <div class="editor" style="flex:1">
+          <div class="hd"><span>▤ 文字输入</span><span class="cnt">148 字</span></div>
+          <div class="inner" id="ed-01"></div>
+        </div>
+
+        <div class="genbar">
+          <span class="est">预计 <b>≈ 2.96</b> 积分</span>
+          <span style="flex:1"></span>
+          <button class="cta">✦ 生成音频</button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="side-card">
+          <div class="h"><span class="t">音色</span><span class="s">Qwen 3.0</span></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar" style="width:36px;height:36px;font-size:15px;border-radius:10px">心</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">龙安灵心</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">温柔知性 · 26 岁</div></div>
+            <span style="color:var(--text-3);font-size:15px">›</span>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="h"><span class="t">音频控制</span><span class="s">1.0x</span></div>
+          <div class="slider-row">
+            <div class="top"><span>语速</span><b>1.0x</b></div>
+            <div class="track"><i style="width:33%"></i><span class="knob" style="left:33%"></span></div>
+            <div class="scale"><span>0.5x</span><span>2.0x</span></div>
+          </div>
+          <div class="slider-row" style="margin-bottom:12px">
+            <div class="top"><span>音量</span><b>100%</b></div>
+            <div class="track"><i style="width:100%"></i><span class="knob" style="left:100%"></span></div>
+            <div class="scale"><span>0%</span><span>100%</span></div>
+          </div>
+          <div class="seg"><span>MP3</span><span class="on">WAV</span></div>
+        </div>
+
+        <div class="side-card">
+          <div class="h"><span class="t">采样率</span><span class="s">22.05 kHz</span></div>
+          <div class="grid2">
+            <div class="tile"><div class="v">8 kHz</div><div class="k">语音通话</div></div>
+            <div class="tile"><div class="v">16 kHz</div><div class="k">AI 语音</div></div>
+            <div class="tile on"><div class="v">22.05 kHz</div><div class="k">网络语音</div></div>
+            <div class="tile"><div class="v">24 kHz</div><div class="k">语音合成</div></div>
+            <div class="tile"><div class="v">44.1 kHz</div><div class="k">CD 级音频</div></div>
+            <div class="tile"><div class="v">48 kHz</div><div class="k">专业音频</div></div>
+          </div>
+        </div>
+
+        <div class="side-card" style="flex:1;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);
+                 display:grid;place-items:center;color:var(--accent);font-size:15px">💬</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">语音指令</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">不想手调？一句话描述声音</div></div>
+            <span style="color:var(--text-3);font-size:15px">›</span>
+          </div>
+          <div style="margin-top:auto;background:var(--surface-2);border-radius:var(--r-md);padding:12px 13px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.4px">试着这样说</div>
+            <div style="font-size:12.5px;line-height:1.65;color:var(--text-2);margin-top:6px">
+              用温柔一点的语气，语速放慢，像在讲睡前故事。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 02 音色库 -->
+<div class="screen" data-label="音色库">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <div class="tabbar">
+      <div class="tb-left"></div>
+      <div class="tb-mid"><span>✦ 创作</span><span class="on">♪ 音色库</span><span>▤ 项目</span></div>
+      <div class="tb-right"><span class="pill-credit"><i></i>128</span><span class="gearbtn">⚙</span></div>
+    </div>
+
+    <div class="body" style="flex-direction:column;gap:12px;padding-left:28px;padding-right:28px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="font-size:30px;font-weight:800;letter-spacing:-.6px">音色库</div>
+        <div style="flex:1;max-width:520px;height:40px;border-radius:var(--r-full);background:var(--surface);
+             border:1px solid var(--line);display:flex;align-items:center;gap:9px;padding:0 16px;
+             font-size:13.5px;color:var(--text-3)">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.6"/><path d="m10.6 10.6 3 3"/></svg>
+          搜索音色名 / 特质 / 场景 / 语种
+        </div>
+        <span style="flex:1"></span>
+        <div class="mini-btn" style="height:34px">全部 ›</div>
+        <div class="mini-btn" style="height:34px">♡ 收藏 12</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text-3)">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;
+          border-radius:var(--r-full);background:var(--surface);border:1px solid var(--line-2);
+          font-size:13px;font-weight:650;color:var(--text-1)">☰ 全部分类 ⌄</span>
+        <span style="font-family:var(--mono)">旗舰优先，再按名称排序</span>
+      </div>
+
+      <div id="voicenet" style="flex:1;min-height:0;display:grid;
+           grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(4,1fr);
+           gap:11px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 03 语音指令 -->
+<div class="screen" data-label="语音指令">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <div class="tabbar">
+      <div class="tb-left"></div>
+      <div class="tb-mid"><span class="on">✦ 创作</span><span>♪ 音色库</span><span>▤ 项目</span></div>
+      <div class="tb-right"><span class="pill-credit"><i></i>128</span><span class="gearbtn">⚙</span></div>
+    </div>
+
+    <div class="body">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div class="vrow">
+          <div class="avatar" style="background:linear-gradient(145deg,#7FE3C4,#17A98C)">风</div>
+          <div style="flex:1;min-width:0">
+            <div class="nm">龙安鲁风</div>
+            <div class="ds">明亮开朗 · 广告配音 · 28 岁</div>
+          </div>
+          <span class="mini-btn">更换 ›</span>
+        </div>
+
+        <div class="editor" style="flex:1">
+          <div class="hd"><span>▤ 文字输入</span><span class="cnt">163 字</span></div>
+          <div class="inner">
+            <p class="para">大家好，欢迎来到本期的新品开箱。</p>
+            <p class="para">这次我们带来的是一款便携式蓝牙音箱。</p>
+            <p class="para">先看外观：磨砂金属机身，重量只有 480 克。</p>
+            <p class="para">放进背包几乎感觉不到它的存在。</p>
+            <p class="para">续航方面，官方标称 24 小时。</p>
+            <p class="para">我们实测连续播放了 21 小时，还剩 15% 电量。</p>
+            <p class="para">如果你正在找一台随身音箱，它值得放进候选清单。</p>
+            <p class="para">下单前记得领券，本周还有额外赠品。</p>
+            <p class="para">链接放在简介里，我们下期再见。<span class="caret" style="margin-left:2px"></span></p>
+          </div>
+        </div>
+
+        <div class="genbar">
+          <span class="est">预计 <b>≈ 3.26</b> 积分</span>
+          <span style="flex:1"></span>
+          <button class="cta">✦ 生成音频</button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="side-card" style="flex:1;min-height:0;display:flex;flex-direction:column">
+          <div class="h"><span class="t">语音指令</span><span class="s">仅支持中文和英文输入</span></div>
+          <div class="sec">语言</div>
+          <div class="chips" id="langchips"></div>
+          <div class="sec" style="margin-top:16px">描述预设</div>
+          <div class="chips">
+            <span class="chip">温柔女声</span><span class="chip on">活泼男声</span>
+            <span class="chip">新闻播报</span><span class="chip">有声书</span>
+            <span class="chip">广告配音</span><span class="chip">教学讲解</span>
+          </div>
+          <div class="cmdbox" style="margin-top:14px">
+            中文，年轻活泼的男性声音，语速偏快，语调积极
+            <div class="meta"><span>💡 详细描述 = 更好的效果</span><span>28 / 1000</span></div>
+          </div>
+          <div class="tip warn">ⓘ 仅支持中文与英文输入，其他语言请直接选上方 chip</div>
+          <div style="margin-top:auto;background:var(--surface-2);border-radius:var(--r-md);
+               padding:12px 13px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.4px">试着这样说</div>
+            <div style="font-size:12.5px;line-height:1.65;color:var(--text-2);margin-top:6px">
+              用温柔一点的语气，语速放慢，像在讲睡前故事；<br>
+              结尾稍微上扬，带一点期待感。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 04 创作参数 -->
+<div class="screen" data-label="参数">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <div class="tabbar">
+      <div class="tb-left"></div>
+      <div class="tb-mid"><span class="on">✦ 创作</span><span>♪ 音色库</span><span>▤ 项目</span></div>
+      <div class="tb-right"><span class="pill-credit"><i></i>128</span><span class="gearbtn">⚙</span></div>
+    </div>
+
+    <div class="body">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div class="vrow">
+          <div class="avatar">心</div>
+          <div style="flex:1;min-width:0">
+            <div class="nm">龙安灵心 <span class="badge-star">⭐ 旗舰</span></div>
+            <div class="ds">温柔知性 · 日常对话 · 26 岁</div>
+          </div>
+          <span class="mini-btn">更换 ›</span>
+        </div>
+
+        <div class="editor" style="flex:1">
+          <div class="hd"><span>▤ 文字输入</span><span class="cnt">136 字</span></div>
+          <div class="inner" style="justify-content:flex-start;gap:14px">
+            <p class="para">晚上好，欢迎收听今晚的深夜电台。</p>
+            <p class="para">我是你们的老朋友，今晚想聊聊「慢下来」这件事。</p>
+            <p class="para">城市的声音太快了，快到我们忘了听风。</p>
+            <p class="para">所以我们把语速调慢，把音量压低一点。</p>
+            <p class="para">就像现在这样，慢慢地，陪你到天亮。</p>
+            <p class="para">今晚的歌单都是慢板，适合把灯关掉再听。</p>
+            <p class="para">如果你也睡不着，就把音量再调低一点。</p>
+            <p class="para" style="color:var(--text-3);font-size:13px">右侧参数改动会立即应用到下一次生成，不会影响已生成的历史音频。</p>
+          </div>
+        </div>
+
+        <div class="genbar">
+          <span class="est">预计 <b>≈ 2.72</b> 积分</span>
+          <span style="flex:1"></span>
+          <button class="cta">✦ 生成音频</button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="side-card">
+          <div class="h"><span class="t">音色</span><span class="s">Qwen 3.0</span></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar" style="width:36px;height:36px;font-size:15px;border-radius:10px">心</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">龙安灵心</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">温柔知性 · 26 岁</div></div>
+            <span style="color:var(--text-3);font-size:15px">›</span>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="h"><span class="t">音频控制</span><span class="s">0.8x · 70%</span></div>
+          <div class="slider-row">
+            <div class="top"><span>语速</span><b>0.8x</b></div>
+            <div class="track"><i style="width:20%"></i><span class="knob" style="left:20%"></span></div>
+            <div class="scale"><span>0.5x</span><span>2.0x</span></div>
+          </div>
+          <div class="slider-row" style="margin-bottom:12px">
+            <div class="top"><span>音量</span><b>70%</b></div>
+            <div class="track"><i style="width:70%"></i><span class="knob" style="left:70%"></span></div>
+            <div class="scale"><span>0%</span><span>100%</span></div>
+          </div>
+          <div class="seg"><span class="on">MP3</span><span>WAV</span></div>
+        </div>
+
+        <div class="side-card">
+          <div class="h"><span class="t">采样率</span><span class="s">22.05 kHz</span></div>
+          <div class="grid2">
+            <div class="tile"><div class="v">8 kHz</div><div class="k">语音通话</div></div>
+            <div class="tile"><div class="v">16 kHz</div><div class="k">AI 语音</div></div>
+            <div class="tile on"><div class="v">22.05 kHz</div><div class="k">网络语音</div></div>
+            <div class="tile"><div class="v">24 kHz</div><div class="k">语音合成</div></div>
+            <div class="tile"><div class="v">44.1 kHz</div><div class="k">CD 级音频</div></div>
+            <div class="tile"><div class="v">48 kHz</div><div class="k">专业音频</div></div>
+          </div>
+        </div>
+
+        <div class="side-card" style="flex:1;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);
+                 display:grid;place-items:center;color:var(--accent);font-size:15px">💬</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">语音指令</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">不想手调？一句话描述声音</div></div>
+            <span style="color:var(--text-3);font-size:15px">›</span>
+          </div>
+          <div style="margin-top:auto;background:var(--surface-2);border-radius:var(--r-md);padding:12px 13px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.4px">试着这样说</div>
+            <div style="font-size:12.5px;line-height:1.65;color:var(--text-2);margin-top:6px">
+              男声，语速再慢一点，语气放轻，像深夜电台。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 05 播放详情 -->
+<div class="screen" data-label="播放">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <!-- 二级页（播放详情）：iPadOS 18 起 push 后顶部标签栏隐藏 -->
+    <div class="body" style="justify-content:flex-start;padding-top:24px">
+      <div style="width:1120px;display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+          <span style="font-size:14px;font-weight:600;color:var(--accent)">‹ 项目</span>
+          <div style="flex:1;text-align:center;font-size:15px;font-weight:700">今天真是个好日子…</div>
+          <span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+                background:rgba(226,60,134,.12);color:#E23C86">♥</span>
+          <span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+                background:var(--fill-2);color:var(--text-2)">↗</span>
+        </div>
+
+        <div class="card" style="padding:18px 20px">
+          <div id="wave" style="height:272px;display:flex;align-items:center;gap:3px"></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);
+               font-size:11.5px;color:var(--text-3);margin-top:10px">
+            <span>00:09</span><span>00:24</span>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:26px">
+          <span style="font-size:24px;color:var(--text-2)">«15</span>
+          <span style="font-size:20px;color:var(--text-2)">↺</span>
+          <span style="width:62px;height:62px;border-radius:50%;background:var(--grad-cta);color:#fff;
+                display:grid;place-items:center;font-size:22px;box-shadow:0 10px 26px rgba(109,59,245,.32)">❚❚</span>
+          <span style="font-size:20px;color:var(--text-2)">↻</span>
+          <span style="font-size:24px;color:var(--text-2)">15»</span>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <div class="mini-btn" style="flex:1;justify-content:center;height:40px">1.0x ⌄</div>
+          <div class="mini-btn" style="flex:1;justify-content:center;height:40px">从头播放</div>
+        </div>
+
+        <div class="card" style="padding:14px 20px;display:grid;grid-template-columns:repeat(4,1fr)">
+          <div><div style="font-size:11px;color:var(--text-3)">时长</div>
+            <div style="font-family:var(--mono);font-size:17px;font-weight:700;margin-top:3px">00:24</div></div>
+          <div><div style="font-size:11px;color:var(--text-3)">格式</div>
+            <div style="font-family:var(--mono);font-size:17px;font-weight:700;margin-top:3px">WAV</div></div>
+          <div><div style="font-size:11px;color:var(--text-3)">大小</div>
+            <div style="font-family:var(--mono);font-size:17px;font-weight:700;margin-top:3px">412 KB</div></div>
+          <div><div style="font-size:11px;color:var(--text-3)">音色</div>
+            <div style="font-size:15px;font-weight:700;margin-top:3px">龙安灵心</div></div>
+        </div>
+
+        <div class="card" style="padding:14px 20px">
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-3);margin-bottom:8px">
+            <span>文案 · 42 字</span><span>复制</span>
+          </div>
+          <div style="font-size:15px;line-height:1.75">今天真是个好日子，我们终于见面了，先来一段开场白……</div>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <div class="mini-btn" style="flex:1;justify-content:center;height:40px">重新命名</div>
+          <div class="mini-btn" style="flex:1;justify-content:center;height:40px">复制音频</div>
+          <div class="mini-btn" style="flex:1;justify-content:center;height:40px;color:var(--danger)">删除</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 06 项目列表 -->
+<div class="screen" data-label="项目">
+  <div class="tablet">
+    <div class="status"><span>9:41</span><span class="r">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6 6.1 8.7a2.7 2.7 0 0 1 3.8 0L8 10.6Zm0-4.3a5 5 0 0 0-3.5 1.45L3.1 6.3a6.9 6.9 0 0 1 9.8 0L11.5 7.7A5 5 0 0 0 8 6.3Zm0-4A9 9 0 0 0 1.6 4.9L.4 3.7A10.9 10.9 0 0 1 8 .2c3 0 5.7 1.2 7.6 3.1l-1.2 1.2A9 9 0 0 0 8 2.3Z"/></svg>
+      <span style="display:inline-block;width:26px;height:13px;border-radius:4px;border:1px solid currentColor;padding:1.5px"><i style="display:block;height:100%;width:72%;background:currentColor;border-radius:2px"></i></span>
+    </span></div>
+
+    <div class="tabbar">
+      <div class="tb-left"></div>
+      <div class="tb-mid"><span>✦ 创作</span><span>♪ 音色库</span><span class="on">▤ 项目</span></div>
+      <div class="tb-right"><span class="pill-credit"><i></i>128</span><span class="gearbtn">⚙</span></div>
+    </div>
+
+    <div class="body" style="flex-direction:column;gap:10px;padding-left:28px;padding-right:28px">
+      <div style="display:flex;align-items:flex-end;gap:20px">
+        <div>
+          <div style="font-size:30px;font-weight:800;letter-spacing:-.6px">历史记录</div>
+          <div style="font-size:12.5px;color:var(--text-3);margin-top:4px">全部生成音频 · 按时间排列</div>
+        </div>
+        <div style="flex:1;max-width:460px;height:38px;border-radius:var(--r-full);background:var(--surface);
+             border:1px solid var(--line);display:flex;align-items:center;gap:9px;padding:0 15px;
+             font-size:13px;color:var(--text-3)">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.6"/><path d="m10.6 10.6 3 3"/></svg>
+          搜索名称、文案或音色
+        </div>
+        <span style="flex:1"></span>
+        <div class="mini-btn" style="height:34px">☑ 选择</div>
+        <div class="mini-btn" style="height:34px">···</div>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;padding:11px 18px;font-size:12.5px">
+        <span style="font-family:var(--mono);font-weight:700">128</span>
+        <span style="color:var(--text-3);margin-left:6px">条音频</span>
+        <span style="width:1px;height:16px;background:var(--line-2);margin:0 18px"></span>
+        <span style="font-family:var(--mono);font-weight:700">42.6 MB</span>
+        <span style="color:var(--text-3);margin-left:6px">占用空间</span>
+        <span style="width:1px;height:16px;background:var(--line-2);margin:0 18px"></span>
+        <span style="font-family:var(--mono);font-weight:700">18</span>
+        <span style="color:var(--text-3);margin-left:6px">条本月</span>
+        <span style="flex:1"></span>
+        <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 13px;
+              border-radius:var(--r-full);background:var(--accent);color:#fff;font-size:12px;font-weight:650">全部 128</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 13px;margin-left:8px;
+              border-radius:var(--r-full);background:var(--surface-3);color:var(--text-2);font-size:12px;font-weight:650">♡ 收藏 12</span>
+      </div>
+
+      <div id="hist-groups" style="flex:1;min-height:0;display:flex;flex-direction:column;
+           gap:9px;overflow:hidden"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- 02 音色卡（15 张，5 列 × 3 行）---------- */
+(function(){
+  var V=[
+    ["心","linear-gradient(145deg,#B79AFF,#7A4BE0)","龙安灵心","温柔知性的女声，适合有声阅读","25","女",1,1],
+    ["风","linear-gradient(145deg,#7FE3C4,#17A98C)","龙安鲁风","沉稳磁性的男声，适合新闻播报","42","男",0,0],
+    ["童","linear-gradient(145deg,#FFC46B,#E8802F)","龙小童","稚气可爱的童声","8","女",0,0],
+    ["曦","linear-gradient(145deg,#74B9FF,#3B74D9)","芷晴曦","标准美式发音 · 助手音色","29","女",0,0],
+    ["弦","linear-gradient(145deg,#FF9EC4,#E05C8A)","岚柏弦","低沉有力 · 中年成熟","46","男",0,0],
+    ["柳","linear-gradient(145deg,#A8E6CF,#3AAE8C)","莹松柳","活泼稚嫩 · 动画配音","19","女",0,0],
+    ["鹤","linear-gradient(145deg,#C4A6FF,#7B5BE0)","筝瑶鹤","清亮少年音 · 校园广播","17","男",0,0],
+    ["芙","linear-gradient(145deg,#FFD08A,#E08A2F)","岚煜芙","温柔亲和 · 睡前故事","31","女",0,0],
+    ["涟","linear-gradient(145deg,#8FD3F4,#4A90D9)","霓岫涟","内敛含蓄 · 独白旁白","34","女",0,0],
+    ["璇","linear-gradient(145deg,#F7A8C4,#D25C8C)","溪凌璇","干练利落 · 商务演示","38","女",0,0],
+    ["晦","linear-gradient(145deg,#9AD5C0,#2E9E7E)","澄桃晦","稳重大气 · 纪录片","49","男",0,0],
+    ["蕊","linear-gradient(145deg,#D6B4FF,#8A5BE0)","昕蕊璇","甜美治愈 · 情感电台","24","女",0,0],
+    ["莹","linear-gradient(145deg,#FFC98A,#E0902F)","琴鹤莹","温和亲切 · 教学讲解","33","女",0,0],
+    ["彤","linear-gradient(145deg,#8AD8F0,#3A8FD0)","彤旭弦","活泼灵动 · 短视频","21","男",0,0],
+    ["月","linear-gradient(145deg,#F5A9C8,#D05C90)","潇煜月","惊喜意外 · 剧情对话","27","男",0,0],
+    ["晖","linear-gradient(145deg,#B0C4FF,#5B7BD9)","弦朔晖","清冷质感 · 悬疑旁白","36","男",0,0],
+    ["蓉","linear-gradient(145deg,#FFC1D9,#D9668F)","涟霓蓉","甜糯少女 · 剧情配音","22","女",0,0],
+    ["璨","linear-gradient(145deg,#9FE8D2,#2FA98A)","鹤薇璨","清爽干净 · 知识科普","29","女",0,0],
+    ["珂","linear-gradient(145deg,#D8C4FF,#8460E0)","芷朔珂","温柔叙述 · 情感专栏","41","女",0,0],
+    ["瑜","linear-gradient(145deg,#FFD9A8,#DE8E3A)","蕊风瑜","沉稳厚重 · 历史纪录","52","男",0,0]
+  ];
+  function card(v){
+    var star=v[6]?'<span class="badge-star">⭐ 旗舰</span>':'';
+    var ring=v[7]?'border-color:var(--accent);box-shadow:0 8px 20px var(--accent-soft)':'';
+    var playBg=v[7]?'background:var(--accent);color:#fff;border-color:transparent':'';
+    return '<div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;'+
+      'padding:13px;display:flex;flex-direction:column;height:100%;'+ring+'">'+
+      '<div style="display:flex;align-items:flex-start;gap:8px">'+
+        '<div class="avatar" style="width:40px;height:40px;font-size:17px;background:'+v[1]+'">'+v[0]+'</div>'+
+        '<span style="flex:1"></span>'+star+
+      '</div>'+
+      '<div style="font-size:15.5px;font-weight:700;margin-top:11px">'+v[2]+'</div>'+
+      '<div style="font-size:12px;color:var(--text-2);margin-top:3px;flex:1;line-height:1.42">'+v[3]+'</div>'+
+      '<div style="display:flex;gap:6px;margin-top:8px">'+
+        '<span style="font-size:10.5px;color:var(--text-3);background:var(--surface-3);padding:2px 7px;border-radius:5px;font-family:var(--mono)">'+v[4]+' 岁</span>'+
+        '<span style="font-size:10.5px;color:var(--text-3);background:var(--surface-3);padding:2px 7px;border-radius:5px">'+v[5]+'</span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:7px;margin-top:11px">'+
+        '<span style="width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);'+
+          'display:grid;place-items:center;font-size:12px;color:var(--text-2);'+playBg+'">'+(v[7]?'❚❚':'▶')+'</span>'+
+        '<span style="width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);'+
+          'display:grid;place-items:center;font-size:12px;color:var(--text-2)">♡</span>'+
+        '<span style="flex:1"></span>'+
+        '<span style="width:28px;height:28px;border-radius:50%;background:var(--grad-cta);color:#fff;'+
+          'display:grid;place-items:center;font-size:13px">›</span>'+
+      '</div></div>';
+  }
+  document.getElementById('voicenet').innerHTML=V.map(card).join('');
+})();
+
+/* ---------- 03 语言 chips（Constants.nlLanguages 全量 24 项）---------- */
+(function(){
+  var L=["中文","英文","粤语","重庆话","四川话","东北话","河南话","陕西话","天津话","山东话",
+         "法语","德语","日语","韩语","俄语","葡萄牙语","泰语","印尼语","越南语","西班牙语",
+         "意大利语","马来西亚语","菲律宾语","阿拉伯语"];
+  document.getElementById('langchips').innerHTML=L.map(function(n,i){
+    return '<span class="chip'+(i===0?' on':'')+'">'+n+'</span>';
+  }).join('');
+})();
+
+/* ---------- 05 波形 ---------- */
+(function(){
+  var h=[],n=96;
+  for(var i=0;i<n;i++){
+    var p=i/n;
+    var base=Math.abs(Math.sin(p*7.3))*0.55+Math.abs(Math.sin(p*23.1))*0.3+0.12;
+    var played=p<0.38;
+    var hh=Math.max(6,Math.round(base*130));
+    h.push('<i style="flex:1;height:'+hh+'px;border-radius:2px;display:block;'+
+      'background:'+(played?'linear-gradient(180deg,#8A5BFF,#CE2B72)':'rgba(109,59,245,.16)')+'"></i>');
+  }
+  document.getElementById('wave').innerHTML=h.join('');
+})();
+
+/* ---------- 06 历史卡（5 个自然日分组，3 列网格）---------- */
+(function(){
+  function row(o){
+    return '<div style="background:var(--surface);border:1px solid var(--line);border-radius:13px;'+
+      'padding:11px 13px;display:flex;align-items:center;gap:10px">'+
+      '<div class="avatar" style="width:36px;height:36px;border-radius:10px;font-size:15px;background:'+o.g+'">'+o.a+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+o.t+'</div>'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:10px;color:var(--text-3);font-family:var(--mono)">'+
+          '<span style="background:var(--surface-3);padding:1px 5px;border-radius:4px">'+o.v+'</span>'+
+          '<span>'+o.d+'</span></div>'+
+      '</div>'+
+      '<div style="text-align:right;flex:none">'+
+        '<div style="font-size:10px;color:var(--text-3);font-family:var(--mono)">'+o.tm+'</div>'+
+        '<div style="width:28px;height:28px;border-radius:50%;margin-top:4px;margin-left:auto;'+
+          'display:grid;place-items:center;font-size:11px;'+(o.on?
+          'background:var(--grad-cta);color:#fff">❚❚':'background:var(--surface-3);color:var(--text-2)">▶')+'</div>'+
+      '</div></div>';
+  }
+  var G=[
+    {h:"今天", n:2, items:[
+      {a:"心",g:"linear-gradient(145deg,#B79AFF,#7A4BE0)",t:"今天真是个好日子，我们终…",v:"龙安灵心",d:"00:24 · 412 KB",tm:"14:32",on:1},
+      {a:"风",g:"linear-gradient(145deg,#7FE3C4,#17A98C)",t:"各位听众晚上好，欢迎收…",v:"龙安鲁风",d:"00:31 · 528 KB",tm:"11:08",on:0}
+    ]},
+    {h:"昨天", n:4, items:[
+      {a:"曦",g:"linear-gradient(145deg,#FF9EC4,#E05C8A)",t:"别忘了给自己留一点时间。",v:"芷晴曦",d:"00:09 · 158 KB",tm:"昨天",on:0},
+      {a:"鹤",g:"linear-gradient(145deg,#FFC46B,#E8802F)",t:"新品上线啦，快来抢先体验！",v:"筝瑶鹤",d:"00:31 · 540 KB",tm:"昨天",on:0},
+      {a:"柳",g:"linear-gradient(145deg,#74B9FF,#3B74D9)",t:"深秋的雨落在窗台上…",v:"莹松柳",d:"00:17 · 296 KB",tm:"昨天",on:0},
+      {a:"芙",g:"linear-gradient(145deg,#A8E6CF,#3AAE8C)",t:"十月活动旁白（旧）",v:"岚煜芙",d:"00:22 · 374 KB",tm:"昨天",on:0}
+    ]},
+    {h:"2026.11.04", n:3, items:[
+      {a:"月",g:"linear-gradient(145deg,#C4A6FF,#7B5BE0)",t:"会议录音摘要试听版",v:"潇煜月",d:"01:12 · 1.2 MB",tm:"11.04",on:0},
+      {a:"涟",g:"linear-gradient(145deg,#FFD08A,#E08A2F)",t:"晚安，今天也辛苦了。",v:"霓岫涟",d:"00:12 · 208 KB",tm:"11.04",on:0},
+      {a:"璇",g:"linear-gradient(145deg,#8FD3F4,#4A90D9)",t:"新用户引导 · 男声版",v:"溪凌璇",d:"00:26 · 444 KB",tm:"11.04",on:0}
+    ]},
+    {h:"2026.11.03", n:3, items:[
+      {a:"晦",g:"linear-gradient(145deg,#F7A8C4,#D25C8C)",t:"产品介绍旁白 V3",v:"澄桃晦",d:"00:48 · 820 KB",tm:"11.03",on:0},
+      {a:"蕊",g:"linear-gradient(145deg,#9AD5C0,#2E9E7E)",t:"睡前故事 · 小熊的月亮",v:"昕蕊璇",d:"02:04 · 2.1 MB",tm:"11.03",on:0},
+      {a:"莹",g:"linear-gradient(145deg,#D6B4FF,#8A5BE0)",t:"课程开场白（试听）",v:"琴鹤莹",d:"00:15 · 264 KB",tm:"11.03",on:0}
+    ]},
+    {h:"2026.10.28", n:3, items:[
+      {a:"彤",g:"linear-gradient(145deg,#8AD8F0,#3A8FD0)",t:"短视频口播 · 第 12 期",v:"彤旭弦",d:"00:19 · 336 KB",tm:"10.28",on:0},
+      {a:"尧",g:"linear-gradient(145deg,#FFC98A,#E0902F)",t:"客服欢迎语（普通话）",v:"韵知尧",d:"00:07 · 128 KB",tm:"10.28",on:0},
+      {a:"荷",g:"linear-gradient(145deg,#B79AFF,#7A4BE0)",t:"品牌片旁白 · 冬季版",v:"蓉芷荷",d:"00:36 · 616 KB",tm:"10.28",on:0}
+    ]},
+    {h:"2026.10.24", n:3, items:[
+      {a:"心",g:"linear-gradient(145deg,#B79AFF,#7A4BE0)",t:"开场白 · 温柔女声版",v:"龙安灵心",d:"00:11 · 192 KB",tm:"10.24",on:0},
+      {a:"尧",g:"linear-gradient(145deg,#FFC98A,#E0902F)",t:"说明书朗读（第 2 章）",v:"韵知尧",d:"03:18 · 3.4 MB",tm:"10.24",on:0},
+      {a:"竹",g:"linear-gradient(145deg,#7FE3C4,#17A98C)",t:"节日祝福 · 中秋版",v:"璨竹月",d:"00:14 · 248 KB",tm:"10.24",on:0}
+    ]}
+  ];
+  document.getElementById('hist-groups').innerHTML=G.map(function(g){
+    return '<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--text-2)">'+
+      g.h+' <span style="font-family:var(--mono);color:var(--text-3);font-weight:600">'+g.n+' 条</span></div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+g.items.map(row).join('')+'</div>';
+  }).join('');
+})();
+
+/* ---------- 01 正文 7 段（与 iPhone 版同结构）---------- */
+(function(){
+  var PUR='#C07EE7',CYAN='#51C0D6',PINK='#E47FA8',BLUE='#6C8BE0',ORANGE='#F39E49';
+  function badge(c,t){return '<span class="badge" style="--c:'+c+'">'+t+'<span class="x">×</span></span>';}
+  function cap(c,t){return '<span class="capsule" style="--c:'+c+'">'+t+'</span>';}
+  function sfx(c,t){return '<span class="sfx" style="--c:'+c+'">'+t+'<span class="x">×</span></span>';}
+  function para(s){return '<p class="para">'+s+'</p>';}
+  var html=[
+    para(badge(PUR,'😮 惊叹')+cap(PUR,'今天真是个好日子，我们终于见面了。')+sfx(ORANGE,'大笑')),
+    para(cap(PUR,'我真的好开心啊，等了好久！')),
+    para('你迟到了整整十分钟，我可一直在数着时间。'),
+    para('不过没关系，重要的是你来了。'),
+    para('接下来回到默认语气，不带任何情绪基调。'),
+    para(badge(CYAN,'😨 颤抖')+cap(CYAN,'可是我、我又有点紧张……')),
+    para(badge(PINK,'🥰 温柔')+cap(PINK,'别怕，慢慢来，我在这儿等你。')+sfx(ORANGE,'轻叹')),
+    para('我们还有很多时间，慢慢聊就好。'),
+    para(badge(BLUE,'🤫 耳语')+cap(BLUE,'其实我早就想见你了。')),
+    para('窗外的雨停了，屋子里安静下来。<span class="caret" style="margin-left:2px"></span>')
+  ].join('');
+  document.getElementById('ed-01').innerHTML=html;
+})();
+</script>
+</body>
+</html>
