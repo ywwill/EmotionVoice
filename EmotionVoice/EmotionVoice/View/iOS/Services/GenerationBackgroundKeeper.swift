@@ -4,21 +4,18 @@
 //
 //  TTS 生成期间的后台执行保活。
 //
-//  ⚠️ 关键认知：`UIBackgroundModes` 里的 audio / fetch / processing **都不能**
-//  让 `URLSessionWebSocketTask` 在用户按 Home 之后继续收流：
-//    - audio      只在真的在播放或录制音频时保活（本 App 的播放器确实需要它，
-//                 但生成阶段没有音频会话，声明了也不会让进程继续跑）；
-//    - fetch      是 `BGAppRefreshTask` 的短时唤醒，调度时机由系统决定；
-//    - processing 是 `BGProcessingTask`，同样由系统择机调度，且必须在
-//                 `BGTaskSchedulerPermittedIdentifiers` 注册 + 提交请求后才存在。
-//  三者都不是「把当前这条 WebSocket 接着跑完」的机制。
+//  ⚠️ 关键认知：`UIBackgroundModes` 现在只声明 audio（播放器后台播放所需），
+//  **任何** background mode 都不能让 `URLSessionWebSocketTask` 在用户按 Home 之后继续收流：
+//    - audio      只在真的在播放或录制音频时保活，生成阶段没有音频会话；
+//    - fetch / processing 需要 `BGTaskScheduler` 注册任务 + 提交请求（processing 还要
+//      `BGTaskSchedulerPermittedIdentifiers`），工程从未使用，原 plist 里是无效声明，已移除。
 //
 //  真正生效的是 `UIApplication.beginBackgroundTask`：它不需要任何
 //  UIBackgroundModes 声明，在 app 进入后台后给一段连续的执行时间（通常约 30s，
 //  以 `backgroundTimeRemaining` 为准）。这段时间里进程不被挂起，
 //  `URLSessionWebSocketTask` 的 receive 就能继续拿分片。
-//  配合 `URLSessionConfiguration.shouldUseExtendedBackgroundIdleMode`
-//  （见 BailianTTSService.ensureConnection）尽量保住空闲 socket。
+//  `BailianTTSService` 侧只保留 `waitsForConnectivity`：
+//  `shouldUseExtendedBackgroundIdleMode` 自 iOS 18.4 起已标记 Not supported，不再作为保 socket 手段。
 //
 //  边界：额度到期后系统会挂起进程，WebSocket 断线且**不可续传**（协议由边缘函数
 //  驱动，重连只会拿到一条没有任务的空连接）。所以这里在到期 / 后台结束时
