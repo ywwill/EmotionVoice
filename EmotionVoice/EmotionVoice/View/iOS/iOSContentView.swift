@@ -11,5 +11,7 @@ import SwiftUI
 struct iOSContentView: View {
     var body: some View {
         RootTabView()
+            // 每次打开 App（冷启动 / 重新激活）都申请一次 App Store 评分
+            .requestReviewOnEveryOpen()
     }
 }

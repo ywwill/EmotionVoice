@@ -26,7 +26,8 @@ struct PlayerTranscriptView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
-            .frame(maxHeight: 268)
+            // 占满卡片除标题行外的剩余高度：卡片被父级定高后，这里才是唯一可滚动区域
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 18)

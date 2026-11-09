@@ -16,6 +16,8 @@
 
 import Foundation
 import Combine
+import SwiftUI
+import StoreKit
 
 #if canImport(AppKit)
 import AppKit
@@ -364,5 +366,52 @@ struct AppUpdateRecord: Decodable {
             }
         }
         return [:]
+    }
+}
+
+// MARK: - 每次打开 App 申请评分（iOS / macOS 共用）
+
+/// 挂在根容器上：冷启动、以及每次从后台重新激活，都调用一次 `requestReview()`。
+///
+/// ⚠️ `requestReview()` 只是向系统「申请」评分，弹不弹由 StoreKit 决定：
+///   - 开发签名 / DEBUG：每次调用都会弹（方便调试）；
+///   - TestFlight：不弹；
+///   - App Store 正式版：每设备每 365 天最多 3 次，代码无法绕过这个上限。
+/// 所以这里刻意不做任何本地计数 / 节流，把频率完全交给系统。
+private struct RequestReviewOnOpenModifier: ViewModifier {
+    @Environment(\.requestReview) private var requestReview
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// 同一激活周期只申请一次：冷启动时 `.task` 与 scenePhase 的 background→active
+    /// 可能同时命中，避免同一次打开连弹两回；离开 active 即复位。
+    @State private var handledCurrentActive = false
+
+    func body(content: Content) -> some View {
+        content
+            .task { handleAppOpen() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    handleAppOpen()
+                } else {
+                    handledCurrentActive = false
+                }
+            }
+    }
+
+    private func handleAppOpen() {
+        guard !handledCurrentActive else { return }
+        handledCurrentActive = true
+        // 启动瞬间窗口 / 场景还没稳定，StoreKit 会静默丢弃这次申请
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            requestReview()
+        }
+    }
+}
+
+extension View {
+    /// 每次打开 App 都向系统申请一次 App Store 评分。
+    func requestReviewOnEveryOpen() -> some View {
+        modifier(RequestReviewOnOpenModifier())
     }
 }

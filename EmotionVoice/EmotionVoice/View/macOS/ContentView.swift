@@ -60,6 +60,8 @@ struct ContentView: View {
             AppUpdateSheetMac(manager: updateManager, info: info)
         }
         .task { await updateManager.checkForUpdateAtLaunch() }
+        // 每次打开 App（冷启动 / 重新激活）都申请一次 App Store 评分
+        .requestReviewOnEveryOpen()
         .onChange(of: appState.selectedSection) { _, newSection in
             scheduleContentSwap(to: newSection)
         }

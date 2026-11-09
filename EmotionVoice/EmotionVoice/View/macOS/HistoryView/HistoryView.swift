@@ -37,6 +37,55 @@ struct HistoryView: View {
         panelWidth - headerPadding * 2 - headerIconSlot - headerSpacing
     }
 
+    // MARK: - 日期分组（对齐 iOS 的「今天 / 昨天 / yyyy.MM.dd」）
+
+    /// 组头完整日期固定 `yyyy.MM.dd`：POSIX locale + 公历，三语下都是同一串数字；
+    /// 时区跟本地，与分桶用的 `Calendar.current` 午夜边界保持一致。
+    private static let dayTitleFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = .current
+        f.calendar = gregorian
+        f.dateFormat = "yyyy.MM.dd"
+        return f
+    }()
+
+    /// 按自然日分桶：今天 / 昨天各一组，其余一天一组，最新日期在最前。
+    /// ⚠️ 桶 key 用 `startOfDay`，不能用「距今天数」；组 id 刻意不跟本地化标题走，
+    /// 否则切换语言时 Section 身份变化会触发整组重建 / 滚动跳变。
+    private var daySections: [HistoryDaySection] {
+        let cal = Calendar.current
+        let startToday = cal.startOfDay(for: Date())
+        let startYesterday = cal.date(byAdding: .day, value: -1, to: startToday) ?? startToday
+
+        var buckets: [Date: [AudioItem]] = [:]
+        for item in viewModel.displayedAudios {
+            buckets[cal.startOfDay(for: item.createdAt), default: []].append(item)
+        }
+
+        return buckets.keys.sorted(by: >).compactMap { day -> HistoryDaySection? in
+            guard let list = buckets[day], !list.isEmpty else { return nil }
+            let title: String
+            let id: String
+            if day == startToday {
+                title = "今天".localized()
+                id = "today"
+            } else if day == startYesterday {
+                title = "昨天".localized()
+                id = "yesterday"
+            } else {
+                title = Self.dayTitleFormatter.string(from: day)
+                id = "day-\(title)"
+            }
+            return HistoryDaySection(
+                id: id,
+                title: title,
+                items: list.sorted { $0.createdAt > $1.createdAt }
+            )
+        }
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // 左侧音频列表
@@ -92,44 +141,23 @@ struct HistoryView: View {
                 Divider().background(AppColor.borderSubtle)
             }
 
-            // 音频列表
+            // 音频列表：按自然日分组（今天 / 昨天 / yyyy.MM.dd）
             ScrollView {
-                LazyVStack(spacing: 4) {
-                    ForEach(viewModel.displayedAudios) { audio in
-                        AudioRowItem(
-                            audio: audio,
-                            isSelected: viewModel.selectedAudio?.id == audio.id,
-                            isPlaying: viewModel.isPlayingAudio(audio),
-                            isSelectionMode: isSelectionMode,
-                            isChecked: selectedAudioIds.contains(audio.id),
-                            onSelect: {
-                                viewModel.selectAudio(audio)
-                            },
-                            onToggleSelection: {
-                                toggleSelection(audio)
-                            },
-                            onRename: {
-                                audioToRename = audio
-                                renameText = audio.shownName
-                                showRenameAlert = true
-                            },
-                            onExport: {
-                                viewModel.selectAudio(audio)
-                                viewModel.exportAudio(audio)
-                            },
-                            onCopy: {
-                                viewModel.duplicateAudio(audio)
-                            },
-                            onDelete: {
-                                viewModel.deleteAudio(audio)
-                            },
-                            onBatchSelect: {
-                                enterSelectionMode()
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    ForEach(daySections) { section in
+                        Section {
+                            LazyVStack(spacing: 4) {
+                                ForEach(section.items) { audio in
+                                    audioRow(audio)
+                                }
                             }
-                        )
+                            .padding(.horizontal, 12)
+                        } header: {
+                            HistoryDaySectionHeader(section: section)
+                        }
                     }
 
-                    // 加载更多
+                    // 加载更多：只在所有分组之后放一处，避免每个 Section 各触发一次分页
                     if viewModel.hasMorePages {
                         HStack {
                             Spacer()
@@ -159,8 +187,7 @@ struct HistoryView: View {
                         .padding(60)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.bottom, 8)
             }
 
             // 批量操作菜单
@@ -175,6 +202,42 @@ struct HistoryView: View {
         .overlay(alignment: .trailing) {
             Divider().background(AppColor.borderSubtle)
         }
+    }
+
+    // MARK: - 列表行
+
+    private func audioRow(_ audio: AudioItem) -> some View {
+        AudioRowItem(
+            audio: audio,
+            isSelected: viewModel.selectedAudio?.id == audio.id,
+            isPlaying: viewModel.isPlayingAudio(audio),
+            isSelectionMode: isSelectionMode,
+            isChecked: selectedAudioIds.contains(audio.id),
+            onSelect: {
+                viewModel.selectAudio(audio)
+            },
+            onToggleSelection: {
+                toggleSelection(audio)
+            },
+            onRename: {
+                audioToRename = audio
+                renameText = audio.shownName
+                showRenameAlert = true
+            },
+            onExport: {
+                viewModel.selectAudio(audio)
+                viewModel.exportAudio(audio)
+            },
+            onCopy: {
+                viewModel.duplicateAudio(audio)
+            },
+            onDelete: {
+                viewModel.deleteAudio(audio)
+            },
+            onBatchSelect: {
+                enterSelectionMode()
+            }
+        )
     }
 
     // MARK: - 批量操作栏
@@ -442,5 +505,35 @@ struct HistoryView: View {
 
         // 清空选择
         selectedAudioIds.removeAll()
+    }
+}
+
+// MARK: - 历史记录日期分组（macOS 专属；iOS 用 HistorySection / HistorySectionHeader）
+
+private struct HistoryDaySection: Identifiable {
+    let id: String
+    let title: String
+    let items: [AudioItem]
+}
+
+/// 组头只显示日期 + 横线；按用户要求不显示「%d 条」计数。
+/// ⚠️ 背景必须不透明，否则吸顶时下方滚动内容会透出来。
+private struct HistoryDaySectionHeader: View {
+    let section: HistoryDaySection
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(section.title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppColor.textSecondary)
+                .fixedSize(horizontal: true, vertical: false)
+            Rectangle()
+                .fill(AppColor.borderSubtle)
+                .frame(height: 0.5)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 13)
+        .padding(.bottom, 7)
+        .background(AppColor.bgSecondary)
     }
 }

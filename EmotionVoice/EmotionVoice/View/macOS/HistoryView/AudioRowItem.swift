@@ -39,46 +39,42 @@ struct AudioRowItem: View {
                 .buttonStyle(.plain)
             }
 
-            // 头像
-            avatarView
-
-            // 信息
+            // 信息列
+            // ⚠️ 左栏固定 340pt，扣掉列表/行内边距后一行约 292pt。按用户要求移除头像
+            // （省 52pt），并把「更多」按钮上移到名称行右侧 —— 第二行整行留给元信息，
+            // 「音色名 · 时长 · 文件大小 · HH:mm」一行完整显示，不折行、不截断。
             VStack(alignment: .leading, spacing: 4) {
-                Text(audio.shownName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AppColor.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 6) {
+                    Text(audio.shownName)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppColor.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
 
-                HStack(spacing: 8) {
-                    Text(voiceName ?? "—")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppColor.textTertiary)
+                    Spacer(minLength: 4)
 
-                    Text("·")
-                        .foregroundStyle(AppColor.textTertiary)
-
-                    Text(formatDuration(audio.duration))
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(AppColor.textTertiary)
-
-                    if audio.fileSize > 0 {
-                        Text("·")
-                            .foregroundStyle(AppColor.textTertiary)
-
-                        Text(formatDataSize(audio.fileSize))
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(AppColor.textTertiary)
+                    // 更多菜单按钮（选择模式下隐藏）
+                    if !isSelectionMode {
+                        moreButton
                     }
                 }
-            }
 
-            Spacer()
-
-            // 更多菜单按钮（选择模式下隐藏）
-            if !isSelectionMode {
-                moreButton
+                HStack(spacing: 5) {
+                    metaText(voiceName ?? "—")
+                    metaDot
+                    metaText(formatDuration(audio.duration), monospaced: true)
+                    if audio.fileSize > 0 {
+                        metaDot
+                        metaText(formatDataSize(audio.fileSize), monospaced: true)
+                    }
+                    metaDot
+                    // 组头已给出「今天 / 昨天 / 日期」，行内只补时分，方便同组内区分先后
+                    metaText(timeText, monospaced: true)
+                }
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
         }
         .padding(12)
         .background(
@@ -112,28 +108,20 @@ struct AudioRowItem: View {
 
     // MARK: - 子视图
 
-    private var avatarView: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [AppColor.accentPrimary, AppColor.accentSecondary],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 40, height: 40)
+    /// 元信息字段：固定自身完整宽度，绝不参与 HStack 的宽度压缩（否则中文音色名
+    /// 会被逐字换行、等宽的时长/大小会被截尾）；整行再 fixedSize，保证单行不折行。
+    private func metaText(_ text: String, monospaced: Bool = false) -> some View {
+        Text(text)
+            .font(monospaced ? .system(size: 11, design: .monospaced) : .system(size: 11))
+            .foregroundStyle(AppColor.textTertiary)
+            .fixedSize(horizontal: true, vertical: false)
+    }
 
-            Text(avatarChar)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.bgPrimary)
-        }
-        .opacity(isPlaying ? 1.0 : 0.9)
-        .shadow(
-            color: isPlaying ? AppColor.accentPrimary.opacity(0.4) : .clear,
-            radius: isPlaying ? 8 : 0
-        )
-        .animation(.easeOut(duration: 0.2), value: isPlaying)
+    private var metaDot: some View {
+        Text("·")
+            .font(.system(size: 11))
+            .foregroundStyle(AppColor.textTertiary)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var moreButton: some View {
@@ -252,17 +240,15 @@ struct AudioRowItem: View {
 
     // MARK: - 计算属性
 
-    /// 走 VoiceService 的 key 缓存查询。
-    /// 旧实现这里调 `fetchAll()` 全表扫描，而且 `voiceName` / `avatarChar` 各调一次，
-    /// 一屏 20 行就是 40 次全表查询。
-    private var voiceName: String? {
-        VoiceService.shared.displayName(forKey: audio.voice)
+    /// 固定 24 小时制 `HH:mm`，不随 locale 变成 AM/PM，三语下版式一致。
+    private var timeText: String {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: audio.createdAt)
+        return String(format: "%02d:%02d", comps.hour ?? 0, comps.minute ?? 0)
     }
 
-    private var avatarChar: String {
-        if let name = voiceName {
-            return String(name.prefix(1))
-        }
-        return "音"
+    /// 走 VoiceService 的 key 缓存查询。
+    /// 旧实现这里调 `fetchAll()` 全表扫描，一屏 20 行就是 20 次全表查询。
+    private var voiceName: String? {
+        VoiceService.shared.displayName(forKey: audio.voice)
     }
 }
