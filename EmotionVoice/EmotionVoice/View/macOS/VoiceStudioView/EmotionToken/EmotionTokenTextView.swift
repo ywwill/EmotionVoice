@@ -307,6 +307,17 @@ final class EmotionTokenTextView: NSTextView {
     func setContent(_ items: [TTSContentItem]) {
         guard let storage = textStorage else { return }
 
+        // ⚠️ 三张文件级状态表按 attachment 的「对象身份」索引。setContent 会用一批全新的
+        // attachment 整体替换 NSTextStorage，旧条目既不会走 removeToken 也不会走
+        // clearTokens —— 每次切换分区（ContentView 的 .id(renderedSection) 会重建整个
+        // NSTextView）都会再往全局表塞一批永不回收的条目，kEmotionAttachmentHovered
+        // 还会强引用旧页面的 attachment。refreshSelectionStates() 又按「历史总量」遍历
+        // 并写满 selectionStates：CPU 与内存随切换次数单调增长。
+        // 全 App 只有一个编辑器实例（VoiceStudioView），整体替换内容时这三张表就该整体重置。
+        clearHoverImmediately()
+        kEmotionAttachmentIdentity.removeAll(keepingCapacity: true)
+        kEmotionAttachmentSelectionStates.removeAll(keepingCapacity: true)
+
         isInternalUpdate = true
         defer { isInternalUpdate = false }
 

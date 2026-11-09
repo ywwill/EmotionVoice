@@ -41,6 +41,131 @@ final class VoiceService {
     /// 但叠在每一帧上就是肉眼可见的卡顿。
     private let voiceCache = NSCache<NSString, VoiceBox>()
 
+    /// 查询签名 -> 「过滤 + 排序」后的有序 key 列表（进程级）。
+    ///
+    /// 把结果缓存到服务层：VM 只持有 [String] 切片，翻页 / 切分类 / 切页回来都直接命中，
+    /// 不重复跑全表读取 + 本地化排序（约 900 行、全在主线程同步）。
+    /// 缓存有效性由 `cacheGeneration()` 自动判定（表行数 / 收藏数 / 语言任一变化即失效）。
+    /// 无搜索词时由 `orderedKeysWithoutSearch` 计算，避免构造完整 Voice 对象。
+    private var orderedKeysCache: [String: [String]] = [:]
+    private var orderedKeysGeneration: String = ""
+    /// `cacheGeneration()` 的结果缓存。它本身是 2 次 SQL COUNT + 一次 Bundle 查询，
+    /// 每次 `cachedOrderedKeys` / `cachedCategoryCounts` 都重算没必要；
+    /// 失效统一由 `invalidateVoiceCache()` 负责（表重建 / 收藏变更都会调到）。
+    private var generationCache: String = ""
+
+    /// 全量 chip 计数快照（分类计数恒为全量、与搜索词无关）。
+    /// 首屏 `reloadChipCounts()` 原本要跑「1 次全部 + 每个分类 1 次 + 收藏 1 次」
+    /// 约 29 次 SQL COUNT，每次都可能全表扫描，且全部在主线程同步。
+    /// 计数只随表重建 / 收藏变化，进程级缓存一次即可。
+    private var chipCountsSnapshot: (generation: String, all: Int, favorites: Int, counts: [String: Int])?
+
+    private func cacheGeneration() -> String {
+        if !generationCache.isEmpty { return generationCache }
+        let total = (try? db.db.scalar(db.voices.count)) ?? -1
+        let favorites = (try? db.db.scalar(db.voices.filter(db.voiceIsFavorite == true).count)) ?? -1
+        let language = Bundle.main.preferredLocalizations.joined(separator: ",")
+        let result = "\(total)/\(favorites)/\(language)"
+        generationCache = result
+        return result
+    }
+
+    /// 启动空闲期预热音色库数据缓存。
+    ///
+    /// 与视图是否可见完全无关，因此即使 `VoicesLibraryView.onAppear` 因
+    /// `opacity(0)` 未如预期触发，首次真正进入时最贵的两步也已算完：
+    /// - 「全部」有序 key 列表（全表读最小列 + 本地化排序，顺带把 VoiceCatalog
+    ///   词条缓存填热，后续构造 Voice 对象不再反复查 Bundle）；
+    /// - 全量 chip 计数（约 29 次 SQL COUNT）。
+    /// VM 的 `load()` 到这里只剩「取当前页这一窗 Voice 对象」。
+    func warmUpVoiceLibraryCache() {
+        _ = cachedOrderedKeys(showingFavorites: false, category: nil, searchText: "")
+        _ = cachedCategoryCounts()
+    }
+
+    /// 音色库 chip 的全量计数（一次算齐，之后命中缓存零 SQL）。
+    /// 由 `VoicesLibraryViewModel.reloadChipCounts()` 调用；收藏数单独保留在返回值里，
+    /// 但 VM 的 `toggleFavorite` 仍走 `countFavorites()` 单次查询以拿最新值。
+    func cachedCategoryCounts() -> (all: Int, favorites: Int, counts: [String: Int]) {
+        let generation = cacheGeneration()
+        if let hit = chipCountsSnapshot, hit.generation == generation {
+            return (hit.all, hit.favorites, hit.counts)
+        }
+        let all = count(category: nil, searchText: "")
+        let favorites = countFavorites()
+        var counts: [String: Int] = [:]
+        counts.reserveCapacity(VoiceCategory.allCases.count)
+        for cat in VoiceCategory.allCases {
+            counts[cat.rawValue] = count(category: cat, searchText: "")
+        }
+        chipCountsSnapshot = (generation, all, favorites, counts)
+        return (all, favorites, counts)
+    }
+
+    /// 供分页 VM 使用：只返回有序 key 列表，不构造 Voice 对象。
+    func cachedOrderedKeys(showingFavorites: Bool, category: VoiceCategory?, searchText: String) -> [String] {
+        let generation = cacheGeneration()
+        if generation != orderedKeysGeneration {
+            orderedKeysCache.removeAll(keepingCapacity: true)
+            orderedKeysGeneration = generation
+        }
+        let needle = searchText.trimmingCharacters(in: .whitespaces)
+        let key = "\(showingFavorites ? 1 : 0)|\(category?.rawValue ?? "__all__")|\(needle)"
+        if let hit = orderedKeysCache[key] { return hit }
+        // 无搜索词（首屏 / 切分类 / 翻页的绝大多数情况）走快路径：
+        // 不构造 Voice 对象，只读排序所需的最小列。
+        let keys = needle.isEmpty
+            ? orderedKeysWithoutSearch(showingFavorites: showingFavorites, category: category)
+            : orderedVoices(showingFavorites: showingFavorites,
+                            category: category,
+                            searchText: needle).map(\.key)
+        orderedKeysCache[key] = keys
+        return keys
+    }
+
+    /// 构造「收藏 / 分类」基础查询（搜索在内存中做，见 matchesSearch）
+    private func baseQuery(showingFavorites: Bool, category: VoiceCategory?) -> SQLite.QueryType {
+        if showingFavorites {
+            return db.voices.filter(db.voiceIsFavorite == true)
+        }
+        if let pred = predicate(category: category) {
+            return db.voices.filter(pred)
+        }
+        return db.voices
+    }
+
+    /// 无搜索词时的「有序 key 列表」快路径。
+    ///
+    /// ⚠️ 不要走 `rowToVoice`：它每行要读 4 次 VoiceCatalog 文案并构造完整 Voice
+    /// （还要解析 scene / lang / gender 枚举），而这里只需要 key 与排序依据
+    /// （旗舰优先、当前语言展示名字典序）。音色表约 900 行时，省掉一半查表与
+    /// 全部对象分配 —— 这是首屏同步加载最主要的耗时。
+    /// 有搜索词必须回退 `orderedVoices`，因为 matchesSearch 还要比对特质 / 场景 / 语种。
+    private func orderedKeysWithoutSearch(showingFavorites: Bool, category: VoiceCategory?) -> [String] {
+        do {
+            let useChinese = AppLanguage.isChinese
+            let rows = try db.db.prepare(baseQuery(showingFavorites: showingFavorites,
+                                                   category: category))
+                .map { row -> (key: String, premium: Bool, sortName: String) in
+                    let stem = (row[db.voiceAudio] as NSString).deletingPathExtension
+                    let nameZh = VoiceCatalog.localizedVoiceName(stem: stem, language: .zh)
+                    let nameEn = VoiceCatalog.localizedVoiceName(stem: stem, language: .en)
+                    // 与 Voice.localizedName 的回退规则一致，保证排序结果与旧路径完全相同
+                    let sortName = useChinese ? nameZh : (nameEn.isEmpty ? nameZh : nameEn)
+                    return (row[db.voiceKey],
+                            row[db.voiceTier] == VoiceTier.premium.rawValue,
+                            sortName)
+                }
+            return rows.sorted { a, b in
+                if a.premium != b.premium { return a.premium }
+                return a.sortName.localizedStandardCompare(b.sortName) == .orderedAscending
+            }.map(\.key)
+        } catch {
+            Log(message: "VoiceService.orderedKeysWithoutSearch error: \(error)")
+            return []
+        }
+    }
+
     // MARK: - 按 key 取展示名（带缓存）
 
     /// 取单个音色的展示名。
@@ -86,6 +211,10 @@ final class VoiceService {
     func invalidateVoiceCache() {
         voiceCache.removeAllObjects()
         nameCache.removeAllObjects()
+        orderedKeysCache.removeAll(keepingCapacity: true)
+        orderedKeysGeneration = ""
+        generationCache = ""
+        chipCountsSnapshot = nil
     }
 
     /// 按分类获取
@@ -96,14 +225,24 @@ final class VoiceService {
     // MARK: - 分页查询（按分类 + 搜索文本）
 
     /// 按分类+搜索文本查询总数
+    ///
+    /// ⚠️ 无搜索词时直接下推 SQL COUNT。旧实现 `prepare(query).map { rowToVoice }`
+    /// 把整张音色表读成对象再在应用层 `.filter.count`：`rowToVoice` 每行要做 4 次
+    /// VoiceCatalog 本地化查表，音色库首屏一轮 chip 计数会跑 ~29 次全表对象化，
+    /// 全部在主线程同步执行 —— 这是切到音色库时 CPU / 内存尖峰的主要来源。
+    /// 搜索词非空时仍走内存匹配（要覆盖当前语言的名 / 特质 / 场景 / 语种，无法直接下推 SQL）。
     func count(category: VoiceCategory?, searchText: String) -> Int {
         do {
             var query = db.voices
             if let pred = predicate(category: category) {
                 query = query.filter(pred)
             }
+            let needle = searchText.trimmingCharacters(in: .whitespaces)
+            if needle.isEmpty {
+                return Int(try db.db.scalar(query.count))
+            }
             let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
-            return all.filter { Self.matchesSearch($0, searchText) }.count
+            return all.filter { Self.matchesSearch($0, needle) }.count
         } catch {
             Log(message: "VoiceService.count error: \(error)")
             return 0
@@ -118,16 +257,9 @@ final class VoiceService {
     /// （快速连点翻页时这正是 CPU / 内存飙升的根因）。
     func orderedVoices(showingFavorites: Bool, category: VoiceCategory?, searchText: String) -> [Voice] {
         do {
-            let query: SQLite.QueryType
-            if showingFavorites {
-                query = db.voices.filter(db.voiceIsFavorite == true)
-            } else if let pred = predicate(category: category) {
-                query = db.voices.filter(pred)
-            } else {
-                query = db.voices
-            }
-
-            let rows = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
+            let rows = try db.db.prepare(baseQuery(showingFavorites: showingFavorites,
+                                                   category: category))
+                .map { Self.rowToVoice($0, db: db) }
             let filtered = rows.filter { Self.matchesSearch($0, searchText) }
             return Self.sorted(filtered)
         } catch {
@@ -166,12 +298,16 @@ final class VoiceService {
         countFavorites(searchText: "")
     }
 
-    /// 按收藏+搜索文本查询总数
+    /// 按收藏+搜索文本查询总数（无搜索词时同样下推 SQL COUNT）
     func countFavorites(searchText: String) -> Int {
         do {
             let query = db.voices.filter(db.voiceIsFavorite == true)
+            let needle = searchText.trimmingCharacters(in: .whitespaces)
+            if needle.isEmpty {
+                return Int(try db.db.scalar(query.count))
+            }
             let all = try db.db.prepare(query).map { Self.rowToVoice($0, db: db) }
-            return all.filter { Self.matchesSearch($0, searchText) }.count
+            return all.filter { Self.matchesSearch($0, needle) }.count
         } catch {
             Log(message: "VoiceService.countFavorites error: \(error)")
             return 0

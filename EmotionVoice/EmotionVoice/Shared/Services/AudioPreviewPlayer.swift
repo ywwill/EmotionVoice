@@ -61,6 +61,9 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private var player: AVAudioPlayer?
     private var avPlayer: AVPlayer?  // 回退播放器，用于播放 AVAudioPlayer 不支持的格式
     private var playerItemObserver: NSKeyValueObservation?  // 监听 AVPlayer 播放状态
+    /// AVPlayer 播放结束通知是 block-based observer，NotificationCenter 会强持有它，
+    /// 必须显式 removeObserver；否则每次走 AVPlayer 回退播放都会泄漏一个观察者。
+    private var playerItemEndObserver: NSObjectProtocol?
     private var progressTimer: Timer?  // 进度更新定时器
     private var cachedURLs: [String: URL] = [:]
 
@@ -231,6 +234,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         avPlayer = nil
         playerItemObserver?.invalidate()
         playerItemObserver = nil
+        if let endObserver = playerItemEndObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            playerItemEndObserver = nil
+        }
 
         // 确保文件存在
         guard FileManager.default.fileExists(atPath: url.path) else {
@@ -270,8 +277,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
             }
         }
 
-        // 监听播放结束
-        NotificationCenter.default.addObserver(
+        // 监听播放结束（保存返回值，stop / 下次回退时移除）
+        playerItemEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: playerItem,
             queue: .main
@@ -300,6 +307,10 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
         avPlayer = nil
         playerItemObserver?.invalidate()
         playerItemObserver = nil
+        if let endObserver = playerItemEndObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            playerItemEndObserver = nil
+        }
         stopProgressTimer()
         // 重置进度
         progress = 0

@@ -163,6 +163,13 @@ struct SidebarItem: View {
             withAnimation(.easeInOut(duration: 0.18)) {
                 isHovered = hovering
             }
+            // 鼠标移到「音色库」时顺手把首屏数据缓存热起来（幂等）。
+            // 定时预热在启动 800ms 后才跑；用户抢在这之前点进来时，最贵的
+            // 全表排序 + 约 29 次全量 COUNT 已在 hover 到 click 的间隙做完。
+            // 缓存命中后这里只有两次字典查找，重复 hover 不会有任何开销。
+            if hovering, section == .voices {
+                VoiceService.shared.warmUpVoiceLibraryCache()
+            }
         }
     }
 

@@ -16,6 +16,14 @@ struct VoiceStudioView: View {
     // 注意：这里刻意不订阅 AudioPreviewPlayer（不用 @ObservedObject）。
     // 播放进度以 10Hz 刷新，一旦在页面层级订阅，整页（文本编辑器 + 全部面板）
     // 都会跟着重算。需要播放态的地方下沉到子视图里订阅，见 VoiceRowPlayback。
+
+    /// 当前分区是否正显示。
+    /// ContentView 会常驻本页实例（切页只切 opacity），为 false 时必须：
+    /// 1) 让 NSTextView 不可编辑 / 不可选中，主动交出 first responder，
+    ///    否则隐藏页会继续吃掉其它分区的键盘输入；
+    /// 2) 关掉挂在自己身上的 sheet / popover，否则它们会跟着浮在别的页面上。
+    var isActive: Bool = true
+
     @State private var showVoiceLibrarySheet: Bool = false
     /// 生成弹窗的开关放在 AppState 上（全局承载，关掉后可从任意页面召回），
     /// 这里只是读同一个值：接收中屏蔽下层交互与光标区。
@@ -34,8 +42,9 @@ struct VoiceStudioView: View {
 
     var body: some View {
         studioContent
-            // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域
-            .allowsHitTesting(!showGenerationModal)
+            // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域；
+            // 分区隐藏时也要屏蔽，否则常驻的透明页会拦下其它分区的点击
+            .allowsHitTesting(isActive && !showGenerationModal)
             // 弹窗与工作台里的 NSTextView 共处同一窗口。SwiftUI 自绘内容不是 NSView，
             // 不参与 AppKit 的 cursor rect 判定，下层的 I-beam 会穿透到弹窗上方
             //（异常范围正好等于卡片内容区高度）。这里在弹窗期间禁用窗口的 cursor rects，
@@ -71,6 +80,17 @@ struct VoiceStudioView: View {
             if let newKey, !newKey.isEmpty {
                 vm.selectedVoiceKey = newKey
             }
+        }
+        .onChange(of: isActive) { _, active in
+            guard !active else { return }
+            // 本页常驻：失活时收掉所有挂在本页的浮层，避免它们浮到别的分区上。
+            // 生成弹窗在 AppState / GenerationOverlay 上，是刻意跨页存在的，不动。
+            showVoiceLibrarySheet = false
+            showCreditsPurchaseSheet = false
+            showEmotionRulePopover = false
+            showInterruptRulePopover = false
+            showRichLanguageRulePopover = false
+            showNLRulePopover = false
         }
         // 四项参数实时落盘：改完即使立刻退出 App 也不丢。
         // ⚠️ 不再像以前那样回写 `appState.defaultFormat` / `defaultSampleRate`：
@@ -144,8 +164,10 @@ struct VoiceStudioView: View {
                 insertTokenCategory: vm.insertTokenCategory,
                 clearTrigger: vm.clearTokensTrigger,
                 textBinding: $vm.text,
-                // 生成弹窗期间让文本域彻底不可交互：不抢焦点、不注册 I-beam 光标区
-                isInteractive: !showGenerationModal
+                // 生成弹窗 / 分区隐藏期间让文本域彻底不可交互：
+                // 不抢焦点、不注册 I-beam 光标区。isInteractive 变化时
+                // updateNSView 会置 isEditable/isSelectable = false 并交出 firstResponder。
+                isInteractive: isActive && !showGenerationModal
             )
             .font(AppFont.bodyLarge)
             .foregroundStyle(AppColor.textPrimary)

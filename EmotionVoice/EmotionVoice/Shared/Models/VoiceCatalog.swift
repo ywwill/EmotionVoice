@@ -160,17 +160,36 @@ enum VoiceSceneCode: String, Codable, CaseIterable, Hashable {
 /// 保证 zh / en 两份文案都能稳定取到（而非依赖运行时的系统语言）。
 enum VoiceCatalog {
 
+    /// 词条结果缓存。
+    ///
+    /// ⚠️ `string()` 原本每次都要走 `Bundle.main.path` → `Bundle(path:)` →
+    /// `NSLocalizedString`，即一次文件系统查找 + 一次 Bundle 构造。而
+    /// `VoiceService.rowToVoice` 全表约 900 行、每行 4 次读取，搜索与切分类时
+    /// 一遍遍重跑就是几千次，是音色库首屏 / 搜索卡顿的隐藏大头。
+    /// key 里带上 lproj 候选链（含繁简字形），语言切换会自动落到不同条目。
+    private static let stringCache = NSCache<NSString, NSString>()
+
     /// 读取指定语种的 VoiceCatalog.strings 词条；缺失时回退到 key 本身
     static func string(_ key: String, language: VoiceLangCode) -> String {
-        for lproj in lprojCandidates(for: language) {
+        let lprojs = lprojCandidates(for: language)
+        let cacheKey = (lprojs.joined(separator: "|") + "#" + key) as NSString
+        if let hit = stringCache.object(forKey: cacheKey) {
+            return String(hit)
+        }
+        var result = key
+        for lproj in lprojs {
             guard let path = Bundle.main.path(forResource: lproj, ofType: "lproj"),
                   let bundle = Bundle(path: path) else { continue }
             let value = NSLocalizedString(key, tableName: "VoiceCatalog", bundle: bundle,
                                          value: key, comment: "")
             // 取不到（返回 key 本身）就往下个候选退，最终兜底仍是 key
-            if !value.isEmpty, value != key { return value }
+            if !value.isEmpty, value != key {
+                result = value
+                break
+            }
         }
-        return key
+        stringCache.setObject(result as NSString, forKey: cacheKey)
+        return result
     }
 
     /// 中文按界面语言挑简体 / 繁体字形，英文固定 en

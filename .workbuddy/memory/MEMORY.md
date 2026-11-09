@@ -1,11 +1,11 @@
 # EmotionVoice 长期约定（只留「禁令 / 根因 / 入口」）
 
-细节见 `.workbuddy/memory/YYYY-MM-DD.md`；商店页/预览图版式、本地化、坐标等细节全部见 `产品/商店页/*.md`（本文只留索引）。
+细节见 `.workbuddy/memory/YYYY-MM-DD.md`；商店页 / 预览图版式、坐标、本地化用词全部见 `产品/商店页/*.md`（本文只留索引 + 禁令）。
 
 ## 工程 / 构建
 - target `Emora`(macOS) / `iOSEmora`(iOS 18.6)；iOS 独有 `View/iOS/`；复用 macOS 文件**原地加入 iOS target**，`#if canImport(AppKit)` 隔离。新增 iOS .swift 须改 pbxproj 4 处 → **优先塞进已有文件，零 pbxproj 改动**。
 - SQLite **永不迁移**：改 `createTables()` 就 bump `currentSchemaVersion`，不符 DROP 重建。
-- 构建 `bash tools/ios_build.sh`（`mac` 回归双 target）；类型检查 `bash tools/ios_typecheck/typecheck.sh`（`Shims.swift` 须加桩）；workaround `IDEPackageSupportDisableManifestSandbox`/`-disable-sandbox`/`ONLY_ACTIVE_ARCH=YES`。
+- 构建 `bash tools/ios_build.sh mac`（双 target）；类型检查 `bash tools/ios_typecheck/typecheck.sh`（`Shims.swift` 须加桩）；workaround `IDEPackageSupportDisableManifestSandbox`/`-disable-sandbox`/`ONLY_ACTIVE_ARCH=YES`。
 - ⚠️ 四配置默认 `SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor`：后台纯计算显式 `nonisolated`（私有 helper 一起加），静态非 Sendable 用 `nonisolated(unsafe)`。Swift 5 违规仅 warning，**验证须 grep 构建日志**。
 - macOS 首屏 `.defaultSize(visibleFrame)` + `viewDidMoveToWindow()` 同步配置，禁 `DispatchQueue.main.async` 延迟 setFrame。SPM 缓存报 `unable to read tree` → `git fetch` 补缓存（含 DerivedData 那份），别删目录。
 
@@ -18,6 +18,7 @@
 - 唯一数据源 `Voices/basic_voices.json`(v4)，改后跑 `tools/gen_basic_voices.py`。语气/拟声标签唯一来源 `Shared/Models/Constants.swift`（`emotions` 24 项、`richLanguageTags` 7 个官方拟声）；⚠️ 商店图禁自造标签。
 - 胶囊整条热区 `contentShape(Rectangle())`；刷新过渡用 `contentVisible`，`.id(scrollResetID)` 只管滚回顶部。中断 API 不支持 → `toTTSAPIString()` 丢弃，生成走 `toTTSSegments()` + `AudioConcatenator.merge()`。
 - ⚠️ iOS 分类筛选只在进程内保留（`VoiceLibraryFilterStore`），禁读写 `AppState.voiceLibrary*`；⚠️ `VoicesLibraryView`/`VoicePickerSheet` 的 `apply` 取消也要 `commit(fresh,total)`，否则永久空态；另配 `onAppear` 自愈。
+- ⚠️ `VoiceCatalog.string()` 的 NSCache 词条缓存**禁去掉**（原实现每次 `Bundle.path` + `Bundle(path:)` 文件系统查找，全表 900 行 × 4 次）。`VoiceService.cachedOrderedKeys` 无搜索词走 `orderedKeysWithoutSearch`（只读 key/tier/展示名，不构造 Voice），有搜索词才回退 `orderedVoices`。
 
 ## macOS 输入框 / 语气标签
 - 入口 `View/macOS/VoiceStudioView/EmotionToken/EmotionTokenTextView.swift`（`toneCapsuleGeometries()` 自绘胶囊）+ `View/macOS/EmotionHighlightedTextEditor.swift`（旧版）；绘制与命中同源（`tokenHitRegions()`）。
@@ -37,8 +38,15 @@
 ## 播放器 / 订阅隔离（关键）
 - ⚠️ 播放器按 target 拆两份同名 `AudioPreviewPlayer`（API 逐字对齐）：macOS 版只挂 Emora、iOS 版只挂 iOSEmora；`typecheck.sh` 的 `MAC_ONLY` 与 `add_ios_target_files.py` 的 `REUSED` 必须排除 macOS 版。
 - iOS：AVAudioSession `.playback` + `iOSEmora-Info.plist` 的 `UIBackgroundModes=[audio]`（⚠️ `INFOPLIST_KEY_UIBackgroundModes` 对数组键无效，须 `INFOPLIST_FILE` 模板 + `plutil -extract` 验产物）。⚠️ 封面 `makeArtwork` 全幅不透明渐变（`opaque=true`、禁 `addClip`）。
-- ⚠️ iOS 播放/切倍速 CPU 暴涨根因 = SwiftUI 订阅拓扑：`PlaybackStatus` 只订阅单属性 publisher；高频显示只许 6 个小 View 各自 `@ObservedObject`；禁 `@StateObject player`；`ProjectsView.row(_:)` 禁把 progress 传给所有行。
+- ⚠️ iOS 播放/切倍速 CPU 暴涨根因 = SwiftUI 订阅拓扑：`PlaybackStatus` 只订阅单属性 publisher；高频显示只许 6 个小 View 各自 `@ObservedObject`；禁 `@StateObject player`；`ProjectsView.row(_:)` 禁把 progress 传给所有行。macOS 音色库同理：页面级只 `.onReceive($playingKey.removeDuplicates())`。
 - `playingKey` 存 identifier，跨 key 用 `reidentify(_:)`；⚠️ 并发闭包「外层 `guard let self` + `Task @MainActor`」。iOS `transportRow` 与 macOS `PlayerTransportView` 同构：±15s/±5s 走 `player.skip(by:)`；「从头播放」只在工具行，步长写字面量别抽常量。
+
+## macOS 切页架构（关键）
+- ⚠️ `ContentView.mainContent` = ZStack 双层：`.voiceStudio`/`.voices` 访问过即常驻（`visitedSections`），只切 opacity；轻量页仍条件渲染（保 `onAppear` 刷新 / `PlaybackShortcutsController` 注销）。**禁再加 `.id(renderedSection)` 重建重页面**（NSTextView + 全局 attachment 状态表 + VM 全量重建 = 切页卡顿根因）。两页都铺不透明 `bgPrimary` 底盖住下层隐藏页（NSViewRepresentable 的 `opacity(0)` 不总可靠）。
+- ⚠️ 常驻页靠 `isActive` 补偿生命周期：VoiceStudioView 失活关 2 sheet + 4 popover、`isInteractive=false` 交出 firstResponder；VoicesLibraryView 失活只停骨架扫光 + `persistAndPause()` 写回筛选/停播。⚠️ **两页隐藏时都必须保留整棵视图树，禁 `Color.clear` 门控**（否则每次切回重建 27 chip + 20 卡片）。⚠️ **禁在失活时 cancel `loadTask` / 重置 `voicesAppear`**（`onAppear` 不再触发 → 永久骨架 / 列表透明）。⚠️ `.suppressesCursorRects` 别掺 `isActive`。
+- ⚠️ VM 常驻后 `lastQueryKey` 不会自动失效：`appState.voices` 变化须调 `invalidateQueryCacheAndReload()`，否则「仅看收藏」永远用旧有序 key。
+- 音色库首屏：`onAppear` → `Task.sleep(32ms)` 跨帧 → `vm.load()`；⚠️ 禁改回 `Task.yield()`（骨架帧未必提交）。骨架扫光统一 `SkeletonShimmer` **一层**（禁每卡 GeometryReader + repeatForever）。
+- ⚠️ **首次进入音色库仍卡 = 首次构建 + 首次全表加载**；解法是启动后空闲期把 `.voices` 挂进 ZStack 预热（`ContentView.warmUpVoicesLibrary()`，隐藏态 `isActive:false`，其 `onAppear` 自动跑 32ms + load），点击时只剩 alpha 变化。⚠️ 禁把预热挂进 `checkForUpdateAtLaunch()` 那条 `.task`（网络会阻塞），须另开一条 `.task`；⚠️ 数据预热与挂视图树**必须分两帧**（各约 20ms，合并会掉帧）。首次进 `.voices` 的 100ms 让帧延迟**已删除**（页面已预热，等待只会变成「点了没反应」）。配合 `VoiceService.warmUpVoiceLibraryCache()` / `cachedCategoryCounts()` / `generationCache` 缓存 29 次全量 COUNT；`SidebarItem.onHover` 在 hover「音色库」时幂等热数据，兜住启动 800ms 内就点击的冷路径。⚠️ 预热前表一定已就绪：`DatabaseManager.shared` 的 init 同步跑 `createTables()` + `syncVoicesIfNeeded()`。
 
 ## 历史记录 / 列表
 - `HistoryListViewModel`(iOS) 一次全量 `fetchAllAudios()` 50/批；`Shared/HistoryViewModel` 属 macOS。
@@ -46,7 +54,7 @@
 - 播放跨页保留；`identifier=item.fileName` 经 `NowPlayingStore`。浮层互斥链：撤销 Toast > 后台接收条 > mini player。
 - ⚠️ `MiniPlayerView` 品牌渐变底+白字、height=56；`ProjectsView` 按 `miniPlayerVisible` 在 List 末尾插透明占位 Section。卡片进度条只 `scaleEffect(x:,anchor:.leading)`，**绝不自加 `.clipShape`**。
 - ⚠️ `.plain` List 必须清零系统留白（`.listSectionSpacing(0)` + `defaultMinListHeaderHeight=0` + `.contentMargins(.top,0)`）；垂直节奏只由 chips 底 10pt + 组头 顶 13/底 7。时间分组按自然日（组头 `yyyy.MM.dd`）。
-- **macOS 分组**：全在 `View/macOS/HistoryView/HistoryView.swift` 文件内（`daySections` + `HistoryDaySection`/`HistoryDaySectionHeader`），`LazyVStack(pinnedViews:[.sectionHeaders])` + `Section`，算法照抄 iOS `makeSections`。⚠️ 类型**必须 `HistoryDay*` 前缀**（iOS 已有 `HistorySection`/`HistorySectionHeader`，别放进双 target 共用的 Shared）；⚠️ 保留 `displayedAudios`（批量操作 4 处依赖），VM 零改动；⚠️ 加载更多 ProgressView 只在所有 Section 之后一处；组头用 `AppColor`（iOS 的 `.aurora`/`.screenMetrics` macOS 编译不到）且背景须不透明。⚠️ 组头**不显示「%d 条」计数**（用户要求；三份 strings 的 key 保留给 iOS）。⚠️ `AudioRowItem` **已移除头像**（用户要求腾宽度），名称行右侧放「更多」按钮，第二行「音色名 · 时长 · 文件大小 · HH:mm」**必须一行完整显示**：各字段 `fixedSize` + 整行 `fixedSize(horizontal:true)`；左栏固定 340pt，⚠️ 禁把时分单独放右列 + `Spacer()`（文字列会被压到 ~138pt）。
+- **macOS 分组**：全在 `View/macOS/HistoryView/HistoryView.swift` 内（`daySections` + `HistoryDaySection`/`HistoryDaySectionHeader`），`LazyVStack(pinnedViews:[.sectionHeaders])` + `Section`，算法照抄 iOS `makeSections`。⚠️ 类型**必须 `HistoryDay*` 前缀**（iOS 已有同名类型，别放进双 target 共用 Shared）；⚠️ 保留 `displayedAudios`（批量操作 4 处依赖），VM 零改动；⚠️ 加载更多 ProgressView 只在所有 Section 之后一处；组头用 `AppColor` 且不透明、**不显示「%d 条」计数**。⚠️ `AudioRowItem` **已移除头像**，名称行右侧「更多」，第二行「音色名 · 时长 · 文件大小 · HH:mm」**必须一行完整显示**：各字段 `fixedSize` + 整行 `fixedSize(horizontal:true)`；左栏固定 340pt，⚠️ 禁把时分单独放右列 + `Spacer()`。
 
 ## 积分 / 生成弹窗 / 参数持久化
 - 积分全链路 Double(≤2位)：`CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5），CJK 算 2 字符，云端 `numeric(10,2)`。
@@ -55,13 +63,13 @@
 - ⚠️ 禁把 `AppState.defaultFormat`/`defaultSampleRate` 当存储；「重置」两端只调 `reset(on: vm)`，禁传 `defaults` —— 重置 = `.factory`(mp3/22050/1.0x/100%)。默认值一律读 `Constants`/`.factory`；`defaultFormat` 已改 `mp3`，全链路（VM/`BailianTTSService`/云端 `bailian-tts/index.ts`）同步且不覆盖已有存档；`VoiceStudioView.onAppear` 旧的「从设置页覆盖参数」已删，**别加回来**。
 
 ## 评分弹窗
-- ⚠️ 用户明确要求「**每次 App 打开都弹评分弹窗**」，与 ASO 审计文档「不要在启动时弹」相反，**以用户要求为准，别改回去**。实现在 `Shared/Services/AppUpdateManager.swift` 的 `requestReviewOnEveryOpen()`（共享 ViewModifier，两端根容器各挂一行），**不做任何本地节流**。⚠️ StoreKit 正式版每设备 365 天最多 3 次 / TestFlight 不弹是系统硬限制，代码绕不过。
+- ⚠️ 用户明确要求「**每次 App 打开都弹评分弹窗**」，与 ASO 审计文档相反，**以用户要求为准，别改回去**。实现在 `Shared/Services/AppUpdateManager.swift` 的 `requestReviewOnEveryOpen()`（共享 ViewModifier，两端根容器各挂一行），**不做任何本地节流**。⚠️ StoreKit 正式版每设备 365 天最多 3 次 / TestFlight 不弹是系统硬限制，代码绕不过。
 
-## 商店页 / ASO（细节全在 `产品/商店页/*.md`）
+## 商店页 / ASO（全部细节在 `产品/商店页/*.md`，此处只留入口 + 禁令）
 - Mac：`商店页文案-多语言版本.md` + `素材/gen_previews.py` + `素材/html/{zh,en}/` + `素材/mac-2880x1800/{zh,en}/`，深色 16:10、6 张。⚠️ `素材/raw/` 未被 git 追踪曾被清理，重跑 build 缺源图；可从成片裁 `.win` 区作底图。
-- ⚠️ Mac 01 覆盖层 v4.5：`.win` 内叠层、raw 坐标 + 整体 transform scale；**禁铺满**（连续文稿自然换行、删光 letterSpacing/禁 justify），语气徽章只在切换首行、拟声 pill 嵌句中。两端缩放不同：zh `2112/3456` / en **`2122/3442`**；计数积分 wipe 坐标各一套。`--only=01` build/export 都要带；改一语另一语 md5 零回归。
-- **Mac 繁体 v3**：入口 `素材/prepare_mac_hant_real.py`（真机源 `mac_hant_real/*.jpg` 只读 → `html/zh-Hant/win-*.png`）+ `gen_mac_hant.py`；细节全在 `Mac预览图-香港繁体中文版分镜.md`。主生成器零改动、中英 12 张零回归。⚠️ 01/02/03/06 四窗全是繁体真机原生 UI，`has_real_06()` 为真时跳过整条覆盖链，`BLOCKS`/`ensure_clean_06`/`detail_fix_overlay` 只作缺图回退，**禁挂贴字层**（双层字）。⚠️ 两种裁法：4 张 1920×1191 带画布用 `(58,39)-(1862,1114)`；`06-projects.jpg` 是 **1920×1145 纯窗口**须整幅缩放（`BOX_BY_SRC`），套 BOX 会裁掉交通灯/左栏/状态栏。01 仍叠 v4.5 `LINES_HANT`，wipe 底色须 `sample_bg()` 动态采样 + 3 处坐标修正（1160→1220 / cr wipe 左移加宽 / credit 左移）。06 半行字清理用整块 `paste` 纯底色条带 y886..908→y963..984，⚠️ 按列取色出竖条纹、铺单色出色带。⚠️ `dominant()` 收 `(x,y,w,h)` 不是 roi、只取暗色；禁无条件注入 `UI_CSS`。⚠️ 全量 export 偶发 04/05 底部 21px 最大 18/255 色差（Chrome 视口边缘，视觉无影响，别 hack CSS）。用词读 `zh-HK.lproj`，s2t 对港式「台/只/才/吃/游/注」误报别改。
-- **Mac 简英 06（当前真机 UI）**：简体 `prepare_mac_zh_real.py`（源 `mac_zh_real/06-projects.jpg` 只读 → `html/zh/win-06.png` + 同份 `4.png`）+ `gen_mac_zh06.py --export`；英文 `prepare_mac_en_real.py`（`mac_en_real/06-projects.jpg` → `html/en/win-06.png`）+ `gen_mac_en06.py --export`（`cfg_lang="en"`）。均复用 gp 的 CSS/page_image/export + `only={"06"}`，主生成器零改动、其余 17 张 md5 零回归。文档 `Mac预览图-{简体中文,英文}06真机图更新.md`。⚠️ 三语源图都是**纯窗口须整幅缩放**，禁套繁体 A 类 `(58,39)-(1862,1114)` BOX；英文源高 **1143**（简繁 1145），别为凑数拉伸/补边。⚠️ **半行字处理三语不同**：简体图无半行字、繁体图已清理（y886..908→963..984）、**英文图用户明确要求保留原样，禁清理/禁贴字**（别抄繁体 `clean_card_bottom()`）。⚠️ 禁全量跑主生成器 / 禁往 `raw/` 塞源图；英文 `.win` 已从 2104 统一 2112。旧成片带橙色头像属早期 UI，别恢复。
+- ⚠️ Mac 01 覆盖层 v4.5：`.win` 内叠层、raw 坐标 + 整体 transform scale；**禁铺满**（自然换行、删光 letterSpacing/禁 justify），语气徽章只在切换首行、拟声 pill 嵌句中。两端缩放不同：zh `2112/3456` / en **`2122/3442`**；计数积分 wipe 坐标各一套。`--only=01` build/export 都要带；改一语另一语 md5 零回归。
+- **Mac 繁体 v3**：入口 `素材/prepare_mac_hant_real.py` + `gen_mac_hant.py`，细节见 `Mac预览图-香港繁体中文版分镜.md`。⚠️ 01/02/03/06 四窗是繁体真机原生 UI，`has_real_06()` 为真时跳过整条覆盖链，**禁挂贴字层**（双层字）。⚠️ 4 张 1920×1191 带画布用 `(58,39)-(1862,1114)`；`06-projects.jpg` 是 **1920×1145 纯窗口**须整幅缩放（`BOX_BY_SRC`）。01 wipe 底色用 `sample_bg()` 动态采样 + 3 处坐标修正。06 半行字用整块 `paste` 纯底色条带 y886..908→963..984（⚠️ 按列取色出竖条纹、铺单色出色带）。⚠️ `dominant()` 收 `(x,y,w,h)` 不是 roi；禁无条件注入 `UI_CSS`。⚠️ 全量 export 偶发 04/05 底部 21px 色差（Chrome 视口边缘，别 hack CSS）。用词读 `zh-HK.lproj`，s2t 港式误报别改。
+- **Mac 简英 06**：`prepare_mac_zh_real.py` + `gen_mac_zh06.py --export`、`prepare_mac_en_real.py` + `gen_mac_en06.py --export`；均 `only={"06"}` 复用 gp，主生成器零改动、其余 17 张 md5 零回归。文档 `Mac预览图-{简体中文,英文}06真机图更新.md`。⚠️ 三语源图都是**纯窗口须整幅缩放**，禁套繁体 A 类 BOX；英文源高 **1143**（简繁 1145），别拉伸补边。⚠️ **半行字三语不同**：简体无、繁体已清理、**英文用户明确要求保留原样，禁清理/禁贴字**。⚠️ 禁全量跑主生成器 / 禁往 `raw/` 塞源图；英文 `.win` 已从 2104 统一 2112。旧成片橙色头像属早期 UI，别恢复。
 - iOS iPhone：元数据 `iOS商店页元数据-6语言.md` + `ios-store-copy/`；预览图 `gen_ios_previews.py` + `ios-1320x2868/<locale>/`。名称/副标题 30 / 关键词 100 字符含逗号、逗号后不加空格；四英文区名称副标题共用、关键词四套独立。
-- ⚠️ iOS 端没有声音复刻/克隆 UI；字幕禁写具体能力数量。尺寸：6.9" `1320×2868`(禁 alpha) / iPad 13" 横屏 `2752×2064`(竖屏未做) / Mac `2880×1800`。iPhone 版式 v2.2 Aurora Pop（Sheet `zoom:1.22`）；⚠️ 流程须带 **`--html-only --export`**，漏了会覆盖真机图；02 是真机、其余 5 张设计稿不可提审；en-GB/AU/CA 复用 en-US。多本地化 `EN_DICT`/`HANT_DICT` 运行时解析 App strings，数字与单位是分开的文本节点。
-- ⚠️ iPad 横屏真机版：入口 `ios_previews_ipad/real/<locale>/`(只读) → `prepare_ipad_real.py` → `gen_ios_previews_ipad.py --locale --export`，三语，缺真机图**跳过**而非回退自绘。5 张固定（创作参数/音色库/创作指令/播放/历史），创作页三态同界面。⚠️ 每批新截图必须拼索引图核对编号；`prepare()` 三条独立分支（zh-Hans 原路径 / en-US `localize_en()` / zh-Hant `localize_hant()`），**禁把 zh-Hant 塞进 `localize_en()`**；`render_cards()` 简体默认参数逐字节不变，改一语另两语 md5 零回归。
+- ⚠️ iOS 端没有声音复刻/克隆 UI；字幕禁写具体能力数量。尺寸：6.9" `1320×2868`(禁 alpha) / iPad 13" 横屏 `2752×2064` / Mac `2880×1800`。iPhone 版式 v2.2 Aurora Pop（Sheet `zoom:1.22`）；⚠️ 流程须带 **`--html-only --export`**，漏了会覆盖真机图；02 是真机、其余 5 张设计稿不可提审；en-GB/AU/CA 复用 en-US。多本地化 `EN_DICT`/`HANT_DICT` 运行时解析 App strings，数字与单位是分开的文本节点。
+- ⚠️ iPad 横屏真机版：`ios_previews_ipad/real/<locale>/`(只读) → `prepare_ipad_real.py` → `gen_ios_previews_ipad.py --locale --export`，三语，缺真机图**跳过**而非回退自绘。5 张固定，创作页三态同界面。⚠️ 每批新截图必须拼索引图核对编号；`prepare()` 三条独立分支（zh-Hans 原路径 / en-US `localize_en()` / zh-Hant `localize_hant()`），**禁把 zh-Hant 塞进 `localize_en()`**；`render_cards()` 简体默认参数逐字节不变，改一语另两语 md5 零回归。

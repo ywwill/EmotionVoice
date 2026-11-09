@@ -16,6 +16,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// 音色库入口来源：
 /// - `.menu` 左侧菜单进入：恢复上次筛选状态，但始终从第一页开始
@@ -33,10 +34,22 @@ struct VoicesLibraryView: View {
     @Environment(\.voiceLibraryDismiss) private var sheetDismiss
 
     @StateObject private var vm: VoicesLibraryViewModel
-    @ObservedObject private var previewPlayer = AudioPreviewPlayer.shared
+    // ⚠️ 别在页面层级 @ObservedObject 订阅 AudioPreviewPlayer：progress / currentTime
+    // 以 10Hz 刷新，整页（工具栏 + 27 个分类 chip + 整屏 LazyVGrid + 分页栏）会被拖着
+    // 每秒重算 10 次。这里只接 playingKey 这一条低频 publisher，播放开始 / 结束才
+    // 重算一次页面，与工作台 VoiceRowPlayback 的「订阅下沉」是同一条约定。
+    @State private var playingVoiceKey: String? = nil
 
     // 入口来源
     private let entry: VoiceLibraryEntry
+
+    /// 当前分区是否正显示。
+    /// ContentView 会常驻本页实例（切页只切 opacity），为 false 时：
+    /// - 停掉骨架扫光动画（隐藏页不该还有 repeatForever 在跑）；
+    /// - 执行原本放在 `onDisappear` 的筛选写回与停播逻辑（视图已不再销毁）。
+    /// ⚠️ **视图树本身必须保留**：隐藏时退成 `Color.clear` 会让每次切回都重建
+    /// 27 个分类 chip + 20 张卡片的 LazyVGrid，把卡顿从数据层搬到视图层。
+    var isActive: Bool = true
 
     // 网格实际可用宽度（用于计算列数 → pageSize）
     @State private var gridAvailableWidth: CGFloat = 0
@@ -64,8 +77,10 @@ struct VoicesLibraryView: View {
     // MARK: - 初始化
 
     /// 默认按左侧菜单入口（恢复筛选、显示第一页）
-    init(entry: VoiceLibraryEntry = .menu) {
+    /// `isActive` 仅由 ContentView 的常驻层传入；sheet 入口保持默认 true。
+    init(entry: VoiceLibraryEntry = .menu, isActive: Bool = true) {
         self.entry = entry
+        self.isActive = isActive
         // 初始占位值，会在 onAppear 中按入口来源刷新
         _vm = StateObject(wrappedValue: VoicesLibraryViewModel(
             selectedCategory: nil,
@@ -78,11 +93,19 @@ struct VoicesLibraryView: View {
     // MARK: - 视图入口
 
     var body: some View {
+        // 常驻页：**隐藏时也保留整棵树**，切回来只是父层的 opacity 变化，零构建。
+        // 隐藏页由 ContentView 的 opacity(0) + allowsHitTesting(false) 挡住绘制与交互，
+        // 高频动画单独用 isActive 关掉（见 skeletonGrid）。
         VStack(alignment: .leading, spacing: 0) {
             toolbar
             content
         }
+        .onReceive(AudioPreviewPlayer.shared.$playingKey.removeDuplicates()) { key in
+            playingVoiceKey = key
+        }
         .onAppear {
+            // 进入页面前可能已在别处起播，先对齐一次低频状态
+            playingVoiceKey = AudioPreviewPlayer.shared.playingKey
             switch entry {
             case .menu:
                 // 左侧菜单：恢复上次筛选状态，但页码强制为第一页
@@ -101,39 +124,69 @@ struct VoicesLibraryView: View {
             withAnimation(.easeOut(duration: 0.4)) {
                 voicesAppear = true
             }
-            // 先让骨架屏（isLoading）随首帧绘制上屏，再异步发起真实数据加载，
-            // 避免一次性同步查询（全表 + 逐分类 count）阻塞首帧导致卡顿。
+            // 骨架屏先上屏，数据加载**跨帧**再开始。
+            // ⚠️ 不能用 Task.yield()：它只让出一次调度机会，Core Animation 未必
+            // 已把骨架那一帧提交到屏幕；紧接着的同步 load() 会把 isLoading 置回
+            // false，骨架在绘制前就被真实网格覆盖，用户只感到「卡一下」。
+            // 32ms ≈ 2 帧，期间主线程完全空闲，骨架稳定可见。
             // 同时消除了 init 与 onAppear 各加载一次的重复开销。
             loadTask?.cancel()
             loadTask = Task { @MainActor in
-                // 关键：先让出主线程，确保「骨架屏」这一帧已被 Core Animation 提交到屏幕。
-                // 否则 load() 的同步重查询会在同一 runloop 迭代内把 isLoading 置回 false，
-                // 骨架屏在绘制上屏前就被真实网格覆盖，用户完全看不到骨架。
-                await Task.yield()
+                try? await Task.sleep(for: .milliseconds(32))
+                guard !Task.isCancelled else { return }
                 vm.load()
             }
         }
         .onChange(of: appState.voices) { _, _ in
-            // 收藏等操作触发 appState.voices 变化时，仅刷新当前页
-            vm.reloadCurrentPage()
+            // 收藏等操作触发 appState.voices 变化时刷新当前页。
+            // ⚠️ 常驻页的 VM 不再重建，必须先清掉查询签名，否则一直用旧的有序 key 列表
+            vm.invalidateQueryCacheAndReload()
         }
         .onDisappear {
-            // 取消尚未完成的首屏加载任务，避免回调到已释放的 VM
+            // 只有视图真正被销毁（sheet 关闭 / 窗口卸载）才取消首屏加载任务、
+            // 重置入场动画态。常驻页失活不走这里，见 .onChange(of: isActive)。
             loadTask?.cancel()
             loadTask = nil
-            // 仅左侧菜单入口才把筛选 / 页码写回 AppState；
-            // sheet 入口只做临时「更换音色」，不应改写库的持久筛选状态
-            if entry == .menu {
+            voicesAppear = false
+            persistAndPause()
+        }
+        .onChange(of: isActive) { _, active in
+            guard !active else { return }
+            // 视图不再销毁 → onDisappear 不触发，筛选写回与停播改在这里做
+            persistAndPause()
+        }
+    }
+
+    /// 离开分区 / 视图销毁时都要执行：写回筛选状态、取消搜索防抖、停播。
+    ///
+    /// ⚠️ 这里刻意 **不** 取消 `loadTask`、不重置 `voicesAppear` —— 常驻页切回来时
+    /// onAppear 不会再触发，一旦重置就会永久停在骨架屏 / 列表 opacity 0 的初态。
+    /// 写回只写真正变化的项：每个 @Published 写入都会让整窗重算 body，didSet 还会
+    /// 同步落盘一次；筛选与翻页时 syncToAppState() / syncPageToAppState() 已写过。
+    private func persistAndPause() {
+        // 仅左侧菜单入口才把筛选 / 页码写回 AppState；
+        // sheet 入口只做临时「更换音色」，不应改写库的持久筛选状态
+        if entry == .menu {
+            if appState.voiceLibrarySelectedCategory != vm.selectedCategory {
                 appState.voiceLibrarySelectedCategory = vm.selectedCategory
+            }
+            if appState.voiceLibrarySearchText != vm.searchText {
                 appState.voiceLibrarySearchText = vm.searchText
+            }
+            if appState.voiceLibraryShowFavoritesOnly != vm.showFavoritesOnly {
                 appState.voiceLibraryShowFavoritesOnly = vm.showFavoritesOnly
+            }
+            if appState.voiceLibraryCurrentPage != vm.currentPage {
                 appState.voiceLibraryCurrentPage = vm.currentPage
             }
-            // 取消搜索防抖任务
-            searchDebounceTask?.cancel()
-            AudioPreviewPlayer.shared.stop()
-            // 重置动画状态
-            voicesAppear = false
+        }
+        // 取消搜索防抖任务
+        searchDebounceTask?.cancel()
+        // 空闲时别调 stop()：它会连写 6 个 @Published，把正在消失 / 刚出现的
+        // 订阅者全都唤醒一遍。
+        let player = AudioPreviewPlayer.shared
+        if player.isPlaying || player.playingKey != nil {
+            player.stop()
         }
     }
 
@@ -233,7 +286,7 @@ struct VoicesLibraryView: View {
                     VoiceCard(
                         item: VoiceCardItem(voice: voice),
                         isSelected: appState.selectedVoice?.key == voice.key,
-                        isPlaying: previewPlayer.playingKey == voice.key
+                        isPlaying: playingVoiceKey == voice.key
                     ) {
                         toggleFavorite(key: voice.key)
                     } onPreview: {
@@ -257,6 +310,7 @@ struct VoicesLibraryView: View {
     /// 骨架屏网格：固定 5 列 × 4 行 = 20 张，先占位再被真实数据替换（行数不跟 pageSize）。
     /// 内外边距与 `singleCategoryCardList` 完全一致，
     /// 保证骨架与真实卡片左右对齐、上下留白一致（含底部不贴边）。
+    /// 扫光只在 `isActive` 时叠一层：分区隐藏时动画整体不渲染，CPU 归零。
     private var skeletonGrid: some View {
         LazyVGrid(
             columns: [
@@ -271,6 +325,11 @@ struct VoicesLibraryView: View {
         .background(gridWidthTracker)
         .padding(.horizontal, 32)
         .padding(.vertical, 16)
+        .overlay {
+            if isActive {
+                SkeletonShimmer()
+            }
+        }
     }
 
     /// 网格可用宽度测量（骨架与真实网格共用），用于确定列数 → pageSize。

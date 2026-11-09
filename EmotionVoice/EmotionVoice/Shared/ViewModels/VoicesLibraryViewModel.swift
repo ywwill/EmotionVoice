@@ -190,6 +190,19 @@ final class VoicesLibraryViewModel: ObservableObject {
         isLoading = false
     }
 
+    /// 音色表发生结构性变化（收藏切换 / 表重建）时强制刷新当前页。
+    ///
+    /// ⚠️ 页面实例常驻后 VM 不再随切页重建，`lastQueryKey` / `lastChipCountKey`
+    /// 会一直命中，即使 `VoiceService.cachedOrderedKeys` 的 generation 已因收藏数
+    /// 变化而失效，这里也不会去重新取。必须显式清签名，否则「仅看收藏」会显示旧结果。
+    /// 骨架阶段只清签名、不提前取数，统一交给 load() 完成。
+    func invalidateQueryCacheAndReload() {
+        lastQueryKey = ""
+        lastChipCountKey = ""
+        guard !isLoading else { return }
+        reloadCurrentPage()
+    }
+
     /// 重新加载当前页：
     /// - 查询签名（分类 / 搜索 / 收藏）变化时才重查「完整有序结果 + 总数」并缓存
     /// - chip 计数为全量统计，另按结构性筛选（分类 / 收藏）变化刷新，不受搜索影响
@@ -208,12 +221,15 @@ final class VoicesLibraryViewModel: ObservableObject {
 
         // 查询签名变化 → 重新计算有序 key 列表与总数
         if key != lastQueryKey {
-            // 只取「过滤 + 排序」后的有序 key 列表（轻量），Voice 对象按需按页取
-            cachedOrderedKeys = VoiceService.shared.orderedVoices(
+            // 只取「过滤 + 排序」后的有序 key 列表（轻量），Voice 对象按需按页取。
+            // ⚠️ 走服务层缓存：直接调 orderedVoices() 会每次全表读取 + 构造完整 Voice
+            // 对象（主线程同步、卡顿可见）；服务层按查询签名缓存有序 key 列表，
+            // 且无搜索词时走不构造对象的最小列快路径。
+            cachedOrderedKeys = VoiceService.shared.cachedOrderedKeys(
                 showingFavorites: showingFavorites,
                 category: category,
                 searchText: needle
-            ).map(\.key)
+            )
             totalCount = cachedOrderedKeys.count
             totalPages = max(1, Int(ceil(Double(totalCount) / Double(pageSize))))
             if currentPage > totalPages { currentPage = totalPages }
@@ -241,23 +257,21 @@ final class VoicesLibraryViewModel: ObservableObject {
     /// 数量**始终为全量统计**（搜索词恒为空）：搜索时分类区应保持固定不动，
     /// 各分类的数字不随搜索词变化而改变。
     private func reloadChipCounts() {
-        var newCounts: [String: Int] = [:]
+        // 走服务层进程级快照：首次（启动空闲期预热时）算一次 ~29 次 SQL COUNT，
+        // 之后切页 / 切分类 / 搜索全部直接命中，零查询。
+        // ⚠️ 不能在这里直接循环调 `count(category:)`：那会把约 29 次全表 COUNT
+        // 压在「首次进入音色库」的同一帧主线程上，是首屏卡顿的主要来源。
+        let snapshot = VoiceService.shared.cachedCategoryCounts()
 
-        // "全部"
-        let allCount = VoiceService.shared.count(category: nil, searchText: "")
-        newCounts[Self.allKey] = allCount
-        totalMatched = allCount
-
-        // 每个分类
-        for cat in VoiceCategory.allCases {
-            newCounts[cat.rawValue] = VoiceService.shared.count(category: cat, searchText: "")
-        }
-
+        var newCounts = snapshot.counts
+        // "全部"（同时就是全部音色总数，别再重复查一次）
+        newCounts[Self.allKey] = snapshot.all
+        totalMatched = snapshot.all
+        totalAll = snapshot.all
         chipCounts = newCounts
 
-        // 全部音色总数与收藏总数（不受搜索影响）
-        totalAll = VoiceService.shared.count(category: nil, searchText: "")
-        favoriteCount = VoiceService.shared.countFavorites()
+        // 收藏总数（不受搜索影响）
+        favoriteCount = snapshot.favorites
     }
 
     /// 查询某个分类的命中数量（chip 显示）

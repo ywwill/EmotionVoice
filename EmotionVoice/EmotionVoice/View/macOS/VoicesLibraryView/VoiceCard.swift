@@ -362,13 +362,14 @@ struct SkeletonBlock: View {
 }
 
 /// 音色卡片骨架：**直接复用真实 VoiceCard 的布局**，用占位数据 + `.redacted(reason: .placeholder)`
-/// 把内部文本 / 图标渲染成灰块，再叠一层扫光。
+/// 把内部文本 / 图标渲染成灰块。
 /// 这样尺寸由 SwiftUI 保证与真实卡片一致（占位块 frame = 原文本 frame），
 /// 不必手写 SkeletonBlock 去猜字号行高，加载完成时不会出现行高跳动。
+///
+/// ⚠️ 这里刻意 **不放扫光动画**：过去每张骨架卡自带一个 GeometryReader +
+/// repeatForever，20 张同时逐帧合成正是首屏骨架阶段的卡顿源。
+/// 扫光统一由 `SkeletonShimmer` 在整个骨架网格上叠一层。
 struct VoiceCardSkeleton: View {
-    /// 扫光相位：从 -0.6 平移到 1.6，形成一次完整的横向扫过。
-    @State private var shimmerPhase: CGFloat = -0.6
-
     var body: some View {
         VoiceCard(
             item: Self.placeholderItem,
@@ -379,11 +380,9 @@ struct VoiceCardSkeleton: View {
             onPreview: {},
             onUse: {}
         )
-        // 先禁用交互（屏蔽 hover / 点击 / 手型光标），再 redact，
-        // 最后叠扫光（overlay 在 redacted 之外，不会被一起灰化）
+        // 先禁用交互（屏蔽 hover / 点击 / 手型光标），再 redact
         .allowsHitTesting(false)
         .redacted(reason: .placeholder)
-        .overlay(shimmerOverlay)
     }
 
     /// 骨架占位数据：按真实音色的**最常见形态**取值——
@@ -402,9 +401,16 @@ struct VoiceCardSkeleton: View {
         age: 26,
         gender: .female
     ))
+}
 
-    /// 横向扫光：一条半透明高光带在卡片内平移（普通 alpha 合成，不走离屏混合）。
-    private var shimmerOverlay: some View {
+/// 整屏一层横向扫光：**1 个 GeometryReader + 1 个 repeatForever**，
+/// 取代过去「每张骨架卡一层」的 20 组动画（普通 alpha 合成，不走离屏混合）。
+/// 由调用方用 `if isActive` 控制插入 / 移除：分区隐藏时整层不渲染，CPU 归零；
+/// 重新插入时 @State 从 -0.5 起算，动画自动重启。
+struct SkeletonShimmer: View {
+    @State private var phase: CGFloat = -0.5
+
+    var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             Rectangle()
@@ -412,27 +418,23 @@ struct VoiceCardSkeleton: View {
                     LinearGradient(
                         colors: [
                             Color.white.opacity(0),
-                            Color.white.opacity(0.12),
+                            Color.white.opacity(0.07),
                             Color.white.opacity(0)
                         ],
                         startPoint: .init(x: 0, y: 0),
                         endPoint: .init(x: 1, y: 0)
                     )
                 )
-                .frame(width: w * 0.5)
-                .offset(x: shimmerPhase * w)
-                // 不用 .blendMode(.screen)：混合模式会让每张骨架卡单独走一次离屏合成，
-                // 20 张同时扫光时逐帧开销显著，切开页面时能吃掉侧边栏滑动动画的帧。
-                // 暗色底上普通 alpha 合成的观感几乎一致。
+                .frame(width: w * 0.45)
+                .offset(x: phase * w)
+                // 用显式 .animation(_:value:) 而非 withAnimation：
+                // withAnimation 只包住一次状态变化，repeatForever 未必持续生效
                 .animation(
-                    .linear(duration: 1.3).repeatForever(autoreverses: false),
-                    value: shimmerPhase
+                    .linear(duration: 1.4).repeatForever(autoreverses: false),
+                    value: phase
                 )
         }
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
         .allowsHitTesting(false)
-        .onAppear {
-            shimmerPhase = 1.6
-        }
+        .onAppear { phase = 1.5 }
     }
 }
