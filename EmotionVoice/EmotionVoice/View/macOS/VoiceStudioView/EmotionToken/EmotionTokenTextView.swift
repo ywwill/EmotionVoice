@@ -88,8 +88,8 @@ final class EmotionTokenTextView: NSTextView {
 
     private var toneScopes: [ToneScope] = []
 
-    /// 徽章的底色。它压在胶囊描边上，必须不透明才读得清。
-    /// 默认 nil → 按当前外观取编辑器背景色（暗 #15171B / 亮 白）。
+    /// 编辑器底色（暗 #15171B / 亮 白）。v14 起同时作为胶囊底色的混合基色；
+    /// 徽章已改成强调色半透明底，不再拿它做实底。nil → 按当前外观取默认值。
     var badgeBackgroundColor: NSColor?
 
     private var resolvedBadgeBackgroundColor: NSColor {
@@ -112,6 +112,19 @@ final class EmotionTokenTextView: NSTextView {
     ///   · 相邻两行的胶囊之间还要留得住呼吸位。
     /// 28 → 行距 44.5pt，胶囊之间净空 16pt，徽章顶端离上一行胶囊下沿还有 2pt。
     static let bodyLineSpacing: CGFloat = 28
+
+    /// 判断某个行片段「有没有正文」时要忽略的字符。
+    /// 空白 / 换行之外还要带上全角空格和附件占位符（U+FFFC）——
+    /// 只有 attachment 而没有文字的行同样不该有语气底色。
+    private static let capsuleInvisibleCharacters: CharacterSet =
+        CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: "\u{3000}\u{FFFC}"))
+
+    /// 胶囊横向范围要裁掉的首尾字符：空白 / 换行 / 全角空格。
+    /// ⚠️ **不含 U+FFFC** —— 拟声 pill 是可见实体，行尾是它时胶囊必须继续包住。
+    private static let capsuleTrimCharacters: CharacterSet =
+        CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: "\u{3000}"))
 
     /// 正文段落样式。**必须**同时设成 `defaultParagraphStyle`：
     /// 段落样式取自段落**首字符**的属性，而语气 / 中断标签是 attachment，
@@ -581,7 +594,8 @@ final class EmotionTokenTextView: NSTextView {
     }
 
     private func toneCapsuleGeometries() -> [ToneCapsuleGeometry] {
-        guard !toneScopes.isEmpty, let lm = layoutManager, let tc = textContainer else { return [] }
+        guard !toneScopes.isEmpty, let storage = textStorage,
+              let lm = layoutManager, let tc = textContainer else { return [] }
         let style = EmotionTokenStyle.default
         let font = EmotionTokenStyle.bodyFont
         let maxX = tc.size.width
@@ -610,7 +624,39 @@ final class EmotionTokenTextView: NSTextView {
                 lm.enumerateLineFragments(forGlyphRange: glyphRange) { lineRect, _, container, lineGlyphRange, _ in
                     let sub = NSIntersectionRange(glyphRange, lineGlyphRange)
                     guard sub.length > 0 else { return }
-                    let br = lm.boundingRect(forGlyphRange: sub, in: container)
+
+                    // ⚠️ 纯空行（只有换行 / 空白）不画胶囊。
+                    // AppKit 会把 "\n" 单独排成一个 line fragment，而且 `location(forGlyphAt:)`
+                    // 对这种 glyph 返回的是**行底**：lineSpacing = 28 时实测 y = 45，
+                    // 正文行却是 14。于是 `baseline = lineRect.minY + location.y` 算出的
+                    // 空行胶囊会被整体推到下一行正文的位置，与下一块胶囊上下叠出一条
+                    // 双边框 —— 这就是「某行只有换行时背景框重叠」的根因。
+                    // 空行本身也不该带语气底色，直接跳过最干净。
+                    let nsText = storage.string as NSString
+                    let chars = lm.characterRange(forGlyphRange: sub, actualGlyphRange: nil)
+                    guard chars.length > 0, NSMaxRange(chars) <= nsText.length else { return }
+                    let lineText = nsText.substring(with: chars)
+                    guard !lineText.trimmingCharacters(in: Self.capsuleInvisibleCharacters).isEmpty
+                    else { return }
+
+                    // ⚠️ `boundingRect(forGlyphRange:)` 会把行尾换行 / 空白一直算到容器右边界，
+                    // 于是短文本行的胶囊也撑满整行（截图里「解锁，屏幕顶端弹出一行字——」
+                    // 后面拖着一大片空背景）。先把首尾空白字符裁掉、换回 glyphRange，
+                    // 胶囊才只包住真正有字形的部分；铺满整行的长文本不受影响。
+                    var start = chars.location
+                    var end = NSMaxRange(chars)
+                    while start < end,
+                          let scalarValue = Unicode.Scalar(nsText.character(at: start)),
+                          Self.capsuleTrimCharacters.contains(scalarValue) { start += 1 }
+                    while end > start,
+                          let scalarValue = Unicode.Scalar(nsText.character(at: end - 1)),
+                          Self.capsuleTrimCharacters.contains(scalarValue) { end -= 1 }
+                    guard end > start else { return }
+                    let visibleGlyphs = lm.glyphRange(
+                        forCharacterRange: NSRange(location: start, length: end - start),
+                        actualCharacterRange: nil)
+                    guard visibleGlyphs.length > 0 else { return }
+                    let br = lm.boundingRect(forGlyphRange: visibleGlyphs, in: container)
                     guard br.width >= 0.5 else { return }
                     // 纵向不能用 br：`boundingRect(forGlyphRange:in:)` 的高度是**整行**高，
                     // 会带着 lineSpacing 一起算进来，胶囊会胖到把行距吃掉。
@@ -815,7 +861,7 @@ final class EmotionTokenTextView: NSTextView {
     // MARK: - 自绘语气胶囊
 
     /// 三段式绘制（顺序**不能换**）：
-    ///   1. 先画胶囊（填充 + 内描边）——必须在字形**下面**，否则会把正文盖住；
+    ///   1. 先画胶囊（实色底 + 顶部亮线）——必须在字形**下面**，否则会把正文盖住；
     ///   2. 再画徽章——它压在自己胶囊的上沿、且不与任何字形相交（徽章底边比首行字形顶端
     ///      还高 1.5pt），所以放在 super.draw 之前画不会被打断；
     ///   3. 最后交给 super 画文本 / 附件（拟声标记落在胶囊内部，视觉上不打断语气）。
@@ -835,13 +881,19 @@ final class EmotionTokenTextView: NSTextView {
         guard !geometries.isEmpty else { return }
         let style = EmotionTokenStyle.default
         let origin = textContainerOrigin
+        let dark = EmotionTokenStyle.isDarkAppearance(effectiveAppearance)
+        let editorBackground = resolvedBadgeBackgroundColor
 
         for g in geometries {
             // 中断作用域没有情绪色 → 不画胶囊（文本按普通正文渲染）
             guard let base = g.color else { continue }
-            let fill = base.withAlphaComponent(g.hovered ? style.capsuleFillAlphaHovered
-                                                         : style.capsuleFillAlpha)
-            let stroke = base.withAlphaComponent(style.capsuleStrokeAlpha)
+            // v14：暗调强调色（顶部亮线） + 它按 ~28% 混进编辑器底色得到的实色底。
+            let accent = style.capsuleAccent(from: base, dark: dark)
+            let blend: CGFloat = g.hovered
+                ? (dark ? style.capsuleFillBlendHovered : style.capsuleFillBlendLight * 1.5)
+                : (dark ? style.capsuleFillBlend : style.capsuleFillBlendLight)
+            let fill = EmotionTokenStyle.blended(editorBackground, with: accent, fraction: blend)
+
             for r in g.capsuleRects {
                 let rr = r.offsetBy(dx: origin.x, dy: origin.y)
                 guard rr.intersects(dirtyRect) else { continue }
@@ -850,13 +902,16 @@ final class EmotionTokenTextView: NSTextView {
                                         yRadius: style.capsuleCornerRadius)
                 fill.setFill()
                 path.fill()
-                // 1px 内描边：路径内缩 0.5，描边才不会溢出到圆角外面
-                let insetPath = NSBezierPath(roundedRect: rr.insetBy(dx: 0.5, dy: 0.5),
-                                             xRadius: max(style.capsuleCornerRadius - 0.5, 0),
-                                             yRadius: max(style.capsuleCornerRadius - 0.5, 0))
-                stroke.setStroke()
-                insetPath.lineWidth = 1
-                insetPath.stroke()
+
+                // 顶部亮线（设计稿 `border-top: 2px`）：把绘制裁进胶囊圆角内再刷顶边带，
+                // 亮线到两端会自然顺着圆角弧收掉。四周**不描边**。
+                NSGraphicsContext.saveGraphicsState()
+                path.addClip()
+                accent.setFill()
+                let topBand = NSRect(x: rr.minX, y: rr.minY,
+                                     width: rr.width, height: style.capsuleTopLineWidth)
+                NSBezierPath(rect: topBand).fill()
+                NSGraphicsContext.restoreGraphicsState()
 
                 // 选中态：胶囊外再套一圈 2px 情绪色光环
                 if g.selected {
@@ -875,19 +930,26 @@ final class EmotionTokenTextView: NSTextView {
         guard !geometries.isEmpty else { return }
         let style = EmotionTokenStyle.default
         let origin = textContainerOrigin
-        let bg = resolvedBadgeBackgroundColor
+        let dark = EmotionTokenStyle.isDarkAppearance(effectiveAppearance)
+        let textColor = EmotionTokenStyle.badgeTextColor(dark: dark)
+        let editorBackground = resolvedBadgeBackgroundColor
 
         for g in geometries {
             guard let badge = g.badge else { continue }
             let rr = badge.rect.offsetBy(dx: origin.x, dy: origin.y)
             guard rr.intersects(dirtyRect) else { continue }
 
-            // 语气 = 情绪色；中断 = 次级文字色（刻意做成安静的弱提示）
-            let accent = g.color ?? EmotionTokenStyle.badgeNeutralColor
+            // v14 对齐设计稿 `.badge`：强调色 20% 底 + 50% 描边 + 近白文字。
+            // 语气用与顶部亮线同一支暗调强调色；中断保持次级文字色（安静的弱提示）。
+            let accent = g.color.map { style.capsuleAccent(from: $0, dark: dark) }
+                ?? EmotionTokenStyle.badgeNeutralColor
             let path = NSBezierPath(roundedRect: rr,
                                     xRadius: style.badgeCornerRadius,
                                     yRadius: style.badgeCornerRadius)
-            bg.setFill()
+            // 先铺一层不透明编辑器底色：徽章压在胶囊上沿，半透明层不能透出下面那条亮线。
+            editorBackground.setFill()
+            path.fill()
+            accent.withAlphaComponent(style.badgeFillAlpha).setFill()
             path.fill()
             accent.withAlphaComponent(style.badgeStrokeAlpha).setStroke()
             path.lineWidth = 1
@@ -896,7 +958,7 @@ final class EmotionTokenTextView: NSTextView {
             if let text = g.badgeText {
                 var attrs: [NSAttributedString.Key: Any] = [
                     .font: style.badgeFont,
-                    .foregroundColor: accent
+                    .foregroundColor: textColor
                 ]
                 // 选中态：徽章文字加下划线（对应设计稿 .seg.sel .badge）
                 if g.selected {
@@ -913,7 +975,7 @@ final class EmotionTokenTextView: NSTextView {
             let xStr = "×" as NSString
             let xAttrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 11, weight: .bold),
-                .foregroundColor: g.color ?? EmotionTokenStyle.badgeNeutralColor
+                .foregroundColor: textColor
             ]
             let xSize = xStr.size(withAttributes: xAttrs)
             xStr.draw(at: NSPoint(x: cr.midX - xSize.width / 2,

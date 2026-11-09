@@ -86,6 +86,40 @@ final class TokenEditorStore: ObservableObject {
     }
 }
 
+// MARK: - 光标高度
+
+/// 把插入符的高度收敛到「正文一行的字高」。
+///
+/// ⚠️ `TokenTextEditor.lineSpacing = 26` 被 TextKit 算进了 `lineFragmentUsedRect`：
+/// 16pt 正文 + 26 行距 → 行片段约 45pt，而字形只贴在它顶部那 19pt。
+/// UIKit 在**空行 / 段落末尾**直接拿整个行片段高度画插入符 —— 表现就是
+/// 「换行处那根光标比文字高出一倍」。改 `lineSpacing` 或 `typingAttributes` 会连带
+/// 改掉整份排版（胶囊位置、行距全跟着变），所以只在光标这一层纠正。
+///
+/// ⚠️ **只改高度，不动 origin**：super 给的 minY 就是行片段顶部、也正是字形贴着的那一块
+/// （与 `TokenCapsuleOverlay.textLineBox` 同源），保留它光标才与胶囊里的文字上下齐平。
+/// 段落最后一行不带行距，减完会小于字高 —— 用 `bodyFont.lineHeight` 兜回来。
+final class TokenCaretTextView: UITextView {
+
+    override func caretRect(for position: UITextPosition) -> CGRect {
+        var rect = super.caretRect(for: position)
+        let lm = layoutManager
+        guard lm.numberOfGlyphs > 0 else { return rect }
+
+        let docLength = (text as NSString).length
+        let idx = min(max(offset(from: beginningOfDocument, to: position), 0), docLength)
+        let glyph = lm.glyphRange(forCharacterRange: NSRange(location: idx, length: 0),
+                                  actualCharacterRange: nil).location
+        let gi = min(max(glyph, 0), lm.numberOfGlyphs - 1)
+        let line = lm.lineFragmentUsedRect(forGlyphAt: gi, effectiveRange: nil)
+        let fontHeight = TokenTextEditor.bodyFont.lineHeight
+        let textHeight = min(max(line.height - TokenTextEditor.lineSpacing, fontHeight),
+                             max(line.height, fontHeight))
+        rect.size.height = textHeight
+        return rect
+    }
+}
+
 // MARK: - 编辑器
 
 struct TokenTextEditor: UIViewRepresentable {
@@ -118,7 +152,8 @@ struct TokenTextEditor: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView(usingTextLayoutManager: false)
+        // ⚠️ 必须用子类：光标高度由 `caretRect(for:)` 决定，UITextView 没有可配的属性
+        let tv = TokenCaretTextView(usingTextLayoutManager: false)
         tv.backgroundColor = .clear
         tv.isEditable = isEditable
         tv.isSelectable = true

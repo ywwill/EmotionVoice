@@ -603,7 +603,11 @@ final class TokenCapsuleOverlay: UIView {
     ///     它会一路撑到**整行宽**（实测：一行只有 6 个字，矩形却是容器宽 340）——
     ///     反向的情况（拿到 0 宽）同样要兜，否则画出来是一条看不见的细丝；
     ///  ③ 每一段都保证至少 1pt 宽：胶囊 = 文字矩形外扩 `capsulePadX`，
-    ///     所以哪怕这一行零宽，也仍然有一个完整的圆角胶囊。
+    ///     所以哪怕这一行零宽，也仍然有一个完整的圆角胶囊；
+    ///  ④ ⚠️ **纯换行 / 空白的行片段整段跳过**。换行符在 TextKit 里同样占一个行片段，
+    ///     但它的字形矩形宽度是 0 —— 靠 ③ 兜成 1pt 再外扩 6pt 内边距，
+    ///     就会在空行里画出一枚只有十几 pt 宽的空白圆角框（用户看到的「空白背景框」）。
+    ///     这种行没有可见字形，本来就不属于胶囊该覆盖的正文。
     static func lineRects(charRange: NSRange,
                           layoutManager lm: NSLayoutManager,
                           container tc: NSTextContainer,
@@ -613,10 +617,27 @@ final class TokenCapsuleOverlay: UIView {
         let glyphRange = NSIntersectionRange(wanted, NSRange(location: 0, length: lm.numberOfGlyphs))
         guard glyphRange.length > 0 else { return [] }
 
+        // 一次取出文档串，供闭包里判断「这一行片段是否只有空白 / 换行」。
+        // U+FFFC 占位符不算空白：它有实际宽度（拟声 pill / 语气留白），不能被过滤掉。
+        let docText: NSString = (lm.textStorage?.string ?? "") as NSString
+
         var result: [CGRect] = []
         lm.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, textContainer, fragRange, _ in
             let inter = NSIntersectionRange(fragRange, glyphRange)
             guard inter.length > 0 else { return }
+
+            let chars = lm.characterRange(forGlyphRange: inter, actualGlyphRange: nil)
+            let textLo = min(max(chars.location, 0), docText.length)
+            let textHi = min(max(chars.upperBound, textLo), docText.length)
+            // 换行符 / 控制字形有时拿不到字符映射（length == 0）：同样按「没有正文」跳过，
+            // 否则它会走下面的 1pt 兜底，又变回那枚空白小框。
+            guard textHi > textLo else { return }
+            let raw = docText.substring(with: NSRange(location: textLo, length: textHi - textLo))
+            // U+FFFC 占位符有真实宽度、不算空白，含它的片段必须继续往下画。
+            if raw.unicodeScalars.allSatisfy({ CharacterSet.whitespacesAndNewlines.contains($0) }) {
+                return
+            }
+
             var r = lm.boundingRect(forGlyphRange: inter, in: textContainer)
             let box = Self.textLineBox(glyphIndex: inter.location,
                                        layoutManager: lm, container: tc,

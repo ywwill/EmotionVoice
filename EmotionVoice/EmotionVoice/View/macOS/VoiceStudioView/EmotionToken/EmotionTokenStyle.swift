@@ -57,9 +57,10 @@ struct EmotionTokenStyle {
 
     // MARK: - 语气标签（整段胶囊）
 
-    /// 语气作用域的整段文本包进一个同色胶囊：填充 = 情绪色 13%、1px 内描边 42%、圆角 9。
-    /// 颜色本身就是「这段用什么语气」的信号，信息量比单一下划线更大。
-    var capsuleCornerRadius: CGFloat = 9
+    /// 语气作用域的整段文本包进一个胶囊。
+    /// v14 对齐商店页 `01.html` 的 `.cap`：**深色实底 + 只有顶部一条彩色亮线，四周不描边**。
+    /// 底色 = 暗调强调色按 ~28% 混进编辑器底色，亮线 = 该强调色实色。
+    var capsuleCornerRadius: CGFloat = 8
     /// 胶囊水平内边距：文本左右各留这么多
     var capsuleHorizontalPadding: CGFloat = 8
     /// 相邻两块（胶囊↔胶囊、胶囊↔拟声 pill）之间要留出的净间隙。
@@ -79,11 +80,17 @@ struct EmotionTokenStyle {
     var toneMarkerWidth: CGFloat = EmotionTokenStyle.toneMarkerWidthValue
     /// 胶囊垂直内边距：文本上下各留这么多（v12 由 4 → 6，文本不再贴着描边）
     var capsuleVerticalPadding: CGFloat = 6
-    /// 胶囊填充不透明度：常态 0.13，悬停抬到 0.20
-    var capsuleFillAlpha: CGFloat = 0.13
-    var capsuleFillAlphaHovered: CGFloat = 0.20
-    /// 胶囊 1px 内描边的不透明度
-    var capsuleStrokeAlpha: CGFloat = 0.42
+    /// 顶部亮线宽度（设计稿 `border-top: 2px`）
+    var capsuleTopLineWidth: CGFloat = 2
+    /// 基础色 → 暗调强调色：暗色外观向黑混合 48%（兴奋 #F2CC36 → #7E6A1C，稿 #7D6C2C）。
+    /// 亮色外观少压一点，白底上才不会脏。
+    var capsuleAccentDarken: CGFloat = 0.48
+    var capsuleAccentDarkenLight: CGFloat = 0.28
+    /// 强调色混进编辑器底色的比例（设计稿实测 ≈ 0.28）。
+    /// 悬停抬到 0.40；亮色外观白底上压到 0.14，仍是浅浅一层。
+    var capsuleFillBlend: CGFloat = 0.28
+    var capsuleFillBlendHovered: CGFloat = 0.40
+    var capsuleFillBlendLight: CGFloat = 0.14
     /// 选中态：胶囊外再套一圈 2px 情绪色光环
     var capsuleSelectionRingAlpha: CGFloat = 0.90
     /// 作用域为空（标签后面还没输入文字）时，兜底画一个最小宽度的空胶囊，
@@ -105,8 +112,15 @@ struct EmotionTokenStyle {
     var badgeTopOffset: CGFloat = 14
     /// 徽章相对胶囊左上角：向右的偏移
     var badgeLeftOffset: CGFloat = 6
-    /// 徽章描边不透明度（底色取编辑器背景，保证压在任何文本上都读得清）
-    var badgeStrokeAlpha: CGFloat = 0.5
+    /// 徽章配色对齐设计稿 `.badge`：强调色 20% 底（`<accent>33`）+ 50% 描边（`<accent>80`）
+    var badgeFillAlpha: CGFloat = 0.20
+    /// 徽章描边不透明度
+    var badgeStrokeAlpha: CGFloat = 0.50
+    /// 徽章文字：设计稿 #E9E9EC；亮色外观翻成深灰才读得清
+    static func badgeTextColor(dark: Bool) -> NSColor {
+        dark ? NSColor(red: 0.914, green: 0.914, blue: 0.925, alpha: 1.0)
+             : NSColor(white: 0.18, alpha: 1.0)
+    }
     /// 徽章右侧 × 的宽度。常态也占位（只是不绘制），避免悬停时徽章变宽跳动。
     var badgeCloseWidth: CGFloat = 13
     /// 中断标签徽章的配色：刻意不用情绪色，用次级文字色，尽量安静、不抢正文。
@@ -231,6 +245,27 @@ struct EmotionTokenStyle {
 
     // MARK: - 解析（绘制时调用）
 
+    /// 基础色 → 设计稿那支「暗调强调色」：顶部亮线用它，胶囊底色也由它混出来。
+    func capsuleAccent(from base: NSColor, dark: Bool) -> NSColor {
+        base.darkened(by: dark ? capsuleAccentDarken : capsuleAccentDarkenLight)
+    }
+
+    /// 把强调色按 fraction 混进不透明背景色，得到胶囊的实色底。
+    /// 用 sRGB 分量线性插值（与 `darkened(by:)` 同一套口径），alpha 恒为 1。
+    static func blended(_ background: NSColor,
+                        with accent: NSColor,
+                        fraction: CGFloat) -> NSColor {
+        let f = max(0, min(1, fraction))
+        guard let bg = background.usingColorSpace(.sRGB),
+              let ac = accent.usingColorSpace(.sRGB) else { return background }
+        return NSColor(colorSpace: .sRGB, components: [
+            bg.redComponent * (1 - f) + ac.redComponent * f,
+            bg.greenComponent * (1 - f) + ac.greenComponent * f,
+            bg.blueComponent * (1 - f) + ac.blueComponent * f,
+            1.0
+        ], count: 4)
+    }
+
     /// 由 identity + 当前外观解析出最终样式。
     /// 几何沿用 `.default`，仅覆盖颜色与家族相关标记，确保与 cellSize() 一致。
     /// v3：语气 / 拟声都走情绪色（暗 = 原色；亮 = 压暗约 40% 保可读）。
@@ -239,23 +274,13 @@ struct EmotionTokenStyle {
         let base = identity.baseColor
         s.dashedBorder = (identity.category == .richLanguage)
 
-        // 胶囊由文本视图自绘（用 scope.color + capsuleFillAlpha 等），
-        // 这里的 fillColor / strokeColor 只服务拟声标记：v12 起整体减淡，
-        // 常态不抢正文注意力，悬停才抬到 0.18。
-        if dark {
-            s.textColor = base
-            s.fillColor = base.withAlphaComponent(0.10)
-            s.strokeColor = base.withAlphaComponent(0.45)
-            s.fillColorHovered = base.withAlphaComponent(0.18)
-            s.strokeColorHovered = base.withAlphaComponent(0.70)
-        } else {
-            let t = base.darkened(by: 0.40)
-            s.textColor = t
-            s.fillColor = base.withAlphaComponent(0.10)
-            s.strokeColor = base.withAlphaComponent(0.45)
-            s.fillColorHovered = base.withAlphaComponent(0.18)
-            s.strokeColorHovered = base.withAlphaComponent(0.70)
-        }
+        // 胶囊由文本视图自绘（v14 见 `drawToneCapsules`）；这里的 fillColor / strokeColor
+        // 只服务拟声 pill。v14 对齐设计稿 `.snd`：常态透明底 + 更实的虚线，悬停才给淡底。
+        s.textColor = dark ? base : base.darkened(by: 0.40)
+        s.fillColor = .clear
+        s.fillColorHovered = base.withAlphaComponent(0.14)
+        s.strokeColor = base.withAlphaComponent(dark ? 0.60 : 0.55)
+        s.strokeColorHovered = base.withAlphaComponent(0.80)
         return s
     }
 

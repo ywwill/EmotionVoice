@@ -352,10 +352,10 @@ struct VoiceStudioView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.uturn.backward.circle")
                         .font(.system(size: 12))
-                        .foregroundStyle(AppColor.textSecondary)
+                        .foregroundStyle(AppColor.textPrimary)
                     Text(Constants.interruptItem.label.localized())
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(AppColor.textSecondary)
+                        .foregroundStyle(AppColor.textPrimary)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
