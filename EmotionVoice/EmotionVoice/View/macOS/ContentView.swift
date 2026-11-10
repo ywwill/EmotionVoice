@@ -78,7 +78,7 @@ struct ContentView: View {
         .task { await updateManager.checkForUpdateAtLaunch() }
         // 空闲期预热音色库（与网络检查并行，互不阻塞）
         .task { await warmUpVoicesLibrary() }
-        // 每次打开 App（冷启动 / 重新激活）都申请一次 App Store 评分
+        // 每次打开 App 申请一次 App Store 评分（每个进程只一次）
         .requestReviewOnEveryOpen()
         .onChange(of: appState.selectedSection) { _, newSection in
             // `.home` 已无侧边栏入口，历史上与工作台共用同一页面，归一化避免空白页

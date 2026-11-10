@@ -54,7 +54,8 @@
 - 积分全链路 Double(≤2位) `CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5，CJK 算 2 字符），云端 `numeric(10,2)`。
 - `StudioParamValues`/`Store` 在 `Shared/ViewModels/VoiceStudioViewModel.swift`，键 `studioParam.*`；⚠️ 禁把 `AppState.defaultFormat`/`defaultSampleRate` 当存储，「重置」只调 `reset(on: vm)` = `.factory`(mp3/22050/1.0x/100%)；默认值读 `Constants`/`.factory`；`VoiceStudioView.onAppear` 从设置页覆盖参数**已删，别加回来**。
 - `GenerationDialog` 清空须 `displayName: nil`，`hasResult = generatedAudioURL != nil && !isGenerating`；`PackageCard` 副标题禁 `.lineLimit(1)`。
-- ⚠️ 用户明确要求「**每次 App 打开都弹评分弹窗**」（与 ASO 文档相反，以用户为准，别改回去）：`AppUpdateManager.requestReviewOnEveryOpen()` 两端根容器各挂一行，**不做本地节流**；StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
+- ⚠️ 用户明确要求「**每次 App 打开都弹评分弹窗**」（与 ASO 文档相反，以用户为准，别改回去）：`AppUpdateManager.requestReviewOnEveryOpen()` 两端根容器各挂一行，**不做本地节流**（跨启动不计数）；StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
+- ⚠️ 评分口径是「**每个进程一次**」：`ReviewRequestGate`（`AppUpdateManager.swift` 内 `nonisolated(unsafe) static var`）只放行一次，退后台再回前台不再弹。**禁把一次性标记放回 `@State`、禁在 `scenePhase != .active` 时复位**——iOS 上评分面板/控制中心/来电/系统弹窗都会让 scenePhase 走 `active→inactive→active`，复位即变成连环弹窗（iOS 多个评分弹窗的根因）；iPad 多窗口/场景重建又会各持一份 `@State`。
 
 ## 商店页 / ASO（细节全在 `产品/商店页/*.md`）
 - 入口：Mac `素材/gen_previews.py` + `商店页文案-多语言版本.md`；iPhone `gen_ios_previews.py` + `iOS商店页元数据-6语言.md`；iPad `prepare_ipad_real.py` + `gen_ios_previews_ipad.py`。尺寸 6.9" `1320×2868`(禁 alpha) / iPad 13" `2752×2064` / Mac `2880×1800`；⚠️ `素材/raw/` 未被 git 追踪曾被清理。

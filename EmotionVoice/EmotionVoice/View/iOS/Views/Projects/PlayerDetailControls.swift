@@ -337,6 +337,7 @@ struct TranscriptSentenceRow: View, Equatable {
         return result
     }
 
+    // MARK: 播放文本颜色
     private func wordColor(at i: Int) -> Color {
         guard activeWordIndex >= 0 else {
             guard isDone else {

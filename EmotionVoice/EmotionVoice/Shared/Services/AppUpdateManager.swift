@@ -371,36 +371,44 @@ struct AppUpdateRecord: Decodable {
 
 // MARK: - 每次打开 App 申请评分（iOS / macOS 共用）
 
-/// 挂在根容器上：冷启动、以及每次从后台重新激活，都调用一次 `requestReview()`。
+/// 挂在根容器上：**每个进程启动后**申请一次 App Store 评分。
+///
+/// 产品口径：每次打开 App 弹一次；退到后台但没退出 App，再回到前台**不再重复弹**。
+/// 所以这里既不跟着 `scenePhase` 反复申请，也不做跨启动的本地计数 / 节流
+/// （频率上限是 StoreKit 自己的配额，代码绕不过去也不用绕）。
 ///
 /// ⚠️ `requestReview()` 只是向系统「申请」评分，弹不弹由 StoreKit 决定：
 ///   - 开发签名 / DEBUG：每次调用都会弹（方便调试）；
 ///   - TestFlight：不弹；
 ///   - App Store 正式版：每设备每 365 天最多 3 次，代码无法绕过这个上限。
-/// 所以这里刻意不做任何本地计数 / 节流，把频率完全交给系统。
+///
+/// ⚠️ 一次性标记必须放**进程级**（`ReviewRequestGate` 的静态量），不能放 `@State`：
+///   - iOS 上系统浮层（评分面板自己、控制中心、来电、系统权限弹窗、App 切换器）
+///     都会让 `scenePhase` 走 `active → inactive → active`。旧实现把「本次已申请」
+///     存在 `@State` 里，且只要离开 active 就复位 —— 于是变成
+///     「弹 → 面板让 App 失活 → 关面板回 active → 再弹」的连环弹窗，
+///     这正是 iOS 上出现多个评分弹窗的根因；
+///   - iPad 多窗口 / 场景重建会生成多份根视图，各自的 `@State` 互不可见，
+///     同样会在同一次启动里各申请一遍。
 private struct RequestReviewOnOpenModifier: ViewModifier {
     @Environment(\.requestReview) private var requestReview
     @Environment(\.scenePhase) private var scenePhase
 
-    /// 同一激活周期只申请一次：冷启动时 `.task` 与 scenePhase 的 background→active
-    /// 可能同时命中，避免同一次打开连弹两回；离开 active 即复位。
-    @State private var handledCurrentActive = false
-
     func body(content: Content) -> some View {
         content
-            .task { handleAppOpen() }
+            // 冷启动：根视图一上屏就排一次（此刻场景往往还没 active，靠 1s 延迟等它就位）
+            .task { scheduleReviewIfNeeded() }
+            // 兜底：首次上屏时场景若还没 active、上面那次被 StoreKit 静默丢弃，
+            // 就在第一次真正 active 时补排一次。闸门是进程级的，两个入口不会叠加；
+            // 之后的后台↔前台再也不会触发第二次。
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
-                    handleAppOpen()
-                } else {
-                    handledCurrentActive = false
-                }
+                guard phase == .active else { return }
+                scheduleReviewIfNeeded()
             }
     }
 
-    private func handleAppOpen() {
-        guard !handledCurrentActive else { return }
-        handledCurrentActive = true
+    private func scheduleReviewIfNeeded() {
+        guard ReviewRequestGate.claim() else { return }
         // 启动瞬间窗口 / 场景还没稳定，StoreKit 会静默丢弃这次申请
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))
@@ -409,8 +417,24 @@ private struct RequestReviewOnOpenModifier: ViewModifier {
     }
 }
 
+/// 进程级一次性闸门：整个 App 生命周期（= 一次启动）只放行一次评分申请。
+///
+/// `nonisolated(unsafe)`：只在主线程（SwiftUI 的 `.task` / `.onChange` / body）读写，
+/// 一个 Bool 不存在撕裂风险；加它只是为了绕开默认 MainActor 隔离在闭包里的调用限制。
+private enum ReviewRequestGate {
+    nonisolated(unsafe) private static var claimed = false
+
+    /// 抢占一次申请名额：第一次调用返回 `true`，之后（本次进程内）永远 `false`。
+    nonisolated static func claim() -> Bool {
+        if claimed { return false }
+        claimed = true
+        return true
+    }
+}
+
 extension View {
-    /// 每次打开 App 都向系统申请一次 App Store 评分。
+    /// 每次打开 App（每个进程）向系统申请一次 App Store 评分。
+    /// 后台↔前台来回切不会再申请，见 `RequestReviewOnOpenModifier`。
     func requestReviewOnEveryOpen() -> some View {
         modifier(RequestReviewOnOpenModifier())
     }
