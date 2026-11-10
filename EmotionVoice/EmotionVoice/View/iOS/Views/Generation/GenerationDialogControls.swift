@@ -65,9 +65,6 @@ struct StreamingWaveBars: View {
 }
 
 // MARK: - 完成态播放器（订阅隔离）
-
-/// macOS `AudioGenerationModal.ModalAudioPlayer` 同款：播放器订阅只关在这一个小 View 里，
-/// 弹窗主体的四宫格 / 音色卡 / 积分行 / 网格不会跟着 10Hz progress 重算。
 struct ModalAudioPlayer: View {
     @Environment(\.aurora) private var c
     @ObservedObject private var player = AudioPreviewPlayer.shared

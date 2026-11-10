@@ -582,3 +582,8 @@
 "第 %d 句 · %@" = "Sentence %d · %@";
 "句间停顿 %@ · 下一句 %d" = "Pause %@ · next sentence %d";
 "文本区自动滚动，让正在播放的句子保持在视野中央；手动滚动会暂时关闭跟随。" = "Auto-scrolls the text pane to keep the current sentence in view. Scrolling manually turns follow mode off temporarily.";
+"跟随" = "Follow";
+"第 %d / %d 句" = "Sentence %d / %d";
+"双击从这一句开始播放" = "Double-tap to play from this sentence";
+"关闭跟随播放" = "Turn off follow mode";
+"开启跟随播放" = "Turn on follow mode";
