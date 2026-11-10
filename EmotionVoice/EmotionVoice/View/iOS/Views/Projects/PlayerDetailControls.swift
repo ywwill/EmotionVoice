@@ -327,6 +327,9 @@ struct TranscriptSentenceRow: View, Equatable {
     ///
     /// ⚠️ 必须拼 `word.text`，**禁止**用 begin_index / end_index 切 `cue.text`：
     ///    上游的 index 是「非标点字符的连续序号」，不是原文里的字符位置。
+    ///    v3 起 sidecar 的 word.text 已是用户原文片段（`alignToOriginal`），
+    ///    繁体原文不会再显示成简体 —— 不要改回从 `normalized_text` 取值；
+    ///    v4 起词间空白也保留（英文靠空格断词），别对 word.text 去空白。
     /// ⚠️ 也不要给当前字加 `.bold()`：字重变化会改变单字宽度，整段会重新折行、左右抖动。
     ///    区分度全部交给颜色。
     private var wordLine: Text {

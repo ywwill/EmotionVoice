@@ -379,9 +379,11 @@ private struct SentenceCueRow: View, Equatable {
     /// 上游的 index 是「非标点字符的连续序号」，不是原文里的字符位置。实测：
     /// 原文「第一句话。\n\n第二句话，带标点。」16 字符 / 11 个 word / max end_index = 11，
     /// 按 index 切原文会有 7 个词错位。
-    /// 标点已附着在相邻 word 的 text 上（`words.map(\.text).joined()` === normalized_text），
-    /// 所以拼接不会丢标点，只会丢掉 original_text 里的换行（normalized_text 已把
-    /// `\n\n` 压成空，句卡按句分段展示本来也不需要保留换行）。
+    /// 标点已附着在相邻 word 的 text 上，所以拼接不会丢标点。v3 起 sidecar 里的 word.text
+    /// 已是**用户原文**的片段（见 `TTSTimestampParser.alignToOriginal`），不再有「繁体原文
+    /// 显示成简体」的问题；v4 起词间空白也原样保留（`Today, AI is …`），
+    /// 只把 `\n\n` 折成一个空格（句卡按句分段展示本来也不需要保留换行）。
+    /// ⚠️ 别再把 word.text 做 `filter { !$0.isWhitespace }` 之类的处理——英文会被粘成一串。
     ///
     /// ⚠️ 也不要给当前字加 `.bold()`：字重变化会改变单字宽度，导致整段文本重新
     /// 折行、左右轻微位移（用户反馈的「文字偶尔左右晃动」）。区分度全部交给颜色。

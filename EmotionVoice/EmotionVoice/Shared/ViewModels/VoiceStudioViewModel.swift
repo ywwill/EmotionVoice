@@ -448,7 +448,10 @@ final class VoiceStudioViewModel: ObservableObject {
                         sampleRate: sampleRate,
                         format: self.selectedFormat.lowercased(),
                         nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
-                        onAudio: onAudio
+                        onAudio: onAudio,
+                        // 字级字幕的显示文本以这段「纯台词」为准：apiText 里的
+                        // `[emotion]` 前缀不是台词，上游 original_text 也不保证逐字一致
+                        displaySource: segment.text
                     )
                     try Task.checkCancellation()
                     // 单个片段为空说明这一段没合成出音频，合并后会造成「缺了一段」的静默错误

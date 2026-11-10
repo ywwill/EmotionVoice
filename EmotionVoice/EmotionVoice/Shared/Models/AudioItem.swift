@@ -138,11 +138,33 @@ struct AudioSentenceCue: Codable, Hashable, Sendable {
 struct AudioTimeline: Codable, Hashable, Sendable {
     /// sidecar 格式版本。低于此值的旧文件在 `AudioTimelineStore.load` 里自动升级。
     ///
-    /// ⚠️ v2 的切分会把句首标点**前移**进上一句最后一个 word 的 `text`，因此对 v2
-    /// 产物再跑一次 v2 切分是**不可逆的错误**（拍平后每个 word 都没有前导标点了，
-    /// 会退化成一整段）。将来若再改切分规则，必须针对每个旧版本写专门迁移，
-    /// 不能直接拿新函数去重切一份已是新格式的 sidecar。
-    static let currentVersion = 2
+    /// - v2：切分把句首标点**前移**进上一句最后一个 word 的 `text`。
+    /// - v3：`words[].text` 是**用户原文**的片段（见 `TTSTimestampParser.alignToOriginal`），
+    ///   不再是上游 `normalized_text` 的简体形态。
+    /// - v4：对齐时**保留词间空白**。v3 是「把原文的空白全部剥掉再按字数回填」，
+    ///   中文没有影响，英文就变成 `Today,AIIspoweredbydeeplearning,…`（单词全粘成一串）。
+    /// - v5：**切句规则**补上「句末标点落在词尾」的西文分支（`brain.` / `driving."`）。
+    ///   之前只认「前导标点簇」，中文把标点粘在下一个词开头所以能切，英文把 `.` 放在
+    ///   词尾，`cut` 恒为 -1 → 整段只切出 1 张句卡、点哪儿都回开头。
+    ///   同时序号通道放宽为「单调不减」并统一两条通道的兜底顺序。
+    /// - v6：对齐新增**通道 ②（按词内占号字符数累计）**，排在「逐位」与「上游 index」之间。
+    ///   上游 normalize 会删 `「」`、把 `\n\n` 换成 `。`（同为不占号字符，但会让非空白
+    ///   字数 353 → 350），还会把英文按「词」编号 —— 这两件事让 ① 和 ③ 同时失败，
+    ///   1251 字长文因此整条退回简体。而两边「占号单元数」始终相等（319 == 319）。
+    ///
+    /// ⚠️ v2 的切分让 word 文本「不再等于上游原始划分」，所以对 v2 产物重切会退化。
+    /// v2 → v3 的迁移必须**先用原文按 begin_index 重新分配文本（`remap` 的 ② 通道），
+    /// 再重切**；remap 失败时一律原样返回，绝不能直接重切。
+    /// v3 → v4 同路（都要用原文重排），只是 v4 的 remap 会把空格留在词间。
+    /// v4 → v5 只需要**重切**（文本已是原文），但仍然走 `realign`：它对 v4 文本
+    /// 会先尝试 ② 通道、失败后落到 ① 通道，两种情况都只是把文本重新摆到同一批锚点上。
+    ///
+    /// ⚠️ **切句规则也必须进版本号**：`textMatches` 为真时只说明「文本对了」，
+    /// 不代表「句子切分是当前规则」。只 bump 文本对齐、不 bump 切句，v4 的历史英文
+    /// sidecar 会一直保留「整段 1 张卡」的旧切分，永远不会自愈。
+    /// 同理，对齐算法（通道数量 / 优先级）一改也要 bump —— 否则旧 sidecar 会一直用
+    /// 上一套算法产出的文本，靠 `textMatches` 也拦不住（它只能发现「文本不等」）。
+    static let currentVersion = 6
 
     var version: Int
     /// 最终音频时长（毫秒），用于波形刻度归一化
@@ -269,6 +291,274 @@ enum TTSTimestampParser {
         return result
     }
 
+    /// 把任意空白（含 `\n\n`、制表符）压成一个半角空格，并去掉首尾空白。
+    ///
+    /// 字幕按句卡展示、本身不带换行，所以 `\n\n` 必须折成空格而不是保留；
+    /// 但**不能整体删除**——英文的单词边界全靠空格，删了就会粘成一串。
+    nonisolated static func normalizeWhitespace(_ text: String) -> String {
+        var out = ""
+        out.reserveCapacity(text.count)
+        var pendingSpace = false
+        for ch in text {
+            if ch.isWhitespace {
+                pendingSpace = !out.isEmpty
+            } else {
+                if pendingSpace { out.append(" "); pendingSpace = false }
+                out.append(ch)
+            }
+        }
+        return out
+    }
+
+    /// 把每个 word 的 `text` 换成**用户原文**里对应的字符片段。
+    ///
+    /// 上游 `words[].text` 取自 `normalized_text`：繁体被转成简体（实测
+    /// `午後`→`午后`、`陽光`→`阳光`），直接拼 `word.text` 当字幕就会把原文
+    /// 显示成另一套字形。这里只用原文重新分配 words 的文本，
+    /// **时间锚点一个不动、不插值、不猜**。
+    ///
+    /// 对齐源优先级：
+    /// 1. `source`：**我们真正发出去的那段文本**（用户输入，字形由用户决定）。
+    ///    上游的 `original_text` 是服务端视角的「原文」，不保证和发送内容逐字一致。
+    /// 2. `cues[].text`：上游 `original_text`（拿不到发送文本时的次选）。
+    /// 都不成（没回 original_text、数字/英文被展开导致字数对不上）就原样返回，
+    /// 宁可用上游文本，也不做错误的逐字对应。
+    nonisolated static func alignToOriginal(_ cues: [AudioSentenceCue],
+                                           source: String? = nil) -> [AudioSentenceCue] {
+        guard !cues.isEmpty else { return cues }
+        let flat = cues.flatMap(\.words)
+
+        // 首选发送文本；其次上游 original_text —— 只有单条 cue 时它才是整段原文，
+        // 多句时每个 cue 的 text 只是本句，拿去对齐全量 words 必然失败，不必浪费一次计算。
+        var candidates: [String] = []
+        if let source, !source.isEmpty { candidates.append(source) }
+        if cues.count == 1, let whole = cues.first?.text, !whole.isEmpty { candidates.append(whole) }
+
+        for candidate in candidates {
+            if let aligned = remap(flat, to: candidate), let grouped = regroup(aligned, like: cues) {
+                return grouped
+            }
+        }
+
+        // 兜底：每句各带本句原文时逐条对齐（对不上的那条保持上游文本）
+        var result: [AudioSentenceCue] = []
+        result.reserveCapacity(cues.count)
+        for cue in cues {
+            var copy = cue
+            if let aligned = remap(cue.words, to: cue.text) { copy.words = aligned }
+            result.append(copy)
+        }
+        return result
+    }
+
+    /// 把整段对齐后的 words 按原来的 cue 结构切回去。
+    private nonisolated static func regroup(_ aligned: [AudioWordCue],
+                                            like cues: [AudioSentenceCue]) -> [AudioSentenceCue]? {
+        var cursor = 0
+        var result: [AudioSentenceCue] = []
+        result.reserveCapacity(cues.count)
+        for cue in cues {
+            let end = cursor + cue.words.count
+            guard end <= aligned.count else { return nil }
+            var copy = cue
+            copy.words = Array(aligned[cursor..<end])
+            cursor = end
+            result.append(copy)
+        }
+        return cursor == aligned.count ? result : nil
+    }
+
+    /// 该字符是否占一个「字级时间戳序号」——即会被真正读出来的字符。
+    ///
+    /// 上游的 `begin_index / end_index` 只数发音单元：标点（`，` `。`）、符号
+    /// （`~` `$` `%` `=`）、emoji 都不占号。见 `remap` 序号通道里对官方示例的核对。
+    ///
+    /// ⚠️ 这里按 grapheme cluster（Swift 的 `Character`）判，与上游按 UTF-16 / 码点
+    /// 计数在含组合字符或 emoji ZWJ 序列时会不一致。不一致的后果是「末尾总量校验不过
+    /// → 返回 nil → 保持上游文本」，不会产出错位的对齐，所以不需要额外做编码转换。
+    private nonisolated static func isSpokenUnit(_ ch: Character) -> Bool {
+        ch.isLetter || ch.isNumber
+    }
+
+    /// 用 `source`（原文）给 `words` 重新分配文本；返回 nil 表示无法可靠对齐，调用方必须保持原样。
+    ///
+    /// 三条通道，按「精确度 → 鲁棒性」排序，前一条成功就不再往下走：
+    /// ① 逐字符：去空白后字数**完全相等**（繁简一一对应时成立）。最精确，连标点都按
+    ///    原文位置分配。上游只要删/加过一个标点就会失效（实测 353 vs 350）。
+    /// ② 按占号单元累计：只数 `word.text` 里有多少个占号字符，累加后把原文一段段切给
+    ///    words。**不看上游 index，也不要求字数相等**，只要求「两边占号总数相同」。
+    ///    标点增删、`\n\n`→`。`、`「」` 被删都无影响，是当前的主力通道。
+    /// ③ 上游 `begin_index / end_index`：占号单元的全文连续序号（跨句累加）。
+    ///    英文被上游按「词」编号时总量会对不上，所以排在 ② 之后兜底。
+    ///
+    /// `allowSurfaceMatch: false` 用于 v2/v4 sidecar 迁移：那里的 word 文本已被切分改动过
+    /// （句末标点被前移），逐位映射会从第一个锚点起整体错位，所以跳过 ① 直接走 ②③。
+    ///
+    /// ⚠️ **空白必须保留**：中文靠标点断句，英文靠空格断词。早期实现把原文的空白全部
+    /// 剥掉（`filter { !$0.isWhitespace }`）再按字数回填，中文无损，但英文会粘成
+    /// `Today,AIIspoweredbydeeplearning,…`，整段没有一处空格。
+    /// 现在只把「连续空白压成一个空格」做归一（`\n\n` → 空格，句卡里不会出现空行），
+    /// 计数仍按非空白字符，切片则从归一后的原文取，词间空格自然留在两个词之间。
+    nonisolated static func remap(_ words: [AudioWordCue],
+                                 to source: String,
+                                 allowSurfaceMatch: Bool = true) -> [AudioWordCue]? {
+        let normalized = normalizeWhitespace(source)
+        let chars = Array(normalized)
+        // visible[k] = 第 k 个非空白字符在 chars 里的下标：把「去空白计数」换算成真实切片位置
+        var visible: [Int] = []
+        visible.reserveCapacity(chars.count)
+        for (i, ch) in chars.enumerated() where !ch.isWhitespace { visible.append(i) }
+        guard !visible.isEmpty, !words.isEmpty else { return nil }
+
+        func visibleCount(_ text: String) -> Int {
+            text.reduce(0) { $1.isWhitespace ? $0 : $0 + 1 }
+        }
+
+        var pieces: [String]?
+
+        if allowSurfaceMatch {
+            let surfaceCount = words.reduce(0) { $0 + visibleCount($1.text) }
+            if surfaceCount == visible.count {
+                var cursor = 0
+                var lo = 0
+                var out: [String] = []
+                out.reserveCapacity(words.count)
+                var valid = true
+                for word in words {
+                    let n = visibleCount(word.text)
+                    guard n > 0 else { valid = false; break }
+                    let hi = visible[cursor + n - 1] + 1
+                    out.append(String(chars[lo..<hi]))
+                    cursor += n
+                    lo = hi
+                }
+                if valid, cursor == visible.count { pieces = out }
+            }
+        }
+
+        if pieces == nil {
+            // 下面两条通道都建立在「占号单元」这个概念上：只有**会被读出来的字符**
+            // （字母、数字、表意文字）占号；标点（`，` `。` `「」`）、符号
+            // （`~` `$` `%` `=`）、emoji 都不发音、不占号。
+            // 早期用 `!isPunctuation` 判，会把 `isSymbol` 的 `%` `$` 误算成占号，
+            // 原文里出现货币/百分比符号时整条对齐会判失败（静默退回上游文本）。
+            var unitVisible: [Int] = []
+            for (k, i) in visible.enumerated() where isSpokenUnit(chars[i]) { unitVisible.append(k) }
+            guard !unitVisible.isEmpty else { return nil }
+
+            // 通道 ②：**完全不看上游 index**，只按「每个词里有几个占号字符」累加。
+            //
+            // 这是 2026-11-10 那条 1251 字繁中长文（含英文括注）的对齐主路径。上游
+            // normalize 时做了两件会让另外两条通道同时失效的事：
+            //   a) 删掉 `「」`（4 个）、把段间 `\n\n` 换成 `。`（+1）→ 非空白字符数
+            //      353 → 350，逐位通道「字数相等」的前提直接不成立；
+            //   b) 英文 `Default Mode Network` 的 index 按「词」给，我们按「字母」数
+            //      占号单元 → 上游 index 总量与我们算的 319 个单元对不上。
+            // 而这两件事**都不占号**：只要「words 里占号字符总数 == 原文占号字符总数」
+            // （实测 319 == 319），就能把原文按占号单元一段段切给 words，
+            // 字形（含 `謐`→`密` 这类同音归一化）与标点位置全部取自原文。
+            pieces = sliceByUnitEnds(words, unitEnds: countedUnitEnds(words),
+                                     chars: chars, visible: visible, unitVisible: unitVisible)
+
+            // 通道 ③：上游 `begin_index / end_index`。语义是「占号单元的**全文**连续序号」
+            // —— 跨句累加、标点不占号。官方文档文字写「该字在整句中的开始位置」是错的，
+            // 它自己的示例（`阿里巴巴。达摩院。` 里 `达` 是 index 4 而非句内 0）就否证了，
+            // 用户已确认。所以官方建议的「sentence_offset + begin_index」在这里等价于
+            // 直接用它；真去累加句长反而要假设「上游回传的句子长度 = 原文该句长度」。
+            if pieces == nil, let ends = upstreamUnitEnds(words) {
+                pieces = sliceByUnitEnds(words, unitEnds: ends,
+                                         chars: chars, visible: visible, unitVisible: unitVisible)
+            }
+        }
+
+        guard let pieces else { return nil }
+        // 校验只看「非空白字符」：允许补回/丢掉空白，绝不允许改字或丢字
+        let expected = String(chars.filter { !$0.isWhitespace })
+        guard pieces.joined().filter({ !$0.isWhitespace }) == expected else { return nil }
+
+        var result: [AudioWordCue] = []
+        result.reserveCapacity(words.count)
+        for (word, text) in zip(words, pieces) {
+            var copy = word
+            copy.text = text
+            result.append(copy)
+        }
+        return result
+    }
+
+    /// 通道 ② 的单元终点：把每个词里**占号字符**的个数累计起来。
+    ///
+    /// 完全不依赖上游 `begin_index`。繁简/同音归一化是一一对应的（`謐`→`密`、`癒`→`愈`
+    /// 都是 1 换 1），标点增删也不占号，所以这个累计值天然与原文对得上。
+    private nonisolated static func countedUnitEnds(_ words: [AudioWordCue]) -> [Int] {
+        var cumulative = 0
+        return words.map { word in
+            cumulative += word.text.reduce(0) { isSpokenUnit($1) ? $0 + 1 : $0 }
+            return cumulative
+        }
+    }
+
+    /// 通道 ③ 的单元终点：用上游 `begin_index / end_index`（`[break]` 分段时每段归零，
+    /// 段间累加前一段的末 index）。返回 nil 表示序号语义明显不对（end < begin）。
+    ///
+    /// ⚠️ 纯标点词（`begin == end`）的 index 也是 0，**不能**当成段边界，否则一句会被切断。
+    private nonisolated static func upstreamUnitEnds(_ words: [AudioWordCue]) -> [Int]? {
+        var result: [Int] = []
+        result.reserveCapacity(words.count)
+        var base = 0
+        var previousEnd = 0
+        for (i, word) in words.enumerated() {
+            guard word.endIndex >= word.beginIndex else { return nil }
+            if i > 0, word.beginIndex == 0, word.endIndex > 0 {
+                base += previousEnd
+            }
+            result.append(base + word.endIndex)
+            previousEnd = word.endIndex
+        }
+        return result
+    }
+
+    /// 把「每个词消费到第几个占号单元」翻译成原文上的连续切片。
+    ///
+    /// - 消费了单元的词：切到第 `end` 个占号字符为止（其后的标点留给下一个词，
+    ///   与上游「标点前置」的形态一致）。
+    /// - 没消费单元的词（独立 `。`）：吃掉「到下一个占号单元之前」的字符，
+    ///   否则它会切出空串、标点整段丢失，末尾总量校验必然失败。
+    /// - 段内必须单调不减，**不要求首尾严格相接**：上游丢了空 text 占位词或跳号会
+    ///   留下空洞，空洞里的字符并入下一个词的词首（切片是连续的 `lo..<hi`），
+    ///   比整条放弃对齐要好。
+    /// - 末尾残留的标点（`…` / 句末 `。`）不属于任何占号单元，补到最后一个词上。
+    ///
+    /// 最后的 `previousEnd == unitVisible.count` 是**总量校验**：对不上就返回 nil，
+    /// 由调用方保持上游文本 —— 宁可显示另一套字形，也不做错位的逐字对应。
+    private nonisolated static func sliceByUnitEnds(_ words: [AudioWordCue],
+                                                    unitEnds: [Int],
+                                                    chars: [Character],
+                                                    visible: [Int],
+                                                    unitVisible: [Int]) -> [String]? {
+        guard !words.isEmpty, unitEnds.count == words.count, !unitVisible.isEmpty else { return nil }
+        var lo = 0
+        var previousEnd = 0
+        var out: [String] = []
+        out.reserveCapacity(words.count)
+        for end in unitEnds {
+            guard end >= previousEnd, end <= unitVisible.count else { return nil }
+            let hi: Int
+            if end == previousEnd {
+                hi = end < unitVisible.count ? visible[unitVisible[end]] : chars.count
+            } else {
+                hi = visible[unitVisible[end - 1]] + 1
+            }
+            guard hi >= lo, hi <= chars.count else { return nil }
+            out.append(String(chars[lo..<hi]))
+            lo = hi
+            previousEnd = end
+        }
+        guard previousEnd == unitVisible.count else { return nil }
+        if lo < chars.count, !out.isEmpty { out[out.count - 1] += String(chars[lo...]) }
+        return out
+    }
+
     /// 把「一个 sentence-end 覆盖整段文本」的粗粒度结果，按句末标点细分成多张句卡。
     ///
     /// 上游的句子切分非常粗：实测 43 字、明显含两句话的文本只返回 **1 个
@@ -299,11 +589,24 @@ enum TTSTimestampParser {
         var result: [AudioSentenceCue] = []
         var inQuote = false
 
+        // 词尾是否以句末标点收尾（允许尾巴上有空白和引号：`brain.` / `driving."` / `brain. `）
+        func endsWithTerminal(_ chars: [Character]) -> Bool {
+            var k = chars.count - 1
+            while k >= 0, chars[k].isWhitespace || quoteMarks.contains(chars[k]) { k -= 1 }
+            return k >= 0 && terminal.contains(chars[k])
+        }
+
         for cue in cues {
             var group: [AudioWordCue] = []
 
             func flush() {
                 guard !group.isEmpty else { return }
+                // 对齐保留了空格，句首那个词可能带前导空格（前一词的词间空格）。
+                // 卡片是左对齐的，留着会凭空多出一截缩进，这里只削掉首词的空白。
+                if var first = group.first, first.text.first?.isWhitespace == true {
+                    first.text = String(first.text.drop(while: { $0.isWhitespace }))
+                    group[0] = first
+                }
                 result.append(AudioSentenceCue(
                     index: result.count,
                     text: group.map(\.text).joined(),
@@ -314,12 +617,16 @@ enum TTSTimestampParser {
 
             for word in cue.words {
                 let chars = Array(word.text)
-                var p = 0
+                // 英文的词可能带前导空格（对齐时保留了词间空白），先跳过再扫标点簇，
+                // 否则 `。" Next` 这种前导空格会把句末标点挡在簇外、整段切不开。
+                var punctStart = 0
+                while punctStart < chars.count, chars[punctStart].isWhitespace { punctStart += 1 }
+                var p = punctStart
                 while p < chars.count, chars[p].isPunctuation { p += 1 }
 
                 // 边扫标点簇边定切点：句末标点后切一刀，紧跟其后的引号再修正方向
                 var cut = -1
-                for i in 0..<p {
+                for i in punctStart..<p {
                     let c = chars[i]
                     if quoteMarks.contains(c) {
                         inQuote.toggle()
@@ -339,14 +646,26 @@ enum TTSTimestampParser {
                     }
                 }
 
+                // 句末标点落在**词尾**（西文 `brain.` / `driving."`、或纯标点词 `。`）：
+                // 这个词说完就断句。上游中文把标点粘在下一个词的**开头**（`，阳`），走上
+                // 面的切点分支；西文放在词尾，词内没有「标点簇 + 正文」的结构，cut 恒为 -1，
+                // 必须在这里单独判一次，否则英文整段只会切出 1 张卡。
+                if !group.isEmpty, cut < 0 || cut == chars.count, endsWithTerminal(chars) {
+                    group.append(word)
+                    flush()
+                    continue
+                }
+
                 guard cut > 0, cut < chars.count, !group.isEmpty else {
                     group.append(word)
                     continue
                 }
 
-                // 到切点为止归上一句（只改展示文本，时间锚点不动）
+                // 到切点为止归上一句（只改展示文本，时间锚点不动）。
+                // 从标点簇起点开始取、丢掉前导空白：`， Next` 里那个空格是词间分隔，
+                // 拼到上一句末尾会让句卡右边缘凭空多出一截空白。
                 var tail = group[group.count - 1]
-                tail.text += String(chars[0..<cut])
+                tail.text += String(chars[punctStart..<cut])
                 group[group.count - 1] = tail
                 flush()
 
@@ -381,9 +700,13 @@ enum AudioTimelineStore {
         generatedAudioDirectoryURL().appendingPathComponent(fileName + fileSuffix)
     }
 
-    nonisolated static func load(fileName: String) -> AudioTimeline? {
+    /// `sourceText` 是该条音频的用户原文（`audio_items.text`）：
+    /// v2 → v3 迁移靠它把 words 换回原文，v3 也靠它自愈「文本不是用户原文」的历史数据。
+    /// 拿不到原文时旧 sidecar 原样返回，绝不冒险重切。
+    nonisolated static func load(fileName: String, sourceText: String? = nil) -> AudioTimeline? {
         guard !fileName.isEmpty else { return nil }
         let key = fileName as NSString
+        // 缓存里存的是「结论」：对不上原文（无法修复）也会缓存，避免 10Hz 重绘反复读盘
         if let box = cache.object(forKey: key) { return box.value }
         guard let data = try? Data(contentsOf: url(for: fileName)),
               let timeline = try? JSONDecoder().decode(AudioTimeline.self, from: data),
@@ -391,33 +714,102 @@ enum AudioTimelineStore {
               timeline.version <= AudioTimeline.currentVersion,
               timeline.isAligned else { return nil }
 
+        let source = (sourceText?.isEmpty == false) ? sourceText : nil
+
         let resolved: AudioTimeline
-        if timeline.version == AudioTimeline.currentVersion {
-            resolved = timeline
+        if timeline.version >= AudioTimeline.currentVersion {
+            // 已是当前版本：只在「文本不是用户原文」时自愈重排。
+            // 早期 v3 是拿上游 original_text 写的，那段文本不一定等于用户原文，
+            // 所以即便版本号相同也要用原文比对一次。
+            if let source, !textMatches(timeline, source) {
+                resolved = realign(timeline, fileName: fileName, source: source)
+            } else {
+                resolved = timeline
+            }
+        } else if let source {
+            // 旧版本 + 有原文：文本重排 + 按当前规则重切，一次到位。
+            // ⚠️ 不看 `textMatches`：文本对了不代表切分是当前规则（v4 → v5 就是纯切句升级）。
+            resolved = realign(timeline, fileName: fileName, source: source)
         } else {
-            resolved = upgrade(timeline, fileName: fileName)
+            // 旧版本、拿不到原文：只重切、不改文本。
+            // v5 起「句末标点落在词尾」有独立分支（`endsWithTerminal`），所以即便
+            // v2/v4 的切分把标点前移过，重切也不会退化成一整段 —— 早期只有
+            // 「前导标点簇」一条路，才会把整段切成 1 句，因此当年只能原样返回。
+            resolved = regrade(timeline, fileName: fileName)
         }
         cache.setObject(AudioTimelineBox(resolved), forKey: key)
         return resolved
     }
 
-    /// 旧版 sidecar 的句子切分过粗（整段只有 1 个 sentence-end），用当前规则重切并回写。
-    /// 这样已有音频不需要重新合成就能看到新的多句阅读区，也不额外消耗额度。
-    private nonisolated static func upgrade(_ timeline: AudioTimeline, fileName: String) -> AudioTimeline {
+    /// sidecar 里的文本是否已经就是用户原文（忽略空白：`\n\n` 在句卡里本来就不保留）。
+    private nonisolated static func textMatches(_ timeline: AudioTimeline, _ sourceText: String) -> Bool {
+        let current = timeline.sentences.flatMap(\.words).map(\.text).joined()
+        return current.filter { !$0.isWhitespace } == sourceText.filter { !$0.isWhitespace }
+    }
+
+    /// 用用户原文重新分配所有 word 的文本，再按当前规则重切句卡并回写。
+    ///
+    /// 两条通道的顺序：v1 的文本是上游原样，逐位通道最精确，先走 ①；
+    /// v2 起的文本被切分改动过（句末标点前移），先走 ② 序号通道。
+    /// 任何一条成功都会接着 `rebuild` 重切 —— 所以这个方法同时承担
+    /// 「文本修复」和「切句规则升级」两件事，**旧版本 sidecar 一律走它**。
+    /// 两条都失败就原样返回（宁可保留旧文本，也不做错位的逐字对应）。
+    private nonisolated static func realign(_ timeline: AudioTimeline,
+                                            fileName: String,
+                                            source: String) -> AudioTimeline {
         let words = timeline.sentences.flatMap(\.words)
         guard !words.isEmpty else { return timeline }
 
-        // 拍平后按当前规则重切：时间已归一化过，这里只动句子边界
-        let merged = AudioSentenceCue(index: 0, text: words.map(\.text).joined(), words: words)
-        let sentences = TTSTimestampParser.splitBySentenceEnding([merged])
-        guard !sentences.isEmpty else { return timeline }
-
-        let upgraded = AudioTimeline(durationMs: timeline.durationMs, sentences: sentences)
-        _ = save(upgraded, fileName: fileName)
-        Log(message: "字级时间轴升级 v\(timeline.version) → v\(AudioTimeline.currentVersion): \(timeline.sentences.count) → \(sentences.count) 句")
-        return upgraded
+        // v1 的文本仍是上游原样，允许逐位通道优先；v2 起先走序号通道
+        let contaminated = timeline.version >= 2
+        var realigned = TTSTimestampParser.remap(words, to: source, allowSurfaceMatch: !contaminated)
+        // 序号通道对不上时**无条件**退回逐位通道。
+        //
+        // 早期这条兜底只在「v3 英文被洗掉词间空格」时才放行，结果 v4 的英文 sidecar
+        // （文本已是原文、空格也在）在序号通道失败后直接放弃 → 连带 v4 → v5 的重切
+        // 也做不成，历史数据里「英文整段只有 1 张句卡」永远修不好。
+        //
+        // 兜底是安全的：两条通道收尾都要求「拼回去的文本去空白后与原文逐字相等」，
+        // 最坏情况只是某个词的边界偏一个字符（影响逐字高亮的分段，不影响上屏内容）。
+        if realigned == nil {
+            realigned = TTSTimestampParser.remap(words, to: source, allowSurfaceMatch: true)
+        }
+        guard let realigned,
+              let rebuilt = rebuild(realigned, durationMs: timeline.durationMs) else {
+            Log(message: "字级时间轴对齐失败：原文与 words 对不上（v\(timeline.version)），保持原文本与旧切分")
+            return timeline
+        }
+        _ = save(rebuilt, fileName: fileName)
+        Log(message: "字级时间轴升级 v\(timeline.version) → v\(AudioTimeline.currentVersion): \(timeline.sentences.count) → \(rebuilt.sentences.count) 句 / \(rebuilt.anchorCount) 锚点")
+        return rebuilt
     }
 
+    /// 旧版 sidecar 的句子切分过粗（整段只有 1 个 sentence-end），用当前规则重切并回写。
+    ///
+    /// 只改切分、不换文本，所以**不需要原文**：`begin_index` 那套信息在切分里用不到。
+    /// 之前只在 v1 敢调用它，是因为 v2/v4 的切分把句末标点前移过，而当时只有「前导
+    /// 标点簇」一条断句通道，重切会退化成一整段。v5 补了「句末标点在词尾」的分支
+    /// （`endsWithTerminal`），这样任意版本的 words 都能被正确切分。
+    private nonisolated static func regrade(_ timeline: AudioTimeline, fileName: String) -> AudioTimeline {
+        let words = timeline.sentences.flatMap(\.words)
+        guard let rebuilt = rebuild(words, durationMs: timeline.durationMs) else { return timeline }
+        _ = save(rebuilt, fileName: fileName)
+        Log(message: "字级时间轴升级 v\(timeline.version) → v\(AudioTimeline.currentVersion): \(timeline.sentences.count) → \(rebuilt.sentences.count) 句")
+        return rebuilt
+    }
+
+    /// 拍平 → 按句末标点重切 → 新的 v3 时间轴（时间全部沿用原 word，不插值）。
+    private nonisolated static func rebuild(_ words: [AudioWordCue], durationMs: Int) -> AudioTimeline? {
+        guard !words.isEmpty else { return nil }
+        let merged = AudioSentenceCue(index: 0, text: words.map(\.text).joined(), words: words)
+        let sentences = TTSTimestampParser.splitBySentenceEnding([merged])
+        guard !sentences.isEmpty else { return nil }
+        return AudioTimeline(durationMs: durationMs, sentences: sentences)
+    }
+
+    /// 旧版 sidecar 的句子切分过粗（整段只有 1 个 sentence-end），用当前规则重切并回写。
+    /// 这样已有音频不需要重新合成就能看到新的多句阅读区，也不额外消耗额度。
+    ///
     @discardableResult
     nonisolated static func save(_ timeline: AudioTimeline, fileName: String) -> Bool {
         guard timeline.isAligned, !fileName.isEmpty else { return false }
@@ -439,8 +831,8 @@ enum AudioTimelineStore {
     }
 
     /// 复制音频时把时间轴一起复制到新文件名，否则「副本」会莫名降级成静态文本。
-    nonisolated static func duplicate(from source: String, to target: String) {
-        if let timeline = load(fileName: source) {
+    nonisolated static func duplicate(from source: String, to target: String, sourceText: String? = nil) {
+        if let timeline = load(fileName: source, sourceText: sourceText) {
             _ = save(timeline, fileName: target)
         }
     }
@@ -449,6 +841,6 @@ enum AudioTimelineStore {
 extension AudioItem {
     /// 该音频的字级时间轴；没有 sidecar（历史音频 / 时间戳不可用的降级生成）时为 nil。
     nonisolated var timeline: AudioTimeline? {
-        AudioTimelineStore.load(fileName: fileName)
+        AudioTimelineStore.load(fileName: fileName, sourceText: text)
     }
 }

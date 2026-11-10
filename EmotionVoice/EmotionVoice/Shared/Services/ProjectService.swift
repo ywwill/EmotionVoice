@@ -215,7 +215,7 @@ final class ProjectService {
         )
         // 原文 / 音频都复制了，字级时间轴也要跟着复制，否则「副本」会莫名降级成静态文本。
         if duplicated != nil {
-            AudioTimelineStore.duplicate(from: source.fileName, to: newFileName)
+            AudioTimelineStore.duplicate(from: source.fileName, to: newFileName, sourceText: source.text)
         }
         return duplicated
     }

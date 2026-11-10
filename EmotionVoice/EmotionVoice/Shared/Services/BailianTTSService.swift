@@ -104,14 +104,17 @@ final class BailianTTSService {
         sampleRate: Int = Constants.defaultSampleRate,
         format: String = Constants.defaultFormat,
         nlInstruction: String? = nil,
-        onAudio: ((Data) -> Void)? = nil
+        onAudio: ((Data) -> Void)? = nil,
+        /// 同一段文本的「用户原文」形态（不含 `[emotion]` 前缀），仅用于给字级字幕
+        /// 重新分配文本；传 nil 时退回上游 `original_text`。
+        displaySource: String? = nil
     ) async throws -> TTSGeneration {
         do {
             return try await runSynthesize(
                 text: text, voice: voice, emotion: emotion, rate: rate,
                 volume: volume, sampleRate: sampleRate, format: format,
                 nlInstruction: nlInstruction, onAudio: onAudio,
-                wordTimestampEnabled: true
+                wordTimestampEnabled: true, displaySource: displaySource
             )
         } catch let error as TTSError {
             guard case .timestampUnsupported = error else { throw error }
@@ -120,7 +123,7 @@ final class BailianTTSService {
                 text: text, voice: voice, emotion: emotion, rate: rate,
                 volume: volume, sampleRate: sampleRate, format: format,
                 nlInstruction: nlInstruction, onAudio: onAudio,
-                wordTimestampEnabled: false
+                wordTimestampEnabled: false, displaySource: displaySource
             )
         }
     }
@@ -189,7 +192,8 @@ final class BailianTTSService {
         format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?,
-        wordTimestampEnabled: Bool
+        wordTimestampEnabled: Bool,
+        displaySource: String? = nil
     ) async throws -> TTSGeneration {
         // 关键不变量：同一时刻只允许一个 TTS 任务占用 WebSocket。
         // 原实现使用 NSLock，但 NSLock 跨 await 持有会触发 Swift 6 诊断。
@@ -205,7 +209,8 @@ final class BailianTTSService {
                 format: format,
                 nlInstruction: nlInstruction,
                 onAudio: onAudio,
-                wordTimestampEnabled: wordTimestampEnabled
+                wordTimestampEnabled: wordTimestampEnabled,
+                displaySource: displaySource
             )
         }
     }
@@ -249,7 +254,8 @@ final class BailianTTSService {
         format: String,
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?,
-        wordTimestampEnabled: Bool
+        wordTimestampEnabled: Bool,
+        displaySource: String? = nil
     ) async throws -> TTSGeneration {
         // 生成任务 ID（仅同步修改本地状态，无需长持锁）
         let taskId = UUID().uuidString
@@ -385,11 +391,34 @@ final class BailianTTSService {
             completeAudioData[3] == 0x46    // F
         Log(message: "音频生成完成: \(completeAudioData.count) bytes, hasRIFFHeader=\(hasRIFFHeader)，已断开 WebSocket 连接")
 
+        // 上游 words[].text 是 normalized_text（可能被转成另一套字形），落盘前必须换回
+        // 用户原文里的字符片段；对齐源优先用我们自己发出去的文本，其次才是 original_text。
+        let aligned = TTSTimestampParser.alignToOriginal(sentenceEnds, source: displaySource)
+        if wordTimestampEnabled {
+            let anchors = aligned.reduce(0) { $0 + $1.words.count }
+            let after = aligned.flatMap(\.words).map(\.text).joined().filter { !$0.isWhitespace }
+            if let displaySource, !displaySource.isEmpty {
+                let target = displaySource.filter { !$0.isWhitespace }
+                Log(message: after == target
+                    ? "字级时间轴文本对齐: 成功，\(anchors) 个锚点已换成用户原文"
+                    : "⚠️ 字级时间轴文本对齐: 失败（字数对不上 / 数字或英文被读法展开），保留上游文本")
+            } else {
+                Log(message: "字级时间轴文本对齐: 无原文可依（调用方未传 displaySource），保留上游文本，\(anchors) 个锚点")
+            }
+            // 上游 original_text 与发送文本不一致时留痕：这正是「字幕不是我的原文」的根因
+            if let displaySource,
+               let upstream = sentenceEnds.map(\.text).max(by: { $0.count < $1.count }),
+               !displaySource.isEmpty, !upstream.isEmpty,
+               displaySource.filter({ !$0.isWhitespace }) != upstream.filter({ !$0.isWhitespace }) {
+                Log(message: "⚠️ 上游 original_text 与发送文本不一致，字幕按发送文本显示。发送: \(displaySource.prefix(30)) / 上游: \(upstream.prefix(30))")
+            }
+        }
+
         // 上游会把整段文本折成一个 sentence-end（实测 43 字的两句话只回 1 句），
         // 直接落盘会让阅读区只有一张句卡。这里按句末标点再切成子句，
         // 时间仍取自每个 word，不发明任何时间点。
         let normalized = TTSTimestampParser.splitBySentenceEnding(
-            TTSTimestampParser.normalize(sentenceEnds)
+            TTSTimestampParser.normalize(aligned)
         )
         if wordTimestampEnabled {
             Log(message: "字级时间戳: \(normalized.count) 句 / \(normalized.reduce(0) { $0 + $1.words.count }) 锚点")
@@ -607,12 +636,12 @@ final class BailianTTSService {
 
         case .data(let data):
             let byteCount = data.count
-            Log(message: "[WS RECV #\(n)][binary][\(byteCount) bytes]")
+//            Log(message: "[WS RECV #\(n)][binary][\(byteCount) bytes]")
             let shown: Data = dumpFullBinaryPayload ? data : Data(data.prefix(64))
             let hex = shown.map { String(format: "%02x", Int($0)) }.joined(separator: " ")
-            Log(message: "[WS RECV #\(n)][hex\(dumpFullBinaryPayload ? " full" : " head")] \(hex)")
+//            Log(message: "[WS RECV #\(n)][hex\(dumpFullBinaryPayload ? " full" : " head")] \(hex)")
             if !dumpFullBinaryPayload && byteCount > 64 {
-                Log(message: "[WS RECV #\(n)] …余 \(byteCount - 64) bytes 未展开（dumpFullBinaryPayload = true 可全量打印）")
+//                Log(message: "[WS RECV #\(n)] …余 \(byteCount - 64) bytes 未展开（dumpFullBinaryPayload = true 可全量打印）")
             }
 
         @unknown default:
