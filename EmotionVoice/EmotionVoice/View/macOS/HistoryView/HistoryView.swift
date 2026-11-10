@@ -381,7 +381,7 @@ struct HistoryView: View {
                 // 面板可见期间接管播放快捷键（空格 / ←→ / ⇧←→ / Home / End）
                 .playbackKeyboardShortcuts(player: viewModel.player, audio: audio)
 
-                PlaybackStatusBar(player: viewModel.player)
+                PlaybackStatusBar(player: viewModel.player, timeline: audio.timeline)
             } else {
                 // 空状态
                 VStack(spacing: 16) {

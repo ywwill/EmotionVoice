@@ -81,6 +81,50 @@ final class BailianTTSService {
         }
     }
 
+    /// 一次合成的完整结果（音频 + 上游返回的字级时间戳）
+    ///
+    /// `sentences` 里的时间是**本次请求音频内的绝对毫秒**，已经过时钟重启归一化；
+    /// 若整段文本被切多次请求，调用方（VoiceStudioViewModel）须按每段音频实际
+    /// 时长累加段偏移，再落进 sidecar。
+    struct TTSGeneration {
+        let audioData: Data
+        let sentences: [AudioSentenceCue]
+    }
+
+    /// 正式生成入口：开启 `word_timestamp_enabled` 并收集 sentence-end 的 words[]。
+    ///
+    /// 只有部分音色支持字级时间戳；上游明确拒绝时自动**降级重跑一次**（不带该参数），
+    /// 返回空 sentences，播放器会走「静态原文」降级态，绝不让整次生成失败。
+    func synthesizeWithTimeline(
+        text: String,
+        voice: String,
+        emotion: String? = nil,
+        rate: Double = 1.0,
+        volume: Double = 100,
+        sampleRate: Int = Constants.defaultSampleRate,
+        format: String = Constants.defaultFormat,
+        nlInstruction: String? = nil,
+        onAudio: ((Data) -> Void)? = nil
+    ) async throws -> TTSGeneration {
+        do {
+            return try await runSynthesize(
+                text: text, voice: voice, emotion: emotion, rate: rate,
+                volume: volume, sampleRate: sampleRate, format: format,
+                nlInstruction: nlInstruction, onAudio: onAudio,
+                wordTimestampEnabled: true
+            )
+        } catch let error as TTSError {
+            guard case .timestampUnsupported = error else { throw error }
+            Log(message: "当前音色不支持字级时间戳，降级为普通合成重试一次")
+            return try await runSynthesize(
+                text: text, voice: voice, emotion: emotion, rate: rate,
+                volume: volume, sampleRate: sampleRate, format: format,
+                nlInstruction: nlInstruction, onAudio: onAudio,
+                wordTimestampEnabled: false
+            )
+        }
+    }
+
     /// 语音合成（流式接收，带实时回调）
     func synthesizeStream(
         text: String,
@@ -114,7 +158,7 @@ final class BailianTTSService {
         }
     }
 
-    /// 异步语音合成
+    /// 异步语音合成（试听 / 旧调用点：不开时间戳，只取音频）
     private func synthesizeAsync(
         text: String,
         voice: String,
@@ -126,6 +170,27 @@ final class BailianTTSService {
         nlInstruction: String?,
         onAudio: ((Data) -> Void)?
     ) async throws -> Data {
+        try await runSynthesize(
+            text: text, voice: voice, emotion: emotion, rate: rate,
+            volume: volume, sampleRate: sampleRate, format: format,
+            nlInstruction: nlInstruction, onAudio: onAudio,
+            wordTimestampEnabled: false
+        ).audioData
+    }
+
+    /// 所有合成路径的唯一入口：先抢 ttsPipeline 串行权限，再跑一次完整任务。
+    private func runSynthesize(
+        text: String,
+        voice: String,
+        emotion: String?,
+        rate: Double,
+        volume: Double,
+        sampleRate: Int,
+        format: String,
+        nlInstruction: String?,
+        onAudio: ((Data) -> Void)?,
+        wordTimestampEnabled: Bool
+    ) async throws -> TTSGeneration {
         // 关键不变量：同一时刻只允许一个 TTS 任务占用 WebSocket。
         // 原实现使用 NSLock，但 NSLock 跨 await 持有会触发 Swift 6 诊断。
         // 这里改为基于 actor 的异步互斥，跨 await 安全且不会死锁。
@@ -139,7 +204,8 @@ final class BailianTTSService {
                 sampleRate: sampleRate,
                 format: format,
                 nlInstruction: nlInstruction,
-                onAudio: onAudio
+                onAudio: onAudio,
+                wordTimestampEnabled: wordTimestampEnabled
             )
         }
     }
@@ -182,16 +248,20 @@ final class BailianTTSService {
         sampleRate: Int,
         format: String,
         nlInstruction: String?,
-        onAudio: ((Data) -> Void)?
-    ) async throws -> Data {
+        onAudio: ((Data) -> Void)?,
+        wordTimestampEnabled: Bool
+    ) async throws -> TTSGeneration {
         // 生成任务 ID（仅同步修改本地状态，无需长持锁）
         let taskId = UUID().uuidString
         withConnectionLock { currentTaskId = taskId }
 
-        var completeAudioData = Data()
+        // 成功 / 失败 / 降级重试前都必须断开：边缘函数在 task-failed 后会关连接，
+        // 留着这条已死的 socket 会让下一次 ensureConnection() 误判「可复用」。
+        defer { closeConnectionInternal() }
 
-        // 确保 WebSocket 连接
-        try await ensureConnection()
+        var completeAudioData = Data()
+        /// 上游按句子推送的 sentence-end，稍后统一归一化成段内绝对时间
+        var sentenceEnds: [AudioSentenceCue] = []
 
         // 一次性把参数交给边缘函数：
         // run-task / 控制类标签切段 / continue-task / finish-task 由服务端完成
@@ -204,7 +274,8 @@ final class BailianTTSService {
             volume: volume,
             sampleRate: sampleRate,
             format: format,
-            instruction: nlInstruction
+            instruction: nlInstruction,
+            wordTimestampEnabled: wordTimestampEnabled
         )
 
         // DEBUG: 输出文本（>200 字符时截断显示）便于排查「多标签只生效一个」问题
@@ -217,11 +288,29 @@ final class BailianTTSService {
         Log(message: "发送 synthesize 请求，voice=\(voice) 文本长度: \(text.count) 字符")
         Log(message: "  完整文本: \(preview)")
 
-        try await sendMessage(request)
-
-        // 等待 task-started 事件
-        try await waitForTaskStarted()
-
+        // 「建连 → 发 run-task → 等 task-started」是整条链路最脆的一段：
+        // 日志里那种 `-1200 / errSSLClosedNoNotify / ECONNRESET with incomplete TLS handshake`
+        // 就是 TCP 在 TLS 握手途中被对端或中间设备关掉，纯瞬时的网络抖动，
+        // 跟参数、音色、时间戳都无关。
+        // 此刻上游还没建任务、本地也没有任何音频，所以整段重来一次是安全的 ——
+        // 比直接把「TLS错误导致安全连接失败」弹给用户要好得多。
+        var connectionAttempt = 0
+        while true {
+            do {
+                try await startTask(request: request, wordTimestampEnabled: wordTimestampEnabled)
+                break
+            } catch let error where connectionAttempt == 0 && Self.isTransientNetworkError(error) {
+                connectionAttempt += 1
+                Log(message: "WS 建连失败（\(error.localizedDescription)），500ms 后重连重试一次")
+                closeConnectionInternal()
+                try await Task.sleep(nanoseconds: 500_000_000)
+                try Task.checkCancellation()
+            } catch let error as URLError {
+                // 重试后仍然失败：换成可读的文案，原始 TLS/网络细节留在日志里
+                Log(message: "WS 建连最终失败: \(error.code.rawValue) / \(error.localizedDescription)")
+                throw TTSError.networkError(error.localizedDescription)
+            }
+        }
         // 接收音频流（不逐帧打日志：分片很密，刷屏且没信息量）
         var isTaskFinished = false
 
@@ -243,7 +332,19 @@ final class BailianTTSService {
                             isTaskFinished = true
                             let errorCode = (json["header"] as? [String: Any])?["error_code"] as? String ?? "Unknown"
                             let errorMessage = (json["header"] as? [String: Any])?["error_message"] as? String ?? "Unknown error"
+                            if wordTimestampEnabled && Self.isTimestampRejection(errorCode, errorMessage) {
+                                throw TTSError.timestampUnsupported
+                            }
                             throw TTSError.serverError("[\(errorCode)] \(errorMessage)")
+
+                        case "result-generated":
+                            // 上游只在 sentence-end 带 words[]；sentence-begin / sentence-synthesis
+                            // 的 sentence.words 是空数组，解析器会直接返回 nil。
+                            if wordTimestampEnabled,
+                               let cue = TTSTimestampParser.sentenceEnd(from: jsonText) {
+                                sentenceEnds.append(cue)
+                                Log(message: "收到 sentence-end: words=\(cue.words.count) text=\(cue.text.prefix(40))")
+                            }
 
                         default:
                             break
@@ -261,6 +362,11 @@ final class BailianTTSService {
                 if completeAudioData.isEmpty {
                     throw error
                 }
+                // 已经收到部分音频时断流：绝不静默存一条被截断的音频
+                // （音频半截 + 时间轴半截 = 两处错误，还查不出原因）。
+                if Self.isTransientNetworkError(error) {
+                    throw TTSError.networkError(error.localizedDescription)
+                }
                 isTaskFinished = true
             }
         }
@@ -269,8 +375,7 @@ final class BailianTTSService {
             throw TTSError.noAudioData
         }
 
-        // 音频生成完成后主动断开连接，下次使用时再重新建立
-        closeConnectionInternal()
+        // 连接由开头的 defer 统一断开（正常完成 / 失败 / 降级重试都覆盖）。
 
         // 诊断：音频头是否正常（WAV 以 RIFF 开头；合并多段时最容易在这里出错）
         let hasRIFFHeader = completeAudioData.count >= 4 &&
@@ -280,7 +385,61 @@ final class BailianTTSService {
             completeAudioData[3] == 0x46    // F
         Log(message: "音频生成完成: \(completeAudioData.count) bytes, hasRIFFHeader=\(hasRIFFHeader)，已断开 WebSocket 连接")
 
-        return completeAudioData
+        // 上游会把整段文本折成一个 sentence-end（实测 43 字的两句话只回 1 句），
+        // 直接落盘会让阅读区只有一张句卡。这里按句末标点再切成子句，
+        // 时间仍取自每个 word，不发明任何时间点。
+        let normalized = TTSTimestampParser.splitBySentenceEnding(
+            TTSTimestampParser.normalize(sentenceEnds)
+        )
+        if wordTimestampEnabled {
+            Log(message: "字级时间戳: \(normalized.count) 句 / \(normalized.reduce(0) { $0 + $1.words.count }) 锚点")
+        }
+        return TTSGeneration(audioData: completeAudioData, sentences: normalized)
+    }
+
+    /// 上游拒绝字级时间戳的判定（音色不支持 / 参数不合法时才会提到该参数名）。
+    /// 其它错误一律按 serverError 正常上报，不做无意义的重试。
+    private nonisolated static func isTimestampRejection(_ code: String, _ message: String) -> Bool {
+        let text = (code + " " + message).lowercased()
+        guard text.contains("timestamp") else { return false }
+        return text.contains("word_timestamp")
+            || text.contains("support")
+            || text.contains("invalid")
+            || text.contains("not allow")
+    }
+
+    /// 判断是否为「重连一次就能好」的瞬时网络错误。
+    ///
+    /// -1200 `secureConnectionFailed`：TLS 握手被中途关闭（`errSSLClosedNoNotify`），
+    ///   日志里最常见的那个；-1005 `networkConnectionLost`、-1009 `notConnectedToInternet`
+    ///   （WiFi ↔ 蜂窝切换 / 刚唤醒）、-1001 `timedOut`、-1004/-1003 也属于同类。
+    /// 参数错误、鉴权失败、上游 4xx 一律不在此列，绝不能重试。
+    private nonisolated static func isTransientNetworkError(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .secureConnectionFailed,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .timedOut,
+             .cannotConnectToHost,
+             .cannotFindHost,
+             .dnsLookupFailed,
+             .badServerResponse:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// 建连 → 发 run-task → 等 task-started。
+    ///
+    /// 单独抽出来，是为了让调用方能在「上游还没建任务」的阶段安全地整段重试
+    /// （见 `performSynthesize` 里的重连循环）。
+    private func startTask(request: String, wordTimestampEnabled: Bool) async throws {
+        try await ensureConnection()
+        try await sendMessage(request)
+        try await waitForTaskStarted(wordTimestampEnabled: wordTimestampEnabled)
+        Log(message: "字级时间戳: \(wordTimestampEnabled ? "开启" : "关闭")")
     }
 
     // MARK: - 消息接收结果
@@ -305,7 +464,8 @@ final class BailianTTSService {
         volume: Double,
         sampleRate: Int,
         format: String,
-        instruction: String?
+        instruction: String?,
+        wordTimestampEnabled: Bool
     ) -> String {
         var payload: [String: Any] = [
             "action": "synthesize",
@@ -317,6 +477,11 @@ final class BailianTTSService {
             "sample_rate": sampleRate,
             "format": format.lowercased()
         ]
+
+        // 只有正式生成才带；音色试听不带，避免触发上游的音色支持限制。
+        if wordTimestampEnabled {
+            payload["word_timestamp_enabled"] = true
+        }
 
         if let emotion = emotion, !emotion.isEmpty {
             payload["emotion"] = emotion
@@ -350,22 +515,27 @@ final class BailianTTSService {
         // 日志里不要把 secret 打出来
         Log(message: "[WS CONNECT] 建立 WebSocket 连接: \(endpoint.url.absoluteString)")
 
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 300
-        #if os(iOS)
-        // 后台接收（配合 GenerationBackgroundKeeper 的 beginBackgroundTask）：
-        // WiFi ↔ 蜂窝等短暂切换时等连通，而不是直接把 receive 判失败。
-        // ⚠️ 两点别踩坑：
-        //    ① URLSessionWebSocketTask 不支持 background URLSessionConfiguration，
-        //       WebSocket 只能跑在 default session 上；
-        //    ② `shouldUseExtendedBackgroundIdleMode` 自 iOS 18.4 起已被标记
-        //       "Not supported"，不要再靠它保 socket。后台能继续收流的唯一保证是
-        //       `UIApplication.beginBackgroundTask` 提供的那段执行时间。
-        config.waitsForConnectivity = true
-        #endif
-
-        urlSession = URLSession(configuration: config)
+        // ⚠️ 会话必须复用：一次生成会按 [break] / 控制标签切成多次请求，
+        // 如果每段都 new 一个 URLSession，就等于每段都重做一次冷 TLS 握手。
+        // 对 Cloudflare 边缘尤其脆（日志里的 -1200 / errSSLClosedNoNotify 就出在这一步），
+        // 复用之后第二段起直接走同一条 keep-alive 连接，握手次数从「段数」降到 1。
+        if urlSession == nil {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 60
+            config.timeoutIntervalForResource = 300
+            #if os(iOS)
+            // 后台接收（配合 GenerationBackgroundKeeper 的 beginBackgroundTask）：
+            // WiFi ↔ 蜂窝等短暂切换时等连通，而不是直接把 receive 判失败。
+            // ⚠️ 两点别踩坑：
+            //    ① URLSessionWebSocketTask 不支持 background URLSessionConfiguration，
+            //       WebSocket 只能跑在 default session 上；
+            //    ② `shouldUseExtendedBackgroundIdleMode` 自 iOS 18.4 起已被标记
+            //       "Not supported"，不要再靠它保 socket。后台能继续收流的唯一保证是
+            //       `UIApplication.beginBackgroundTask` 提供的那段执行时间。
+            config.waitsForConnectivity = true
+            #endif
+            urlSession = URLSession(configuration: config)
+        }
 
         var request = URLRequest(url: endpoint.url)
         for (name, value) in endpoint.headers {
@@ -396,6 +566,61 @@ final class BailianTTSService {
         try await webSocketTask.send(wsMessage)
     }
 
+    // MARK: - WebSocket 接收报文转储（DEBUG）
+
+#if DEBUG
+    /// 接收序号。所有接收都经过 `receive()`，且被 `ttsPipeline` 串行化，直接自增即可。
+    private var receivedMessageIndex = 0
+    /// 二进制音频分片是否输出**完整** hex。
+    /// 一段语音会有上百个分片、合计几百 KB，默认只打长度 + 前 64 字节；
+    /// 需要逐字节排查某个分片时改成 `true`。
+    private let dumpFullBinaryPayload = false
+    /// 单条日志的文本长度上限；超长按此长度分多条打印，内容不截断。
+    private let wsLogChunkSize = 2000
+
+    /// 打印**每一条**收到的 WebSocket 帧。
+    ///
+    /// `waitForTaskStarted()` 与 `performSynthesize()` 的接收全部走 `receive()`，
+    /// 所以只在这里打一次即可覆盖全部入站数据，包括被上层 switch 忽略的中间事件、
+    /// `task-started` 之前的帧、空帧以及音频二进制分片。
+    /// - 文本帧：原样完整输出（超长自动分片，不省略、不截断）
+    /// - 二进制帧：字节数 + hex（`dumpFullBinaryPayload` 控制全量 / 头部 64 字节）
+    private func logReceivedMessage(_ message: URLSessionWebSocketTask.Message) {
+        receivedMessageIndex += 1
+        let n = receivedMessageIndex
+
+        switch message {
+        case .string(let text):
+            Log(message: "[WS RECV #\(n)][text][\(text.utf8.count) bytes]")
+            if text.isEmpty {
+                Log(message: "[WS RECV #\(n)] <empty>")
+                return
+            }
+            var start = text.startIndex
+            var part = 0
+            while start < text.endIndex {
+                let end = text.index(start, offsetBy: wsLogChunkSize, limitedBy: text.endIndex) ?? text.endIndex
+                part += 1
+                Log(message: "[WS RECV #\(n)][text \(part)] \(text[start..<end])")
+                start = end
+            }
+
+        case .data(let data):
+            let byteCount = data.count
+            Log(message: "[WS RECV #\(n)][binary][\(byteCount) bytes]")
+            let shown: Data = dumpFullBinaryPayload ? data : Data(data.prefix(64))
+            let hex = shown.map { String(format: "%02x", Int($0)) }.joined(separator: " ")
+            Log(message: "[WS RECV #\(n)][hex\(dumpFullBinaryPayload ? " full" : " head")] \(hex)")
+            if !dumpFullBinaryPayload && byteCount > 64 {
+                Log(message: "[WS RECV #\(n)] …余 \(byteCount - 64) bytes 未展开（dumpFullBinaryPayload = true 可全量打印）")
+            }
+
+        @unknown default:
+            Log(message: "[WS RECV #\(n)][unknown frame]")
+        }
+    }
+#endif
+
     private func receive() async throws -> ReceivedMessage {
         guard let webSocketTask = webSocketTask else {
             throw TTSError.connectionError
@@ -403,6 +628,10 @@ final class BailianTTSService {
 
         do {
             let message = try await webSocketTask.receive()
+
+            #if DEBUG
+            logReceivedMessage(message)
+            #endif
 
             switch message {
             case .string(let text):
@@ -423,7 +652,7 @@ final class BailianTTSService {
         }
     }
 
-    private func waitForTaskStarted() async throws {
+    private func waitForTaskStarted(wordTimestampEnabled: Bool) async throws {
         var receivedTaskStarted = false
 
         while !receivedTaskStarted {
@@ -437,7 +666,14 @@ final class BailianTTSService {
                         receivedTaskStarted = true
                         Log(message: "收到 task-started 事件")
                     } else if event == "task-failed" {
-                        let errorMessage = (json["header"] as? [String: Any])?["error_message"] as? String ?? "Unknown error"
+                        let header = json["header"] as? [String: Any] ?? [:]
+                        let errorMessage = header["error_message"] as? String ?? "Unknown error"
+                        let errorCode = header["error_code"] as? String ?? "Unknown"
+                        // 参数不合法时上游可能在 task-started 之前就直接 task-failed，
+                        // 这里也要能触发「不带时间戳重跑一次」的降级。
+                        if wordTimestampEnabled && Self.isTimestampRejection(errorCode, errorMessage) {
+                            throw TTSError.timestampUnsupported
+                        }
                         throw TTSError.serverError(errorMessage)
                     }
                 }
@@ -446,18 +682,28 @@ final class BailianTTSService {
         }
     }
 
+    /// 只断开当前任务，**保留 URLSession**。
+    ///
+    /// 保留会话是为了让下一次连接复用同一条 keep-alive / TLS 连接：
+    /// 一次生成有 N 段就 N 次 connect，销毁会话会让每次都重做冷握手，
+    /// 而冷握手正是最容易被打断的一步（-1200 / errSSLClosedNoNotify）。
     private func closeConnectionInternal() {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
-        urlSession?.invalidateAndCancel()
-        urlSession = nil
         isConnected = false
         currentTaskId = nil
     }
 
+    /// 真正销毁会话（退出登录 / 内存压力 / 用户手动断开时用）。
+    private func destroySessionInternal() {
+        closeConnectionInternal()
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+    }
+
     func closeConnection() {
         withConnectionLock {
-            closeConnectionInternal()
+            destroySessionInternal()
             Log(message: "WebSocket 连接已关闭")
         }
     }
@@ -480,6 +726,10 @@ enum TTSError: LocalizedError {
     case serverError(String)
     case noAudioData
     case timeout
+    /// 当前音色不支持 word_timestamp_enabled；内部用于触发一次无时间戳降级重试
+    case timestampUnsupported
+    /// 网络层失败（TLS 握手被打断 / 断网 / 超时）。原始细节放进关联值，日志里能看到。
+    case networkError(String)
 
     var errorDescription: String? {
         switch self {
@@ -493,6 +743,10 @@ enum TTSError: LocalizedError {
             return "未收到音频数据"
         case .timeout:
             return "请求超时"
+        case .timestampUnsupported:
+            return "当前音色不支持字级时间戳"
+        case .networkError(let detail):
+            return "网络连接失败，请检查网络后重试（\(detail)）"
         }
     }
 }

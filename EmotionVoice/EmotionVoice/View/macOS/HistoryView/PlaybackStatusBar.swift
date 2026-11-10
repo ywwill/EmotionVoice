@@ -11,6 +11,8 @@ import SwiftUI
 struct PlaybackStatusBar: View {
 
     @ObservedObject var player: AudioPreviewPlayer
+    /// 字级时间轴（由 AudioPlayerDetailView 下发）；nil 时徽标显示「未对齐」
+    let timeline: AudioTimeline?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -26,7 +28,7 @@ struct PlaybackStatusBar: View {
                     .foregroundStyle(AppColor.textTertiary)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             // 快捷键提示
             HStack(spacing: 14) {
@@ -34,6 +36,7 @@ struct PlaybackStatusBar: View {
                 hint(caps: ["←", "→"], text: "5 秒")
                 hint(caps: ["⌘", "←", "→"], text: "15 秒")
             }
+            .layoutPriority(1)
         }
         .padding(.horizontal, 18)
         .frame(height: 34)

@@ -573,3 +573,12 @@
 "已是最新版本" = "You're on the latest version";
 "版本信息" = "Version";
 "恢复语速、音量、格式与采样率的默认参数" = "Reset speed, volume, format, and sample rate to their defaults";
+
+// MARK: - Word timestamps / aligned reading
+"跟随播放" = "Follow playback";
+"回到当前句" = "Back to current";
+"该音频没有字级时间戳，文本按原文静态展示，不使用估算时间伪造对齐。" = "This audio has no word-level timestamps. The text is shown as-is; no estimated timing is used to fake alignment.";
+"第 %d / %d 句 · %@ – %@" = "Sentence %d / %d · %@ – %@";
+"第 %d 句 · %@" = "Sentence %d · %@";
+"句间停顿 %@ · 下一句 %d" = "Pause %@ · next sentence %d";
+"文本区自动滚动，让正在播放的句子保持在视野中央；手动滚动会暂时关闭跟随。" = "Auto-scrolls the text pane to keep the current sentence in view. Scrolling manually turns follow mode off temporarily.";

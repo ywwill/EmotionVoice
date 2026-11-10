@@ -4,6 +4,9 @@
 //
 //  倍速菜单 + 剩余时间 + 从头播放
 //
+//  ⚠️ 这一行也是「从原文卡片身上抢高度」的固定开销：控件高度压到 28，
+//     与上方走带的分隔线间距压到 14，留给正文。
+//
 
 import SwiftUI
 
@@ -16,14 +19,14 @@ struct PlayerUtilityView: View {
             speedMenu
 
             Text(remainingHint)
-                .font(.system(size: 11))
+                .font(.system(size: 10.5))
                 .foregroundStyle(AppColor.textTertiary)
 
             Spacer()
 
             rewindButton
         }
-        .padding(.top, 18)
+        .padding(.top, 14)
         .overlay(alignment: .top) {
             Divider().background(AppColor.borderSubtle)
         }
@@ -52,21 +55,21 @@ struct PlayerUtilityView: View {
                     .foregroundStyle(AppColor.textTertiary)
 
                 Text(PlayerTextMetrics.formatRate(player.playbackRate))
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(AppColor.accentPrimary)
 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(AppColor.textTertiary)
             }
-            .padding(.horizontal, 11)
-            .frame(height: 32)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
             .background(AppColor.bgTertiary)
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .stroke(AppColor.borderSubtle, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
@@ -87,13 +90,13 @@ struct PlayerUtilityView: View {
             }
             .foregroundStyle(AppColor.textSecondary)
             .padding(.horizontal, 10)
-            .frame(height: 30)
+            .frame(height: 28)
             .background(AppColor.bgTertiary)
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .stroke(AppColor.borderSubtle, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
         .pointingHandCursor()

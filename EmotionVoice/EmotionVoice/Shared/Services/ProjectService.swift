@@ -202,7 +202,7 @@ final class ProjectService {
             newDisplayName = nil
         }
 
-        return createAudio(
+        let duplicated = createAudio(
             fileName: newFileName,
             text: source.text,
             voice: source.voice,
@@ -213,6 +213,11 @@ final class ProjectService {
             displayName: newDisplayName,
             duration: source.duration
         )
+        // 原文 / 音频都复制了，字级时间轴也要跟着复制，否则「副本」会莫名降级成静态文本。
+        if duplicated != nil {
+            AudioTimelineStore.duplicate(from: source.fileName, to: newFileName)
+        }
+        return duplicated
     }
 
     /// 删除单个音频条目及其磁盘文件
@@ -231,6 +236,8 @@ final class ProjectService {
         if let name = fileNameToRemove, !name.isEmpty {
             let url = generatedAudioDirectoryURL().appendingPathComponent(name)
             try? FileManager.default.removeItem(at: url)
+            // sidecar 与音频同生共死，避免残留孤儿 JSON
+            AudioTimelineStore.delete(fileName: name)
         }
     }
 

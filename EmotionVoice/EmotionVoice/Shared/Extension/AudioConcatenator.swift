@@ -45,6 +45,39 @@ enum AudioConcatenator {
         return makeWAV(fmtChunk: first.fmtChunk, pcm: pcm)
     }
 
+    /// 计算单个合成片段的**实际音频时长**（秒）。
+    ///
+    /// 生成按 [break] / 控制标签切成多次独立请求，上游每段 words 的时间戳是段内
+    /// 相对时间；拼接后必须把下一段整体平移「前面各段实际时长之和」，否则逐字高亮
+    /// 会逐段提前。不能用「字数 ÷ 语速」估算，那正是要避免的伪造对齐。
+    ///
+    /// - WAV：按 fmt chunk 的 byteRate 精确算 `dataLength / byteRate`。
+    /// - MP3：百炼默认 32 kbps CBR，按字节数估算。
+    /// - 其它或解析失败：返回 nil，调用方回退到该段最后一句的 `end_time`。
+    static func durationSeconds(of chunk: Data, format: String, sampleRate: Int) -> Double? {
+        if let info = parseWAV(chunk) {
+            // ⚠️ fmtChunk 是原 Data 的切片，索引仍从原文件偏移开始；
+            // 先拷成 [UInt8] 再按下标读，避免切片索引陷阱。
+            let fmt = [UInt8](info.fmtChunk)
+            guard fmt.count >= 12 else { return nil }
+            let byteRate = Int(UInt32(fmt[8])
+                | (UInt32(fmt[9]) << 8)
+                | (UInt32(fmt[10]) << 16)
+                | (UInt32(fmt[11]) << 24))
+            guard byteRate > 0 else { return nil }
+            return Double(info.dataLength) / Double(byteRate)
+        }
+
+        switch format.lowercased() {
+        case "mp3":
+            return Double(chunk.count) * 8.0 / 32_000.0
+        case "wav" where sampleRate > 0:
+            return Double(max(0, chunk.count - 44)) / Double(sampleRate * 2)
+        default:
+            return nil
+        }
+    }
+
     // MARK: - WAV 解析 / 生成
 
     private struct WAVInfo {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>音频播放 - EmotionVoice</title>
+<title>音频播放 · 字级时间戳对齐 - EmotionVoice</title>
 <style>
     :root {
         --bg-primary: #0E0F12;
@@ -17,10 +17,13 @@
         --accent-glow: #F2C088;
         --accent-dim: rgba(232, 169, 104, 0.14);
         --accent-line: rgba(232, 169, 104, 0.34);
+        --accent-wash: rgba(232, 169, 104, 0.10);
 
         --text-primary: #F5F5F7;
         --text-secondary: #A8ABB4;
         --text-tertiary: #6B6E76;
+        --text-quaternary: #8A8E97;   /* 弱化正文：对 #15171B 约 5.5:1，满足 WCAG AA */
+        --text-timecode: #9296A0;    /* 时间码专用：对 #15171B 约 6:1，满足 WCAG AA */
 
         --border-subtle: rgba(255, 255, 255, 0.08);
         --border-medium: rgba(255, 255, 255, 0.16);
@@ -32,6 +35,7 @@
         --radius-pill: 999px;
 
         --titlebar-height: 52px;
+        --gutter-width: 62px;
 
         --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
         --font-mono: ui-monospace, 'SF Mono', 'Menlo', 'JetBrains Mono', monospace;
@@ -100,7 +104,6 @@
     /* ============ Body ============ */
     .app-body { flex: 1; display: flex; overflow: hidden; }
 
-    /* ============ Main ============ */
     .main {
         flex: 1;
         display: flex;
@@ -139,11 +142,17 @@
     }
     .ghost-btn:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-medium); }
     .ghost-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost-btn:focus-visible, .skip-btn:focus-visible, .play-btn:focus-visible,
+    .speed-trigger:focus-visible, .time-total:focus-visible, .follow-toggle:focus-visible,
+    .recenter:focus-visible {
+        outline: 2px solid var(--accent-primary);
+        outline-offset: 2px;
+    }
 
     .player-scroll {
         flex: 1;
         overflow-y: auto;
-        padding: 26px 22px 30px;
+        padding: 20px 22px 22px;
     }
     .player-scroll::-webkit-scrollbar { width: 10px; }
     .player-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
@@ -191,15 +200,37 @@
     .meta-sub { font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; font-family: var(--font-mono); }
 
     /* ============ Waveform ============ */
-    .wave-section { margin-top: 22px; }
+    .wave-section { margin-top: 18px; }
 
     .wave-hit {
         position: relative;
-        padding: 14px 0 10px;
+        padding: 16px 0 8px;
         cursor: pointer;
         touch-action: none;
         user-select: none;
     }
+
+    .sentence-ticks {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 12px;
+    }
+    .tick {
+        position: absolute;
+        top: 2px;
+        width: 2px;
+        height: 8px;
+        margin-left: -1px;
+        border-radius: 2px;
+        background: var(--accent-line);
+        cursor: pointer;
+        transition: background-color 0.12s ease, height 0.12s ease;
+    }
+    .tick::before { content: ''; position: absolute; inset: -8px -6px; }
+    .tick:hover, .tick.current { background: var(--accent-glow); height: 11px; top: 0; }
+    .sentence-ticks.off { display: none; }
 
     .waveform {
         display: flex;
@@ -220,7 +251,7 @@
 
     .playhead {
         position: absolute;
-        top: 8px;
+        top: 12px;
         bottom: 4px;
         width: 2px;
         margin-left: -1px;
@@ -228,6 +259,7 @@
         border-radius: 2px;
         pointer-events: none;
         box-shadow: 0 0 10px rgba(232, 169, 104, 0.55);
+        z-index: 1;
     }
     .playhead::after {
         content: '';
@@ -244,7 +276,7 @@
 
     .hover-bubble {
         position: absolute;
-        top: -8px;
+        top: -10px;
         transform: translateX(-50%);
         padding: 3px 7px;
         border-radius: var(--radius-sm);
@@ -257,19 +289,31 @@
         opacity: 0;
         transition: opacity 0.12s ease;
         white-space: nowrap;
+        z-index: 3;
     }
     .wave-hit:hover .hover-bubble { opacity: 1; }
 
     .time-row {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-top: 6px;
+        gap: 12px;
+        margin-top: 4px;
         font-family: var(--font-mono);
         font-size: 12px;
         color: var(--text-tertiary);
     }
-    .time-row .cur { color: var(--text-secondary); }
+    .time-row .cur { color: var(--text-secondary); min-width: 58px; }
+    .active-range {
+        flex: 1;
+        text-align: center;
+        font-family: var(--font-sans);
+        font-size: 11px;
+        color: var(--text-tertiary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .active-range b { font-family: var(--font-mono); font-weight: 600; color: var(--accent-primary); }
     .time-total {
         background: none;
         border: none;
@@ -284,7 +328,7 @@
 
     /* ============ Transport ============ */
     .transport {
-        margin-top: 12px;
+        margin-top: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -332,11 +376,11 @@
 
     /* ============ Utility row ============ */
     .utility-row {
-        margin-top: 20px;
+        margin-top: 14px;
         display: flex;
         align-items: center;
         gap: 8px;
-        padding-top: 18px;
+        padding-top: 12px;
         border-top: 1px solid var(--border-subtle);
     }
 
@@ -402,37 +446,188 @@
     .utility-spacer { flex: 1; }
 
     /* ============ Transcript ============ */
-    .transcript { margin-top: 24px; }
+    .transcript { margin-top: 18px; position: relative; }
 
     .section-head {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
     .section-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-    .section-meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
-    .section-head .ghost-btn { margin-left: auto; height: 26px; padding: 0 9px; font-size: 11px; }
+    .section-meta { font-size: 11px; color: var(--text-timecode); font-family: var(--font-mono); }
+    .head-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .head-actions .ghost-btn { height: 26px; padding: 0 9px; font-size: 11px; }
+
+    .follow-toggle {
+        height: 26px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: var(--radius-pill);
+        font-size: 11px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .follow-toggle:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .follow-toggle .follow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
+    .follow-toggle.on { background: var(--accent-dim); border-color: var(--accent-line); color: var(--accent-glow); }
+    .follow-toggle.on .follow-dot { background: var(--accent-glow); box-shadow: 0 0 6px rgba(242, 192, 136, 0.7); }
+    .follow-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .transcript-body {
+        position: relative;
+        height: 280px;
+        overflow-y: auto;
         background: var(--bg-secondary);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-lg);
-        padding: 18px 20px;
-        max-height: 268px;
-        overflow-y: auto;
+        padding: 12px 14px 16px;
         scroll-behavior: smooth;
     }
     .transcript-body::-webkit-scrollbar { width: 8px; }
     .transcript-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 
-    .transcript-body p {
-        font-size: 14.5px;
-        line-height: 2.05;
-        color: var(--text-secondary);
-        letter-spacing: 0.01em;
+    .para-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 10px 0 6px;
+        font-size: 11px;
+        color: var(--text-timecode);
+        font-family: var(--font-mono);
     }
-    .transcript-body p + p { margin-top: 16px; }
+    .para-label:first-child { margin-top: 0; }
+    .para-line { flex: 1; height: 1px; background: var(--border-subtle); }
+
+    .cue {
+        display: flex;
+        gap: 10px;
+        min-height: 44px;
+        padding: 7px 10px 7px 12px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        position: relative;
+        outline: none;
+        transition: background-color 0.18s ease;
+    }
+    .cue:hover { background: var(--bg-hover); }
+    .cue:focus-visible { box-shadow: 0 0 0 2px var(--accent-primary); }
+    .cue.active { background: var(--accent-wash); }
+    .cue.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 6px;
+        bottom: 6px;
+        width: 2px;
+        border-radius: 2px;
+        background: var(--accent-primary);
+    }
+    .cue-progress {
+        position: absolute;
+        left: 2px;
+        top: 0;
+        height: 2px;
+        width: var(--cue-progress, 0%);
+        background: var(--accent-line);
+        border-radius: 2px;
+        pointer-events: none;
+    }
+
+    .cue-time {
+        width: var(--gutter-width);
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+        padding-top: 3px;
+        font-family: var(--font-mono);
+    }
+    /* 时间码是「一一对应」的主要读数，11px 也须 ≥4.5:1，不用三级灰 */
+    .cue-start { font-size: 11px; color: var(--text-timecode); }
+    .cue-end { font-size: 11px; color: var(--text-quaternary); }
+    .cue.active .cue-start { color: var(--accent-glow); }
+    .cue.active .cue-end { color: var(--accent-secondary); }
+    .cue:hover .cue-end { color: var(--text-timecode); }
+
+    .cue-text {
+        flex: 1;
+        font-size: 14px;
+        line-height: 1.95;
+        letter-spacing: 0.01em;
+        color: var(--text-quaternary);
+    }
+    .cue.done .cue-text { color: var(--text-secondary); }
+    .cue.active .cue-text { color: var(--text-quaternary); }
+    .w { position: relative; }
+    .w.done { color: var(--text-primary); }
+    .w.active { color: var(--accent-glow); }
+    .w.active::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: -2px;
+        width: var(--wipe, 0%);
+        height: 2px;
+        background: var(--accent-primary);
+        border-radius: 2px;
+    }
+
+    .gap-marker {
+        padding-left: calc(var(--gutter-width) + 22px);
+        font-size: 11px;
+        color: var(--text-timecode);
+        font-family: var(--font-mono);
+        margin: 3px 0;
+    }
+
+    .fallback-note {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 11px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        font-size: 11.5px;
+    }
+    .fallback-note svg { width: 13px; height: 13px; flex-shrink: 0; fill: none; stroke: var(--accent-primary); stroke-width: 1.7; stroke-linecap: round; }
+    .transcript-body.static p { font-size: 14.5px; line-height: 2.05; color: var(--text-secondary); letter-spacing: 0.01em; }
+    .transcript-body.static p + p { margin-top: 16px; }
+
+    .recenter {
+        position: absolute;
+        right: 18px;
+        bottom: 16px;
+        height: 28px;
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--accent-line);
+        border-radius: var(--radius-pill);
+        background: var(--bg-elevated);
+        color: var(--accent-glow);
+        font-size: 11px;
+        font-family: inherit;
+        cursor: pointer;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(6px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 4;
+    }
+    .recenter.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .recenter svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
     /* ============ Status bar ============ */
     .statusbar {
@@ -445,13 +640,30 @@
         background: rgba(12, 13, 16, 0.7);
         border-top: 1px solid var(--border-subtle);
         font-size: 11px;
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
     }
-    .status-state { display: flex; align-items: center; gap: 7px; }
+    .status-state { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
     .status-dot.live { background: #6BB87A; box-shadow: 0 0 8px rgba(107, 184, 122, 0.7); }
     .status-dot.paused { background: var(--accent-primary); }
-    .status-hints { margin-left: auto; display: flex; gap: 14px; }
+    .align-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .align-badge::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent-primary);
+        flex-shrink: 0;
+    }
+    .align-badge.off::before { background: var(--text-tertiary); }
+    .status-hints { margin-left: auto; display: flex; gap: 12px; white-space: nowrap; }
     .hint { display: inline-flex; align-items: center; gap: 5px; }
     kbd {
         font-family: var(--font-mono);
@@ -480,7 +692,45 @@
         z-index: 60;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
 </style>
+<!--
+==========================================================================
+设计交接规格 · 字级时间戳对齐（v2）
+--------------------------------------------------------------------------
+1. 单一时钟：UI 所有状态由 audio.currentTime（秒）派生，倍速只影响推进
+   速度与「剩余时间」，绝不改写时间轴；时间码显示的是音频绝对时间。
+2. 数据契约（对齐 CosyVoice result-generated 事件）：
+   payload.output.sentence = { index, words: [
+     { text, begin_index, end_index, begin_time, end_time }  // 毫秒
+   ]}，original_text 为句原文。
+   本页 buildTimeline() 用同样的字段模拟：每句 = 一组 words，
+   sentence.begin/end 取首/末 word 的时间；页面再把 ms 转成秒。
+3. 段偏移（真实落地必做）：音频由「标签切段 + AudioConcatenator.merge()」
+   拼接，上游每段 words 的时间是段内相对时间。落库前必须
+   offset += 该段实际音频时长，把全部 words 映射为最终音频绝对时间。
+   本页 SEGMENT_GAP_MS / segmentOffset 即为该规则的演示。
+4. 映射算法：二分查找 activeSentence = 最后一个 begin <= t 的句；
+   t 落在句间空隙时不高亮任何句（显示「句间停顿」），避免错位；
+   activeWord = 最后一个 b <= t 的字；p = (t - b) / (e - b) 驱动擦除。
+5. 三层一一对应：波形 left = t / T；时间码 = fmtPrecise(t)；
+   句卡时间码 = 该句 begin/end；句边界刻度 left = begin / T。
+6. 双向交互：点句 / 点刻度 / 拖波形 → seek(t) 写回同一时钟；
+   自动跟随滚动，用户 wheel/touch 打断并出现「回到当前句」。
+7. 状态色（对 #15171B 均满足 WCAG AA 4.5:1）：
+   已播 #A8ABB4(7.8:1) / 当前句已读 #F5F5F7(16.5:1) / 当前字 #F2C088(10.8:1) /
+   未播 #8A8E97(5.5:1) / 当前句底 rgba(232,169,104,.10)。
+   时间码是主要读数，单独提亮：句首 #9296A0(6.1:1)、句末 #8A8E97(5.5:1)、
+   激活句末 #D49B5B(7.4:1)；禁用三级灰 #6B6E76(3.5:1) 承载 11px 文字。
+   焦点环 2px #E8A968；句块 role=button + tabindex=0；
+   reduced-motion 下跟随滚动显式用 behavior:'instant'（不依赖 CSS 覆盖）。
+8. 降级态：无 words[] 时显示静态原文 + 提示条，禁用跟随/刻度/高亮，
+   禁止用「字数 ÷ 语速」估算伪造对齐。按 T 可切换该演示态。
+==========================================================================
+-->
 </head>
 <body>
 
@@ -498,7 +748,6 @@
 
     <div class="app-body">
 
-        <!-- Main -->
         <main class="main">
 
             <div class="content-toolbar">
@@ -529,7 +778,7 @@
                                 文本字数
                             </div>
                             <div class="meta-val" id="metaChars">558<span class="unit">字</span></div>
-                            <div class="meta-sub">22 个语句</div>
+                            <div class="meta-sub" id="metaCharsSub">22 句 · 558 字级锚点</div>
                         </div>
                         <div class="meta-cell accent">
                             <div class="meta-key">
@@ -537,19 +786,21 @@
                                 消耗积分
                             </div>
                             <div class="meta-val" id="metaCredits">45<span class="unit">分</span></div>
-                            <div class="meta-sub">558 字 × 0.08</div>
+                            <div class="meta-sub" id="metaCreditsSub">558 字 × 0.08</div>
                         </div>
                     </section>
 
-                    <!-- Waveform -->
+                    <!-- Waveform + 句边界刻度 -->
                     <section class="wave-section">
-                        <div class="wave-hit" id="waveHit">
+                        <div class="wave-hit" id="waveHit" aria-label="波形进度条，点击或拖动定位">
+                            <div class="sentence-ticks" id="sentenceTicks"></div>
                             <div class="waveform" id="waveform"></div>
-                            <div class="hover-bubble" id="hoverBubble">00:00</div>
+                            <div class="hover-bubble" id="hoverBubble">00:00.0</div>
                             <div class="playhead" id="playhead" style="left: 0%;"></div>
                         </div>
                         <div class="time-row">
-                            <span class="cur" id="curTime">00:00</span>
+                            <span class="cur" id="curTime">00:00.0</span>
+                            <div class="active-range" id="activeRange">点击句子或刻度定位播放位置</div>
                             <button class="time-total" id="totalTime" title="点击切换剩余时间">02:17</button>
                         </div>
                     </section>
@@ -610,19 +861,28 @@
                         </button>
                     </section>
 
-                    <!-- Transcript -->
+                    <!-- Transcript：字级时间戳对齐阅读区 -->
                     <section class="transcript">
                         <div class="section-head">
                             <h2 class="section-title">音频文本</h2>
-                            <span class="section-meta">558 字 · 3 段</span>
-                            <button class="ghost-btn" id="copyTextBtn">
-                                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
-                                复制
-                            </button>
+                            <span class="section-meta" id="sectionMeta">22 句 · 558 字 · 字级对齐</span>
+                            <div class="head-actions">
+                                <button class="follow-toggle on" id="followBtn" aria-pressed="true" title="播放时自动滚动到当前句（F）">
+                                    <span class="follow-dot"></span><span id="followLabel">跟随播放</span>
+                                </button>
+                                <button class="ghost-btn" id="copyTextBtn">
+                                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
+                                    复制
+                                </button>
+                            </div>
                         </div>
                         <div class="transcript-body" id="transcriptBody">
-                            <div id="transcriptText"></div>
+                            <div id="transcriptContent"></div>
                         </div>
+                        <button class="recenter" id="recenterBtn">
+                            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                            回到当前句
+                        </button>
                     </section>
 
                 </div>
@@ -634,11 +894,14 @@
                     <span class="status-dot" id="statusDot"></span>
                     <span id="statusText">已就绪</span>
                 </div>
-                <span style="color:var(--text-tertiary);">演示数据 · 模拟播放</span>
+                <span class="align-badge" id="alignBadge">字级时间戳 · 22 句 / 558 锚点 · 已对齐</span>
                 <div class="status-hints">
-                    <span class="hint"><kbd>空格</kbd> 播放 / 暂停</span>
-                    <span class="hint"><kbd>←</kbd><kbd>→</kbd> 5 秒</span>
-                    <span class="hint"><kbd>⇧</kbd><kbd>←</kbd><kbd>→</kbd> 15 秒</span>
+                    <span class="hint"><kbd>空格</kbd> 播放</span>
+                    <span class="hint"><kbd>←</kbd><kbd>→</kbd> 5s</span>
+                    <span class="hint"><kbd>⇧</kbd><kbd>←</kbd><kbd>→</kbd> 15s</span>
+                    <span class="hint"><kbd>↑</kbd><kbd>↓</kbd> 切句</span>
+                    <span class="hint"><kbd>F</kbd> 跟随</span>
+                    <span class="hint"><kbd>T</kbd> 数据源</span>
                 </div>
             </div>
 
@@ -653,7 +916,7 @@
     'use strict';
 
     /* ------------------------------------------------------------------
-     * 演示数据
+     * 演示文本（22 句 / 558 字，与既有设计稿一致）
      * ---------------------------------------------------------------- */
     const SENTENCES = [
         '潮水退去的那一刻，整座城市露出了它真正的轮廓。',
@@ -680,9 +943,8 @@
         '阿阮闭上眼睛，把耳朵贴在墙上，安静地等着下一次潮声。'
     ];
 
-    const CHARS_PER_SEC = 4.4;        // 中文朗读速度
-    const PAUSE_PER_SENTENCE = 0.45;  // 句间停顿
-    const CREDIT_PER_CHAR = 0.08;     // 旗舰音色单价
+    const PARAGRAPHS = [8, 7, 7];
+    const CREDIT_PER_CHAR = 0.08;
 
     const SPEEDS = [
         { v: 0.5,  hint: '精听' },
@@ -694,10 +956,106 @@
     ];
 
     /* ------------------------------------------------------------------
-     * 由文本推导时长与积分，保证界面数字自洽
+     * 数据契约演示：模拟 CosyVoice result-generated 的 words[] 时间轴
+     *
+     * 真实接入时把 buildTimeline() 的返回值换成服务端聚合结果即可：
+     *   { sentences: [{ index, text, begin, end, words: [
+     *       { text, begin_index, end_index, begin_time, end_time }  // 毫秒
+     *   ]}], paragraphs: [{ begin, end }], durationMs }
+     *
+     * ⚠️ 关键：边缘函数按控制标签切段，最终音频由 AudioConcatenator.merge()
+     * 拼接。上游每段的 words 时间是「段内相对时间」，落库前必须按段实际
+     * 音频时长累加 segmentOffset，全部换算成最终音频的绝对时间。
      * ---------------------------------------------------------------- */
+    const CHAR_MS = 240;            // 非标点单字时长
+    const PUNCT_MS = 90;           // 标点时长
+    const SENTENCE_PAUSE_MS = 450; // 句间停顿
+    const SEGMENT_GAP_MS = 620;    // 段间拼接留白
+    const PUNCT_RE = /[，。！？、；：,.!?;:]/;
+
+    function buildTimeline() {
+        const paragraphs = [];
+        const all = [];
+        let segmentOffset = 0;   // 累加段偏移（毫秒）
+        let si = 0;              // 全局句序号
+
+        PARAGRAPHS.forEach((count, pIdx) => {
+            const paraBeginAbs = segmentOffset;
+            let cursor = 0;      // 段内相对游标
+            const local = [];
+
+            for (let k = 0; k < count; k++) {
+                const text = SENTENCES[si];
+                const chars = Array.from(text);
+                const words = [];
+                chars.forEach((ch, ci) => {
+                    // 确定性噪声，保证刷新后时间轴逐字节一致
+                    const noise = (((si * 13 + ci * 7) % 7) - 3) * 6;
+                    const dur = PUNCT_RE.test(ch) ? PUNCT_MS : Math.max(120, CHAR_MS + noise);
+                    words.push({
+                        text: ch,
+                        begin_index: ci,
+                        end_index: ci + 1,
+                        begin_time: cursor,
+                        end_time: cursor + dur
+                    });
+                    cursor += dur;
+                });
+                local.push({
+                    index: si,
+                    text: text,
+                    begin: words[0].begin_time,
+                    end: words[words.length - 1].end_time,
+                    words: words,
+                    paragraph: pIdx
+                });
+                si++;
+                cursor += SENTENCE_PAUSE_MS;
+            }
+
+            const segmentDuration = cursor; // 段实际时长（含尾部停顿）
+            const absolute = local.map(s => ({
+                index: s.index,
+                text: s.text,
+                paragraph: s.paragraph,
+                begin: s.begin + segmentOffset,
+                end: s.end + segmentOffset,
+                words: s.words.map(w => ({
+                    text: w.text,
+                    begin_index: w.begin_index,
+                    end_index: w.end_index,
+                    begin_time: w.begin_time + segmentOffset,
+                    end_time: w.end_time + segmentOffset
+                }))
+            }));
+
+            paragraphs.push({
+                index: pIdx,
+                begin: paraBeginAbs,
+                end: segmentOffset + segmentDuration
+            });
+            all.push.apply(all, absolute);
+            segmentOffset += segmentDuration + SEGMENT_GAP_MS;
+        });
+
+        return { sentences: all, paragraphs: paragraphs, durationMs: segmentOffset - SEGMENT_GAP_MS };
+    }
+
+    const TIMELINE = buildTimeline();
+
+    // 渲染模型统一用「秒」，避免每帧做单位换算；毫秒只存在于数据契约层
+    const CUES = TIMELINE.sentences.map(s => ({
+        index: s.index,
+        text: s.text,
+        paragraph: s.paragraph,
+        begin: s.begin / 1000,
+        end: s.end / 1000,
+        words: s.words.map(w => ({ text: w.text, b: w.begin_time / 1000, e: w.end_time / 1000 }))
+    }));
+    const PARA_META = TIMELINE.paragraphs.map(p => ({ begin: p.begin / 1000, end: p.end / 1000 }));
     const CHAR_COUNT = SENTENCES.join('').length;
-    const DURATION = Math.round(CHAR_COUNT / CHARS_PER_SEC + SENTENCES.length * PAUSE_PER_SENTENCE);
+    const WORD_COUNT = CUES.reduce((n, c) => n + c.words.length, 0);
+    const DURATION = TIMELINE.durationMs / 1000;
     const CREDITS = Math.ceil(CHAR_COUNT * CREDIT_PER_CHAR);
 
     /* ------------------------------------------------------------------
@@ -709,8 +1067,15 @@
         rate: 1.0,
         showRemaining: false,
         scrubbing: false,
-        playedBars: -1
+        playedBars: -1,
+        hasTimeline: true,
+        follow: true,
+        activeIndex: -2,     // -2 = 尚未渲染过
+        lastWordIndex: -2,
+        lastTickIndex: -1
     };
+
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ------------------------------------------------------------------
      * DOM
@@ -719,10 +1084,12 @@
     const el = {
         waveform: $('waveform'),
         waveHit: $('waveHit'),
+        sentenceTicks: $('sentenceTicks'),
         playhead: $('playhead'),
         hoverBubble: $('hoverBubble'),
         curTime: $('curTime'),
         totalTime: $('totalTime'),
+        activeRange: $('activeRange'),
         playBtn: $('playBtn'),
         back15: $('back15'), back5: $('back5'), fwd5: $('fwd5'), fwd15: $('fwd15'),
         speedMenu: $('speedMenu'),
@@ -730,7 +1097,13 @@
         speedDropdown: $('speedDropdown'),
         speedVal: $('speedVal'),
         speedHint: $('speedHint'),
-        transcriptText: $('transcriptText'),
+        transcriptBody: $('transcriptBody'),
+        transcriptContent: $('transcriptContent'),
+        sectionMeta: $('sectionMeta'),
+        followBtn: $('followBtn'),
+        followLabel: $('followLabel'),
+        recenterBtn: $('recenterBtn'),
+        alignBadge: $('alignBadge'),
         statusDot: $('statusDot'),
         statusText: $('statusText'),
         copyTextBtn: $('copyTextBtn'),
@@ -738,6 +1111,10 @@
         exportBtn: $('exportBtn'),
         toast: $('toast')
     };
+
+    let cueEls = [];
+    let wordEls = [];
+    let tickEls = [];
 
     /* ------------------------------------------------------------------
      * 工具
@@ -748,9 +1125,16 @@
         const s = sec % 60;
         return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
     }
-    function fmtSec(sec) { return sec.toFixed(1) + 's'; }
+    function fmtPrecise(sec) {
+        sec = Math.max(0, sec);
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        const d = Math.floor((sec - Math.floor(sec)) * 10);
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + d;
+    }
     function fmtRate(v) { return v.toFixed(2).replace(/0$/, ''); }
     function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+    function pad2(n) { return String(n).padStart(2, '0'); }
 
     let toastTimer = null;
     function toast(msg) {
@@ -761,7 +1145,35 @@
     }
 
     /* ------------------------------------------------------------------
-     * 初始化：波形 / 倍速菜单 / 文本
+     * 映射层：二分查找，O(log n)，每帧只跑两次
+     * ---------------------------------------------------------------- */
+    function findCue(t) {
+        let lo = 0, hi = CUES.length - 1, idx = -1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (CUES[mid].begin <= t) { idx = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+        // t 落在句末之后 = 句间停顿（或播放结束），不高亮任何句
+        if (idx >= 0 && t > CUES[idx].end) {
+            const next = idx + 1 < CUES.length ? idx + 1 : -1;
+            return { index: -1, gap: true, next: next, prev: idx };
+        }
+        return { index: idx, gap: false, next: idx < 0 ? 0 : idx, prev: idx };
+    }
+
+    function findWord(cue, t) {
+        let lo = 0, hi = cue.words.length - 1, idx = -1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (cue.words[mid].b <= t) { idx = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+        return idx;
+    }
+
+    /* ------------------------------------------------------------------
+     * 初始化：波形 / 句边界刻度 / 倍速菜单
      * ---------------------------------------------------------------- */
     const BAR_COUNT = 118;
     const bars = [];
@@ -771,7 +1183,6 @@
         const frag = document.createDocumentFragment();
         for (let i = 0; i < BAR_COUNT; i++) {
             const t = i / (BAR_COUNT - 1);
-            // 用两段正弦叠加出不规则的语音包络
             const env = 0.42 + 0.34 * Math.sin(t * 11.3) + 0.16 * Math.sin(t * 29.7 + 1.4);
             const h = clamp((env * 0.72 + rnd() * 0.34) * 84, 8, 84);
             const bar = document.createElement('div');
@@ -781,6 +1192,27 @@
             bars.push(bar);
         }
         el.waveform.appendChild(frag);
+    })();
+
+    (function buildTicks() {
+        const frag = document.createDocumentFragment();
+        CUES.forEach((c, i) => {
+            const tick = document.createElement('div');
+            tick.className = 'tick';
+            tick.dataset.index = String(i);
+            tick.style.left = (c.begin / DURATION * 100).toFixed(3) + '%';
+            tick.title = '第 ' + (i + 1) + ' 句 · ' + fmtPrecise(c.begin);
+            tick.addEventListener('pointerdown', e => {
+                e.stopPropagation();
+                e.preventDefault();
+                seek(c.begin);
+                toast('第 ' + (i + 1) + ' 句 · ' + fmtPrecise(c.begin));
+            });
+            tick.addEventListener('click', e => e.stopPropagation());
+            frag.appendChild(tick);
+            tickEls.push(tick);
+        });
+        el.sentenceTicks.appendChild(frag);
     })();
 
     (function buildSpeedMenu() {
@@ -797,23 +1229,137 @@
         });
     })();
 
-    // 文本只做静态展示：音频没有时间戳对齐，故不做逐句高亮 / 点击跳转
-    (function buildTranscript() {
-        const PARAGRAPHS = [8, 7, 7];
+    /* ------------------------------------------------------------------
+     * 对齐阅读区：句卡 + 时间码 gutter + 词级 span
+     * ---------------------------------------------------------------- */
+    function buildAlignedTranscript() {
         const frag = document.createDocumentFragment();
+        cueEls = [];
+        wordEls = [];
+        let cursor = 0;
+
+        PARAGRAPHS.forEach((count, pIdx) => {
+            const label = document.createElement('div');
+            label.className = 'para-label';
+            label.innerHTML = '<span>段落 ' + pad2(pIdx + 1) + '</span>' +
+                '<span>' + fmtPrecise(PARA_META[pIdx].begin) + ' – ' + fmtPrecise(PARA_META[pIdx].end) + '</span>' +
+                '<i class="para-line"></i>';
+            frag.appendChild(label);
+
+            for (let k = 0; k < count; k++) {
+                const global = cursor + k;
+                const cue = CUES[global];
+
+                const row = document.createElement('div');
+                row.className = 'cue';
+                row.dataset.index = String(global);
+                row.setAttribute('role', 'button');
+                row.setAttribute('tabindex', '0');
+                row.setAttribute('aria-label',
+                    '第 ' + (global + 1) + ' 句，' + fmtPrecise(cue.begin) + ' 至 ' +
+                    fmtPrecise(cue.end) + '，' + cue.text);
+
+                const prog = document.createElement('div');
+                prog.className = 'cue-progress';
+                row.appendChild(prog);
+
+                const time = document.createElement('div');
+                time.className = 'cue-time';
+                time.innerHTML = '<span class="cue-start">' + fmtPrecise(cue.begin) + '</span>' +
+                    '<span class="cue-end">' + fmtPrecise(cue.end) + '</span>';
+                row.appendChild(time);
+
+                const text = document.createElement('div');
+                text.className = 'cue-text';
+                const spans = [];
+                cue.words.forEach(w => {
+                    const span = document.createElement('span');
+                    span.className = 'w';
+                    span.textContent = w.text;
+                    text.appendChild(span);
+                    spans.push(span);
+                });
+                wordEls.push(spans);
+                row.appendChild(text);
+
+                row.addEventListener('click', () => {
+                    seek(cue.begin);
+                    toast('定位第 ' + (global + 1) + ' 句 · ' + fmtPrecise(cue.begin));
+                });
+                row.addEventListener('keydown', e => {
+                    if (e.code === 'Space' || e.code === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        seek(cue.begin);
+                        toast('定位第 ' + (global + 1) + ' 句 · ' + fmtPrecise(cue.begin));
+                    }
+                });
+
+                frag.appendChild(row);
+                cueEls.push(row);
+            }
+            cursor += count;
+
+            if (pIdx < PARAGRAPHS.length - 1) {
+                const gapMs = (CUES[cursor].begin - CUES[cursor - 1].end);
+                const marker = document.createElement('div');
+                marker.className = 'gap-marker';
+                marker.textContent = '· 段间停顿 ' + gapMs.toFixed(2) + 's（无文本，不高亮）';
+                frag.appendChild(marker);
+            }
+        });
+
+        el.transcriptContent.appendChild(frag);
+    }
+
+    function buildStaticTranscript() {
+        const note = document.createElement('div');
+        note.className = 'fallback-note';
+        note.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+            '<span>该音频没有字级时间戳，文本按原文静态展示，不使用估算时间伪造高亮。</span>';
+        el.transcriptContent.appendChild(note);
+
         let cursor = 0;
         PARAGRAPHS.forEach(n => {
             const p = document.createElement('p');
             p.textContent = SENTENCES.slice(cursor, cursor + n).join('');
             cursor += n;
-            frag.appendChild(p);
+            el.transcriptContent.appendChild(p);
         });
-        el.transcriptText.appendChild(frag);
-    })();
+    }
+
+    function rebuildTranscript() {
+        el.transcriptContent.replaceChildren();
+        el.transcriptBody.classList.toggle('static', !state.hasTimeline);
+        el.sentenceTicks.classList.toggle('off', !state.hasTimeline);
+        cueEls = [];
+        wordEls = [];
+        state.activeIndex = -2;
+        state.lastWordIndex = -2;
+        state.lastTickIndex = -1;
+
+        if (state.hasTimeline) buildAlignedTranscript();
+        else buildStaticTranscript();
+
+        el.followBtn.disabled = !state.hasTimeline;
+        el.followBtn.setAttribute('aria-pressed', String(state.hasTimeline && state.follow));
+        el.followBtn.classList.toggle('on', state.hasTimeline && state.follow);
+        el.followLabel.textContent = '跟随播放';
+        el.recenterBtn.classList.remove('show');
+        el.sectionMeta.textContent = state.hasTimeline
+            ? CUES.length + ' 句 · ' + CHAR_COUNT + ' 字 · 字级对齐'
+            : '静态文本 · 无时间轴';
+        el.alignBadge.textContent = state.hasTimeline
+            ? '字级时间戳 · ' + CUES.length + ' 句 / ' + WORD_COUNT + ' 锚点 · 已对齐'
+            : '无时间戳 · 静态文本 · 未对齐';
+        el.alignBadge.classList.toggle('off', !state.hasTimeline);
+        el.transcriptBody.scrollTop = 0;
+    }
 
     /* ------------------------------------------------------------------
      * 播放引擎（模拟）
-     * 接真实音频时把 tick / seek / rate 换成 <audio> 的对应调用即可
+     * 接真实音频时把 tick / seek / rate 换成 <audio> 的对应调用即可；
+     * 注意倍速只改推进速度，state.time 始终是音频时间轴上的真实秒数。
      * ---------------------------------------------------------------- */
     let lastFrame = 0;
     function frame(now) {
@@ -848,7 +1394,7 @@
         if (!state.playing) return;
         state.playing = false;
         el.playBtn.classList.remove('playing');
-        setStatus('已暂停 · ' + fmt(state.time));
+        setStatus('已暂停 · ' + fmtPrecise(state.time));
     }
 
     function toggle() { state.playing ? pause() : play(); }
@@ -857,12 +1403,29 @@
         state.time = clamp(sec, 0, DURATION);
         render();
         if (state.playing) setStatus('正在播放 · ' + fmtRate(state.rate) + '×');
-        else setStatus('已暂停 · ' + fmt(state.time));
+        else setStatus('已暂停 · ' + fmtPrecise(state.time));
     }
 
     function skip(delta) {
         seek(state.time + delta);
-        toast((delta > 0 ? '前进 ' : '后退 ') + Math.abs(delta) + ' 秒 · ' + fmt(state.time));
+        toast((delta > 0 ? '前进 ' : '后退 ') + Math.abs(delta) + ' 秒 · ' + fmtPrecise(state.time));
+    }
+
+    function skipCue(dir) {
+        if (!state.hasTimeline) return;
+        const found = findCue(state.time);
+        let target;
+        if (dir > 0) {
+            target = found.gap ? found.next : found.index + 1;
+            if (target < 0 || target >= CUES.length) { toast('已是最后一句'); return; }
+        } else {
+            // 当前句已读超过 0.6s 时，「上一句」先回到本句句首
+            const cur = found.gap ? found.prev : found.index;
+            target = (cur >= 0 && state.time - CUES[cur].begin > 0.6) ? cur : cur - 1;
+            if (target < 0) target = 0;
+        }
+        seek(CUES[target].begin);
+        toast('第 ' + (target + 1) + ' / ' + CUES.length + ' 句 · ' + fmtPrecise(CUES[target].begin));
     }
 
     function setRate(v) {
@@ -884,40 +1447,146 @@
         el.statusDot.className = 'status-dot' + (state.playing ? ' live' : (state.time > 0 ? ' paused' : ''));
     }
 
-    /* ------------------------------------------------------------------
-     * 渲染
-     * ---------------------------------------------------------------- */
-    function render() {
-        const pct = state.time / DURATION * 100;
+    function setFollow(on) {
+        if (!state.hasTimeline) return;
+        state.follow = on;
+        el.followBtn.classList.toggle('on', on);
+        el.followBtn.setAttribute('aria-pressed', String(on));
+        el.recenterBtn.classList.toggle('show', !on);
+        if (on) {
+            const found = findCue(state.time);
+            scrollToCue(found.index >= 0 ? found.index : found.next);
+        }
+        toast(on ? '已开启自动跟随' : '已暂停跟随（手动滚动）');
+    }
 
-        // 进度头
+    function scrollToCue(i) {
+        if (i < 0 || i >= cueEls.length) return;
+        const body = el.transcriptBody;
+        const node = cueEls[i];
+        const br = body.getBoundingClientRect();
+        const nr = node.getBoundingClientRect();
+        const target = body.scrollTop + (nr.top - br.top) - br.height / 2 + nr.height / 2;
+        // 'auto' 会沿用 CSS 的 scroll-behavior:smooth，减弱动态效果时仍会动画；
+        // 必须用 'instant' 才是真正立即滚动。
+        body.scrollTo({ top: Math.max(0, target), behavior: reduceMotion ? 'instant' : 'smooth' });
+    }
+
+    /* ------------------------------------------------------------------
+     * 渲染：单一时钟派生全部视图
+     * ---------------------------------------------------------------- */
+    // 清空某一句的全部字状态。只在切句时调用，避免每帧遍历 558 个 span。
+    function clearCueWords(i) {
+        const spans = wordEls[i];
+        if (!spans) return;
+        spans.forEach(s => {
+            s.classList.remove('done', 'active');
+            s.style.removeProperty('--wipe');
+        });
+    }
+
+    function renderTranscript(t) {
+        if (!state.hasTimeline || cueEls.length === 0) return;
+
+        const found = findCue(t);
+        const idx = found.index;
+
+        if (idx !== state.activeIndex) {
+            for (let i = 0; i < cueEls.length; i++) {
+                const row = cueEls[i];
+                const isDone = i < idx || (idx === -1 && t > CUES[i].end);
+                row.classList.toggle('active', i === idx);
+                row.classList.toggle('done', isDone);
+                if (i !== idx) row.style.removeProperty('--cue-progress');
+            }
+            if (state.lastTickIndex >= 0) tickEls[state.lastTickIndex].classList.remove('current');
+            if (idx >= 0) { tickEls[idx].classList.add('current'); state.lastTickIndex = idx; }
+            else state.lastTickIndex = -1;
+
+            // 只清掉上一句 + 目标句残留的字状态，不遍历全部 558 个 span。
+            // 目标句也要清：seek 回跳到「曾经读过」的句子时，该句可能残留 done/active。
+            if (state.activeIndex >= 0 && state.activeIndex !== idx) clearCueWords(state.activeIndex);
+            if (idx >= 0) clearCueWords(idx);
+            state.activeIndex = idx;
+            state.lastWordIndex = -2;
+
+            if (state.follow) scrollToCue(idx >= 0 ? idx : found.next);
+        }
+
+        if (idx >= 0) {
+            const cue = CUES[idx];
+            const spans = wordEls[idx];
+            const wi = findWord(cue, t);
+            if (wi !== state.lastWordIndex) {
+                // seek 可能向前也可能向后。区间必须覆盖「旧 active 字 → 新 active 字」，
+                // 并利用 toggle 把旧字的 .active 关掉；只处理新增区间会残留多个高亮字。
+                const from = Math.max(0, Math.min(wi, state.lastWordIndex));
+                const to = Math.min(spans.length - 1, Math.max(wi, state.lastWordIndex));
+                for (let j = from; j <= to; j++) {
+                    spans[j].classList.toggle('done', j < wi);
+                    spans[j].classList.toggle('active', j === wi);
+                    if (j !== wi) spans[j].style.removeProperty('--wipe');
+                }
+                state.lastWordIndex = wi;
+            }
+            if (wi >= 0) {
+                const w = cue.words[wi];
+                const p = clamp((t - w.b) / Math.max(0.001, w.e - w.b), 0, 1);
+                spans[wi].style.setProperty('--wipe', (p * 100).toFixed(1) + '%');
+            }
+            cueEls[idx].style.setProperty('--cue-progress',
+                (clamp((t - cue.begin) / Math.max(0.001, cue.end - cue.begin), 0, 1) * 100).toFixed(2) + '%');
+        }
+    }
+
+    function renderActiveRange(t) {
+        if (!state.hasTimeline) {
+            el.activeRange.textContent = '无时间戳 · 文本与时间轴未建立映射';
+            return;
+        }
+        const found = findCue(t);
+        if (found.index < 0) {
+            const prev = found.prev >= 0 ? CUES[found.prev].end : 0;
+            const next = found.next >= 0 ? CUES[found.next].begin : DURATION;
+            el.activeRange.innerHTML = (found.next < 0 ? '播放结束' : '句间停顿') +
+                ' <b>' + Math.max(0, next - prev).toFixed(1) + 's</b> · 下一句 ' +
+                (found.next >= 0 ? pad2(found.next + 1) : '--');
+        } else {
+            const c = CUES[found.index];
+            el.activeRange.innerHTML = '第 <b>' + pad2(found.index + 1) + ' / ' + CUES.length +
+                '</b> 句 · <b>' + fmtPrecise(c.begin) + ' – ' + fmtPrecise(c.end) + '</b>';
+        }
+    }
+
+    function render() {
+        const t = state.time;
+        const pct = t / DURATION * 100;
+
         el.playhead.style.left = pct.toFixed(3) + '%';
 
-        // 波形着色（只更新变化区间）
         const played = Math.round(pct / 100 * BAR_COUNT);
         if (played !== state.playedBars) {
             const from = Math.min(played, state.playedBars + 1);
             const to = Math.max(played, state.playedBars + 1);
             for (let i = Math.max(0, from); i < Math.min(BAR_COUNT, to + 1); i++) {
-                const isPlayed = i < played;
-                bars[i].classList.toggle('played', isPlayed);
+                bars[i].classList.toggle('played', i < played);
             }
             state.playedBars = played;
         }
 
-        // 时间
-        el.curTime.textContent = fmt(state.time);
-        el.totalTime.textContent = state.showRemaining
-            ? '-' + fmt(DURATION - state.time)
-            : fmt(DURATION);
+        el.curTime.textContent = fmtPrecise(t);
+        el.totalTime.textContent = state.showRemaining ? '-' + fmt(DURATION - t) : fmt(DURATION);
         el.speedHint.textContent = state.playing
-            ? '剩余约 ' + fmt((DURATION - state.time) / state.rate)
-            : '剩余约 ' + fmt((DURATION - state.time) / state.rate) + ' · 已完成 ' +
-              Math.round(state.time / DURATION * 100) + '%';
+            ? '剩余约 ' + fmt((DURATION - t) / state.rate)
+            : '剩余约 ' + fmt((DURATION - t) / state.rate) + ' · 已完成 ' +
+              Math.round(t / DURATION * 100) + '%';
+
+        renderActiveRange(t);
+        renderTranscript(t);
     }
 
     /* ------------------------------------------------------------------
-     * 波形交互：点击定位 + 拖动擦洗
+     * 波形交互：hover 显示「时间 + 所属句」，点击 / 拖动 seek
      * ---------------------------------------------------------------- */
     function timeAtX(clientX) {
         const rect = el.waveform.getBoundingClientRect();
@@ -930,14 +1599,25 @@
         el.waveHit.setPointerCapture(e.pointerId);
         const r = timeAtX(e.clientX);
         seek(r.t);
-        if (!state.playing) setStatus('已暂停 · ' + fmt(state.time));
+        if (!state.playing) setStatus('已暂停 · ' + fmtPrecise(state.time));
     });
 
     el.waveHit.addEventListener('pointermove', e => {
-        const r = timeAtX(e.clientX);
-        el.hoverBubble.textContent = fmt(r.t);
-        el.hoverBubble.style.left = (r.ratio * 100).toFixed(2) + '%';
-        if (state.scrubbing) seek(r.t);
+        const tick = e.target && e.target.closest ? e.target.closest('.tick') : null;
+        let t, label;
+        if (tick && state.hasTimeline) {
+            const i = parseInt(tick.dataset.index, 10);
+            t = CUES[i].begin;
+            label = '第 ' + (i + 1) + ' 句 · ' + fmtPrecise(t);
+        } else {
+            const r = timeAtX(e.clientX);
+            t = r.t;
+            const f = state.hasTimeline ? findCue(t) : null;
+            label = fmtPrecise(t) + (f ? (f.index >= 0 ? ' · 第 ' + (f.index + 1) + ' 句' : ' · 句间停顿') : '');
+        }
+        el.hoverBubble.textContent = label;
+        el.hoverBubble.style.left = (clamp(t / DURATION, 0, 1) * 100).toFixed(2) + '%';
+        if (state.scrubbing && !tick) seek(t);
     });
 
     el.waveHit.addEventListener('pointerup', () => { state.scrubbing = false; });
@@ -966,8 +1646,16 @@
     });
 
     el.rewindBtn.addEventListener('click', () => { seek(0); toast('已回到开头'); });
-
     el.exportBtn.addEventListener('click', () => toast('已导出 音频.m4a'));
+    el.followBtn.addEventListener('click', () => setFollow(!state.follow));
+    el.recenterBtn.addEventListener('click', () => setFollow(true));
+
+    // 用户主动滚动打断自动跟随；程序滚动不会触发 wheel/touchstart
+    function userScroll() {
+        if (state.follow && state.hasTimeline) setFollow(false);
+    }
+    el.transcriptBody.addEventListener('wheel', userScroll, { passive: true });
+    el.transcriptBody.addEventListener('touchstart', userScroll, { passive: true });
 
     el.copyTextBtn.addEventListener('click', () => {
         const text = SENTENCES.join('\n');
@@ -985,29 +1673,38 @@
         const tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'input' || tag === 'textarea') return;
 
-        if (e.code === 'Space') {
-            e.preventDefault(); toggle(); return;
+        // 句块获得焦点时，空格 / 回车是「定位到该句」，不触发全局播放
+        const cueTarget = e.target && e.target.closest ? e.target.closest('.cue') : null;
+        if (cueTarget && (e.code === 'Space' || e.code === 'Enter')) return;
+
+        if (e.code === 'Space') { e.preventDefault(); toggle(); return; }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); skip(e.shiftKey ? -15 : -5); return; }
+        if (e.key === 'ArrowRight') { e.preventDefault(); skip(e.shiftKey ? 15 : 5); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); skipCue(-1); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); skipCue(1); return; }
+        if (e.key === 'Home') { e.preventDefault(); seek(0); return; }
+        if (e.key === 'End') { e.preventDefault(); seek(DURATION); return; }
+        if (e.key === 'f' || e.key === 'F') { e.preventDefault(); setFollow(!state.follow); return; }
+        if (e.key === 't' || e.key === 'T') {
+            e.preventDefault();
+            state.hasTimeline = !state.hasTimeline;
+            rebuildTranscript();
+            render();
+            toast(state.hasTimeline ? '已启用字级时间戳' : '已切换为无时间戳降级态');
         }
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault(); skip(e.shiftKey ? -15 : -5); return;
-        }
-        if (e.key === 'ArrowRight') {
-            e.preventDefault(); skip(e.shiftKey ? 15 : 5); return;
-        }
-        if (e.key === 'Home') { e.preventDefault(); seek(0); }
-        if (e.key === 'End') { e.preventDefault(); seek(DURATION); }
     });
 
     /* ------------------------------------------------------------------
-     * 静态信息填充
+     * 静态信息填充 + 首帧
      * ---------------------------------------------------------------- */
     $('metaDuration').textContent = fmt(DURATION);
-    $('metaDurationSub').textContent = fmtSec(DURATION);
+    $('metaDurationSub').textContent = DURATION.toFixed(1) + 's';
     $('metaChars').innerHTML = CHAR_COUNT + '<span class="unit">字</span>';
+    $('metaCharsSub').textContent = CUES.length + ' 句 · ' + WORD_COUNT + ' 字级锚点';
     $('metaCredits').innerHTML = CREDITS + '<span class="unit">分</span>';
-    Array.prototype.forEach.call(document.querySelectorAll('.meta-sub'), n => {
-        if (n.textContent.indexOf('字 ×') >= 0) n.textContent = CHAR_COUNT + ' 字 × ' + CREDIT_PER_CHAR;
-    });
+    $('metaCreditsSub').textContent = CHAR_COUNT + ' 字 × ' + CREDIT_PER_CHAR;
+
+    rebuildTranscript();
     render();
 })();
 </script>

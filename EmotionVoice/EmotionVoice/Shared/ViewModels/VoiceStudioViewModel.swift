@@ -414,6 +414,10 @@ final class VoiceStudioViewModel: ObservableObject {
                 // 保证整体进度单调递增（不会因为切段而回退）。
                 let segmentCount = max(1, ttsSegments.count)
                 var audioChunks: [Data] = []
+                /// 每段的字级句子（段内相对时间），生成结束后统一叠加段偏移
+                var segmentTimelines: [[AudioSentenceCue]] = []
+                /// 每段音频的实际时长，作为下一段的时间轴起点
+                var segmentDurations: [Double] = []
 
                 for (idx, segment) in ttsSegments.enumerated() {
                     try Task.checkCancellation()
@@ -435,26 +439,31 @@ final class VoiceStudioViewModel: ObservableObject {
                         }
                     }
 
-                    let chunk: Data = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
-                        ttsService.synthesizeStream(
-                            text: segment.apiText,
-                            voice: voice.key,
-                            emotion: nil,
-                            rate: rate,
-                            volume: volume,
-                            sampleRate: sampleRate,
-                            format: self.selectedFormat.lowercased(),
-                            nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
-                            onAudio: onAudio,
-                            completion: { result in
-                                cont.resume(with: result)
-                            }
-                        )
-                    }
+                    let generation = try await ttsService.synthesizeWithTimeline(
+                        text: segment.apiText,
+                        voice: voice.key,
+                        emotion: nil,
+                        rate: rate,
+                        volume: volume,
+                        sampleRate: sampleRate,
+                        format: self.selectedFormat.lowercased(),
+                        nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
+                        onAudio: onAudio
+                    )
                     try Task.checkCancellation()
                     // 单个片段为空说明这一段没合成出音频，合并后会造成「缺了一段」的静默错误
-                    guard !chunk.isEmpty else { throw TTSError.noAudioData }
-                    audioChunks.append(chunk)
+                    guard !generation.audioData.isEmpty else { throw TTSError.noAudioData }
+                    audioChunks.append(generation.audioData)
+                    segmentTimelines.append(generation.sentences)
+
+                    // 段偏移取「本段音频真实时长」：WAV 解析 header、MP3 按 32kbps 估算，
+                    // 都拿不到时才退回该段最后一句的 end_time（宁可近似，也不能伪造字级锚点）。
+                    let segmentSeconds = AudioConcatenator.durationSeconds(
+                        of: generation.audioData,
+                        format: self.selectedFormat,
+                        sampleRate: sampleRate
+                    ) ?? Double(generation.sentences.last?.endMs ?? 0) / 1000.0
+                    segmentDurations.append(segmentSeconds)
                 }
 
                 let audioData = AudioConcatenator.merge(audioChunks)
@@ -513,6 +522,39 @@ final class VoiceStudioViewModel: ObservableObject {
                     completion(false)
                     return
                 }
+
+                    // 字级时间轴落盘（sidecar，不入库）。
+                    // 只有「每一段都拿到了 words[]」才认为对齐可信；任一段缺失
+                    // （音色不支持时自动降级、上游未返回）就整条不写，播放器走静态原文，
+                    // 避免半段时间轴错位还假装已对齐。
+                    let allSegmentsAligned = !segmentTimelines.isEmpty
+                        && segmentTimelines.allSatisfy { !$0.isEmpty }
+                    if allSegmentsAligned {
+                        var cues: [AudioSentenceCue] = []
+                        var offsetMs = 0
+                        for (i, sentences) in segmentTimelines.enumerated() {
+                            for sentence in sentences {
+                                var shifted = sentence
+                                shifted.index = cues.count
+                                shifted.words = sentence.words.map { word in
+                                    var w = word
+                                    w.beginMs += offsetMs
+                                    w.endMs += offsetMs
+                                    return w
+                                }
+                                cues.append(shifted)
+                            }
+                            offsetMs += Int((segmentDurations[i] * 1000).rounded())
+                        }
+                        let timeline = AudioTimeline(
+                            durationMs: Int((duration * 1000).rounded()),
+                            sentences: cues
+                        )
+                        let saved = AudioTimelineStore.save(timeline, fileName: finalFileName)
+                        Log(message: "字级时间轴: \(cues.count) 句 / \(timeline.anchorCount) 锚点, duration=\(duration)s, 保存=\(saved)")
+                    } else {
+                        Log(message: "字级时间轴: 本次生成未获得完整 words[]，播放器将显示静态原文")
+                    }
 
                     // 保存音频 ID 用于后续重命名
                     self.generatedAudioId = audio.id

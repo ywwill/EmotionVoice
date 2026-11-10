@@ -42,6 +42,15 @@ enum PlayerTextMetrics {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
+    /// "00:00.0"：句卡时间码 / 波形悬停用的音频绝对时间（精确到 0.1 秒）
+    static func formatPrecise(_ seconds: Double) -> String {
+        guard seconds.isFinite else { return "00:00.0" }
+        let total = max(0, seconds)
+        let whole = Int(total)
+        let tenths = min(9, Int((total - Double(whole)) * 10))
+        return String(format: "%02d:%02d.%d", whole / 60, whole % 60, tenths)
+    }
+
     /// 倍速 "1x" / "1.25x" / "1.5x"
     ///
     /// 优先复用 `AudioPreviewPlayer.playbackRateOptions` 里的标签，让倍速按钮、

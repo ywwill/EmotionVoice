@@ -37,6 +37,10 @@ const UPSTREAM_TIMEOUT_MS = 15_000;
 /// 日志里 text / instruction 的预览长度；加 `?debug=1` 会完整打印
 const TEXT_PREVIEW_LENGTH = 500;
 
+/// sentence-end 每句一条日志，长文本一次几十条，必须用比 TEXT_PREVIEW_LENGTH 更短的截断。
+/// 80 足够判断「这是哪一句」，又不会让日志随文本长度线性膨胀（Supabase 日志按量计费）。
+const SENTENCE_PREVIEW_LENGTH = 80;
+
 /// 富语言类标签（与 Constants.richLanguageTags 保持一致）。
 /// 它们不是"语气"，不切段，只作为当前控制类标签作用域内的附加修饰。
 const RICH_LANGUAGE_TAGS = new Set([
@@ -62,6 +66,14 @@ function preview(value: string | null | undefined, full: boolean): string {
   if (value === null || value === undefined) return "(nil)";
   if (full || value.length <= TEXT_PREVIEW_LENGTH) return value;
   return `${value.slice(0, TEXT_PREVIEW_LENGTH)}…(共 ${value.length} 字)`;
+}
+
+/// 句子级预览：固定短截断，不受 `?debug=1` 影响。
+/// 诊断句级时间戳只需要「能认出是哪句」，不需要全文。
+function previewSentence(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "(nil)";
+  if (value.length <= SENTENCE_PREVIEW_LENGTH) return value;
+  return `${value.slice(0, SENTENCE_PREVIEW_LENGTH)}…(共 ${value.length} 字)`;
 }
 
 /// 握手阶段：打印 URL 上的所有 query 参数与请求头（密钥打码）
@@ -99,6 +111,7 @@ function logRequest(raw: string, req: TTSRequest, full: boolean): void {
   console.log("  volume      =", req.volume ?? "(nil)");
   console.log("  sample_rate =", req.sample_rate ?? "(nil)");
   console.log("  format      =", req.format ?? "(nil)");
+  console.log("  word_timestamp_enabled =", req.word_timestamp_enabled ?? false);
   console.log("  instruction =", preview(req.instruction, full));
   console.log("  text        =", preview(req.text, full));
   console.log("  text.length =", (req.text ?? "").length);
@@ -141,6 +154,11 @@ interface TTSRequest {
   volume?: number;
   sample_rate?: number;
   format?: string;
+  /// 字级时间戳开关。客户端正式生成时置 true；音色试听不带此字段（默认 false）。
+  /// 上游在 result-generated / sentence-end 的 payload.output.sentence.words[] 返回
+  /// { text, begin_index, end_index, begin_time, end_time }（毫秒）。
+  /// 只有部分音色支持，失败时客户端会自动降级重跑一次（不带本参数）。
+  word_timestamp_enabled?: boolean;
   instruction?: string | null;
 }
 
@@ -165,6 +183,11 @@ function buildRunTaskEvent(
     pitch: 1.0,
     enable_ssml: false,
   };
+  // 只在该带的时候带：默认 false，避免不支持该能力的音色直接被上游判 InvalidParameter。
+  // 开启后上游会把 words[] 放进 sentence-end 事件，本函数原样转发给客户端解析。
+  if (req.word_timestamp_enabled === true) {
+    parameters["word_timestamp_enabled"] = true;
+  }
   const instruction = req.instruction;
   if (typeof instruction === "string" && instruction.length > 0) {
     parameters["instruction"] = instruction;
@@ -536,13 +559,32 @@ async function runJob(
         // 原样转发上游事件（task-started / result-generated / task-finished / task-failed ...）
         safeSend(socket, data);
 
-        let parsed: { header?: { event?: string } } | null = null;
+        let parsed: {
+          header?: { event?: string };
+          payload?: {
+            output?: {
+              type?: string;
+              original_text?: string;
+              sentence?: { index?: number; words?: unknown[] };
+            };
+          };
+        } | null = null;
         try {
           parsed = JSON.parse(data);
         } catch {
           parsed = null;
         }
         const ev = parsed?.header?.event;
+
+        if (ev === "result-generated" && parsed?.payload?.output?.type === "sentence-end") {
+          const out = parsed.payload.output;
+          const words = out.sentence?.words ?? [];
+          // 只打 idx / 锚点数 / 80 字截断句首：一句一条，全文会让日志随文本长度线性膨胀
+          console.log(
+            `[bailian-tts] sentence-end idx=${out.sentence?.index ?? "?"} ` +
+              `words=${words.length} text=${previewSentence(out.original_text)}`,
+          );
+        }
 
         if (ev === "task-started" && !started) {
           started = true;

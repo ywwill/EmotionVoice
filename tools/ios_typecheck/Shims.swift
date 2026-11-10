@@ -123,6 +123,14 @@ final class VoiceService {
     func countFavorites(searchText: String) -> Int { 0 }
     @discardableResult
     func toggleFavorite(key: String) -> Bool { false }
+    // 音色库首屏预热 / 排序与分类计数缓存（签名与 Shared/Services/VoiceService.swift 对齐）
+    func warmUpVoiceLibraryCache() {}
+    func cachedOrderedKeys(showingFavorites: Bool,
+                           category: VoiceCategory?,
+                           searchText: String) -> [String] { [] }
+    func cachedCategoryCounts() -> (all: Int, favorites: Int, counts: [String: Int]) {
+        (0, 0, [:])
+    }
 }
 
 // MARK: - 替身：项目服务

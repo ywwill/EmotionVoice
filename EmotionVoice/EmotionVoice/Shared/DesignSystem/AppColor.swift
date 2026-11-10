@@ -28,6 +28,16 @@ enum AppColor {
     static let textSecondary = Color(hex: 0xA8ABB4)
     static let textTertiary = Color(hex: 0x6B6E76)
 
+    // MARK: - 字级对齐阅读（对齐 UI/macOS/audio-player.html 的 WCAG AA 状态色）
+    /// 未播正文 8A8E97：对 bgSecondary #15171B 约 5.5:1，不用三级灰承载 14px 文字
+    static let textQuaternary = Color(hex: 0x8A8E97)
+    /// 时间码是「一一对应」的主要读数，单独提亮到约 6:1
+    static let textTimecode = Color(hex: 0x9296A0)
+    static let accentWash = Color(hex: 0xE8A968).opacity(0.10)
+    static let accentLine = Color(hex: 0xE8A968).opacity(0.34)
+    static let accentDim = Color(hex: 0xE8A968).opacity(0.14)
+    static let bgHover = Color.white.opacity(0.06)
+
     // MARK: - 状态色
     static let statusSuccess = Color(hex: 0x6BB87A)
     static let statusWarning = Color(hex: 0xE8A968)
@@ -45,6 +55,33 @@ enum AppColor {
     static let borderSubtle = Color.white.opacity(0.08)
     static let borderMedium = Color.white.opacity(0.15)
     static let borderStrong = Color.white.opacity(0.25)
+
+    // MARK: - 逐字高亮的连续插值
+    //
+    // `Text` 拼接出来的 foregroundColor 是离散的，SwiftUI 不会对它做补间动画：
+    // 直接在三档色之间跳，观感就是「闪一下」。阅读区本来按 currentTime 10Hz 刷新，
+    // 所以把颜色也做成随「字内进度」逐帧插值，肉眼就是连续过渡。
+    // 取值与 textQuaternary / textSecondary / accentGlow 保持一致，改色板时三处一起改。
+    enum WordTone {
+        static let unplayed: UInt32 = 0x8A8E97   // = textQuaternary
+        static let read: UInt32 = 0xA8ABB4       // = textSecondary
+        static let active: UInt32 = 0xF2C088     // = accentGlow
+    }
+
+    /// 两个十六进制色的 RGB 线性插值，`progress` 自动夹到 0...1。
+    /// 逐帧调用，只做三次乘加，不走 NSColor。
+    static func blend(_ from: UInt32, _ to: UInt32, _ progress: Double) -> Color {
+        let k = min(max(progress, 0), 1)
+        let fr = Double((from >> 16) & 0xFF), fg = Double((from >> 8) & 0xFF), fb = Double(from & 0xFF)
+        let tr = Double((to >> 16) & 0xFF), tg = Double((to >> 8) & 0xFF), tb = Double(to & 0xFF)
+        return Color(
+            .sRGB,
+            red: (fr + (tr - fr) * k) / 255,
+            green: (fg + (tg - fg) * k) / 255,
+            blue: (fb + (tb - fb) * k) / 255,
+            opacity: 1
+        )
+    }
 }
 
 extension Color {
