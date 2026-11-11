@@ -201,13 +201,19 @@ final class VoiceStudioViewModel: ObservableObject {
     }
 
     /// 更新指令文本：拼接语言和预设
+    ///
+    /// ⚠️ 拼进指令框的必须是**当前界面语言**的文案，不能用中文 key 原文：
+    /// `nlLanguages.name` / `nlPresets.instruction` 都是中文原文（也是本地化 key），
+    /// 三份 Localizable.strings 里已有对应译文；直接写原文会让英文 / 繁中界面下
+    /// 指令框冒出简体中文。iOS 与 macOS 共用本方法，一处改两端生效。
     private func updateNLInstruction() {
         let parts: [String] = [
-            selectedLanguage,
-            selectedPreset.flatMap { Constants.instructionForPreset($0) }
+            selectedLanguage?.localized(),
+            selectedPreset.flatMap { Constants.instructionForPreset($0)?.localized() }
         ].compactMap { $0 }
 
-        nlInstruction = parts.joined(separator: ",")
+        // 中文沿用原来的半角逗号（零回归），英文补一个空格
+        nlInstruction = parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
     }
 
     // 生成状态

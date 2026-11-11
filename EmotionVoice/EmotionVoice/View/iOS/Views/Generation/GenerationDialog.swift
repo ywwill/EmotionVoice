@@ -2,19 +2,9 @@
 //  GenerationDialog.swift
 //  iOSEmora
 //
-//  331pt 居中弹窗：接收中与完成态**共用同一个弹窗**，只切换顶部渐变条、图标与内容区。
-//
-//  内部按「7 层信息」填满，避免大面积留白：
-//  ① 音色 × 参数 chips 行（含本次计费）② 实时波形 ③ 大字字节数 + 速率
-//  ④ 不确定进度条 ⑤ 四宫格（已用时 / 数据块 / 目标大小 / 预计时长）
-//  ⑥ 接收网格 ⑦ 后台接收 / 停止生成
-//
-//  完成态：顶部转紫→薄荷、图标换勾选、内容换成名称行 + 四宫格 + 播放器 + 网格 + 计费行
-//  + 分享 / 导出 / 完成。
-//
 
 import SwiftUI
-import Combine   // @Published / ObservableObject 在 Combine，SwiftUI 不再隐式导出
+import Combine
 import UniformTypeIdentifiers
 import AVFoundation
 

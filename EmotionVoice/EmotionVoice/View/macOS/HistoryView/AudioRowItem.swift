@@ -165,7 +165,7 @@ struct AudioRowItem: View {
             // 编辑名称
             moreMenuItem(
                 icon: "square.and.pencil",
-                title: "编辑名称".localized(),
+                title: "编辑".localized(),
                 isDestructive: false
             ) {
                 isMenuOpen = false

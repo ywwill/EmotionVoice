@@ -5,15 +5,10 @@
 "保存" = "Save";
 "删除" = "Delete";
 "编辑" = "Edit";
-"使用指令" = "Use Command";
 "搜索" = "Search";
 "停止" = "Stop";
 "收藏" = "Favorite";
-"已收藏" = "Favorited";
-"展开" = "Expand";
-"排序" = "Sort";
 "查看全部" = "View All";
-"语音合成" = "Speech Synthesis";
 "我的项目" = "My Projects";
 "音色库" = "Voice Library";
 "积分中心" = "Points Center";
@@ -48,8 +43,6 @@
 "CD 级音频" = "CD-Quality Audio";
 "专业音频" = "Professional Audio";
 "详细描述 = 更好的效果" = "More Details = Better Results";
-"粤语" = "Cantonese";
-"四川话" = "Sichuan";
 "⭐ 旗舰" = "⭐ Flagship";
 "无法生成" = "Unable to Generate";
 "请先输入要合成的文本" = "Please enter text to synthesize first";
@@ -78,13 +71,11 @@
 "暂无原文内容" = "No Original Text";
 "导出" = "Export";
 "批量操作" = "Batch Actions";
-"编辑名称" = "Edit Name";
 
 // 音色
 "音色" = "Voice";
 "旗舰音色" = "Flagship Voice";
 "全部" = "All";
-"筛选" = "Filter";
 "适用场景" = "Applicable Scenario";
 "没有匹配的音色" = "No matching voices found";
 "中年" = "Middle-aged";
@@ -222,8 +213,6 @@
 
 // 项目管理
 "已完成" = "Completed";
-"进行中" = "In Progress";
-"已发布" = "Published";
 "生成中" = "Generating";
 
 // 积分中心
@@ -233,15 +222,12 @@
 "基础包" = "Basic Pack";
 "进阶包" = "Advanced Pack";
 "专业包" = "Pro Pack";
-"旗舰包" = "Flagship Pack";
 "购买" = "Purchase";
 "推荐" = "Recommended";
 "适合尝鲜体验" = "Great for trying out";
 "个人创作首选" = "Best for creators";
 "高频使用推荐" = "For frequent use";
 "专业创作者" = "For professionals";
-"消费" = "Consume";
-"返还" = "Refund";
 "永久有效" = "Never Expires";
 "计费规则" = "Billing Rules";
 "积分计算规则" = "Credit Calculation Rules";
@@ -334,8 +320,6 @@
 "语言" = "Language";
 "年龄阶段" = "Age Group";
 "%d 岁" = "%d yrs";
-"%@ · 旗舰音色" = "%@ · Premium";
-"%@ · %@ · 情感标签" = "%@ · %@ · Emotion Tags";
 
 // 音频生成弹窗（接收中 / 完成）
 "正在接收" = "Receiving";
@@ -347,12 +331,9 @@
 "已用时" = "Elapsed";
 "当前码率" = "Bitrate";
 "%d 段" = "%d";
-"✓ 已写入缓冲区" = "✓ buffered";
-"音频接收完成" = "Audio received";
 "大小" = "Size";
 "消耗" = "Usage";
 "剩余 %@ 积分" = "%@ credits left";
-"关闭窗口不会中断，音频将在后台继续接收" = "Closing won't interrupt it — audio keeps downloading in the background";
 "⬇ 导出" = "⬇ Export";
 "导出中…" = "Exporting…";
 "✓ 已导出" = "✓ Exported";
@@ -381,11 +362,9 @@
 
 // iOS · 标签栏
 "项目" = "Project";
-"正在后台接收" = "Receiving in background";
 
 // iOS · 设置
 "关于" = "About";
-"版本" = "Version";
 "与工作台里的值双向同步，改动即写入 UserDefaults。" = "Two-way synced with the Workbench value — changes are written to UserDefaults immediately.";
 "购买积分" = "Buy Credits";
 "积分记录" = "Credit History";
@@ -406,7 +385,6 @@
 "购买后积分永久有效。" = "Credits never expire after purchase.";
 "确认购买后将从您的 App Store 账户扣款。" = "Your App Store account will be charged after confirming the purchase.";
 "正在获取商品信息…" = "Fetching product info…";
-"%d 积分" = "%d Credits";
 "购买中…" = "Purchasing…";
 "立即购买" = "Buy Now";
 
@@ -444,12 +422,10 @@
 "搜索音色名 / 特质 / 场景 / 语种" = "Search voice name / traits / scenario / language";
 "全部分类" = "All Categories";
 "%@ · %d 个" = "%@ · %d";
-"点 ✕ 取消筛选" = "Tap ✕ to clear filter";
 "点上方按钮可重新选择" = "Tap the button above to reselect";
 "仅看收藏" = "Favorites Only";
 "仅看收藏 · %d 个" = "Favorites Only · %d";
 "共 %d 个 · 旗舰优先，再按名称排序" = "%d total · flagships first, then by name";
-"上拉加载更多" = "Pull up to load more";
 "已显示全部 %d 个音色" = "All %d voices shown";
 "试试换个关键词，或清除筛选条件" = "Try a different keyword, or clear the filters";
 "已切换到「%@」" = "Switched to “%@”";
@@ -461,18 +437,10 @@
 
 // iOS · 项目
 "重命名" = "Rename";
-"搜索音频名称" = "Search audio name";
-"删除音频" = "Delete Audio";
-"还没有生成的音频" = "No generated audio yet";
 "没有匹配的音频" = "No matching audio";
-"加载中…" = "Loading…";
-"选择" = "Select";
-"结束多选" = "Finish Multi-Select";
 "进入多选" = "Enter Multi-Select";
 "已复制音频" = "Audio Copied";
 "所选音频文件不存在" = "The selected audio file does not exist";
-"确定删除选中的 %d 条音频？删除后无法恢复。" = "Delete the selected %d audio files? This cannot be undone.";
-"确定删除这条音频？删除后无法恢复。" = "Delete this audio? This cannot be undone.";
 "音频名称" = "Audio Name";
 
 // iOS · 播放器
@@ -483,13 +451,11 @@
 "待播放" = "Queued";
 
 // iOS · 生成弹窗
-"目标" = "Target";
 "请保持 App 在前台运行，以免影响数据接收。" = "Keep the app in the foreground — backgrounding may interrupt receiving.";
 "剩余 %@" = "%@ left";
 "−%@ 积分" = "−%@ credits";
 "分享" = "Share";
 "隐藏窗口" = "Hide Window";
-"停止生成" = "Stop Generating";
 "音频_%@" = "Audio_%@";
 
 // iOS 历史记录

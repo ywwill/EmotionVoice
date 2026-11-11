@@ -98,7 +98,7 @@ struct HistoryView: View {
         .onAppear {
             viewModel.loadInitialData()
         }
-        .alert("编辑名称", isPresented: $showRenameAlert) {
+        .alert("编辑", isPresented: $showRenameAlert) {
             TextField("", text: $renameText)
             Button("取消", role: .cancel) {
                 audioToRename = nil
