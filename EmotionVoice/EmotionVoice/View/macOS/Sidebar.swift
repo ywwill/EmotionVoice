@@ -41,6 +41,11 @@ struct Sidebar: View {
             )
             
             Spacer()
+
+            // 侧栏底部的迷你播放器：在「我的项目」里播过的音频，切到别的分区后
+            // 仍能继续控制（历史页自己会隐藏它）。放这里而不是内容区浮层，
+            // 是因为内容区每个分区底部都有自己的操作区，浮块会压住操作。
+            MiniPlayerBar()
         }
         .frame(width: 220)
         .background(AppColor.bgSidebar.opacity(0.6))

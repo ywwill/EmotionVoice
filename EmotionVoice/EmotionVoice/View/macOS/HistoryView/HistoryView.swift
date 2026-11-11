@@ -97,6 +97,12 @@ struct HistoryView: View {
         .background(AppColor.bgPrimary)
         .onAppear {
             viewModel.loadInitialData()
+            // 从迷你播放器点回来时，把这一条重新选中（不重新起播）
+            applyPendingSelection()
+        }
+        // 待定位的那条不在第一页时，等后续分页把它取回来再选中
+        .onChange(of: viewModel.displayedAudios.count) { _, _ in
+            applyPendingSelection()
         }
         .alert("编辑", isPresented: $showRenameAlert) {
             TextField("", text: $renameText)
@@ -214,6 +220,8 @@ struct HistoryView: View {
             isSelectionMode: isSelectionMode,
             isChecked: selectedAudioIds.contains(audio.id),
             onSelect: {
+                // 记进迷你播放器：离开本页后浮层要能继续控制这一条
+                NowPlayingMiniStore.shared.attach(audio)
                 viewModel.selectAudio(audio)
             },
             onToggleSelection: {
@@ -232,6 +240,7 @@ struct HistoryView: View {
                 viewModel.duplicateAudio(audio)
             },
             onDelete: {
+                NowPlayingMiniStore.shared.clearIfMatches([audio.id])
                 viewModel.deleteAudio(audio)
             },
             onBatchSelect: {
@@ -409,6 +418,19 @@ struct HistoryView: View {
         .background(AppColor.bgPrimary)
     }
 
+    // MARK: - 迷你播放器的定位
+
+    /// 迷你播放器点了「回到我的项目」时，把它对应的那条重新选中。
+    ///
+    /// ⚠️ 只写 `selectedAudio`、**不调 `selectAudio`**：那个方法会顺手起播，
+    /// 而这里通常是「播放还在进行 / 停在暂停处」，重新起播等于把进度打回 0。
+    private func applyPendingSelection() {
+        guard let pending = NowPlayingMiniStore.shared.pendingSelectionID,
+              let item = viewModel.displayedAudios.first(where: { $0.id == pending }) else { return }
+        _ = NowPlayingMiniStore.shared.consumePendingSelection()
+        viewModel.selectedAudio = item
+    }
+
     // MARK: - 批量选择方法
 
     private func enterSelectionMode() {
@@ -498,10 +520,12 @@ struct HistoryView: View {
         }
 
         // 删除所有选中的音频
-        // 删除所有选中的音频
         for audio in audiosToDelete {
             viewModel.deleteAudio(audio)
         }
+
+        // 被删的正好是浮层上那一条 → 一起收起，别留一个播不出来的浮层
+        NowPlayingMiniStore.shared.clearIfMatches(selectedAudioIds)
 
         // 清空选择
         selectedAudioIds.removeAll()

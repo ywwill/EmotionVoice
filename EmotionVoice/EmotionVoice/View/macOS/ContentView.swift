@@ -86,8 +86,7 @@ struct ContentView: View {
         }
     }
 
-    private func scheduleContentSwap(to section: SidebarSection) {
-        guard section != renderedSection else { return }
+    private func scheduleContentSwap(to section: SidebarSection) {        guard section != renderedSection else { return }
         // 所有切换都即时响应。旧的「首次进音色库先 sleep 100ms 让位给侧边栏
         // spring」已删除：重页面现在在启动空闲期就预热好了，点击时没有视图构建，
         // 等 100ms 只会变成「点了没反应」。即便预热未完成用户就点进来，

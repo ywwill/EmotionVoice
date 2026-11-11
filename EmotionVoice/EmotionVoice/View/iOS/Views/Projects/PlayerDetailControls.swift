@@ -283,7 +283,11 @@ struct TranscriptSentenceRow: View, Equatable {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        // 语气 / 拟声标签从正文里摘出来单独渲染成徽标（见 `TranscriptTagMarkup`）。
+        // `line.words` 与 `cue.words` 下标一一对应，`wordColor(at:)` 无需改动。
+        let line = TranscriptTagMarkup.line(for: cue)
+
+        return HStack(alignment: .top, spacing: 8) {
             // 只显示句首时间码：句末与下一句句首之间还有停顿，两列并排会被读成
             // 「这句一直持续到第二个时间」。句内进度交给逐字高亮表达。
             Text(transcriptTimecode(cue.begin))
@@ -292,10 +296,19 @@ struct TranscriptSentenceRow: View, Equatable {
                 .frame(width: 46, alignment: .trailing)
                 .padding(.top, 3)
 
-            wordLine
-                .font(.system(size: 14.5))
-                .lineSpacing(6)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: line.tags.isEmpty ? 0 : 5) {
+                if !line.tags.isEmpty {
+                    tagRow(line.tags)
+                }
+                // 整句只有标签（拟声独占一句）时不画正文，避免多出半行空白
+                if line.hasBody {
+                    wordLine(line.words)
+                        .font(.system(size: 14.5))
+                        .lineSpacing(6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 7)
@@ -319,8 +332,25 @@ struct TranscriptSentenceRow: View, Equatable {
             AudioPreviewPlayer.shared.seek(to: cue.begin)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(cue.text)
+        .accessibilityLabel(accessibilityText(line))
         .accessibilityHint("双击从这一句开始播放".localized())
+    }
+
+    /// 标签徽标行：一句里可能有多个（`[clears throat][curious]…`），按出现顺序排开
+    private func tagRow(_ tags: [TranscriptTagMarkup.Tag]) -> some View {
+        HStack(spacing: 5) {
+            ForEach(Array(tags.enumerated()), id: \.offset) { _, tag in
+                TranscriptTagBadge(tag: tag)
+            }
+        }
+    }
+
+    /// 读屏文案：标签名 + 正文，别把 `[serious]` 这种给引擎看的原文念出来
+    private func accessibilityText(_ line: TranscriptTagMarkup.Line) -> String {
+        var parts = line.tags.map { $0.label.localized() }
+        let body = line.words.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        if !body.isEmpty { parts.append(body) }
+        return parts.joined(separator: "，")
     }
 
     /// 三态：已读 / 当前字 / 未播
@@ -332,22 +362,26 @@ struct TranscriptSentenceRow: View, Equatable {
     ///    v4 起词间空白也保留（英文靠空格断词），别对 word.text 去空白。
     /// ⚠️ 也不要给当前字加 `.bold()`：字重变化会改变单字宽度，整段会重新折行、左右抖动。
     ///    区分度全部交给颜色。
-    private var wordLine: Text {
+    ///
+    /// `words` 是 `TranscriptTagMarkup` 摘掉官方标签后的正文（与 `cue.words` 同长度）。
+    private func wordLine(_ words: [String]) -> Text {
+        // 句末褪色的落点取「最后一个看得见的词」：整句以标签收尾时末词是空串
+        let lastBody = words.lastIndex { !$0.isEmpty } ?? -1
         var result = Text("")
-        for (i, word) in cue.words.enumerated() {
-            result = result + Text(word.text).foregroundColor(wordColor(at: i))
+        for (i, text) in words.enumerated() {
+            result = result + Text(text).foregroundColor(wordColor(at: i, lastBody: lastBody))
         }
         return result
     }
 
     // MARK: 播放文本颜色
-    private func wordColor(at i: Int) -> Color {
+    private func wordColor(at i: Int, lastBody: Int) -> Color {
         guard activeWordIndex >= 0 else {
             guard isDone else {
                 return AppColor.blend(tone.unplayed, tone.unplayed, 0)
             }
             // 句末最后一字在句间停顿里从高亮褪到已读，接上下一句首字的渐亮
-            if i == cue.words.count - 1, tailFade < 1 {
+            if i == lastBody, tailFade < 1 {
                 return AppColor.blend(tone.active, tone.read, tailFade)
             }
             return AppColor.blend(tone.read, tone.read, 0)
@@ -369,8 +403,41 @@ struct TranscriptSentenceRow: View, Equatable {
     }
 }
 
-/// 唯一订阅 10Hz 进度的阅读区（含跟随滚动）。
+// MARK: - 标签徽标
+
+/// 语气 / 拟声标签徽标：emoji + 本地化名字（与编辑器里的标签同源）。
 ///
+/// 语气用主紫、拟声用信息蓝，只是「一眼分清两类」的弱区分；
+/// 文字色压在正文之下，不跟逐字高亮的玫红抢注意力。
+private struct TranscriptTagBadge: View {
+    @Environment(\.aurora) private var c
+
+    let tag: TranscriptTagMarkup.Tag
+
+    private var tint: Color {
+        tag.isSoundEffect ? c.info : c.accent
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(tag.emoji)
+                .font(.system(size: 10))
+            Text(tag.label.localized())
+                .font(.system(size: 10.5, weight: .medium))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .frame(height: 19)
+        .background(Capsule(style: .continuous).fill(tint.opacity(0.13)))
+        .overlay(
+            Capsule(style: .continuous).strokeBorder(tint.opacity(0.3), lineWidth: 0.5)
+        )
+        .fixedSize()
+        .accessibilityHidden(true)
+    }
+}
+
+/// 唯一订阅 10Hz 进度的阅读区（含跟随滚动）。
 /// 高度由外壳固定：iOS 整页本身是 ScrollView，这里再做「卡内独立滚动」是为了
 /// 长文案跟随时不把波形 / 走带一起滚出屏幕（与 macOS 同一交互）。
 struct AlignedTranscriptReader: View {

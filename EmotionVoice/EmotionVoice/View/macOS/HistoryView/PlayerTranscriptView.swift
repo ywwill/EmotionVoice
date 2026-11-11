@@ -339,7 +339,13 @@ private struct SentenceCueRow: View, Equatable {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        // 语气 / 拟声标签从正文里摘出来单独成徽标（见 `TranscriptTagMarkup`）。
+        // 只在 body 重算时扫一次，且没有 `[` 的词直接原样返回，所以逐字高亮那条
+        // 10Hz 路径的开销与从前一致；`line.words` 与 `cue.words` 下标一一对应，
+        // `wordColor(at:)` 一个都不用改。
+        let line = TranscriptTagMarkup.line(for: cue)
+
+        return HStack(alignment: .top, spacing: 10) {
             // 只显示句首时间码：句末与下一句句首之间还有停顿，两列并排容易被读成
             // 「这句话一直持续到第二个时间」。句内进度交给逐字高亮本身表达。
             Text(PlayerTextMetrics.formatPrecise(cue.begin))
@@ -348,11 +354,19 @@ private struct SentenceCueRow: View, Equatable {
                 .frame(width: 50, alignment: .trailing)
                 .padding(.top, 3)
 
-            // Text + Text 拼接既保留逐字着色，又能像普通文本一样自动换行
-            wordLine
-                .font(.system(size: 14))
-                .lineSpacing(9)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: line.tags.isEmpty ? 0 : 6) {
+                if !line.tags.isEmpty {
+                    tagRow(line.tags)
+                }
+                // 整句只有标签（拟声独占一句）时不画正文，避免多出半行空白
+                if line.hasBody {
+                    wordLine(line.words)
+                        .font(.system(size: 14))
+                        .lineSpacing(9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -373,6 +387,15 @@ private struct SentenceCueRow: View, Equatable {
         }
     }
 
+    /// 标签徽标行：一句里可能有多个（`[clears throat][curious]…`），按出现顺序排开
+    private func tagRow(_ tags: [TranscriptTagMarkup.Tag]) -> some View {
+        HStack(spacing: 5) {
+            ForEach(Array(tags.enumerated()), id: \.offset) { _, tag in
+                TranscriptTagBadge(tag: tag)
+            }
+        }
+    }
+
     /// 三态：已读 / 当前字 / 未播
     ///
     /// ⚠️ 必须拼 `word.text`，**禁止**用 begin_index / end_index 去切 `cue.text`。
@@ -387,10 +410,16 @@ private struct SentenceCueRow: View, Equatable {
     ///
     /// ⚠️ 也不要给当前字加 `.bold()`：字重变化会改变单字宽度，导致整段文本重新
     /// 折行、左右轻微位移（用户反馈的「文字偶尔左右晃动」）。区分度全部交给颜色。
-    private var wordLine: Text {
+    ///
+    /// `words` 是 `TranscriptTagMarkup` 摘掉官方标签后的正文（与 `cue.words` 同长度），
+    /// 语气 / 拟声标签已经另行渲染成徽标，不出现在这里。
+    private func wordLine(_ words: [String]) -> Text {
+        // 句末褪色的落点是「最后一个**看得见**的词」：整句以标签收尾时，
+        // 末词是空串（标签已变徽标），拿它当落点会让真正的末字直接硬切成已读色。
+        let lastBody = words.lastIndex { !$0.isEmpty } ?? -1
         var result = Text("")
-        for (i, word) in cue.words.enumerated() {
-            result = result + Text(word.text).foregroundColor(wordColor(at: i))
+        for (i, text) in words.enumerated() {
+            result = result + Text(text).foregroundColor(wordColor(at: i, lastBody: lastBody))
         }
         return result
     }
@@ -402,14 +431,16 @@ private struct SentenceCueRow: View, Equatable {
     /// - 未到的字：未播色
     /// - 句末最后一个字：句子结束后按 tailFade 继续从高亮色褪到已读色，
     ///   让颜色跨行换句时是连续的，而不是「上一帧还亮着，下一帧就灭了」
-    private func wordColor(at i: Int) -> Color {
+    ///
+    /// `lastBody` 是最后一个有正文的词下标（标签词已摘成徽标，不参与褪色落点）。
+    private func wordColor(at i: Int, lastBody: Int) -> Color {
         guard activeWordIndex >= 0 else {
             guard isDone else {
                 return AppColor.blend(AppColor.WordTone.unplayed, AppColor.WordTone.unplayed, 0)
             }
             // 句末那一字的收尾过渡：起点颜色就是它作为「当前字」的终点色（高亮色），
             // 所以和上一帧完全衔接；与下一句首字的渐亮在时间上重叠
-            if i == cue.words.count - 1, tailFade < 1 {
+            if i == lastBody, tailFade < 1 {
                 return AppColor.blend(AppColor.WordTone.active, AppColor.WordTone.read, tailFade)
             }
             return AppColor.blend(AppColor.WordTone.read, AppColor.WordTone.read, 0)
@@ -423,5 +454,37 @@ private struct SentenceCueRow: View, Equatable {
         return i < activeWordIndex
             ? AppColor.blend(AppColor.WordTone.read, AppColor.WordTone.read, 0)
             : AppColor.blend(AppColor.WordTone.unplayed, AppColor.WordTone.unplayed, 0)
+    }
+}
+
+// MARK: - 标签徽标
+
+/// 语气 / 拟声标签徽标：emoji + 本地化名字（与编辑器里的标签同源同色系）。
+///
+/// 语气用暖色（accent）、拟声用冷色（statusInfo）—— 只是「一眼分清两类」的弱区分，
+/// 文字色仍压在正文之下，不跟逐字高亮抢注意力。
+private struct TranscriptTagBadge: View {
+
+    let tag: TranscriptTagMarkup.Tag
+
+    private var tint: Color {
+        tag.isSoundEffect ? AppColor.statusInfo : AppColor.accentPrimary
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(tag.emoji)
+                .font(.system(size: 10))
+            Text(tag.label.localized())
+                .font(.system(size: 10.5, weight: .medium))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .frame(height: 18)
+        .background(Capsule().fill(tint.opacity(0.12)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.30), lineWidth: 1))
+        .clipShape(Capsule())
+        .fixedSize()
+        .accessibilityLabel(tag.label.localized())
     }
 }

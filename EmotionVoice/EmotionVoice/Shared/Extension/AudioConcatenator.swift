@@ -52,7 +52,9 @@ enum AudioConcatenator {
     /// 会逐段提前。不能用「字数 ÷ 语速」估算，那正是要避免的伪造对齐。
     ///
     /// - WAV：按 fmt chunk 的 byteRate 精确算 `dataLength / byteRate`。
-    /// - MP3：百炼默认 32 kbps CBR，按字节数估算。
+    /// - MP3：**逐帧累加**（见 `mp3DurationSeconds`）。早先是「字节数 ÷ 32 kbps」的粗估，
+    ///   只要上游换了码率（实测 ≥ 64 kbps）每段时长就整体翻倍，段偏移越往后错得越多，
+    ///   阅读区逐字高亮和声音完全对不上（用户反馈的「高亮位置和声音不匹配」）。
     /// - 其它或解析失败：返回 nil，调用方回退到该段最后一句的 `end_time`。
     static func durationSeconds(of chunk: Data, format: String, sampleRate: Int) -> Double? {
         if let info = parseWAV(chunk) {
@@ -70,12 +72,78 @@ enum AudioConcatenator {
 
         switch format.lowercased() {
         case "mp3":
-            return Double(chunk.count) * 8.0 / 32_000.0
+            return mp3DurationSeconds(chunk)
         case "wav" where sampleRate > 0:
             return Double(max(0, chunk.count - 44)) / Double(sampleRate * 2)
         default:
             return nil
         }
+    }
+
+    /// 按 MPEG 音频帧逐帧累加出**精确**时长（秒）。
+    ///
+    /// 为什么不用「字节数 ÷ 码率」：那要先知道码率。百炼现在的返回并不固定在
+    /// 32 kbps，写死 32k 会让每段估算时长成倍偏大，段偏移累积后末尾几句的
+    /// 时间戳甚至超过音频总长 —— 高亮永远追不上声音。
+    ///
+    /// 帧头自带采样率、每帧采样数，累加即得，不依赖码率、VBR / CBR 都对。
+    /// 解析不出来（非 Layer III、数据残缺）返回 nil，由调用方决定怎么兜底。
+    static func mp3DurationSeconds(_ chunk: Data) -> Double? {
+        let bytes = [UInt8](chunk)
+        guard bytes.count > 4 else { return nil }
+
+        var i = 0
+        // 跳过开头的 ID3v2（同步安全整数：每字节 7 bit）
+        if bytes.count > 10, bytes[0] == 0x49, bytes[1] == 0x44, bytes[2] == 0x33 {
+            let size = (Int(bytes[6] & 0x7F) << 21)
+                | (Int(bytes[7] & 0x7F) << 14)
+                | (Int(bytes[8] & 0x7F) << 7)
+                | Int(bytes[9] & 0x7F)
+            i = min(10 + size, bytes.count)
+        }
+
+        let bitrateV1: [Int] = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0]
+        let bitrateV2: [Int] = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0]
+
+        var seconds = 0.0
+        var frames = 0
+
+        while i + 4 <= bytes.count {
+            // 帧同步：11 个 1
+            guard bytes[i] == 0xFF, (bytes[i + 1] & 0xE0) == 0xE0 else {
+                i += 1
+                continue
+            }
+            let versionBits = (bytes[i + 1] >> 3) & 0x03
+            let layerBits = (bytes[i + 1] >> 1) & 0x03
+            let bitrateIndex = Int(bytes[i + 2] >> 4)
+            let sampleRateIndex = Int((bytes[i + 2] >> 2) & 0x03)
+            let padding = Int((bytes[i + 2] >> 1) & 0x01)
+
+            // 只认 Layer III；versionBits == 1 是保留值
+            guard layerBits == 0x01, versionBits != 0x01,
+                  bitrateIndex > 0, bitrateIndex < 15,
+                  sampleRateIndex < 3 else {
+                i += 1
+                continue
+            }
+
+            let isV1 = (versionBits == 0x03)
+            let bitrates = isV1 ? bitrateV1 : bitrateV2
+            let sampleRates: [Int] = isV1 ? [44100, 48000, 32000]
+                : (versionBits == 0x02 ? [22050, 24000, 16000] : [11025, 12000, 8000])
+            let sampleRate = sampleRates[sampleRateIndex]
+            let samplesPerFrame = isV1 ? 1152 : 576
+            let frameLength = (samplesPerFrame / 8) * bitrates[bitrateIndex] * 1000 / sampleRate + padding
+            guard frameLength > 4 else { i += 1; continue }
+
+            seconds += Double(samplesPerFrame) / Double(sampleRate)
+            frames += 1
+            i += frameLength
+        }
+
+        guard frames > 0 else { return nil }
+        return seconds
     }
 
     // MARK: - WAV 解析 / 生成

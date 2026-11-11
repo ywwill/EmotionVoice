@@ -541,26 +541,59 @@ final class VoiceStudioViewModel: ObservableObject {
                     let allSegmentsAligned = !segmentTimelines.isEmpty
                         && segmentTimelines.allSatisfy { !$0.isEmpty }
                     if allSegmentsAligned {
-                        var cues: [AudioSentenceCue] = []
-                        var offsetMs = 0
-                        for (i, sentences) in segmentTimelines.enumerated() {
-                            for sentence in sentences {
-                                var shifted = sentence
-                                shifted.index = cues.count
-                                shifted.words = sentence.words.map { word in
-                                    var w = word
-                                    w.beginMs += offsetMs
-                                    w.endMs += offsetMs
-                                    return w
+                        let durationMs = Int((duration * 1000).rounded())
+
+                        // 段偏移只在「上游时间戳是段内相对时间」时才该加。
+                        // 判断不靠猜：加完偏移后末字必须落在音频时长之内。落不进去就说明
+                        // 上游给的已经是绝对时间（再平移一次等于重复累加），后面几句会被推到
+                        // 音频结束之后 —— 逐字高亮再也追不上声音，正是用户反馈的那个 bug。
+                        func assemble(applyOffsets: Bool) -> [AudioSentenceCue] {
+                            var cues: [AudioSentenceCue] = []
+                            var offsetMs = 0
+                            for (i, sentences) in segmentTimelines.enumerated() {
+                                for sentence in sentences {
+                                    var shifted = sentence
+                                    shifted.index = cues.count
+                                    if applyOffsets {
+                                        shifted.words = sentence.words.map { word in
+                                            var w = word
+                                            w.beginMs += offsetMs
+                                            w.endMs += offsetMs
+                                            return w
+                                        }
+                                    }
+                                    cues.append(shifted)
                                 }
-                                cues.append(shifted)
+                                if applyOffsets {
+                                    offsetMs += Int((segmentDurations[i] * 1000).rounded())
+                                }
                             }
-                            offsetMs += Int((segmentDurations[i] * 1000).rounded())
+                            return cues
                         }
-                        let timeline = AudioTimeline(
-                            durationMs: Int((duration * 1000).rounded()),
-                            sentences: cues
-                        )
+
+                        var cues = assemble(applyOffsets: true)
+                        let overflow = (cues.last?.endMs ?? 0) - durationMs
+                        if overflow > 500 {
+                            let plain = assemble(applyOffsets: false)
+                            let plainOverflow = (plain.last?.endMs ?? 0) - durationMs
+                            if plainOverflow < overflow {
+                                cues = plain
+                                Log(message: "⚠️ 段偏移后末字超时 \(overflow)ms，改用上游绝对时间（超时 \(plainOverflow)ms）")
+                            } else {
+                                Log(message: "⚠️ 段偏移后末字超时 \(overflow)ms，去掉偏移也对不上（\(plainOverflow)ms），保留偏移结果")
+                            }
+                        }
+
+                        // 诊断：每段「估算时长」与该段上游时间轴末字的对照。
+                        // 两者差得远就说明段时长这一环有问题（码率假设 / 拼接丢段），
+                        // 下次看日志即可定位，不用再靠猜。
+                        for (i, sentences) in segmentTimelines.enumerated() {
+                            let upstreamEnd = sentences.map(\.endMs).max() ?? 0
+                            Log(message: "段\(i): 估算时长 \(String(format: "%.2f", segmentDurations[i]))s / 上游末字 \(String(format: "%.2f", Double(upstreamEnd) / 1000))s")
+                        }
+                        Log(message: "段数 \(segmentTimelines.count)，估算合计 \(String(format: "%.2f", segmentDurations.reduce(0, +)))s，实际时长 \(String(format: "%.2f", duration))s")
+
+                        let timeline = AudioTimeline(durationMs: durationMs, sentences: cues)
                         let saved = AudioTimelineStore.save(timeline, fileName: finalFileName)
                         Log(message: "字级时间轴: \(cues.count) 句 / \(timeline.anchorCount) 锚点, duration=\(duration)s, 保存=\(saved)")
                     } else {

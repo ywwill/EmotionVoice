@@ -841,6 +841,180 @@ enum AudioTimelineStore {
 extension AudioItem {
     /// 该音频的字级时间轴；没有 sidecar（历史音频 / 时间戳不可用的降级生成）时为 nil。
     nonisolated var timeline: AudioTimeline? {
-        AudioTimelineStore.load(fileName: fileName, sourceText: text)
+        guard let timeline = AudioTimelineStore.load(fileName: fileName, sourceText: text) else {
+            return nil
+        }
+        // 时间轴不该比音频本身还长：末字超出音频时长说明**生成时的段偏移算错了**
+        // （多段拼接按旧版 32 kbps 粗估段长，见 `AudioConcatenator.durationSeconds`），
+        // 播到后半段时高亮永远追不上声音。这种 sidecar 宁可退回静态原文 ——
+        // 项目约定是「宁可没有逐字高亮，也不显示错位的对齐」。
+        // 留 20% 余量给「上游把末尾停顿也算进时间戳」这类正常偏差。
+        if duration > 1, timeline.lastEndMs > Int(duration * 1200) {
+            Log(message: "⚠️ 时间轴末字 \(timeline.lastEndMs)ms 超出音频时长 \(Int(duration * 1000))ms（\(fileName)），判定不可用，退回静态原文")
+            return nil
+        }
+        return timeline
+    }
+}
+
+// MARK: - 字幕里的语气 / 拟声标签
+
+/// 阅读区把 `[serious]` / `[clears throat]` 这类 TTS 控制标签从正文里摘出来。
+///
+/// 背景：`audio_items.text` 落库时已经是纯台词（`toPlainText()`），但 sidecar 里的
+/// `words[].text` 直接来自上游 —— 语气标签会作为一个「词」混在句首
+/// （实测 `[serious]手机又震。`），拟声标签甚至独占一整句（`[clears throat]`）。
+/// 它们只是发给合成引擎的指令，不是台词，摆在正文里既抢眼又打断阅读，
+/// 所以这里按句摘出来、交给 UI 渲染成一枚小徽标。
+///
+/// ⚠️ 只认 `Constants` 里的官方标签（24 语气 + 7 拟声）：
+/// 用户自己写的 `[注]` / `[1]` 不是 TTS 指令，必须原样保留 ——
+/// 不能用「任意方括号」一刀切，否则会把正常文本吃掉。
+///
+/// ⚠️ 只摘文本、**不动时间锚点**：`words` 与 `cue.words` 严格一一对应（整词就是标签时
+/// 给空串），逐字高亮的 `activeWordIndex` 才能照旧按下标取色。
+enum TranscriptTagMarkup {
+
+    struct Tag: Hashable {
+        /// 官方 tag（如 `serious` / `clears throat`）
+        let tag: String
+        /// 编辑器里同一套中文 label，同时是本地化 key（`严肃` → Serious）
+        let label: String
+        let emoji: String
+        /// 拟声（富语言）标签：只在那一处插一段声音，不改变语气
+        let isSoundEffect: Bool
+    }
+
+    /// 一句的展示形态：标签按出现顺序收集，正文保留原来的词边界。
+    struct Line {
+        let tags: [Tag]
+        /// 与 `cue.words` 一一对应；整个词就是标签时为空串
+        let words: [String]
+
+        /// 整句只有标签（拟声独占一句）：正文区不画，避免多空出一行
+        var hasBody: Bool {
+            words.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        }
+    }
+
+    /// 扫描一句话，摘出标签、保留词边界。
+    ///
+    /// ⚠️ 必须**跨词**扫，不能逐词扫。上游的 `words[]` 是按「要读出来的词」切的，
+    /// `[clears throat]` / `[deep and loud shouting]` 这类**含空格的标签**经常被劈成
+    /// 两个词（实测 `[clears` + `throat]但真正决定…`）。逐词看的时候两边都不成对：
+    /// 前一个词有 `[` 没有 `]`，后一个词有 `]` 没有 `[`，于是标签原样漏进正文 ——
+    /// 这正是用户反馈的「拟声标签没有处理」。
+    /// 所以这里把整句拼成一条字符流再扫，同时记住每个字符属于第几个词；摘掉标签后
+    /// 按原归属把字符还回各自的词 —— `words` 仍与 `cue.words` **一一对应**
+    /// （整词都是标签时给空串），逐字高亮的下标一个都不用改。
+    ///
+    /// 绝大多数句子一个 `[` 都没有，走最前面的 `contains` 快路径直接原样返回，
+    /// 10Hz 的逐字高亮路径没有额外开销。
+    static func line(for cue: AudioSentenceCue) -> Line {
+        let texts = cue.words.map(\.text)
+        guard texts.contains(where: { $0.contains("[") || $0.contains("［") }) else {
+            return Line(tags: [], words: texts)
+        }
+
+        var chars: [Character] = []
+        var owner: [Int] = []
+        chars.reserveCapacity(texts.reduce(0) { $0 + $1.count })
+        for (i, text) in texts.enumerated() {
+            for ch in text {
+                chars.append(ch)
+                owner.append(i)
+            }
+        }
+
+        var dropped = [Bool](repeating: false, count: chars.count)
+        var touched = [Bool](repeating: false, count: texts.count)
+        var tags: [Tag] = []
+        var i = 0
+        while i < chars.count {
+            guard isOpening(chars[i]) else { i += 1; continue }
+            guard let close = closingIndex(chars, after: i) else { i += 1; continue }
+            if let tag = officialTag(String(chars[(i + 1)..<close])) {
+                tags.append(tag)
+                for k in i...close {
+                    dropped[k] = true
+                    touched[owner[k]] = true
+                }
+                i = close + 1
+            } else {
+                // 不是官方标签（`[注]` / `[1]`）：连 `[` 一起当普通字符，继续往后扫
+                i += 1
+            }
+        }
+        guard !tags.isEmpty else { return Line(tags: [], words: texts) }
+
+        var words = [String](repeating: "", count: texts.count)
+        for (k, ch) in chars.enumerated() where !dropped[k] {
+            words[owner[k]].append(ch)
+        }
+        // 标签跨词时，被摘掉的那半截可能只剩空白：清成空串，别在正文里留个缺口。
+        // 只清「确实被摘过」的词，普通英文词间的空白词不受影响。
+        for (k, text) in words.enumerated() where touched[k] && text.allSatisfy({ $0.isWhitespace }) {
+            words[k] = ""
+        }
+        // 正文第一个词开头的空白也去掉（那个空格本来属于被摘掉的标签）
+        if let firstBody = words.firstIndex(where: { !$0.isEmpty }) {
+            var body = words[firstBody]
+            while let f = body.first, f.isWhitespace { body.removeFirst() }
+            words[firstBody] = body
+        }
+        return Line(tags: tags, words: words)
+    }
+
+    /// 单段文本的便捷入口（预览 / 调试用）：等价于把整段文本当成「一个词」。
+    static func scan(_ text: String) -> (body: String, tags: [Tag]) {
+        let cue = AudioSentenceCue(
+            index: 0,
+            text: text,
+            words: [AudioWordCue(text: text, beginIndex: 0, endIndex: 0, beginMs: 0, endMs: 0)]
+        )
+        let line = line(for: cue)
+        return (line.words.first ?? "", line.tags)
+    }
+
+    private static func isOpening(_ ch: Character) -> Bool {
+        ch == "[" || ch == "［"
+    }
+
+    /// 从 `open` 之后找第一个右括号。跨词拼接后 `[` 与 `]` 可以分属两个词，
+    /// 所以必须在整条字符流上找；但标签不会跨行，遇到换行就放弃。
+    private static func closingIndex(_ chars: [Character], after open: Int) -> Int? {
+        var i = open + 1
+        while i < chars.count {
+            if chars[i] == "]" || chars[i] == "］" { return i }
+            if chars[i] == "\n" || chars[i] == "\r" { return nil }
+            i += 1
+        }
+        return nil
+    }
+
+    /// 官方标签匹配：忽略大小写、忽略**所有空白**。
+    ///
+    /// 忽略空白有两个现实原因：① 标签被劈成两个词后拼回来的内容可能没有空格
+    /// （`deepandloudshouting`）；② 上游/输入法会给 NBSP 之类的「隐形空格」。
+    /// 两边都去空白后比较，`[shouting ]` `[Serious]` `[clears throat]` 都能认出来。
+    private static func officialTag(_ raw: String) -> Tag? {
+        let key = compact(raw)
+        guard !key.isEmpty else { return nil }
+        if let item = Constants.emotions.first(where: { compact($0.tag) == key }) {
+            return Tag(tag: item.tag, label: item.label, emoji: item.emoji, isSoundEffect: false)
+        }
+        if let item = Constants.richLanguageTags.first(where: { compact($0.tag) == key }) {
+            return Tag(tag: item.tag, label: item.label, emoji: item.emoji, isSoundEffect: true)
+        }
+        return nil
+    }
+
+    private static func compact(_ text: String) -> String {
+        var out = ""
+        out.reserveCapacity(text.count)
+        for ch in text where !ch.isWhitespace {
+            out.append(ch)
+        }
+        return out.lowercased()
     }
 }
