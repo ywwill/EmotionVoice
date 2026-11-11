@@ -7,6 +7,76 @@
 
 import SwiftUI
 import AppKit
+import KeyboardShortcuts
+
+// MARK: - 草稿保存快捷键（KeyboardShortcuts）
+
+extension KeyboardShortcuts.Name {
+    /// 保存：固定默认 ⌘S
+    static let saveDraft = Self("saveDraft", initial: Shortcut(.s, modifiers: [.command]))
+}
+
+/// ⌘S 由 sindresorhus/KeyboardShortcuts 注册，与播放快捷键同一套机制：
+/// Carbon 热键不依赖 SwiftUI 焦点，NSTextView 正在打字时也能保存。
+///
+/// ⚠️ 热键是**全局**的：App 失活后不注销会抢走别的应用的 ⌘S
+/// （`PlaybackShortcutsController` 已经踩过这个坑），所以必须跟随 App 激活状态 enable / disable。
+@MainActor
+final class DraftShortcutController {
+
+    static let shared = DraftShortcutController()
+
+    private var isAppActive: Bool = NSApp.isActive
+
+    private init() {
+        KeyboardShortcuts.onKeyDown(for: .saveDraft) { [weak self] in
+            MainActor.assumeIsolated { self?.saveDraft() }
+        }
+        observeAppActivation()
+        applyState()
+    }
+
+    /// App 启动时主动拉起单例，保证热键与激活监听在窗口出现前就装好。
+    func start() { applyState() }
+
+    private func saveDraft() {
+        guard isAppActive else { return }
+        // 与「保存」按钮 / 文件菜单共用同一入口：saveSignal 会让 VoiceStudioView 弹顶部提示。
+        DraftStore.shared.saveFromSharedVM()
+    }
+
+    private func applyState() {
+        if isAppActive {
+            KeyboardShortcuts.enable([.saveDraft])
+        } else {
+            KeyboardShortcuts.disable([.saveDraft])
+        }
+    }
+
+    private func observeAppActivation() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isAppActive = true
+                self?.applyState()
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isAppActive = false
+                self?.applyState()
+            }
+        }
+    }
+}
 
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -18,6 +88,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 沙盒内 UserDefaults 只属于本 app，按前缀删不会波及其他 app。
         Self.clearSavedWindowFrames()
         LaunchWindowCoordinator.shared.start()
+        // 草稿保存快捷键：与窗口尺寸初始化一样，在最早的时机装好热键与激活监听。
+        DraftShortcutController.shared.start()
     }
 
     private static func clearSavedWindowFrames() {
@@ -55,6 +127,15 @@ struct EmotionVoiceApp: App {
                      height: LaunchWindowSizing.defaultWindowSize.height)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            // 实际触发走 DraftShortcutController 注册的全局热键（与焦点无关）。
+            // 菜单项保留 ⌘S 显示 + 点击入口，并在热键未注册时兜底；Carbon 会先截走
+            // 按键事件，正常情况下两条通道不会同时保存。
+            CommandGroup(replacing: .saveItem) {
+                Button("保存".localized()) {
+                    DraftStore.shared.saveFromSharedVM()
+                }
+                .keyboardShortcut("s", modifiers: .command)
+            }
         }
     }
 }

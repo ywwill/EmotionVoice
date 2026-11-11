@@ -6,6 +6,12 @@
 
 import SwiftUI
 import UIKit
+import Combine
+// ⚠️ 类型检查脚本（tools/ios_typecheck）解析不到 SPM module，按需引入：
+//    真机构建走真包，`swiftc -typecheck` 用 Shims.swift 的同签名替身。
+#if canImport(AlertToast)
+import AlertToast
+#endif
 
 enum IOSPerfDebug {
     static let usePlainTextEditor = false
@@ -39,6 +45,14 @@ struct StudioView: View {
     @State private var voicePickerPresented = false
     @State private var alertItem: AlertItem? = nil
     @State private var confirmGenerate = false
+
+    // MARK: 草稿（低频：只有保存 / 恢复 / 删除才变，不是播放器的 10Hz 发布者）
+    @ObservedObject private var drafts = DraftStore.shared
+    @State private var draftsPresented = false
+    /// 保存 / 恢复反馈统一走 AlertToast：`.hud` 顶部居中、1.5s 自动收起，不提供撤销。
+    private enum DraftToastKind { case saved, restored }
+    @State private var showDraftToast = false
+    @State private var draftToastKind: DraftToastKind = .saved
 
     // MARK: 键盘让位（底部条不能压到 accessory）
 
@@ -100,12 +114,27 @@ struct StudioView: View {
         .sheet(isPresented: $paramsPresented) {
             StudioParamSheet(vm: vm, voicePickerPresented: $voicePickerPresented)
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $voicePickerPresented) {
             VoicePickerSheet(selectedKey: $vm.selectedVoiceKey)
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $draftsPresented) {
+            DraftSheet(store: drafts,
+                       canSave: !currentSnapshot.isEmpty,
+                       needsConfirm: !currentSnapshot.isEmpty,
+                       onSave: {
+                           // 收起 Sheet 后由页面层的 AlertToast 弹「草稿已保存」，
+                           // 避免 Sheet 内自绘 HUD 与页面提示两条通道并存。
+                           draftsPresented = false
+                           saveCurrentDraft()
+                       },
+                       onRestoreConfirmed: { d in
+                           draftsPresented = false
+                           performDraftRestore(d)
+                       })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
         }
         .alert(item: $alertItem) { item in
             Alert(title: Text(item.title), message: Text(item.message),
@@ -116,6 +145,11 @@ struct StudioView: View {
             StudioParamStore.shared.restoreIfNeeded(to: vm)
             restoreFromViewModel()
             restoreSelectedVoice()
+            // 注册编辑器结算钩子：任何「没有 View 上下文」的草稿保存入口（快捷键 / 菜单）
+            // 取快照前都会先调它，保证存的是编辑器里最新的一份。
+            PendingEditorCommit.handler = { [weak editor] in editor?.flush() }
+            // ⚠️ 冷启动**不**自动接回上次内容：每次打开 App 编辑区恒为空。
+            //    上次的编辑仍在「草稿」里（自动保存那条），需要时手动恢复，不擅自回填。
         }
         // 工作台里换音色（导航栏 🎭 / 标题行音色胶囊 / 音色 Sheet）也要同步给 AppState：
         // 它才是音色库、历史记录这些页面读的那份状态，两边不一对，换完音色再进音色库会显示旧音色。
@@ -132,7 +166,40 @@ struct StudioView: View {
         .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
         // ⚠️ 只要离开创作页就收键盘：键盘还在屏上时进二级页，返回后底部那条会错位
         // （成因与统一收口见 `TabRouter.push`）。这里同时兜住「切标签」这类不走 push 的离开。
-        .onDisappear(perform: finishEditing)
+        .onDisappear {
+            finishEditing()
+            autoSaveCurrentDraft()
+        }
+        // 退后台 / 锁屏 / 被系统回收前再兜一次（常驻页切标签不一定走 onDisappear）。
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            autoSaveCurrentDraft()
+        }
+        // 草稿反馈统一用 AlertToast：HUD 顶部居中、1.5s 自动收起，不参与 keyboardSeam 计算。
+        // ⚠️ `.hud` 不认宿主视图，恒定贴**屏幕顶边**：导航栈里会被「创作」标题压住下半截，
+        //    必须靠 `offsetY` 让开状态栏 + inline 导航栏（见 `draftToastOffsetY`）。
+        .toast(isPresenting: $showDraftToast,
+               duration: 1.0,
+               tapToDismiss: false,
+               offsetY: draftToastOffsetY) {
+            draftToastAlert
+        }
+    }
+
+    /// 把 AlertToast 的 HUD 从屏幕顶边下移「状态栏 + inline 导航栏 + 8pt 呼吸」，
+    /// 让它整个落在「创作」标题下面，而不是被导航栏盖住一半。
+    ///
+    /// - `AppUpdateBanner.navBarClearance`（44）与根容器给更新横幅让位用的是同一个量；
+    /// - `33` ≈ HUD 胶囊自身高度的一半（50pt 最小高 + 16pt 顶部内边距 = 66），
+    ///   库内部按「中线 = 高度」贴顶，所以下移量要扣掉这半截。
+    private var draftToastOffsetY: CGFloat {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        let topInset = window?.safeAreaInsets.top ?? 0
+        // iPadOS 18 把标签栏并进顶栏那一行，顶栏比 iPhone 高约 8pt（与更新横幅一致）
+        let bar = AppUpdateBanner.navBarClearance + (metrics.isPadClass ? 8 : 0)
+        return max(0, topInset + bar + 8 - 33)
     }
 
     /// 窄屏才让位：宽屏本来就两栏，没有空间压力
@@ -407,34 +474,73 @@ struct StudioView: View {
         .frame(maxHeight: .infinity)   // 窄屏独占剩余高度
     }
 
-    /// 标题 + 当前音色 + 字数（32.5pt）。键盘弹出时收成 0 高，字数由底部生成条接着显示。
+    /// 标题 + 当前音色 + 字数 + 草稿胶囊（32.5pt）。
     ///
-    /// 窄屏没有侧栏的音色区，已选音色名无处常驻 —— 收进这行的中间：
-    /// 既不被工具栏标题挤占，又随手可点换音色。宽屏两栏侧栏已有音色区，这里不重复。
+    /// ⚠️ 打字时不再把整行收成 0：原实现会把音色 chip / 字数一起藏掉换空间，
+    /// 但草稿入口要求「常驻」。现在 collapseChrome 只收起音色 chip、字数与分隔线，
+    /// 保留一条 30pt 的胶囊行，入口任何时候都在同一个语义位置。
     private var cardHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
-                if !metrics.usesTwoColumnStudio {
-                    voiceHeaderChip
+                if !collapseChrome {
+                    if !metrics.usesTwoColumnStudio {
+                        voiceHeaderChip
+                    }
                     Spacer(minLength: 4)
+                    Text("%d 字".localized(editor.charCount))
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(c.textTertiary)
                 } else {
                     Spacer(minLength: 0)
                 }
-
-                Text("%d 字".localized(editor.charCount))
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(c.textTertiary)
+                draftCapsule
             }
             .padding(.horizontal, 16)
-            .frame(height: 32)
+            .frame(height: collapseChrome ? 30 : 32)
 
-            Hairline()
-                .padding(.horizontal, 16)
+            if !collapseChrome {
+                Hairline()
+                    .padding(.horizontal, 16)
+            }
         }
-        .frame(height: collapseChrome ? 0 : 32.5)
-        .opacity(collapseChrome ? 0 : 1)
+        .frame(height: collapseChrome ? 30 : 32.5)
         .clipped()
         .animation(.easeOut(duration: 0.22), value: collapseChrome)
+    }
+
+    /// 草稿胶囊：26pt 高、accentSoft 底 + 描边、角标 16×16，>99 显示 99+、为 0 隐藏。
+    private var draftCapsule: some View {
+        Button {
+            // ⚠️ 打开 Sheet 前先收键盘；恢复后也不自动聚焦、不弹键盘。
+            finishEditing()
+            draftsPresented = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("草稿".localized())
+                    .font(.system(size: 11.5, weight: .bold))
+                if drafts.count > 0 {
+                    Text(drafts.count > 99 ? "99+" : "\(drafts.count)")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .padding(.horizontal, 3)
+                        .background(Capsule().fill(c.accent))
+                }
+            }
+            .foregroundStyle(c.accent)
+            .padding(.horizontal, 9)
+            .frame(height: 26)
+            .background(
+                Capsule()
+                    .fill(c.accentSoft)
+                    .overlay(Capsule().strokeBorder(c.line2, lineWidth: 0.5))
+            )
+            // 整条热区
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// 文本卡标题行中间的「当前音色」：窄屏专用，点开选音色 Sheet。
@@ -642,6 +748,84 @@ struct StudioView: View {
 
     // MARK: - 行为
 
+    // MARK: 草稿行为
+
+    /// ⚠️ iOS 打字期间 `vm.ttsItems` 不是最新的（只在生成前同步），
+    /// 快照必须从 `editor` 现取 token 序列，否则存进去的是上一次生成的旧内容。
+    private var currentSnapshot: DraftSnapshot {
+        var snap = DraftSnapshot.capture(from: vm)
+        snap.items = TokenDocument.contentItems(doc: editor.doc, marks: editor.marks)
+        return snap
+    }
+
+    private func saveCurrentDraft() {
+        editor.flush()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .manual)
+        presentDraftToast(.saved)
+    }
+
+    /// 静默兜底：退后台 / 离开创作页 / 恢复前，恒定覆盖单条「自动保存」。
+    private func autoSaveCurrentDraft() {
+        editor.flush()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .auto, notify: false)
+    }
+
+    /// 逐字段写回 + 重建编辑器文档。
+    /// ⚠️ 先收键盘；`replace` 会 bump contentRevision，TokenTextEditor 据此重建 attributedText，
+    /// 恢复后不自动聚焦、不弹键盘（设计稿约束）。
+    private func applyDraftSnapshot(_ d: Draft) {
+        finishEditing()
+        vm.apply(d, appState: appState)
+        let made = TokenDocument.make(items: d.items)
+        editor.replace(doc: made.doc, marks: made.marks)
+        vm.ttsItems = d.items
+        vm.text = TokenDocument.plainText(doc: made.doc)
+    }
+
+    private func performDraftRestore(_ d: Draft) {
+        // 未落盘的输入先提交给编辑器状态，再取快照（与 `autoSaveCurrentDraft` 一致）。
+        editor.flush()
+        let before = currentSnapshot
+        guard let full = drafts.load(id: d.id) else { return }
+        // 恢复前兜底：现有内容存成**一条新的草稿**（不覆盖「上次编辑」那个单槽位），
+        // 连续切换多份草稿也不会把中间某一份盖掉。
+        drafts.stashBeforeRestore(before)
+        applyDraftSnapshot(full)
+        // 正文不再被兜底覆盖，「编辑中」可以老实标在目标上（含「上次编辑」那条）。
+        drafts.restore(full.id)
+        presentDraftToast(.restored)
+    }
+
+    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
+    private func presentDraftToast(_ kind: DraftToastKind) {
+        draftToastKind = kind
+        showDraftToast = false
+        DispatchQueue.main.async { self.showDraftToast = true }
+    }
+
+    /// 两条提示共用同一外观，只换文案与对勾颜色。
+    private var draftToastAlert: AlertToast {
+        let title: String
+        let color: Color
+        switch draftToastKind {
+        case .saved:
+            title = "草稿已保存".localized()
+            color = c.success
+        case .restored:
+            title = "草稿已恢复".localized()
+            color = c.accent
+        }
+        return AlertToast(displayMode: .hud,
+                          type: .complete(color),
+                          title: title,
+                          style: .style(backgroundColor: c.surface,
+                                        titleColor: c.textPrimary))
+    }
+
     private func restoreFromViewModel() {
         guard editor.doc.isEmpty, !vm.ttsItems.isEmpty else { return }
         let made = TokenDocument.make(items: vm.ttsItems)
@@ -708,7 +892,541 @@ struct StudioView: View {
         }
 
         appState.showGenerationModal = true
-        vm.generate { _ in }
+        vm.generate { success in
+            // 生成成功后音频进「项目 / 历史」；草稿只打标，30 天后清理，两者不混列。
+            if success { drafts.markGenerated() }
+        }
+    }
+}
+
+// MARK: - 草稿 Sheet（iOS · Aurora Pop）
+//
+// 对齐设计稿「iOS 02 / 04 / 05」：大标题 + 渐变保存主按钮 + 搜索 + 分组卡片，
+// .medium/.large 双档；空态隐藏搜索；左滑「删除 / 复制 / 重命名」（对齐历史记录左滑），
+// 重命名走项目页同一个 `RenameDialog`，恢复确认走系统风格 Action Sheet。
+
+private enum DraftForm: Identifiable {
+    case delete(Draft)
+
+    var id: String {
+        switch self {
+        case .delete(let d): return "delete-\(d.id)"
+        }
+    }
+
+    var draft: Draft {
+        switch self {
+        case .delete(let d): return d
+        }
+    }
+}
+
+private struct DraftSheet: View {
+    @Environment(\.aurora) private var c
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: DraftStore
+    let canSave: Bool
+    let needsConfirm: Bool
+    let onSave: () -> Void
+    let onRestoreConfirmed: (Draft) -> Void
+
+    @State private var search = ""
+    @State private var confirm: Draft? = nil
+    @State private var form: DraftForm? = nil
+    /// 重命名复用项目页的 `RenameDialog`（带清空按钮、自动聚焦、弹性入场），不再自绘输入框。
+    @State private var renameTarget: Draft? = nil
+    @State private var renameText = ""
+
+    private var filteredManual: [Draft] {
+        guard !search.isEmpty else { return store.manual }
+        return store.manual.filter {
+            $0.title.localizedCaseInsensitiveContains(search)
+                || $0.preview.localizedCaseInsensitiveContains(search)
+        }
+    }
+
+    private var filteredAuto: [Draft] {
+        guard !search.isEmpty else { return store.auto }
+        return store.auto.filter {
+            $0.title.localizedCaseInsensitiveContains(search)
+                || $0.preview.localizedCaseInsensitiveContains(search)
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            c.backgroundGrouped.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                grabber
+                header
+                saveButton
+                if store.count > 0 {
+                    AuroraSearchField(text: $search, placeholder: "搜索草稿".localized())
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
+                if store.count == 0 {
+                    emptyView
+                } else if filteredManual.isEmpty && filteredAuto.isEmpty {
+                    noResults
+                } else {
+                    list
+                }
+            }
+            // ⚠️ 浮层必须用 `.overlay` 挂在内容上，不能当 ZStack 的兄弟：
+            //    ZStack 给子视图的提案高度可能是 nil，靠 `.frame(maxHeight: .infinity)`
+            //    撑不起来 —— 遮罩只剩按钮组那么高一条，列表完全不暗（见 11-11 截图）。
+            //    `.overlay` 一定拿到内容视图的确切尺寸，遮罩才能铺满整个 sheet。
+            .overlay { if let d = confirm { restoreActionSheet(d) } }
+            .overlay { if let f = form { formDialog(f) } }
+            .overlay {
+                if let d = renameTarget {
+                    RenameDialog(text: $renameText,
+                                 onCancel: { renameTarget = nil },
+                                 onSave: { commitRename(d) })
+                }
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: confirm?.id)
+        .animation(.easeOut(duration: 0.18), value: form?.id)
+    }
+
+    private var grabber: some View {
+        Capsule()
+            .fill(c.textTertiary.opacity(0.45))
+            .frame(width: 36, height: 5)
+            .padding(.top, 9)
+            .padding(.bottom, 4)
+    }
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("草稿".localized())
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(c.textPrimary)
+            }
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Text("完成".localized())
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(c.accent)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+    }
+
+    private var saveButton: some View {
+        Button {
+            guard canSave else { return }
+            onSave()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 26, height: 26)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.2)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("保存当前编辑".localized())
+                        .font(.system(size: 14, weight: .bold))
+                    Text("包含正文、标签、音色与全部参数".localized())
+                        .font(.system(size: 10.5))
+                        .opacity(0.88)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "plus")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 13)
+            .frame(height: 52)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(c.ctaGradient))
+            .shadow(color: c.ctaStart.opacity(0.24), radius: 12, y: 5)
+            .opacity(canSave ? 1 : 0.45)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSave)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private func groupHeader(_ title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 11.5, weight: .bold))
+                .foregroundStyle(c.textSecondary)
+            Spacer()
+            Text("\(count)")
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(c.textTertiary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var list: some View {
+        List {
+            if !filteredManual.isEmpty {
+                groupHeader("已保存的草稿".localized(), count: filteredManual.count)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+                ForEach(filteredManual) { d in card(d) }
+            }
+            if !filteredAuto.isEmpty {
+                groupHeader("自动保存".localized(), count: filteredAuto.count)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                ForEach(filteredAuto) { d in card(d) }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func card(_ d: Draft) -> some View {
+        DraftCardView(draft: d, isEditing: store.editingDraftID == d.id)
+            .contentShape(Rectangle())
+            .onTapGesture { restore(d) }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 9, trailing: 16))
+            // 与历史记录左滑保持同一组图标 / 配色（数组从右到左：删除 / 复制 / 重命名）
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                    form = .delete(d)
+                } label: {
+                    Label("删除".localized(), systemImage: "trash.fill")
+                }
+                Button {
+                    store.duplicate(id: d.id)
+                } label: {
+                    Label("复制".localized(), systemImage: "square.on.square")
+                }
+                .tint(c.info)
+                Button {
+                    beginRename(d)
+                } label: {
+                    Label("重命名".localized(), systemImage: "square.and.pencil")
+                }
+                .tint(c.success)
+            }
+            // 长按菜单只留三个动作（预览全文已去掉：列表副标题就能看清内容）
+            .contextMenu {
+                Button {
+                    beginRename(d)
+                } label: {
+                    Label("重命名".localized(), systemImage: "square.and.pencil")
+                }
+                Button {
+                    store.duplicate(id: d.id)
+                } label: {
+                    Label("复制".localized(), systemImage: "square.on.square")
+                }
+                Button(role: .destructive) {
+                    form = .delete(d)
+                } label: {
+                    Label("删除".localized(), systemImage: "trash")
+                }
+            }
+    }
+
+    private var emptyView: some View {
+        VStack(spacing: 16) {
+            Spacer(minLength: 0)
+            ZStack(alignment: .bottomTrailing) {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(c.surface3)
+                    .frame(width: 88, height: 88)
+                Image(systemName: "doc")
+                    .font(.system(size: 38))
+                    .foregroundStyle(c.accent)
+                    .frame(width: 88, height: 88)
+                Circle()
+                    .fill(c.ctaGradient)
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().stroke(c.backgroundGrouped, lineWidth: 4))
+                    .offset(x: 6, y: 6)
+            }
+            Text("还没有草稿".localized())
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(c.textPrimary)
+            Text("写到一半想先放一放？把这段内容存成草稿，随时点一下就能接着写。".localized())
+                .font(.system(size: 12.5))
+                .foregroundStyle(c.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 34)
+            Button {
+                guard canSave else { return }
+                onSave()
+            } label: {
+                Text("保存当前编辑".localized())
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 11)
+                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(c.ctaGradient))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSave)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 40)
+    }
+
+    private var noResults: some View {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 30))
+                .foregroundStyle(c.textTertiary)
+            Text("没有找到匹配的草稿".localized())
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(c.textSecondary)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func restore(_ d: Draft) {
+        if needsConfirm {
+            confirm = d
+        } else {
+            dismiss()
+            onRestoreConfirmed(d)
+        }
+    }
+
+    /// 重命名入口：预填当前标题，交给 `RenameDialog` 输入。
+    private func beginRename(_ d: Draft) {
+        renameText = d.title
+        renameTarget = d
+    }
+
+    private func commitRename(_ d: Draft) {
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        renameTarget = nil
+        guard !trimmed.isEmpty, trimmed != d.title else { return }
+        store.rename(id: d.id, title: trimmed)
+    }
+
+    private func applyForm(_ f: DraftForm) {
+        switch f {
+        case .delete(let d): store.delete(id: d.id)
+        }
+        form = nil
+    }
+
+    // MARK: 浮层
+
+    private func restoreActionSheet(_ d: Draft) -> some View {
+        // ⚠️ 遮罩必须自己铺满整个 sheet：ZStack 只按**最大子视图**定尺寸，
+        //    之前直接把 scrim 和按钮组放进 ZStack，ZStack 只有按钮那么高，
+        //    遮罩就只剩细窄一条 —— 列表完全不暗、按钮组像是浮在列表中间。
+        //    `c.scrim` 是可伸展的 Color，让它当底层，ZStack 才会撑满。
+        ZStack(alignment: .bottom) {
+            c.scrim
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { confirm = nil }
+            VStack(spacing: 8) {
+                VStack(spacing: 0) {
+                    VStack(spacing: 4) {
+                        Text("恢复这份草稿？".localized())
+                            .font(.system(size: 12.5, weight: .bold))
+                            .foregroundStyle(c.textPrimary)
+                        Text(d.title)
+                            .font(.system(size: 11))
+                            .foregroundStyle(c.textTertiary)
+                            .lineLimit(1)
+                        Text("当前内容会自动另存为新草稿".localized())
+                            .font(.system(size: 11))
+                            .foregroundStyle(c.textSecondary)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(15)
+                    .frame(maxWidth: .infinity)
+                    Hairline()
+                    Button {
+                        confirm = nil
+                        dismiss()
+                        onRestoreConfirmed(d)
+                    } label: {
+                        Text("恢复".localized())
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(c.ctaGradient)
+                    }
+                    .buttonStyle(.plain)
+                }
+                // 设计稿 `.i-as-group` 是实色卡片：缺了底色，头部的标题/说明会和
+                // 下面的列表行直接叠字（截图里「恢复这份草稿？」与草稿摘要糊在一起）。
+                .background(c.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: c.shadow, radius: 30, y: 10)
+                Button {
+                    confirm = nil
+                } label: {
+                    Text("取消".localized())
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(c.accent)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(c.surface)
+                }
+                .buttonStyle(.plain)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: c.shadow, radius: 30, y: 10)
+            }
+            .padding(.horizontal, 9)
+            .padding(.bottom, 26)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// 删除二次确认（重命名已改用 `RenameDialog`，这里只剩删除）。
+    private func formDialog(_ f: DraftForm) -> some View {
+        ZStack {
+            c.scrim.ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { form = nil }
+            VStack(spacing: 12) {
+                Image(systemName: "trash")
+                    .font(.system(size: 20))
+                    .foregroundStyle(c.danger)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(c.surface3))
+                Text("删除这份草稿？".localized())
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(c.textPrimary)
+                Text("删除后无法恢复。".localized())
+                    .font(.system(size: 12))
+                    .foregroundStyle(c.textSecondary)
+                    .multilineTextAlignment(.center)
+                if !f.draft.title.isEmpty {
+                    Text(f.draft.title)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(c.textTertiary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(c.surface3))
+                }
+                HStack(spacing: 8) {
+                    Button {
+                        form = nil
+                    } label: {
+                        Text("取消".localized())
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(c.textPrimary)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(c.surface3))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        applyForm(f)
+                    } label: {
+                        Text("删除".localized())
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(c.danger))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(20)
+            .frame(width: 300)
+            .background(c.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: c.shadow, radius: 24, y: 10)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct DraftCardView: View {
+    @Environment(\.aurora) private var c
+    let draft: Draft
+    let isEditing: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(c.accentSoft)
+                Image(systemName: draft.isAuto ? "clock" : "doc")
+                    .font(.system(size: 15))
+                    .foregroundStyle(c.accent)
+            }
+            .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(draft.title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(c.textPrimary)
+                        .lineLimit(1)
+                    if draft.isAuto { badge("自动".localized(), c.textTertiary) }
+                    if isEditing { badge("编辑中".localized(), c.success) }
+                    if draft.isGenerated { badge("已生成".localized(), c.textTertiary) }
+                }
+                // 副标题 = 首行之后的正文；只有一行内容时不渲染，避免和标题重复
+                if !draft.subtitle.isEmpty {
+                    Text(draft.subtitle)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(c.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .multilineTextAlignment(.leading)
+                }
+                HStack(spacing: 6) {
+                    Text(draft.metaText)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(c.textTertiary)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    // 日期 + 时间：草稿可能放很久，只给时刻分不清是哪天
+                    Text(draft.timeText)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(c.textTertiary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(c.textTertiary.opacity(0.6))
+        }
+        .padding(12)
+        .frame(minHeight: 78, alignment: .leading)
+        .background(c.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .strokeBorder(c.line, lineWidth: 0.5))
+    }
+
+    private func badge(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(c.surface3))
     }
 }
 

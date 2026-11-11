@@ -532,6 +532,8 @@ final class BailianTTSService {
             payload["language_hints"] = [hint]
         }
 
+        Log(message: "参数发送: \(payload)")
+        
         return serializeToJson(payload)
     }
 

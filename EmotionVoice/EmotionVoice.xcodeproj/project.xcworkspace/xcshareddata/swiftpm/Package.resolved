@@ -1,6 +1,15 @@
 {
-  "originHash" : "cbaed84f6c602d6282a407182f62b7f0e65c0a45fcd96850745c41c089863a2c",
+  "originHash" : "5e530bdba895e6447b5b318c94df4e674ce896165f4f7379c988998627a4dbbc",
   "pins" : [
+    {
+      "identity" : "alerttoast",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/elai950/AlertToast",
+      "state" : {
+        "revision" : "b39252eacd159904afd7d718bba0afabb87f2f2f",
+        "version" : "1.3.9"
+      }
+    },
     {
       "identity" : "animatenumbertext",
       "kind" : "remoteSourceControl",
@@ -51,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-asn1.git",
       "state" : {
-        "revision" : "917b472dbe53ba699cbb0495f9a95a084bc6364d",
-        "version" : "1.7.4"
+        "revision" : "3b6410f7dee09eb33cdd26260c5fd47fda19b0e2",
+        "version" : "1.7.3"
       }
     },
     {

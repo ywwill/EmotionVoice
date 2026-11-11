@@ -207,13 +207,31 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 三份 Localizable.strings 里已有对应译文；直接写原文会让英文 / 繁中界面下
     /// 指令框冒出简体中文。iOS 与 macOS 共用本方法，一处改两端生效。
     private func updateNLInstruction() {
+        nlInstruction = composedNLInstruction
+    }
+
+    /// 语言 + 预设拼出的指令文案。
+    /// ⚠️ 拼接必须走 `.localized()`：两个值都是中文 key，直接拼原文会让英文 / 繁中界面冒出简体中文。
+    private var composedNLInstruction: String {
         let parts: [String] = [
             selectedLanguage?.localized(),
             selectedPreset.flatMap { Constants.instructionForPreset($0)?.localized() }
         ].compactMap { $0 }
-
         // 中文沿用原来的半角逗号（零回归），英文补一个空格
-        nlInstruction = parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
+        return parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
+    }
+
+    /// 草稿导出：只存语义值。指令框被用户手改过时原文照存，避免丢内容。
+    func exportNLInstruction() -> (language: String?, preset: String?, custom: String?) {
+        let auto = composedNLInstruction
+        return (selectedLanguage, selectedPreset, nlInstruction == auto ? nil : nlInstruction)
+    }
+
+    /// 草稿恢复：语义值按当前界面语言重新本地化拼接；自定义原文优先。
+    func restoreNLInstruction(language: String?, preset: String?, custom: String?) {
+        selectedLanguage = language
+        selectedPreset = preset
+        nlInstruction = custom ?? composedNLInstruction
     }
 
     // 生成状态
@@ -812,5 +830,711 @@ final class StudioParamStore {
         vm.selectedFormat = d.format
         vm.sampleRate = d.sampleRate
         save(from: vm)
+    }
+}
+
+// MARK: - 草稿（Drafts）
+//
+// 设计依据：UI/草稿功能-双端设计图.html
+// ⚠️ 存储约定：
+//   * 目录 `Documents/Drafts/`（与 `Documents/GeneratedAudio` 同级，拼路径沿用
+//     `kGeneratedAudioSubdirectory` 的写法）。
+//       - `index.json`     —— 每条草稿的**元数据**（标题 / 时间 / 字数 / 音色参数…）。
+//                             启动、列表、角标只读它，正文不进这条链路。
+//       - `<id>.json`      —— 单条草稿的**正文** `[TTSContentItem]`，恢复 / 复制时才读。
+//       - `index.corrupt-*` / `<id>.corrupt-*` —— 解码失败时的留档，绝不静默删除。
+//   * 不进 SQLite：改 `createTables()` 必须 bump schemaVersion 并会 DROP 重建，草稿是
+//     用户资产，丢不起；也不塞 `AudioFlagStore`（那是收藏 / 软删，30 天 purge）。
+//   * 正文存 `[TTSContentItem]`：双 target 共用且已 Codable，就是设计稿要求的
+//     「平台无关中间格式」。macOS 的 NSTextAttachment 与 iOS 的 doc+marks 各自编解码，
+//     ⚠️ 绝不降成纯文本，否则情绪 / 拟声 / 中断标签的插入位置全丢。
+//   * 本期本机存储；接云同步时按 id 粒度合并即可（一条草稿就是一个文件）。
+// ⚠️ 全部塞在已有 Shared 文件里：新增 .swift 要手工改 pbxproj 四处 × 两个 target。
+//
+// ⚠️ 为什么不再用一个 `drafts.v1.json` 存整库（旧方案已废弃）：
+//   1. 写放大：每存一次草稿（含切页 / 退后台的**静默自动保存**）都要把整库 encode +
+//      原子重写一遍。N 条 × M KB 的正文全压在写路径上，草稿越多、正文越长，保存越慢，
+//      而原子写是「先写临时文件再替换」，整库重写失败的窗口也越大。
+//   2. 单点损坏：一个字节解码失败 = 整库读不出来（旧代码只能留个 .corrupt 备份，用户资产全丢）。
+//   3. 启动成本：列表只要元数据，却必须把全部正文一起反序列化、常驻内存。
+//   新方案：保存一条 = 写一个 KB 级正文文件 + 重写 KB 级索引；坏一条只坏那一条；
+//   启动只解析索引，正文按需读盘（`DraftStore.load(id:)`）。
+
+/// 草稿目录（相对于 Documents/），与 `kGeneratedAudioSubdirectory` 同一套约定。
+nonisolated let kDraftsSubdirectory = "Drafts"
+
+/// 例：file:///…/Documents/Drafts
+nonisolated func draftsDirectoryURL() -> URL {
+    let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    return docs.appendingPathComponent(kDraftsSubdirectory, isDirectory: true)
+}
+
+enum DraftSource: String, Codable, Hashable {
+    case manual
+    case auto
+}
+
+/// 一次编辑态的完整快照（平台无关）。由两端各自的创作台从当前编辑器 / VM 组装。
+struct DraftSnapshot {
+    var items: [TTSContentItem]
+    var voiceKey: String
+    var voiceName: String
+    var rate: Double
+    var volume: Double
+    var format: String
+    var sampleRate: Int
+    /// 语音指令只存语义值：语言 / 预设是中文 key，恢复时按当前界面语言重新本地化拼接。
+    /// `customInstruction` 仅在用户手改过指令框、内容与自动拼接不一致时非空。
+    var nlLanguage: String?
+    var nlPreset: String?
+    var customInstruction: String?
+
+    var plainText: String { items.toPlainText() }
+    var charCount: Int { TextSplitter.calculateCharCount(plainText) }
+    var tagCount: Int { items.filter { $0.isEmotion }.count }
+
+    /// 保存主按钮禁用态的共同判据：正文为空**且**无标签。
+    var isEmpty: Bool {
+        items.allSatisfy { item in
+            guard case .text(let s) = item else { return false }
+            return s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    /// 首行标题 / 两行摘要共用的一段纯文本。
+    var trimmedText: String {
+        plainText
+            .replacingOccurrences(of: "\n+", with: "\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// macOS / ⌘S / 生成链路共用：VM 的 `ttsItems` 就是权威结构化内容。
+    /// iOS 打字期间 `ttsItems` 不是最新的，组装后要用 `TokenDocument.contentItems` 覆盖 items。
+    /// ⚠️ 四配置默认 MainActor：`DraftSnapshot` 不是 @MainActor 类型，
+    /// 这个静态方法访问 VM 的隔离属性，必须显式标注（Swift 5 只报 warning，Swift 6 是 error）。
+    @MainActor
+    static func capture(from vm: VoiceStudioViewModel) -> DraftSnapshot {
+        let nl = vm.exportNLInstruction()
+        return DraftSnapshot(items: vm.ttsItems,
+                             voiceKey: vm.selectedVoiceKey,
+                             voiceName: vm.voice?.localizedName ?? "",
+                             rate: vm.rate,
+                             volume: vm.volume,
+                             format: vm.selectedFormat.lowercased(),
+                             sampleRate: vm.sampleRate,
+                             nlLanguage: nl.language,
+                             nlPreset: nl.preset,
+                             customInstruction: nl.custom)
+    }
+}
+
+/// 一条草稿：**元数据**（写 `index.json`）+ **运行时正文缓存**（正文单独一个 `<id>.json`）。
+struct Draft: Codable, Identifiable, Hashable {
+    var id: String
+    var title: String
+    var preview: String
+    var voiceKey: String
+    var voiceName: String
+    var rate: Double
+    var volume: Double
+    var format: String
+    var sampleRate: Int
+    var nlLanguage: String?
+    var nlPreset: String?
+    var customInstruction: String?
+    var charCount: Int
+    var tagCount: Int
+    var createdAt: Date
+    var updatedAt: Date
+    var source: DraftSource
+    /// 生成成功后打标，30 天后由 `purgeExpiredGenerated()` 清理。
+    var generatedAt: Date?
+    /// 正文缓存。⚠️ 不参与 Codable：索引里读出来的条目是 nil（没读盘），
+    /// `DraftStore.load(id:)` 读到正文后回填。写索引时必须保持 KB 级，正文走独立文件。
+    var loadedItems: [TTSContentItem]?
+
+    /// ⚠️ 可能是空的：索引条目只有元数据。恢复 / 复制 / 生成前请走 `DraftStore.load(id:)`。
+    var items: [TTSContentItem] { loadedItems ?? [] }
+    /// 正文是否已载入。
+    var hasBody: Bool { loadedItems != nil }
+
+    var isAuto: Bool { source == .auto }
+    var isGenerated: Bool { generatedAt != nil }
+
+    init(id: String,
+         title: String,
+         preview: String,
+         voiceKey: String,
+         voiceName: String,
+         rate: Double,
+         volume: Double,
+         format: String,
+         sampleRate: Int,
+         nlLanguage: String?,
+         nlPreset: String?,
+         customInstruction: String?,
+         charCount: Int,
+         tagCount: Int,
+         createdAt: Date,
+         updatedAt: Date,
+         source: DraftSource,
+         generatedAt: Date? = nil,
+         loadedItems: [TTSContentItem]? = nil) {
+        self.id = id
+        self.title = title
+        self.preview = preview
+        self.voiceKey = voiceKey
+        self.voiceName = voiceName
+        self.rate = rate
+        self.volume = volume
+        self.format = format
+        self.sampleRate = sampleRate
+        self.nlLanguage = nlLanguage
+        self.nlPreset = nlPreset
+        self.customInstruction = customInstruction
+        self.charCount = charCount
+        self.tagCount = tagCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.source = source
+        self.generatedAt = generatedAt
+        self.loadedItems = loadedItems
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, preview, voiceKey, voiceName, rate, volume, format, sampleRate
+        case nlLanguage, nlPreset, customInstruction, charCount, tagCount
+        case createdAt, updatedAt, source, generatedAt
+        /// 已废弃：旧单文件格式（`drafts.v1.json`）把正文内联在这里。
+        /// ⚠️ 只用来兼容读取迁移，`encode` 绝不写回。
+        case legacyItemsJSON = "itemsJSON"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        preview = try c.decodeIfPresent(String.self, forKey: .preview) ?? ""
+        voiceKey = try c.decodeIfPresent(String.self, forKey: .voiceKey) ?? ""
+        voiceName = try c.decodeIfPresent(String.self, forKey: .voiceName) ?? ""
+        rate = try c.decodeIfPresent(Double.self, forKey: .rate) ?? 1.0
+        volume = try c.decodeIfPresent(Double.self, forKey: .volume) ?? 1.0
+        format = try c.decodeIfPresent(String.self, forKey: .format) ?? "mp3"
+        sampleRate = try c.decodeIfPresent(Int.self, forKey: .sampleRate) ?? 22050
+        nlLanguage = try c.decodeIfPresent(String.self, forKey: .nlLanguage)
+        nlPreset = try c.decodeIfPresent(String.self, forKey: .nlPreset)
+        customInstruction = try c.decodeIfPresent(String.self, forKey: .customInstruction)
+        charCount = try c.decodeIfPresent(Int.self, forKey: .charCount) ?? 0
+        tagCount = try c.decodeIfPresent(Int.self, forKey: .tagCount) ?? 0
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        source = try c.decodeIfPresent(DraftSource.self, forKey: .source) ?? .manual
+        generatedAt = try c.decodeIfPresent(Date.self, forKey: .generatedAt)
+        // 旧格式里正文内联在 itemsJSON：顺手解成正文，迁移时不用再多写一套模型。
+        if let json = try c.decodeIfPresent(String.self, forKey: .legacyItemsJSON), !json.isEmpty {
+            loadedItems = [TTSContentItem].from(jsonString: json) ?? []
+        } else {
+            loadedItems = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(preview, forKey: .preview)
+        try c.encode(voiceKey, forKey: .voiceKey)
+        try c.encode(voiceName, forKey: .voiceName)
+        try c.encode(rate, forKey: .rate)
+        try c.encode(volume, forKey: .volume)
+        try c.encode(format, forKey: .format)
+        try c.encode(sampleRate, forKey: .sampleRate)
+        try c.encodeIfPresent(nlLanguage, forKey: .nlLanguage)
+        try c.encodeIfPresent(nlPreset, forKey: .nlPreset)
+        try c.encodeIfPresent(customInstruction, forKey: .customInstruction)
+        try c.encode(charCount, forKey: .charCount)
+        try c.encode(tagCount, forKey: .tagCount)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(source, forKey: .source)
+        try c.encodeIfPresent(generatedAt, forKey: .generatedAt)
+    }
+
+    /// 只按 id 比：列表 ForEach、弹窗目标都是同一条草稿的不同快照，
+    /// 让正文参与比较会为了判等去比几十 KB 的数组。
+    static func == (lhs: Draft, rhs: Draft) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+
+    static func make(from s: DraftSnapshot, title: String?, source: DraftSource) -> Draft? {
+        let now = Date()
+        let text = s.trimmedText
+        let firstLine = text.split(separator: "\n").first.map(String.init) ?? ""
+        let given = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolved: String
+        if source == .auto {
+            resolved = "上次编辑".localized()
+        } else if !given.isEmpty {
+            resolved = given
+        } else if !firstLine.isEmpty {
+            resolved = String(firstLine.prefix(30))
+        } else {
+            resolved = "未命名草稿".localized()
+        }
+        return Draft(id: UUID().uuidString,
+                     title: resolved,
+                     preview: String(text.prefix(120)),
+                     voiceKey: s.voiceKey,
+                     voiceName: s.voiceName,
+                     rate: s.rate,
+                     volume: s.volume,
+                     format: s.format,
+                     sampleRate: s.sampleRate,
+                     nlLanguage: s.nlLanguage,
+                     nlPreset: s.nlPreset,
+                     customInstruction: s.customInstruction,
+                     charCount: s.charCount,
+                     tagCount: s.tagCount,
+                     createdAt: now,
+                     updatedAt: now,
+                     source: source,
+                     generatedAt: nil,
+                     loadedItems: s.items)
+    }
+
+    /// 覆盖式更新（自动保存复用同一条 id / createdAt，恒定单条）。
+    mutating func update(from s: DraftSnapshot) {
+        loadedItems = s.items
+        preview = String(s.trimmedText.prefix(120))
+        voiceKey = s.voiceKey
+        voiceName = s.voiceName
+        rate = s.rate
+        volume = s.volume
+        format = s.format
+        sampleRate = s.sampleRate
+        nlLanguage = s.nlLanguage
+        nlPreset = s.nlPreset
+        customInstruction = s.customInstruction
+        charCount = s.charCount
+        tagCount = s.tagCount
+        updatedAt = Date()
+        generatedAt = nil
+        if isAuto { title = "上次编辑".localized() }
+    }
+}
+
+/// 编辑器「待提交内容」的同步结算钩子。
+///
+/// 内容从编辑器同步进 VM 都带一拍延迟（macOS 0.35s 去抖），而 ⌘S / 文件菜单这些
+/// **没有 View 上下文**的保存入口直接读 `VoiceStudioViewModel.shared` 取快照，
+/// 读到的可能还是上一版。编辑器挂载时把自己的结算闭包注册到这里，保存前统一调一次，
+/// 保证「落盘的一定是屏幕上最新的一份」。
+///
+/// ⚠️ 闭包必须弱捕获视图：编辑器销毁后自动失效，不需要额外注销。
+@MainActor
+enum PendingEditorCommit {
+
+    /// 由当前编辑器注册（macOS：`EmotionTokenTextView.commitPendingChangesNow()`）。
+    static var handler: (() -> Void)?
+
+    /// 把编辑器里还没同步出去的输入当场写进 binding / VM。
+    static func flush() { handler?() }
+}
+
+/// 草稿仓库。入口只读 `count`（低频）；⛔ 禁止把播放器的 10Hz 发布者挂到入口或列表上。
+///
+/// 磁盘布局见本节顶部注释：`index.json`（元数据）+ `<id>.json`（正文）。
+/// 内存里 `drafts` 只保证元数据齐全，正文在 `save` / `load(id:)` 时才有；
+/// ⛔ 别在列表 cell 里访问 `draft.items`（那会触发读盘）。
+@MainActor
+final class DraftStore: ObservableObject {
+
+    static let shared = DraftStore()
+    static let retentionDays = 30
+
+    @Published private(set) var drafts: [Draft] = []
+    /// 当前工作区由哪条草稿恢复而来 → 列表里的「编辑中」标记。
+    @Published private(set) var editingDraftID: String? = nil
+    /// 手动保存完成信号：⌘S（KeyboardShortcuts）/ 文件菜单 / 卡片按钮都走这里，View 借它弹提示。
+    @Published private(set) var saveSignal: Int = 0
+
+    private let dirURL: URL
+    private let indexURL: URL
+    /// 索引：只排 key、不 prettyPrint（元数据很小，但没必要为可读性多写几 KB）。
+    private let indexEncoder = JSONEncoder()
+    /// 正文：同样不 prettyPrint —— 正文可能几十上百 KB，缩进会让文件体积翻倍。
+    private let bodyEncoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    var count: Int { drafts.count }
+    var manual: [Draft] { drafts.filter { !$0.isAuto }.sorted { $0.updatedAt > $1.updatedAt } }
+    var auto: [Draft] { drafts.filter { $0.isAuto }.sorted { $0.updatedAt > $1.updatedAt } }
+
+    private init() {
+        let fm = FileManager.default
+        let dir = draftsDirectoryURL()
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        dirURL = dir
+        indexURL = dir.appendingPathComponent("index.json")
+        indexEncoder.outputFormatting = [.sortedKeys]
+        bodyEncoder.outputFormatting = [.sortedKeys]
+
+        drafts = Self.readIndex(from: indexURL, using: decoder, fm: fm)
+        migrateLegacyStoreIfNeeded(fm: fm)
+        purgeExpiredGenerated()
+    }
+
+    // MARK: 路径
+
+    /// 正文文件：`<id>.json`。
+    private func bodyURL(for id: String) -> URL {
+        dirURL.appendingPathComponent(Self.fileName(for: id))
+    }
+
+    /// id 是 UUID 字符串，但仍过滤一遍：旧数据 / 手改文件名别让 `/` 跑出草稿目录。
+    private static func fileName(for id: String) -> String {
+        let safe = id.map { ch -> Character in
+            ch.isLetter || ch.isNumber || ch == "-" || ch == "_" ? ch : "_"
+        }
+        return String(safe) + ".json"
+    }
+
+    // MARK: 读写
+
+    private static func readIndex(from url: URL, using decoder: JSONDecoder, fm: FileManager) -> [Draft] {
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        do {
+            return try decoder.decode([Draft].self, from: data)
+        } catch {
+            // 解码失败绝不静默清空覆盖：坏文件留档，避免一次升级把用户资产抹掉。
+            let backup = url.deletingLastPathComponent()
+                .appendingPathComponent("index.corrupt-\(Int(Date().timeIntervalSince1970)).json")
+            try? fm.copyItem(at: url, to: backup)
+            #if DEBUG
+            print("[DraftStore] index decode failed, backup kept at \(backup.path): \(error)")
+            #endif
+            return []
+        }
+    }
+
+    /// 重写索引（KB 级）。**不含正文** —— `Draft.encode` 不写 `loadedItems`。
+    private func writeIndex() {
+        do {
+            try indexEncoder.encode(drafts).write(to: indexURL, options: .atomic)
+        } catch {
+            #if DEBUG
+            print("[DraftStore] write index failed: \(error)")
+            #endif
+        }
+    }
+
+    /// 只重写这一条正文。索引里的副本同步保留 `loadedItems`，方便同一会话内再次读取。
+    private func writeBody(_ d: Draft) {
+        guard let items = d.loadedItems else { return }
+        do {
+            try bodyEncoder.encode(items).write(to: bodyURL(for: d.id), options: .atomic)
+        } catch {
+            #if DEBUG
+            print("[DraftStore] write body failed(\(d.id)): \(error)")
+            #endif
+        }
+    }
+
+    private func readBody(id: String) -> [TTSContentItem]? {
+        let url = bodyURL(for: id)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        do {
+            return try decoder.decode([TTSContentItem].self, from: data)
+        } catch {
+            let backup = url.deletingPathExtension()
+                .appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970)).json")
+            try? FileManager.default.copyItem(at: url, to: backup)
+            #if DEBUG
+            print("[DraftStore] body decode failed(\(id)), backup kept at \(backup.path): \(error)")
+            #endif
+            return nil
+        }
+    }
+
+    private func removeBody(id: String) {
+        try? FileManager.default.removeItem(at: bodyURL(for: id))
+    }
+
+    /// 旧方案（单文件 `Application Support/EmotionVoice/drafts.v1.json`）→ 新目录。
+    /// ⚠️ 只在「新目录还没有索引」时搬一次；搬完把旧文件改名留档（不删，用户还能手工找回）。
+    private func migrateLegacyStoreIfNeeded(fm: FileManager) {
+        guard !fm.fileExists(atPath: indexURL.path) else { return }
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fm.temporaryDirectory
+        let legacy = base.appendingPathComponent("EmotionVoice", isDirectory: true)
+            .appendingPathComponent("drafts.v1.json")
+        guard fm.fileExists(atPath: legacy.path),
+              let data = try? Data(contentsOf: legacy),
+              let old = try? decoder.decode([Draft].self, from: data) else { return }
+
+        // 旧格式正文内联在 itemsJSON：`Draft.init(from:)` 已顺手解成 loadedItems。
+        // 解不出正文的条目（json 损坏）不迁 —— 没有正文的草稿恢复出来是空的，只会误导用户。
+        drafts = old.filter { $0.hasBody }
+        for d in drafts { writeBody(d) }
+        writeIndex()
+
+        let archived = legacy.deletingLastPathComponent()
+            .appendingPathComponent("drafts.v1.migrated.json")
+        try? fm.removeItem(at: archived)
+        try? fm.moveItem(at: legacy, to: archived)
+        #if DEBUG
+        print("[DraftStore] migrated \(drafts.count) legacy drafts → \(dirURL.path)")
+        #endif
+    }
+
+    // MARK: 增删改查
+
+    /// 存一份草稿。`.auto` 恒定覆盖单条且不发信号（静默兜底，不打断心流）。
+    @discardableResult
+    func save(_ s: DraftSnapshot,
+              title: String? = nil,
+              source: DraftSource = .manual,
+              notify: Bool = true) -> Draft? {
+        guard !s.isEmpty else { return nil }
+
+        if source == .auto, let idx = drafts.firstIndex(where: { $0.isAuto }) {
+            drafts[idx].update(from: s)
+            let saved = drafts[idx]
+            writeBody(saved)   // 只重写这一条正文
+            writeIndex()       // 索引 KB 级，重写可忽略
+            return saved
+        }
+
+        guard let d = Draft.make(from: s, title: title, source: source) else { return nil }
+        if source == .auto {
+            for old in drafts where old.isAuto { removeBody(id: old.id) }
+            drafts.removeAll { $0.isAuto }
+        }
+        drafts.append(d)
+        writeBody(d)
+        if source == .manual { editingDraftID = d.id }
+        writeIndex()
+        if notify && source == .manual { saveSignal &+= 1 }
+        return d
+    }
+
+    /// 恢复草稿前的兜底：把编辑器里的现有内容存成**一条新的手动草稿**。
+    ///
+    /// ⚠️ 不覆盖「上次编辑」那个单槽位：那条槽位每次静默自动保存都会重写，
+    ///    连续切换几份草稿时中间的内容会被后一次覆盖掉。这里每条都独立成文件，谁都不会丢。
+    ///
+    /// 去重（避免反复切换堆积一堆同内容草稿）：
+    ///  * 当前编辑态 == 「编辑中」那条草稿 → 内容与参数都已存档，不复制；
+    ///  * == 「上次编辑」那条 → 同上。
+    ///  ⚠️ 判据是「正文 **+ 音色 + 四项参数 + 语音指令**全同」，只比正文会让
+    ///     「恢复草稿 → 只调参数 → 再切走」被误判成重复：新快照不落盘，
+    ///     用户看到的那条草稿还是旧参数。
+    ///
+    /// - Note: 新草稿标题走 `Draft.make` 的默认规则（首行前 30 字），方便在列表里认出是哪段。
+    @discardableResult
+    func stashBeforeRestore(_ s: DraftSnapshot) -> Draft? {
+        guard !s.isEmpty else { return nil }
+        if isEditStateAlreadyStored(s) { return nil }
+
+        // `save` 会把「编辑中」标到新草稿上；恢复动作紧接着就会标到目标草稿，
+        // 这里先还原，避免中间那一瞬的错位被 SwiftUI 读到。
+        let previous = editingDraftID
+        let d = save(s, title: nil, source: .manual, notify: false)
+        editingDraftID = previous
+        return d
+    }
+
+    /// 现有**编辑态**是否已经原封不动地存在某条草稿里。
+    /// 判据见 `Draft.isSameEditState(as:)`：正文 + 音色 + 参数 + 语音指令全同才算重复。
+    private func isEditStateAlreadyStored(_ s: DraftSnapshot) -> Bool {
+        if let id = editingDraftID, let d = load(id: id), d.isSameEditState(as: s) { return true }
+        if let auto = drafts.first(where: { $0.isAuto }),
+           let d = load(id: auto.id), d.isSameEditState(as: s) { return true }
+        return false
+    }
+
+    /// 元数据（索引里的那份，正文可能是 nil）。
+    func draft(id: String) -> Draft? { drafts.first { $0.id == id } }
+
+    /// 取一条**带正文**的草稿：索引条目没读盘，这里按需读正文并回填内存。
+    /// ⚠️ 恢复 / 复制一律走这里 —— 直接拿列表里的 `Draft` 只有元数据，`items` 是空的。
+    /// ⚠️ 正文文件缺失 / 解码失败时返回 nil（**不是空正文**）：调用方不得拿它去覆盖编辑器。
+    @discardableResult
+    func load(id: String) -> Draft? {
+        guard let idx = drafts.firstIndex(where: { $0.id == id }) else { return nil }
+        if drafts[idx].hasBody { return drafts[idx] }
+        guard let body = readBody(id: id) else { return nil }
+        drafts[idx].loadedItems = body
+        return drafts[idx]
+    }
+
+    /// 标「编辑中」并返回带正文的草稿（恢复入口）。
+    @discardableResult
+    func restore(_ id: String) -> Draft? {
+        guard let d = load(id: id) else { return nil }
+        editingDraftID = id
+        return d
+    }
+
+    func markEditing(_ id: String?) { editingDraftID = id }
+
+    func rename(id: String, title: String) {
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, let idx = drafts.firstIndex(where: { $0.id == id }) else { return }
+        drafts[idx].title = t
+        drafts[idx].updatedAt = Date()
+        writeIndex()
+    }
+
+    @discardableResult
+    func duplicate(id: String) -> Draft? {
+        // 复制要正文；复制出来的是一条新文件，原草稿的文件不动。
+        guard var copy = load(id: id) else { return nil }
+        copy.id = UUID().uuidString
+        copy.title = "\(copy.title) \("副本".localized())"
+        copy.source = .manual
+        copy.createdAt = Date()
+        copy.updatedAt = Date()
+        copy.generatedAt = nil
+        drafts.append(copy)
+        writeBody(copy)
+        writeIndex()
+        return copy
+    }
+
+    func delete(id: String) {
+        drafts.removeAll { $0.id == id }
+        removeBody(id: id)
+        if editingDraftID == id { editingDraftID = nil }
+        writeIndex()
+    }
+
+    /// 生成成功：把当前工作区对应的草稿打标，30 天后清理（草稿 ≠ 项目，不混列）。
+    func markGenerated() {
+        guard let id = editingDraftID,
+              let idx = drafts.firstIndex(where: { $0.id == id }) else { return }
+        drafts[idx].generatedAt = Date()
+        writeIndex()
+    }
+
+    private func purgeExpiredGenerated() {
+        let cutoff = Date().addingTimeInterval(-Double(Self.retentionDays) * 86400)
+        let expired = drafts.filter { d in
+            guard let g = d.generatedAt else { return false }
+            return g < cutoff
+        }
+        guard !expired.isEmpty else { return }
+        for d in expired { removeBody(id: d.id) }
+        let ids = Set(expired.map(\.id))
+        drafts.removeAll { ids.contains($0.id) }
+        writeIndex()
+    }
+}
+
+extension VoiceStudioViewModel {
+
+    /// 把草稿逐字段写回 VM。
+    /// ⚠️ 四项参数必须同时写 `StudioParamStore`，否则「界面变了、冷启动 restoreIfNeeded 又拉回旧值」。
+    /// ⚠️ 列表里的 `Draft` 只有元数据，正文在独立文件里：这里兜底按需读盘，
+    ///    正常路径调用方应当已经 `DraftStore.load(id:)` 过了（别让这里反复读盘）。
+    /// - Returns: true 表示草稿里的音色已下架、回落到了默认音色（调用方应提示用户）。
+    @discardableResult
+    func apply(_ draft: Draft, appState: AppState?) -> Bool {
+        let resolved: Draft
+        if draft.hasBody {
+            resolved = draft
+        } else if let loaded = DraftStore.shared.load(id: draft.id) {
+            resolved = loaded
+        } else {
+            // 正文文件没了（手删 / 损坏）：宁可编辑区不动，也不能用空正文把它清掉。
+            return false
+        }
+        let items = resolved.items
+        ttsItems = items
+        text = items.toPlainText()
+        selectedVoiceKey = resolved.voiceKey
+        rate = resolved.rate
+        volume = resolved.volume
+        selectedFormat = resolved.format.lowercased()
+        sampleRate = resolved.sampleRate
+        StudioParamStore.shared.save(from: self)
+        restoreNLInstruction(language: resolved.nlLanguage,
+                             preset: resolved.nlPreset,
+                             custom: resolved.customInstruction)
+
+        var fellBack = false
+        if let appState {
+            if let v = VoiceService.shared.voice(forKey: resolved.voiceKey) {
+                appState.selectedVoice = v
+            } else {
+                selectedVoiceKey = appState.defaultVoiceKey
+                appState.selectedVoice = appState.defaultVoice
+                fellBack = true
+            }
+        }
+        return fellBack
+    }
+}
+
+extension Draft {
+
+    /// 与快照是否属于**同一份编辑态**：正文 + 音色 + 四项参数 + 语音指令全同。
+    ///
+    /// ⚠️ 只比正文不够：用户在恢复出来的草稿上只调参数（不改字）再切走时，
+    ///    旧判据会认定「内容已有归属」→ 新快照不入库，参数改动等于白调。
+    /// 浮点用容差比较：slider 走 UserDefaults / JSON 往返可能有 1e-15 级误差。
+    func isSameEditState(as s: DraftSnapshot) -> Bool {
+        guard items == s.items, voiceKey == s.voiceKey else { return false }
+        guard abs(rate - s.rate) < 0.0001, abs(volume - s.volume) < 0.0001 else { return false }
+        guard format.lowercased() == s.format.lowercased() else { return false }
+        guard sampleRate == s.sampleRate else { return false }
+        return (nlLanguage ?? "") == (s.nlLanguage ?? "")
+            && (nlPreset ?? "") == (s.nlPreset ?? "")
+            && (customInstruction ?? "") == (s.customInstruction ?? "")
+    }
+
+    /// 列表里的保存时间：**日期 + 时间**（当年省略年份）。
+    /// ⚠️ 不写「今天 / 昨天」这种模糊说法：草稿可能放很久，只给时刻会分不清是哪天。
+    var timeText: String {
+        let cal = Calendar.current
+        let sameYear = cal.component(.year, from: updatedAt) == cal.component(.year, from: Date())
+        return sameYear
+            ? updatedAt.formatted(.dateTime.month().day().hour().minute())
+            : updatedAt.formatted(date: .numeric, time: .shortened)
+    }
+
+    /// 列表副标题：正文首行之后的剩余内容。
+    /// ⚠️ 首行已经当标题用了，若把整段再截一遍就会出现「标题和副标题是同一句话」。
+    /// 取「第一个换行之后」而不是按 title 前缀裁剪：标题只保留首行前 30 字，
+    /// 按前缀裁会从一行中间切开，看起来像半句话。
+    var subtitle: String {
+        let p = preview.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !p.isEmpty else { return "" }
+        if let nl = p.firstIndex(where: { $0.isNewline }) {
+            return String(p[p.index(after: nl)...])
+                .replacingOccurrences(of: "\n", with: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        // 没有换行 = 整段只有一行（TTS 输入最常见的形态）：
+        // 从标题长度往后接着显示，既不是重复也不是半句丢失。
+        guard p.hasPrefix(title) else { return p }
+        return String(p.dropFirst(title.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 元信息一行：字数 · 音色。标签数量不展示，时间由列表单独放右侧。
+    var metaText: String {
+        let voice = voiceName.isEmpty ? "—" : voiceName
+        return "\( "%d 字".localized(charCount)) · \(voice)"
+    }
+}
+
+extension DraftStore {
+    /// 快捷键 / 文件菜单没有 View 上下文，直接从共享 VM 组装快照。
+    ///
+    /// ⚠️ 取快照前必须先 `PendingEditorCommit.flush()`：编辑器内容同步进 VM 有 0.35s 去抖，
+    ///    少了这步会「刚打完字立刻 ⌘S，存进去的是上一版正文」。
+    func saveFromSharedVM() {
+        PendingEditorCommit.flush()
+        save(DraftSnapshot.capture(from: .shared), source: .manual)
     }
 }

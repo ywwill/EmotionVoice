@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import AppKit
+import AlertToast
 
 /// 语音合成工作台
 struct VoiceStudioView: View {
@@ -13,6 +15,8 @@ struct VoiceStudioView: View {
     @EnvironmentObject var appState: AppState
     // 使用 shared 单例，保证页面切换时数据不丢失（文本/情感/语速音量等）
     @StateObject private var vm = VoiceStudioViewModel.shared
+    /// 草稿仓库：低频（保存 / 恢复 / 删除才变），不是播放器的 10Hz 发布者。
+    @ObservedObject private var drafts = DraftStore.shared
     // 注意：这里刻意不订阅 AudioPreviewPlayer（不用 @ObservedObject）。
     // 播放进度以 10Hz 刷新，一旦在页面层级订阅，整页（文本编辑器 + 全部面板）
     // 都会跟着重算。需要播放态的地方下沉到子视图里订阅，见 VoiceRowPlayback。
@@ -40,15 +44,52 @@ struct VoiceStudioView: View {
     /// 语音指令说明弹窗
     @State private var showNLRulePopover: Bool = false
 
+    // MARK: 草稿
+    @State private var showDraftModal: Bool = false
+    /// 恢复确认 / 重命名 / 删除共用一个自定义 Dialog，避免多个 .alert 互相覆盖。
+    @State private var draftDialog: DraftDialog? = nil
+    @State private var draftRenameText: String = ""
+    /// 保存 / 恢复反馈统一走 AlertToast：`.hud` 从顶部落下、水平居中，1.5s 自动收起。
+    /// 不再自绘提示条，也不再提供撤销（产品要求）。
+    private enum DraftToastKind { case saved, restored }
+    @State private var showDraftToast = false
+    @State private var draftToastKind: DraftToastKind = .saved
+
     var body: some View {
         studioContent
-            // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域；
-            // 分区隐藏时也要屏蔽，否则常驻的透明页会拦下其它分区的点击
+            // 草稿列表：窗口内 modal（遮罩 + 居中卡片）。
+            // ⚠️ 必须排在 `draftDialog` 那个 overlay **之前**（先写 = 下层）：
+            //    从列表里点「恢复 / 重命名 / 删除」时，确认层要压在列表之上，
+            //    而不是被列表盖住。
+            .overlay {
+                if showDraftModal {
+                    DraftModalView(store: drafts,
+                                   isPresented: $showDraftModal,
+                                   isKeyboardActive: draftDialog == nil,
+                                   canSave: !currentSnapshot.isEmpty,
+                                   onSave: saveCurrentDraft,
+                                   onRestore: requestRestore,
+                                   onRename: { d in
+                                       draftRenameText = d.title
+                                       presentDraftDialog(.rename(d))
+                                   },
+                                   onDuplicate: { d in drafts.duplicate(id: d.id) },
+                                   onDelete: { d in presentDraftDialog(.delete(d)) })
+                        .transition(.opacity)
+                }
+            }
+            .overlay {
+                if let dialog = draftDialog {
+                    DraftDialogView(kind: dialog,
+                                    renameText: $draftRenameText,
+                                    onCancel: { draftDialog = nil },
+                                    onConfirm: { confirmDraftDialog(dialog) })
+                }
+            }
+            .toast(isPresenting: $showDraftToast, duration: 1.0, tapToDismiss: false) {
+                draftToastAlert
+            }
             .allowsHitTesting(isActive && !showGenerationModal)
-            // 弹窗与工作台里的 NSTextView 共处同一窗口。SwiftUI 自绘内容不是 NSView，
-            // 不参与 AppKit 的 cursor rect 判定，下层的 I-beam 会穿透到弹窗上方
-            //（异常范围正好等于卡片内容区高度）。这里在弹窗期间禁用窗口的 cursor rects，
-            // 交给弹窗内各控件的 hover 决定光标；弹窗关闭后恢复。
             .suppressesCursorRects(showGenerationModal)
             .sheet(isPresented: $showVoiceLibrarySheet) {
                 VoiceLibrarySheet()
@@ -58,8 +99,6 @@ struct VoiceStudioView: View {
                 CreditsPurchaseView()
                     .frame(width: 600, height: 600)
             }
-            // 注：生成失败/校验的 alert 已移到 GenerationOverlay（全局层），
-            // 关掉弹窗后即便切到别的页面也能弹出来。
             .onAppear {
             // 初始化音色：上次使用的音色优先，没有则回落到旗舰默认音色（idx 1）
             appState.resolveSelectedVoice()
@@ -69,10 +108,6 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = appState.defaultVoiceKey
                 appState.selectedVoice = appState.defaultVoice
             }
-            // 四项音频参数：记住「上次用的」而不是「设置页默认值」。
-            // 设置页配的格式 / 采样率只作为「无存档时的起点」传进去；
-            // ⚠️ 不要把它传给 reset ——「重置」必须回出厂值（mp3），否则设置页
-            //    存过 WAV 时点重置会回到 WAV，与 iOS 不一致。见 audioControlCard。
             StudioParamStore.shared.restoreIfNeeded(to: vm, defaults: studioParamDefaults)
         }
         .onChange(of: appState.selectedVoice?.key) { _, newKey in
@@ -91,6 +126,10 @@ struct VoiceStudioView: View {
             showInterruptRulePopover = false
             showRichLanguageRulePopover = false
             showNLRulePopover = false
+            showDraftModal = false
+            draftDialog = nil
+            // 常驻页失活 = 用户离开创作台：静默兜底一条覆盖式「自动保存」。
+            autoSaveCurrent()
         }
         // 四项参数实时落盘：改完即使立刻退出 App 也不丢。
         // ⚠️ 不再像以前那样回写 `appState.defaultFormat` / `defaultSampleRate`：
@@ -99,6 +138,14 @@ struct VoiceStudioView: View {
         .onChange(of: vm.volume) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.selectedFormat) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
+        // ⌘S / 文件菜单 / 卡片按钮共用 saveSignal，统一弹一条「草稿已保存」。
+        .onChange(of: drafts.saveSignal) { _, _ in
+            presentDraftToast(.saved)
+        }
+        // 退出 App 前再兜一次，覆盖「没切过页就直接 ⌘Q」的路径。
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            autoSaveCurrent()
+        }
     }
 
     /// macOS 专属：设置页能配「默认格式 / 采样率」，语速 / 音量没有对应设置项，用出厂值。
@@ -110,6 +157,235 @@ struct VoiceStudioView: View {
                           volume: StudioParamValues.factory.volume,
                           format: appState.defaultFormat,
                           sampleRate: appState.defaultSampleRate)
+    }
+
+    // MARK: - 草稿入口
+
+    private var currentSnapshot: DraftSnapshot { DraftSnapshot.capture(from: vm) }
+
+    private var clearButton: some View {
+        Button {
+            clearEditor()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("清空".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(AppColor.textSecondary)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(AppColor.borderMedium, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .disabled(currentSnapshot.isEmpty)
+        .opacity(currentSnapshot.isEmpty ? 0.45 : 1)
+        .help("清空".localized())
+    }
+
+    private var draftSaveButton: some View {
+        Button {
+            saveCurrentDraft()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("保存".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(AppColor.accentGlow)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(AppColor.accentWash)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(AppColor.accentLine,
+                                    style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .disabled(currentSnapshot.isEmpty)
+        .opacity(currentSnapshot.isEmpty ? 0.45 : 1)
+        .help("⌘ S 快速保存".localized())
+    }
+
+    /// 「草稿 N」：角标 >99 显示 99+、为 0 时隐藏。
+    private var draftListButton: some View {
+        Button {
+            // 打开前先结算编辑器去抖：列表里的「保存当前编辑」和空态判断都要读最新内容。
+            commitEditor()
+            withAnimation(.easeOut(duration: 0.16)) { showDraftModal = true }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "folder")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("草稿".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+                if drafts.count > 0 {
+                    Text(drafts.count > 99 ? "99+" : "\(drafts.count)")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundStyle(AppColor.bgPrimary)
+                        .frame(minWidth: 15, minHeight: 15)
+                        .padding(.horizontal, 3)
+                        .background(Capsule().fill(AppColor.accentPrimary))
+                }
+            }
+            .foregroundStyle(showDraftModal ? AppColor.accentGlow : AppColor.textSecondary)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(AppColor.borderMedium, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+
+    // MARK: - 草稿行为
+
+    /// 清空编辑区：复用 VM 的 `clearText()`（正文 + 标签 + 上一条生成结果），
+    /// 并把「编辑中」标记摘下 —— 工作区内容已与那条草稿不一致，不该再标它。
+    private func clearEditor() {
+        commitEditor()
+        guard !currentSnapshot.isEmpty else { return }
+        // `clearTokensTrigger` 会重建 NSTextView，先交出 firstResponder 避免光标错位
+        resignTextEditor()
+        vm.clearText()
+        drafts.markEditing(nil)
+    }
+
+    private func saveCurrentDraft() {
+        commitEditor()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        // 顶部提示统一由 saveSignal 弹，快捷键 / 菜单 / 按钮三条通道不会重复提示
+        drafts.save(snap, source: .manual)
+    }
+
+    /// 静默兜底：退后台 / 切分区 / 恢复前，恒定覆盖单条「自动保存」。
+    private func autoSaveCurrent() {
+        commitEditor()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .auto, notify: false)
+    }
+
+    /// 把编辑器里还在去抖窗口（0.35s）内的输入立刻结算给 VM。
+    /// ⚠️ 保存 / 恢复前必须调用：否则 `currentSnapshot` 读到的是旧内容，
+    ///    而那条迟到的回调会在 `vm.apply` 之后才跑，把刚恢复的正文又写回旧内容。
+    private func commitEditor() {
+        EmotionTokenTextView.active?.commitPendingChangesNow()
+    }
+
+    private func requestRestore(_ d: Draft) {
+        commitEditor()
+        // 状态矩阵：仅「当前编辑区非空 + 点草稿」才需要确认。
+        // ⚠️ 这里**不关**列表：确认层直接压在列表上，取消后还能接着挑另一条；
+        //    真正恢复成功才由 `performRestore` 收起 modal。
+        if currentSnapshot.isEmpty {
+            performRestore(d)
+        } else {
+            presentDraftDialog(.restore(d))
+        }
+    }
+
+    /// 打开草稿自定义 Dialog。**必须先让编辑区交出 firstResponder**：
+    /// 这层浮层是普通 SwiftUI overlay，不会自己变成 key window，NSTextView 仍然是
+    /// first responder —— 弹窗挡住编辑区的时候，打字 / 空格会继续落到下面的正文里。
+    /// ⚠️ 同时 `draftDialog != nil` 会参与 `isInteractive`，编辑区顺带变成不可编辑、
+    ///    不注册 I-beam；Dialog 关掉后 `updateNSView` 再把焦点还回编辑区。
+    private func presentDraftDialog(_ dialog: DraftDialog) {
+        resignTextEditor()
+        draftDialog = dialog
+    }
+
+    private func performRestore(_ d: Draft) {
+        // 恢复成功就收起草稿 modal（内容整体切换，留在列表上没有意义）。
+        showDraftModal = false
+        // ⚠️ 先把编辑器里未同步的输入结算给 VM，再取兜底快照：
+        //    否则 `before` 是旧内容，而且那条迟到的同步回调会在 `vm.apply` 之后才执行，
+        //    把刚写进 binding 的新正文又覆盖回旧内容 —— 表现就是「点恢复，编辑器没变化」。
+        commitEditor()
+        let before = currentSnapshot
+
+        guard let full = drafts.load(id: d.id) else { return }
+
+        // 恢复前兜底：现有内容存成**一条新的草稿**（不覆盖「上次编辑」那个单槽位）。
+        // 这样连续切换多份草稿，中间每一份内容都留得住，谁都不会被下一次兜底盖掉。
+        drafts.stashBeforeRestore(before)
+
+        // ⚠️ 恢复会重建 NSTextView 内容：先交出 firstResponder 再写，避免光标错位。
+        resignTextEditor()
+        vm.apply(full, appState: appState)
+        // 正文不再被兜底覆盖，所以「编辑中」可以老实标在目标上（含「上次编辑」那条）。
+        drafts.restore(full.id)
+
+        presentDraftToast(.restored)
+    }
+
+    /// 让编辑区交出键盘。
+    /// ⚠️ 先看 `mainWindow` 再看 `keyWindow`：从 NSPopover（草稿列表）里点出来的动作，
+    ///    `keyWindow` 可能是 popover 自己的窗口，拿它去找 NSTextView 会找不到、白跑一趟。
+    private func resignTextEditor() {
+        for window in [NSApp.mainWindow, NSApp.keyWindow].compactMap({ $0 }) {
+            if window.firstResponder is NSTextView {
+                window.makeFirstResponder(nil)
+                return
+            }
+        }
+    }
+
+    private func confirmDraftDialog(_ dialog: DraftDialog) {
+        switch dialog {
+        case .restore(let d):
+            draftDialog = nil
+            performRestore(d)
+        case .rename(let d):
+            drafts.rename(id: d.id, title: draftRenameText)
+            draftDialog = nil
+        case .delete(let d):
+            drafts.delete(id: d.id)
+            draftDialog = nil
+        }
+    }
+
+    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
+    private func presentDraftToast(_ kind: DraftToastKind) {
+        draftToastKind = kind
+        showDraftToast = false
+        DispatchQueue.main.async { self.showDraftToast = true }
+    }
+
+    /// 两条提示共用同一外观，只换文案与对勾颜色。
+    private var draftToastAlert: AlertToast {
+        let title: String
+        let color: Color
+        switch draftToastKind {
+        case .saved:
+            title = "草稿已保存".localized()
+            color = AppColor.statusSuccess
+        case .restored:
+            title = "草稿已恢复".localized()
+            color = AppColor.accentGlow
+        }
+        return AlertToast(displayMode: .hud,
+                          type: .complete(color),
+                          title: title,
+                          style: .style(backgroundColor: AppColor.bgTertiary,
+                                        titleColor: AppColor.textPrimary))
     }
 
     /// 工作台主体（不含生成弹窗）
@@ -137,15 +413,26 @@ struct VoiceStudioView: View {
 
     // MARK: - 文本编辑器
 
+    /// 编辑区是否可交互 / 可抢焦点：分区可见、且没有被浮层（生成弹窗 / 草稿 modal / 草稿 Dialog）挡住。
+    /// ⚠️ 草稿列表改成 modal 后同样要参与这个判据，否则鼠标点卡片、按空格回车
+    ///    仍会落进底下的正文（overlay 不会自动变成 key window）。
+    /// ⚠️ 草稿 Dialog 虽然只是 SwiftUI overlay，但它出现时键盘必须归它所有；
+    ///    `presentDraftDialog` 会立刻交出 firstResponder，这里保证状态持续成立
+    ///    （打字、I-beam、选中全部关掉），Dialog 消失后 `updateNSView` 会把焦点还回编辑区。
+    private var isEditorInteractive: Bool {
+        isActive && !showGenerationModal && draftDialog == nil && !showDraftModal
+    }
+
     private var textEditorCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("文本输入".localized())
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
+            HStack(spacing: 8) {
                 Text("%d 字".localized(vm.charCount))
-                .font(AppFont.monoSmall)
-                .foregroundStyle(AppColor.textTertiary)
+                    .font(AppFont.monoSmall)
+                    .foregroundStyle(AppColor.textTertiary)
+                Spacer(minLength: 8)
+                draftSaveButton
+                draftListButton
+                clearButton
             }
             .padding(.bottom, 12)
             .overlay(alignment: .bottom) {
@@ -164,10 +451,10 @@ struct VoiceStudioView: View {
                 insertTokenCategory: vm.insertTokenCategory,
                 clearTrigger: vm.clearTokensTrigger,
                 textBinding: $vm.text,
-                // 生成弹窗 / 分区隐藏期间让文本域彻底不可交互：
+                // 生成弹窗 / 草稿 Dialog / 分区隐藏期间让文本域彻底不可交互：
                 // 不抢焦点、不注册 I-beam 光标区。isInteractive 变化时
                 // updateNSView 会置 isEditable/isSelectable = false 并交出 firstResponder。
-                isInteractive: isActive && !showGenerationModal
+                isInteractive: isEditorInteractive
             )
             .font(AppFont.bodyLarge)
             .foregroundStyle(AppColor.textPrimary)
@@ -950,6 +1237,8 @@ struct VoiceStudioView: View {
                 vm.generate { success in
                     if success {
                         state.refreshCredits()
+                        // 生成成功后音频进「项目 / 历史」；草稿只打标，30 天后清理，两者不混列。
+                        drafts.markGenerated()
                     }
                 }
             }
@@ -1227,5 +1516,482 @@ struct NLRulePopover: View {
                 .padding(.leading, 18)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - 草稿 Popover / 行 / 对话框
+//
+// 对齐设计稿「MAC 02 / 03」：Popover 338 宽，分「已保存的草稿 / 自动保存」两组，
+// 整行即热区，hover 浮出「恢复」，右键出重命名 / 复制 / 删除菜单。
+
+private enum DraftDialog {
+    case restore(Draft)
+    case rename(Draft)
+    case delete(Draft)
+}
+
+private struct DraftModalView: View {
+    @ObservedObject var store: DraftStore
+    @Binding var isPresented: Bool
+    /// 确认层（恢复 / 重命名 / 删除）压在列表上时把键盘让出去：
+    /// 否则按 ⏎ 会同时命中列表的「恢复」，在确认框底下又跑一次恢复流程。
+    let isKeyboardActive: Bool
+    let canSave: Bool
+    let onSave: () -> Void
+    let onRestore: (Draft) -> Void
+    let onRename: (Draft) -> Void
+    let onDuplicate: (Draft) -> Void
+    let onDelete: (Draft) -> Void
+
+    /// ↑↓ 选行 / ⏎ 恢复。modal 打开即接管焦点，关闭后
+    /// `EmotionTokenEditor.updateNSView` 会因 `isInteractive` 变回 true 把焦点还给编辑区。
+    @FocusState private var listFocused: Bool
+    @State private var selection: Int = 0
+
+    private var allDrafts: [Draft] { store.manual + store.auto }
+
+    var body: some View {
+        ZStack {
+            // 遮罩：点空白关闭。不用 material —— 工作台本身是暗色，透上来只会干扰阅读。
+            Rectangle()
+                .fill(Color.black.opacity(0.55))
+                .contentShape(Rectangle())
+                .onTapGesture { close() }
+
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                saveRow
+                Divider().background(AppColor.borderSubtle)
+                if store.count == 0 {
+                    emptyView
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if !store.manual.isEmpty {
+                                sectionHeader("已保存的草稿".localized(), count: store.manual.count)
+                                ForEach(store.manual) { d in
+                                    row(d)
+                                }
+                            }
+                            if !store.auto.isEmpty {
+                                sectionHeader("自动保存".localized(), count: store.auto.count)
+                                ForEach(store.auto) { d in
+                                    row(d)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 8)
+                    }
+                    .frame(maxHeight: 420)
+                }
+                footer
+            }
+            .frame(width: 440)
+            // 卡片比工作台底（bgPrimary）亮一档，配大阴影才有「浮起」感；
+            // 与列表 footer 同色，靠 Divider 分栏（保持原面板视觉）。
+            .background(AppColor.bgTertiary)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .stroke(AppColor.borderMedium, lineWidth: 1))
+            .shadow(color: .black.opacity(0.55), radius: 32, y: 14)
+        }
+        .focusable(isKeyboardActive)
+        // ⚠️ focusable 挂在遮罩 + 卡片的整层 ZStack 上（要接住 ↑↓ / ⏎ / Esc），
+        //    该层尺寸等于整个工作台，AppKit 会沿整块区域画系统 focus ring ——
+        //    表现为弹窗周围一圈很大的蓝色描边。这里必须关掉；
+        //    键盘事件仍由下面的 onKeyPress 正常接收。
+        .focusEffectDisabled()
+        .focused($listFocused)
+        // 跨一拍再聚焦：overlay 首次挂载时焦点系统还没就绪，当场赋值会被丢掉。
+        .onAppear {
+            DispatchQueue.main.async { listFocused = true }
+        }
+        // 确认层收起后把键盘收回列表，用户可以继续用 ↑↓ / ⏎ 挑下一条。
+        .onChange(of: isKeyboardActive) { _, active in
+            if active { listFocused = true }
+        }
+        // 规格 A：Esc 关闭、↑↓ 选行、⏎ 恢复
+        .onExitCommand { close() }
+        .onKeyPress(.upArrow) {
+            guard isKeyboardActive, !allDrafts.isEmpty else { return .handled }
+            selection = max(0, selection - 1)
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            guard isKeyboardActive, !allDrafts.isEmpty else { return .handled }
+            selection = min(selection + 1, allDrafts.count - 1)
+            return .handled
+        }
+        .onKeyPress(.return) {
+            guard isKeyboardActive, allDrafts.indices.contains(selection) else { return .handled }
+            onRestore(allDrafts[selection])
+            return .handled
+        }
+    }
+
+    /// 统一关闭入口：所有路径都带一点淡出，避免「啪」一下消失。
+    private func close() {
+        withAnimation(.easeOut(duration: 0.14)) { isPresented = false }
+    }
+
+    private func row(_ d: Draft) -> some View {
+        DraftRowView(draft: d,
+                     isEditing: store.editingDraftID == d.id,
+                     isSelected: allDrafts.firstIndex(where: { $0.id == d.id }) == selection,
+                     onRestore: { onRestore(d) },
+                     onRename: { onRename(d) },
+                     onDuplicate: { onDuplicate(d) },
+                     onDelete: { onDelete(d) })
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder")
+                .font(.system(size: 12))
+                .foregroundStyle(AppColor.accentGlow)
+            Text("草稿".localized())
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundStyle(AppColor.textPrimary)
+            Text("\(store.count)")
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(AppColor.textSecondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(AppColor.bgElevated))
+            Spacer()
+            Button {
+                close()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(AppColor.textTertiary)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+    }
+
+    private var saveRow: some View {
+        Button(action: onSave) {
+            HStack(spacing: 9) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColor.accentGlow)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("保存当前编辑".localized())
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppColor.accentGlow)
+                    Text("包含正文、标签、音色与全部参数".localized())
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(AppColor.textTertiary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "plus")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColor.accentGlow)
+            }
+            .padding(11)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(AppColor.accentWash)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(AppColor.accentLine,
+                                    style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .disabled(!canSave)
+        .opacity(canSave ? 1 : 0.45)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 10)
+    }
+
+    private func sectionHeader(_ title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 9.5, weight: .bold))
+                .foregroundStyle(AppColor.textTertiary)
+            Spacer()
+            Text("\(count)")
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(AppColor.textTertiary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private var emptyView: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "doc.badge.plus")
+                .font(.system(size: 22))
+                .foregroundStyle(AppColor.accentGlow)
+                .frame(width: 48, height: 48)
+                .background(RoundedRectangle(cornerRadius: 14).fill(AppColor.accentWash))
+            Text("还没有草稿".localized())
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppColor.textPrimary)
+            Text("写到一半想先放一放？把这段内容存成草稿，随时点一下就能接着写。".localized())
+                .font(.system(size: 10.5))
+                .foregroundStyle(AppColor.textTertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: onSave) {
+                HStack(spacing: 5) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10))
+                    Text("保存当前编辑".localized())
+                        .font(.system(size: 10.5, weight: .bold))
+                }
+                .foregroundStyle(AppColor.bgPrimary)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(AppColor.accentPrimary))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .disabled(!canSave)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 26)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "info.circle")
+                .font(.system(size: 9))
+            Text(store.count == 0
+                 ? "⌘ S 快速保存".localized()
+                 : "恢复前会自动保存当前内容".localized())
+                .font(.system(size: 9.5))
+            Spacer()
+        }
+        .foregroundStyle(AppColor.textTertiary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(AppColor.bgTertiary)
+        .overlay(alignment: .top) { Divider().background(AppColor.borderSubtle) }
+    }
+}
+
+private struct DraftRowView: View {
+    let draft: Draft
+    let isEditing: Bool
+    let isSelected: Bool
+    let onRestore: () -> Void
+    let onRename: () -> Void
+    let onDuplicate: () -> Void
+    let onDelete: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: onRestore) {
+            HStack(alignment: .top, spacing: 9) {
+                Image(systemName: draft.isAuto ? "clock" : "doc")
+                    .font(.system(size: 12))
+                    .foregroundStyle(draft.isAuto ? AppColor.textTertiary : AppColor.accentGlow)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(draft.isAuto ? AppColor.bgHover : AppColor.accentWash)
+                    )
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 4) {
+                        Text(draft.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppColor.textPrimary)
+                            .lineLimit(1)
+                        if draft.isAuto { badge("自动".localized(), AppColor.textTertiary) }
+                        if isEditing { badge("编辑中".localized(), AppColor.statusSuccess) }
+                        if draft.isGenerated { badge("已生成".localized(), AppColor.textTertiary) }
+                    }
+                    // 副标题 = 首行之后的正文。只有一行内容时整行不渲染 ——
+                    // 之前 preview 是从全文开头截的，首行当标题、又原样出现在副标题里，
+                    // 看起来像重复的一句话。
+                    if !draft.subtitle.isEmpty {
+                        Text(draft.subtitle)
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(AppColor.textSecondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    HStack(spacing: 6) {
+                        Text(draft.metaText)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(AppColor.textTertiary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        // 日期 + 时间：草稿可能放很久，只给时刻分不清是哪天
+                        Text(draft.timeText)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(AppColor.textTertiary)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(9)
+            .background(RoundedRectangle(cornerRadius: 8)
+                .fill(hovering ? AppColor.bgHover
+                      : (isSelected ? AppColor.accentWash : Color.clear)))
+            // 整条热区：留白区域也能点，不是只有文字部分
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .onHover { hovering = $0 }
+        .contextMenu {
+            Button("重命名".localized(), action: onRename)
+            Button("复制".localized(), action: onDuplicate)
+            Divider()
+            Button("删除".localized(), action: onDelete)
+        }
+    }
+
+    private func badge(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 8.5, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .overlay(RoundedRectangle(cornerRadius: 4)
+                .stroke(color.opacity(0.4), lineWidth: 0.5))
+    }
+}
+
+private struct DraftDialogView: View {
+    let kind: DraftDialog
+    @Binding var renameText: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    /// 重命名弹窗的键盘归宿：编辑区已经交出 firstResponder，焦点得落到这个输入框上，
+    /// 否则用户开弹窗后直接打字会「没反应」。
+    @FocusState private var renameFocused: Bool
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.black.opacity(0.55))
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onCancel)
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(AppColor.accentGlow)
+                    .frame(width: 38, height: 38)
+                    .background(RoundedRectangle(cornerRadius: 11).fill(AppColor.accentWash))
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppColor.textPrimary)
+                if !message.isEmpty {
+                    Text(message)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(AppColor.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if case .rename = kind {
+                    TextField("草稿名称".localized(), text: $renameText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11))
+                        .focused($renameFocused)
+                        .onSubmit(onConfirm)
+                }
+                if case .restore = kind { noteBox }
+                HStack(spacing: 8) {
+                    dialogButton("取消".localized(), filled: false, action: onCancel)
+                    dialogButton(confirmTitle, filled: true, action: onConfirm)
+                }
+            }
+            .padding(20)
+            .frame(width: 322)
+            .background(AppColor.bgTertiary)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14)
+                .stroke(AppColor.borderMedium, lineWidth: 1))
+            .shadow(color: .black.opacity(0.6), radius: 30, y: 12)
+        }
+        .onAppear {
+            // 延到下一拍：同一次更新里编辑区还在 `makeFirstResponder(nil)`，
+            // 立刻聚焦会被那一步抢掉。
+            guard case .rename = kind else { return }
+            DispatchQueue.main.async { renameFocused = true }
+        }
+    }
+
+    private var icon: String {
+        switch kind {
+        case .restore: return "arrow.uturn.backward"
+        case .rename: return "pencil"
+        case .delete: return "trash"
+        }
+    }
+
+    private var title: String {
+        switch kind {
+        case .restore: return "恢复这份草稿？".localized()
+        case .rename: return "重命名草稿".localized()
+        case .delete: return "删除这份草稿？".localized()
+        }
+    }
+
+    private var message: String {
+        switch kind {
+        case .restore(let d):
+            return "「%@」会替换当前编辑区的全部内容，包含情绪标签、音色与参数。".localized(d.title)
+        case .rename: return ""
+        case .delete: return "删除后无法恢复。".localized()
+        }
+    }
+
+    private var confirmTitle: String {
+        switch kind {
+        case .restore: return "恢复".localized()
+        case .rename: return "保存".localized()
+        case .delete: return "删除".localized()
+        }
+    }
+
+    private var noteBox: some View {
+        HStack(alignment: .top, spacing: 7) {
+            Image(systemName: "info.circle")
+                .font(.system(size: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("当前内容会自动另存为新草稿".localized())
+            }
+        }
+        .font(.system(size: 9.5))
+        .foregroundStyle(AppColor.textTertiary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(9)
+        .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.bgHover))
+    }
+
+    private func dialogButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(filled ? AppColor.bgPrimary : AppColor.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(filled ? AppColor.accentPrimary : AppColor.bgElevated)
+                )
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
     }
 }
