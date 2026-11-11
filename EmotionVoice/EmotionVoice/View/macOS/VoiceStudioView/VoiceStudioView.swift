@@ -57,7 +57,8 @@ struct VoiceStudioView: View {
                                        presentDraftDialog(.rename(d))
                                    },
                                    onDuplicate: { d in drafts.duplicate(id: d.id) },
-                                   onDelete: { d in presentDraftDialog(.delete(d)) })
+                                   onDelete: { d in presentDraftDialog(.delete(d)) },
+                                   onDeleteAll: { presentDraftDialog(.deleteAll) })
                         .transition(.opacity)
                 }
             }
@@ -337,6 +338,9 @@ struct VoiceStudioView: View {
             draftDialog = nil
         case .delete(let d):
             drafts.delete(id: d.id)
+            draftDialog = nil
+        case .deleteAll:
+            drafts.deleteAll()
             draftDialog = nil
         }
     }

@@ -10,6 +10,8 @@ enum DraftDialog {
     case restore(Draft)
     case rename(Draft)
     case delete(Draft)
+    /// 一次性删除全部草稿（带二次确认）。
+    case deleteAll
 }
 
 struct DraftModalView: View {
@@ -23,6 +25,8 @@ struct DraftModalView: View {
     let onRename: (Draft) -> Void
     let onDuplicate: (Draft) -> Void
     let onDelete: (Draft) -> Void
+    /// 删除全部：由父层弹二次确认（`DraftDialog`），这里只负责发出请求。
+    let onDeleteAll: () -> Void
 
     @FocusState private var listFocused: Bool
     @State private var selection: Int = 0
@@ -248,6 +252,20 @@ struct DraftModalView: View {
                  : "恢复前会自动保存当前内容".localized())
                 .font(.system(size: 9.5))
             Spacer()
+            if store.count > 0 {
+                // 图标按钮：文案进 tooltip（点击后仍有二次确认框兜底）
+                Button(action: onDeleteAll) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(AppColor.statusError)
+                        .frame(width: 20, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .help("删除全部草稿".localized())
+                .accessibilityLabel("删除全部草稿".localized())
+            }
         }
         .foregroundStyle(AppColor.textTertiary)
         .padding(.horizontal, 14)
@@ -401,7 +419,7 @@ struct DraftDialogView: View {
         switch kind {
         case .restore: return "arrow.uturn.backward"
         case .rename: return "pencil"
-        case .delete: return "trash"
+        case .delete, .deleteAll: return "trash"
         }
     }
 
@@ -410,6 +428,7 @@ struct DraftDialogView: View {
         case .restore: return "恢复这份草稿？".localized()
         case .rename: return "重命名草稿".localized()
         case .delete: return "删除这份草稿？".localized()
+        case .deleteAll: return "删除全部草稿？".localized()
         }
     }
 
@@ -419,6 +438,7 @@ struct DraftDialogView: View {
             return "「%@」会替换当前编辑区的全部内容，包含情绪标签、音色与参数。".localized(d.title)
         case .rename: return ""
         case .delete: return "删除后无法恢复。".localized()
+        case .deleteAll: return "删除后无法恢复。".localized()
         }
     }
 
@@ -427,6 +447,7 @@ struct DraftDialogView: View {
         case .restore: return "恢复".localized()
         case .rename: return "保存".localized()
         case .delete: return "删除".localized()
+        case .deleteAll: return "删除全部".localized()
         }
     }
 

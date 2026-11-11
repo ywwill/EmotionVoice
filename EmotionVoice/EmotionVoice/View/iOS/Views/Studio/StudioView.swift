@@ -7,7 +7,11 @@
 import SwiftUI
 import UIKit
 import Combine
+// ⚠️ 类型检查脚本（tools/ios_typecheck）解析不到 SPM module，按需引入：
+//    真机构建走真包，`swiftc -typecheck` 用 Shims.swift 的同签名替身。
+#if canImport(AlertToast)
 import AlertToast
+#endif
 
 enum IOSPerfDebug {
     static let usePlainTextEditor = false

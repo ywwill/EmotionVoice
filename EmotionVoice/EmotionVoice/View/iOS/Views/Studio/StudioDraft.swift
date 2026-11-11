@@ -8,16 +8,20 @@ import UIKit
 
 private enum DraftForm: Identifiable {
     case delete(Draft)
+    /// 一次性删除全部草稿（带二次确认）。
+    case deleteAll
 
     var id: String {
         switch self {
         case .delete(let d): return "delete-\(d.id)"
+        case .deleteAll: return "deleteAll"
         }
     }
 
-    var draft: Draft {
+    var draft: Draft? {
         switch self {
         case .delete(let d): return d
+        case .deleteAll: return nil
         }
     }
 }
@@ -104,16 +108,20 @@ struct DraftSheet: View {
                     .foregroundStyle(c.textPrimary)
             }
             Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Text("完成".localized())
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(c.accent)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+            if store.count > 0 {
+                // 图标按钮：热区仍保持 44pt，语义交给 accessibilityLabel
+                Button {
+                    form = .deleteAll
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(c.danger)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("删除全部草稿".localized())
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)
@@ -320,8 +328,23 @@ struct DraftSheet: View {
     private func applyForm(_ f: DraftForm) {
         switch f {
         case .delete(let d): store.delete(id: d.id)
+        case .deleteAll: store.deleteAll()
         }
         form = nil
+    }
+
+    private func deleteDialogTitle(_ f: DraftForm) -> String {
+        switch f {
+        case .delete: return "删除这份草稿？".localized()
+        case .deleteAll: return "删除全部草稿？".localized()
+        }
+    }
+
+    private func deleteConfirmLabel(_ f: DraftForm) -> String {
+        switch f {
+        case .delete: return "删除".localized()
+        case .deleteAll: return "删除全部".localized()
+        }
     }
 
     // MARK: 浮层
@@ -396,15 +419,15 @@ struct DraftSheet: View {
                     .foregroundStyle(c.danger)
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(c.surface3))
-                Text("删除这份草稿？".localized())
+                Text(deleteDialogTitle(f))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(c.textPrimary)
                 Text("删除后无法恢复。".localized())
                     .font(.system(size: 12))
                     .foregroundStyle(c.textSecondary)
                     .multilineTextAlignment(.center)
-                if !f.draft.title.isEmpty {
-                    Text(f.draft.title)
+                if let d = f.draft, !d.title.isEmpty {
+                    Text(d.title)
                         .font(.system(size: 11.5))
                         .foregroundStyle(c.textTertiary)
                         .lineLimit(1)
@@ -426,7 +449,7 @@ struct DraftSheet: View {
                     Button {
                         applyForm(f)
                     } label: {
-                        Text("删除".localized())
+                        Text(deleteConfirmLabel(f))
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 44)

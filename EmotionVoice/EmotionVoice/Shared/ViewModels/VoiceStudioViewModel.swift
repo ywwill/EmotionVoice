@@ -1409,6 +1409,16 @@ final class DraftStore: ObservableObject {
         writeIndex()
     }
 
+    /// 删除全部草稿：正文文件 + 索引一起清，并摘掉「编辑中」标记。
+    /// ⚠️ 只清草稿存档，**不动工作区正文** —— 用户删的是草稿，不是当前正在写的内容。
+    func deleteAll() {
+        guard !drafts.isEmpty else { return }
+        for d in drafts { removeBody(id: d.id) }
+        drafts.removeAll()
+        editingDraftID = nil
+        writeIndex()
+    }
+
     /// 生成成功：把当前工作区对应的草稿打标，30 天后清理（草稿 ≠ 项目，不混列）。
     func markGenerated() {
         guard let id = editingDraftID,
