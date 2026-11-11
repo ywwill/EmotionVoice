@@ -10,6 +10,7 @@
 
 ## TTS / 时间戳 / 本地化
 - 无密钥 `wss://<ref>.supabase.co/functions/v1/bailian-tts?region=CN|INTL`，单条 `{"action":"synthesize"}`；run/continue/finish-task 与标签切段都在边缘函数，断线不可续传；Deno<2.5 用 `dialUpstream()`。`BailianTTSService.receive()` 是**唯一 WS 接收点**（waitForTaskStarted + 音频流循环共用），入站转储只改这里；`ttsPipeline` 串行互斥。
+- ⚠️ **`language_hints`（目标语言）是双端链路**：`Constants.nlLanguages[].languageHint` 是唯一映射源（16 种官方语言 zh/en/fr/de/ja/ko/ru/pt/th/id/vi/es/it/ms/fil/ar；**8 个中文方言留空、禁顺手映射 `zh`**）→ `Constants.languageHint(forName:)` → VM `synthesizeWithTimeline(languageHint:)` → `buildSynthesizeRequest` 写 `payload["language_hints"] = [hint]`（**array[string] 只放 1 个值，上游当前只处理第一个；无值不写字段 = 默认空**）→ 边缘函数 `ALLOWED_LANGUAGE_HINTS` 白名单校验后写进 `run-task.parameters`。试听路径传 nil，时间戳降级重跑须保留 hint。⚠️ 改 `index.ts` 后**必须部署并核对版本**（11-11 已部署 v14）；旧客户端不传字段不影响。
 - 字级时间戳走 `word_timestamp_enabled` → `sentence-end` 的 `words[]`；客户端 `synthesizeWithTimeline()`。⚠️ **改 `supabase/functions/bailian-tts/index.ts` 必须部署并核对版本**：`supabase functions deploy bailian-tts --project-ref dpyyhbqqmegencxekkcr` + `functions list` 看 VERSION/UPDATED_AT。曾因只在本地改、线上还是 v9 导致参数被静默丢弃、`words[]` 全空。旧客户端不传字段 → `undefined !== true`，不影响老用户。
 - 时间轴存 `<fileName>.timestamps.json` sidecar（禁改 SQLite/禁 DROP），段偏移按**每段实际音频时长**累加，任一段缺 words 整条不写、播放器走静态原文，**禁估时伪造对齐**。
 - ⚠️ **`words[].text` 是 `normalized_text`（繁→简）不是用户原文**；v3 起落盘前 `TTSTimestampParser.alignToOriginal(_:source:)` 重分配文本，**对齐源首选自己发出去的 `segment.text`，上游 `original_text` 只作次选**（不保证等于用户原文，且只有单条 cue 才可能是整段）。禁止把 word.text 改回 normalized / 把 original_text 当唯一对齐源。
@@ -52,6 +53,7 @@
 ## 积分 / 参数 / 弹窗
 - 积分全链路 Double(≤2位) `CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5，CJK 算 2 字符），云端 `numeric(10,2)`。
 - `StudioParamValues`/`Store` 在 `Shared/ViewModels/VoiceStudioViewModel.swift`，键 `studioParam.*`；⚠️ 禁把 `AppState.defaultFormat`/`defaultSampleRate` 当存储，「重置」只调 `reset(on: vm)` = `.factory`(mp3/22050/1.0x/100%)；默认值读 `Constants`/`.factory`；`VoiceStudioView.onAppear` 从设置页覆盖参数**已删，别加回来**。
+- ⚠️ **语音指令拼接必须 `.localized()`**：`updateNLInstruction()` 里 `nlLanguages.name` / `nlPresets.instruction` 都是中文原文兼本地化 key，三份 strings 已备齐 24 语言名 + 6 预设译文；**禁直接拼中文原文**（英文/繁中界面指令框会冒简体中文，11-11 实测）。iOS/macOS 共用此 VM，改一处两端生效，macOS 视图无独立拼接。分隔符中文 `,`、英文 `, `（`AppLanguage.isChinese`），中文沿用半角逗号零回归。
 - `GenerationDialog` 清空须 `displayName: nil`，`hasResult = generatedAudioURL != nil && !isGenerating`；`PackageCard` 副标题禁 `.lineLimit(1)`。
 - ⚠️ 用户明确要求「**每次 App 打开都弹评分弹窗**」（与 ASO 文档相反，以用户为准，别改回去）：`AppUpdateManager.requestReviewOnEveryOpen()` 两端根容器各挂一行，**不做本地节流**。⚠️ 评分口径是「**每个进程一次**」：`ReviewRequestGate`（`AppUpdateManager.swift` 内 `nonisolated(unsafe) static var`）只放行一次，退后台再回前台不再弹。**禁把一次性标记放回 `@State`、禁在 `scenePhase != .active` 时复位**——iOS 上评分面板/控制中心/来电都会让 scenePhase 走 `active→inactive→active`，复位即连环弹窗；iPad 多窗口/场景重建又会各持一份 `@State`。StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
 

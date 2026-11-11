@@ -104,6 +104,8 @@ final class BailianTTSService {
         sampleRate: Int = Constants.defaultSampleRate,
         format: String = Constants.defaultFormat,
         nlInstruction: String? = nil,
+        /// 选中语言对应的 language_hints 单个取值（如 "en"）；nil = 不下发。
+        languageHint: String? = nil,
         onAudio: ((Data) -> Void)? = nil,
         /// 同一段文本的「用户原文」形态（不含 `[emotion]` 前缀），仅用于给字级字幕
         /// 重新分配文本；传 nil 时退回上游 `original_text`。
@@ -113,7 +115,7 @@ final class BailianTTSService {
             return try await runSynthesize(
                 text: text, voice: voice, emotion: emotion, rate: rate,
                 volume: volume, sampleRate: sampleRate, format: format,
-                nlInstruction: nlInstruction, onAudio: onAudio,
+                nlInstruction: nlInstruction, languageHint: languageHint, onAudio: onAudio,
                 wordTimestampEnabled: true, displaySource: displaySource
             )
         } catch let error as TTSError {
@@ -122,7 +124,7 @@ final class BailianTTSService {
             return try await runSynthesize(
                 text: text, voice: voice, emotion: emotion, rate: rate,
                 volume: volume, sampleRate: sampleRate, format: format,
-                nlInstruction: nlInstruction, onAudio: onAudio,
+                nlInstruction: nlInstruction, languageHint: languageHint, onAudio: onAudio,
                 wordTimestampEnabled: false, displaySource: displaySource
             )
         }
@@ -176,7 +178,7 @@ final class BailianTTSService {
         try await runSynthesize(
             text: text, voice: voice, emotion: emotion, rate: rate,
             volume: volume, sampleRate: sampleRate, format: format,
-            nlInstruction: nlInstruction, onAudio: onAudio,
+            nlInstruction: nlInstruction, languageHint: nil, onAudio: onAudio,
             wordTimestampEnabled: false
         ).audioData
     }
@@ -191,6 +193,7 @@ final class BailianTTSService {
         sampleRate: Int,
         format: String,
         nlInstruction: String?,
+        languageHint: String?,
         onAudio: ((Data) -> Void)?,
         wordTimestampEnabled: Bool,
         displaySource: String? = nil
@@ -208,6 +211,7 @@ final class BailianTTSService {
                 sampleRate: sampleRate,
                 format: format,
                 nlInstruction: nlInstruction,
+                languageHint: languageHint,
                 onAudio: onAudio,
                 wordTimestampEnabled: wordTimestampEnabled,
                 displaySource: displaySource
@@ -253,6 +257,7 @@ final class BailianTTSService {
         sampleRate: Int,
         format: String,
         nlInstruction: String?,
+        languageHint: String?,
         onAudio: ((Data) -> Void)?,
         wordTimestampEnabled: Bool,
         displaySource: String? = nil
@@ -281,6 +286,7 @@ final class BailianTTSService {
             sampleRate: sampleRate,
             format: format,
             instruction: nlInstruction,
+            languageHint: languageHint,
             wordTimestampEnabled: wordTimestampEnabled
         )
 
@@ -494,6 +500,7 @@ final class BailianTTSService {
         sampleRate: Int,
         format: String,
         instruction: String?,
+        languageHint: String?,
         wordTimestampEnabled: Bool
     ) -> String {
         var payload: [String: Any] = [
@@ -517,6 +524,12 @@ final class BailianTTSService {
         }
         if let instruction = instruction, !instruction.isEmpty {
             payload["instruction"] = instruction
+        }
+        // 百炼 run-task 的 parameters.language_hints 是 array[string]，当前版本
+        // 只处理第一个元素，所以只放一个值。未选语言 / 中文方言时不带该字段（默认空）。
+        // 边缘函数会校验白名单后原样透传，改这里记得同步 index.ts。
+        if let hint = languageHint, !hint.isEmpty {
+            payload["language_hints"] = [hint]
         }
 
         return serializeToJson(payload)

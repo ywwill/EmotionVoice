@@ -143,25 +143,29 @@ enum Constants {
     ]
 
     // MARK: - 语言/方言（用于语音指令模块）
-    /// 支持的语言列表，包含中文方言和世界主要语言
+    /// 支持的语言列表，包含中文方言和世界主要语言。
+    ///
+    /// `languageHint` 只给百炼官方支持的 16 种语言填值，选中后由
+    /// `buildSynthesizeRequest` 以 `language_hints: [hint]` 下发到
+    /// run-task 的 `payload.parameters`；中文方言留空（默认不传）。
+    /// 文档：https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-audio-tts-client-events
     static let nlLanguages: [NLLanguageItem] = [
-        // 中文方言
-        NLLanguageItem(name: "中文", code: "mandarin", region: "中文方言"),
-        NLLanguageItem(name: "英文", code: "english", region: "英文"),
-        NLLanguageItem(name: "法语", code: "french", region: "欧洲"),
-        NLLanguageItem(name: "德语", code: "german", region: "欧洲"),
-        NLLanguageItem(name: "日语", code: "japanese", region: "亚洲"),
-        NLLanguageItem(name: "韩语", code: "korean", region: "亚洲"),
-        NLLanguageItem(name: "俄语", code: "russian", region: "欧洲"),
-        NLLanguageItem(name: "葡萄牙语", code: "portuguese", region: "欧洲"),
-        NLLanguageItem(name: "泰语", code: "thai", region: "亚洲"),
-        NLLanguageItem(name: "印尼语", code: "indonesian", region: "亚洲"),
-        NLLanguageItem(name: "越南语", code: "vietnamese", region: "亚洲"),
-        NLLanguageItem(name: "西班牙语", code: "spanish", region: "欧洲"),
-        NLLanguageItem(name: "意大利语", code: "italian", region: "欧洲"),
-        NLLanguageItem(name: "马来西亚语", code: "malay", region: "亚洲"),
-        NLLanguageItem(name: "菲律宾语", code: "filipino", region: "亚洲"),
-        NLLanguageItem(name: "阿拉伯语", code: "arabic", region: "其他"),
+        NLLanguageItem(name: "中文", code: "mandarin", region: "中文方言", languageHint: "zh"),
+        NLLanguageItem(name: "英文", code: "english", region: "英文", languageHint: "en"),
+        NLLanguageItem(name: "法语", code: "french", region: "欧洲", languageHint: "fr"),
+        NLLanguageItem(name: "德语", code: "german", region: "欧洲", languageHint: "de"),
+        NLLanguageItem(name: "日语", code: "japanese", region: "亚洲", languageHint: "ja"),
+        NLLanguageItem(name: "韩语", code: "korean", region: "亚洲", languageHint: "ko"),
+        NLLanguageItem(name: "俄语", code: "russian", region: "欧洲", languageHint: "ru"),
+        NLLanguageItem(name: "葡萄牙语", code: "portuguese", region: "欧洲", languageHint: "pt"),
+        NLLanguageItem(name: "泰语", code: "thai", region: "亚洲", languageHint: "th"),
+        NLLanguageItem(name: "印尼语", code: "indonesian", region: "亚洲", languageHint: "id"),
+        NLLanguageItem(name: "越南语", code: "vietnamese", region: "亚洲", languageHint: "vi"),
+        NLLanguageItem(name: "西班牙语", code: "spanish", region: "欧洲", languageHint: "es"),
+        NLLanguageItem(name: "意大利语", code: "italian", region: "欧洲", languageHint: "it"),
+        NLLanguageItem(name: "马来西亚语", code: "malay", region: "亚洲", languageHint: "ms"),
+        NLLanguageItem(name: "菲律宾语", code: "filipino", region: "亚洲", languageHint: "fil"),
+        NLLanguageItem(name: "阿拉伯语", code: "arabic", region: "其他", languageHint: "ar"),
         NLLanguageItem(name: "粤语", code: "cantonese", region: "中文方言"),
         NLLanguageItem(name: "重庆话", code: "chongqing", region: "中文方言"),
         NLLanguageItem(name: "四川话", code: "sichuan", region: "中文方言"),
@@ -171,6 +175,13 @@ enum Constants {
         NLLanguageItem(name: "天津话", code: "tianjin", region: "中文方言"),
         NLLanguageItem(name: "山东话", code: "shandong", region: "中文方言"),
     ]
+
+    /// 按语言名（中文 key，即 `selectedLanguage` 存的值）取 language_hints。
+    /// 未选择 / 中文方言 → nil，请求里不带该字段。
+    static func languageHint(forName name: String?) -> String? {
+        guard let name else { return nil }
+        return nlLanguages.first { $0.name == name }?.languageHint
+    }
 
     // MARK: - 采样率
     static let sampleRates: [SampleRateItem] = [
@@ -217,10 +228,19 @@ struct LanguageItem: Identifiable, Hashable {
 
 /// 语音指令模块的语言条目（支持更多语言和方言）
 struct NLLanguageItem: Identifiable, Hashable {
-    let name: String        // 显示名称（如 "重庆话"）
+    let name: String        // 显示名称（如 "重庆话"），也是本地化 key / selectedLanguage 的值
     let code: String        // 语言代码
     let region: String      // 区域分组（用于分类显示）
+    /// 百炼 run-task 的 language_hints 取值；nil = 该语言不下发（中文方言）
+    let languageHint: String?
     var id: String { code }
+
+    init(name: String, code: String, region: String, languageHint: String? = nil) {
+        self.name = name
+        self.code = code
+        self.region = region
+        self.languageHint = languageHint
+    }
 }
 
 /// 采样率条目

@@ -454,6 +454,8 @@ final class VoiceStudioViewModel: ObservableObject {
                         sampleRate: sampleRate,
                         format: self.selectedFormat.lowercased(),
                         nlInstruction: nlInstruction.isEmpty ? nil : nlInstruction,
+                        // 语言 chip 选中项 → 百炼 language_hints；中文方言 / 未选 = nil
+                        languageHint: Constants.languageHint(forName: selectedLanguage),
                         onAudio: onAudio,
                         // 字级字幕的显示文本以这段「纯台词」为准：apiText 里的
                         // `[emotion]` 前缀不是台词，上游 original_text 也不保证逐字一致

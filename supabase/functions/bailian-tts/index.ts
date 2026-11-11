@@ -112,6 +112,7 @@ function logRequest(raw: string, req: TTSRequest, full: boolean): void {
   console.log("  sample_rate =", req.sample_rate ?? "(nil)");
   console.log("  format      =", req.format ?? "(nil)");
   console.log("  word_timestamp_enabled =", req.word_timestamp_enabled ?? false);
+  console.log("  language_hints =", JSON.stringify(req.language_hints ?? []));
   console.log("  instruction =", preview(req.instruction, full));
   console.log("  text        =", preview(req.text, full));
   console.log("  text.length =", (req.text ?? "").length);
@@ -159,6 +160,10 @@ interface TTSRequest {
   /// { text, begin_index, end_index, begin_time, end_time }（毫秒）。
   /// 只有部分音色支持，失败时客户端会自动降级重跑一次（不带本参数）。
   word_timestamp_enabled?: boolean;
+  /// 目标语言提示，客户端按 Constants.nlLanguages[].languageHint 映射后下发，
+  /// 只有官方 16 种语言有值；中文方言 / 未选语言不带此字段。
+  /// 上游参数名同为 language_hints，类型是 array[string]（当前只处理第一个元素）。
+  language_hints?: string[];
   instruction?: string | null;
 }
 
@@ -168,6 +173,14 @@ interface TTSRequest {
 // ⚠️ 这两项若调整，记得同步 `EmotionVoice/Shared/Models/Constants.swift`。
 const DEFAULT_FORMAT = "mp3";
 const DEFAULT_SAMPLE_RATE = 22050;
+
+/// 百炼 run-task `parameters.language_hints` 的合法取值（客户端已做映射，这里再兜一层，
+/// 防止非法值被上游判 InvalidParameter）。不含 `other`：它只适用于 qwen-audio-3.1-tts-flash。
+/// 文档：https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-audio-tts-client-events
+const ALLOWED_LANGUAGE_HINTS = new Set([
+  "zh", "en", "fr", "de", "ja", "ko", "ru", "pt", "th", "id", "vi",
+  "es", "it", "ms", "fil", "ar",
+]);
 
 function buildRunTaskEvent(
   taskId: string,
@@ -191,6 +204,17 @@ function buildRunTaskEvent(
   const instruction = req.instruction;
   if (typeof instruction === "string" && instruction.length > 0) {
     parameters["instruction"] = instruction;
+  }
+  // language_hints 是 array[string]，上游当前版本只处理第一个元素，
+  // 所以这里也只下发一个合法值；字段缺省（未选语言 / 中文方言）时完全不带。
+  const hints = req.language_hints;
+  if (Array.isArray(hints) && hints.length > 0) {
+    const hint = hints[0];
+    if (typeof hint === "string" && ALLOWED_LANGUAGE_HINTS.has(hint)) {
+      parameters["language_hints"] = [hint];
+    } else {
+      console.log("[bailian-tts] 忽略非法 language_hints:", String(hint));
+    }
   }
 
   return JSON.stringify({
