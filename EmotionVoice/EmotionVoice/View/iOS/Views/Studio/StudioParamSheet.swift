@@ -70,7 +70,6 @@ struct StudioParamContent: View {
     @Binding var voicePickerPresented: Bool
     var sampleRateColumns: Int? = nil
 
-    @State private var languagesExpanded = false
     @State private var showInstructionGuide = false
 
     private static let instructionLimit = 1000
@@ -330,29 +329,13 @@ struct StudioParamContent: View {
                 }
                 .foregroundStyle(c.textSecondary)
 
+                // 语言默认全部展开，不提供收起入口（与 macOS 端一致）
                 FlowLayout(spacing: 6, lineSpacing: 6) {
-                    ForEach(visibleLanguages) { item in
+                    ForEach(Constants.nlLanguages) { item in
                         AuroraChip(title: item.name.localized(),
                                    isSelected: vm.selectedLanguage == item.name) {
                             vm.toggleLanguage(item.name)
                         }
-                    }
-                    if !languagesExpanded {
-                        Button {
-                            withAnimation(.easeOut(duration: 0.18)) { languagesExpanded = true }
-                        } label: {
-                            HStack(spacing: 3) {
-                                Text("展开全部 %d".localized(Constants.nlLanguages.count))
-                                    .font(.system(size: 12.5))
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 9, weight: .bold))
-                            }
-                            .foregroundStyle(c.textTertiary)
-                            .padding(.horizontal, 11)
-                            .frame(height: 30)
-                            .background(Capsule(style: .continuous).fill(c.surface3))
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.top, 8)
@@ -436,10 +419,6 @@ struct StudioParamContent: View {
             .background(cardBackground(radius: AuroraRadius.md))
             .padding(.horizontal, metrics.pageMargin)
         }
-    }
-
-    private var visibleLanguages: [NLLanguageItem] {
-        languagesExpanded ? Constants.nlLanguages : Array(Constants.nlLanguages.prefix(5))
     }
 
     private var voice: Voice? { vm.voice }

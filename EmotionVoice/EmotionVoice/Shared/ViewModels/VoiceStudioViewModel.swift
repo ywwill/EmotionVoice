@@ -207,7 +207,7 @@ final class VoiceStudioViewModel: ObservableObject {
             selectedPreset.flatMap { Constants.instructionForPreset($0) }
         ].compactMap { $0 }
 
-        nlInstruction = parts.joined(separator: "，")
+        nlInstruction = parts.joined(separator: ",")
     }
 
     // 生成状态

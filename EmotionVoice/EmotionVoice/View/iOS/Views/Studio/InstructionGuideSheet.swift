@@ -3,7 +3,6 @@
 //  iOSEmora
 //
 //  语音指令编写指南 Sheet。
-//  从 StudioParamSheet.swift 拆出：代码逐字搬移，未改动任何逻辑（原 private 类型按需放开为 internal）。
 //
 
 import SwiftUI

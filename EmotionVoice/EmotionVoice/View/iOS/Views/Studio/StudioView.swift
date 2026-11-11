@@ -99,7 +99,7 @@ struct StudioView: View {
         .toolbar { toolbarContent }
         .sheet(isPresented: $paramsPresented) {
             StudioParamSheet(vm: vm, voicePickerPresented: $voicePickerPresented)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $voicePickerPresented) {

@@ -148,14 +148,6 @@ enum Constants {
         // 中文方言
         NLLanguageItem(name: "中文", code: "mandarin", region: "中文方言"),
         NLLanguageItem(name: "英文", code: "english", region: "英文"),
-        NLLanguageItem(name: "粤语", code: "cantonese", region: "中文方言"),
-        NLLanguageItem(name: "重庆话", code: "chongqing", region: "中文方言"),
-        NLLanguageItem(name: "四川话", code: "sichuan", region: "中文方言"),
-        NLLanguageItem(name: "东北话", code: "dongbei", region: "中文方言"),
-        NLLanguageItem(name: "河南话", code: "henan", region: "中文方言"),
-        NLLanguageItem(name: "陕西话", code: "shaanxi", region: "中文方言"),
-        NLLanguageItem(name: "天津话", code: "tianjin", region: "中文方言"),
-        NLLanguageItem(name: "山东话", code: "shandong", region: "中文方言"),
         NLLanguageItem(name: "法语", code: "french", region: "欧洲"),
         NLLanguageItem(name: "德语", code: "german", region: "欧洲"),
         NLLanguageItem(name: "日语", code: "japanese", region: "亚洲"),
@@ -170,6 +162,14 @@ enum Constants {
         NLLanguageItem(name: "马来西亚语", code: "malay", region: "亚洲"),
         NLLanguageItem(name: "菲律宾语", code: "filipino", region: "亚洲"),
         NLLanguageItem(name: "阿拉伯语", code: "arabic", region: "其他"),
+        NLLanguageItem(name: "粤语", code: "cantonese", region: "中文方言"),
+        NLLanguageItem(name: "重庆话", code: "chongqing", region: "中文方言"),
+        NLLanguageItem(name: "四川话", code: "sichuan", region: "中文方言"),
+        NLLanguageItem(name: "东北话", code: "dongbei", region: "中文方言"),
+        NLLanguageItem(name: "河南话", code: "henan", region: "中文方言"),
+        NLLanguageItem(name: "陕西话", code: "shaanxi", region: "中文方言"),
+        NLLanguageItem(name: "天津话", code: "tianjin", region: "中文方言"),
+        NLLanguageItem(name: "山东话", code: "shandong", region: "中文方言"),
     ]
 
     // MARK: - 采样率
