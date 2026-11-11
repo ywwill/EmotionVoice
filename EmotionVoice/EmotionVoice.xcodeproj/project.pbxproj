@@ -45,6 +45,7 @@
 		6F2093B4303EC80500A770BB /* VoiceLibrarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */; };
 		6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209379303EC80500A770BB /* VoiceRow.swift */; };
 		6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937A303EC80500A770BB /* VoiceStudioView.swift */; };
+		6F2093C2303EC80500A770BC /* VoiceStudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */; };
 		6F2093B7303EC80500A770BB /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937C303EC80500A770BB /* Components.swift */; };
 		6F2093B8303EC80500A770BB /* EmotionHighlightedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */; };
 		6F2093B9303EC80500A770BB /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937E303EC80500A770BB /* FlowLayout.swift */; };
@@ -1303,6 +1304,7 @@
 		6F3AEA323090797A007975DD /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
 		6F3AEA5530907A20007975DD /* VoicesLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4130907A20007975DD /* VoicesLibraryView.swift */; };
 		6F3AEA5630907A20007975DD /* StudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4D30907A20007975DD /* StudioView.swift */; };
+		6F3AEA5F30907A20007975DE /* StudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA5E30907A20007975DE /* StudioDraft.swift */; };
 		6F3AEA5730907A20007975DD /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4430907A20007975DD /* ProjectsView.swift */; };
 		6F3AEA5830907A20007975DD /* TabRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA3530907A20007975DD /* TabRouter.swift */; };
 		6F3AEA5930907A20007975DD /* VoicePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA5130907A20007975DD /* VoicePickerSheet.swift */; };
@@ -1438,6 +1440,7 @@
 		6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLibrarySheet.swift; sourceTree = "<group>"; };
 		6F209379303EC80500A770BB /* VoiceRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRow.swift; sourceTree = "<group>"; };
 		6F20937A303EC80500A770BB /* VoiceStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioView.swift; sourceTree = "<group>"; };
+		6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioDraft.swift; sourceTree = "<group>"; };
 		6F20937C303EC80500A770BB /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionHighlightedTextEditor.swift; sourceTree = "<group>"; };
 		6F20937E303EC80500A770BB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
@@ -2074,6 +2077,7 @@
 		6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionAccessoryBar.swift; sourceTree = "<group>"; };
 		6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioParamSheet.swift; sourceTree = "<group>"; };
 		6F3AEA4D30907A20007975DD /* StudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioView.swift; sourceTree = "<group>"; };
+		6F3AEA5E30907A20007975DE /* StudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioDraft.swift; sourceTree = "<group>"; };
 		6F3AEA4E30907A20007975DD /* TokenCapsuleOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenCapsuleOverlay.swift; sourceTree = "<group>"; };
 		6F3AEA4F30907A20007975DD /* TokenDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDocument.swift; sourceTree = "<group>"; };
 		6F3AEA5030907A20007975DD /* TokenTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenTextEditor.swift; sourceTree = "<group>"; };
@@ -2296,6 +2300,7 @@
 			isa = PBXGroup;
 			children = (
 				6F20937A303EC80500A770BB /* VoiceStudioView.swift */,
+				6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */,
 				6F209377303EC80500A770BB /* EmotionButton.swift */,
 				6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */,
 				6F209379303EC80500A770BB /* VoiceRow.swift */,
@@ -3043,6 +3048,7 @@
 			isa = PBXGroup;
 			children = (
 				6F3AEA4D30907A20007975DD /* StudioView.swift */,
+				6F3AEA5E30907A20007975DE /* StudioDraft.swift */,
 				7B3A0000000000000000002C /* InstructionGuideSheet.swift */,
 				6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */,
 				6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */,
@@ -4547,6 +4553,7 @@
 				7B3A0000000000000000000F /* GenerationBackgroundKeeper.swift in Sources */,
 				6F3AEA5530907A20007975DD /* VoicesLibraryView.swift in Sources */,
 				6F3AEA5630907A20007975DD /* StudioView.swift in Sources */,
+				6F3AEA5F30907A20007975DE /* StudioDraft.swift in Sources */,
 				6F3AEA5730907A20007975DD /* ProjectsView.swift in Sources */,
 				6F3AEA5830907A20007975DD /* TabRouter.swift in Sources */,
 				6F3AEA5930907A20007975DD /* VoicePickerSheet.swift in Sources */,
@@ -4678,6 +4685,7 @@
 				6F2093B4303EC80500A770BB /* VoiceLibrarySheet.swift in Sources */,
 				6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */,
 				6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */,
+				6F2093C2303EC80500A770BC /* VoiceStudioDraft.swift in Sources */,
 				6FD84145307E142E00CFC97F /* PlayerWaveformView.swift in Sources */,
 				6FB000000000000000001000 /* PlayerTextMetrics.swift in Sources */,
 				6FB000000000000000001001 /* PlayerMetaStrip.swift in Sources */,
