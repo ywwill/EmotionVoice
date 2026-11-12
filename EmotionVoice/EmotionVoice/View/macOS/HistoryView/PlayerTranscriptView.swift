@@ -159,7 +159,9 @@ struct PlayerTranscriptView: View {
     // MARK: - 派生数据 / 行为
 
     private var sentenceCountForHeader: Int {
-        if let timeline, timeline.isAligned { return timeline.sentences.count }
+        // 只统计「正文里真的会出现」的句子：拟声独占一句的（`[clears throat]`）不占位，
+        // 把它们算进去会让标题的句数和下面看得到的句卡数对不上。
+        if let timeline, timeline.isAligned { return timeline.transcriptSentenceCount }
         return staticSentenceCount
     }
 
@@ -185,6 +187,36 @@ private struct AlignedTranscript: View {
     @Binding var follow: Bool
 
     @State private var recenterTick: Int = 0
+    /// 每行在阅读区内容坐标系里的位置（布局结果，滚动不会触发更新）。
+    /// 播放底色是**整篇唯一的一块**，靠这组 frame 定位；只在布局变化时才写 state。
+    @State private var rowFrames: [Int: CGRect] = [:]
+    /// 有正文的句子（升序）：句间停顿里高亮要交给「下一句」，而拟声独占一句
+    /// （`[clears throat]`）在界面上根本没有这一行，不能拿它当交棒目标。
+    /// 构造时算一次（每次打开音频一份），绝不进 10Hz 的重绘路径。
+    private let visibleCues: [VisibleCue]
+
+    private struct VisibleCue: Equatable {
+        let index: Int
+        let beginMs: Int
+    }
+
+    /// 行位置测量用的内容坐标系名
+    private static let contentSpace = "transcript.content"
+    /// 底色滑到下一行的时间。**与跟随滚动的动画同时长同曲线**：两者一拍同步时，
+    /// 视口正好把下一行送到「当前行原来的位置」，底色在屏幕上几乎不动、只做高度过渡，
+    /// 观感是「上一行让位、下一行接上」；曲线不一致就会看到底色和文字互相追。
+    private static let highlightTravel: Double = 0.34
+
+    init(timeline: AudioTimeline, player: AudioPreviewPlayer, follow: Binding<Bool>) {
+        self.timeline = timeline
+        self._player = ObservedObject(wrappedValue: player)
+        self._follow = follow
+        self.visibleCues = timeline.sentences.compactMap { cue in
+            TranscriptTagMarkup.line(for: cue).hasBody
+                ? VisibleCue(index: cue.index, beginMs: cue.beginMs)
+                : nil
+        }
+    }
 
     var body: some View {
         let t = player.currentTime
@@ -196,6 +228,9 @@ private struct AlignedTranscript: View {
         let tail = tailFade(at: t, previous: location.previous)
         let tailIndex = tail?.index
         let tailProgress = tail?.progress ?? 1
+        // 底色 / 竖条 / 跟随滚动都用它，而不是 `activeIndex`：
+        // 句间停顿时 `activeIndex` 是 nil，照它画会让底色在换行那一刻整个消失
+        let highlight = highlightIndex(atMs: Int((t * 1000).rounded()), location: location)
 
         return ScrollViewReader { proxy in
             ZStack(alignment: .bottomTrailing) {
@@ -204,7 +239,7 @@ private struct AlignedTranscript: View {
                         ForEach(timeline.sentences, id: \.index) { cue in
                             SentenceCueRow(
                                 cue: cue,
-                                isActive: cue.index == activeIndex,
+                                isActive: cue.index == highlight,
                                 isDone: cue.endMs <= Int((t * 1000).rounded()),
                                 activeWordIndex: cue.index == activeIndex ? (activeWord ?? -1) : -1,
                                 wordProgress: wordProgress,
@@ -213,10 +248,30 @@ private struct AlignedTranscript: View {
                             )
                             .equatable()
                             .id(cue.index)
+                            // 上报本行在内容坐标系里的位置，供「整篇唯一一块」的底色定位。
+                            // 坐标空间挂在内容 VStack 上（不是视口），所以滚动不会让值变化，
+                            // 不会在 10Hz 的播放路径里引起 preference / state 抖动。
+                            .background {
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: TranscriptRowFrameKey.self,
+                                        value: [cue.index: geo.frame(in: .named(Self.contentSpace))]
+                                    )
+                                }
+                            }
                         }
                     }
                     .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .coordinateSpace(name: Self.contentSpace)
+                    .background(alignment: .topLeading) {
+                        highlightLayer(highlight)
+                    }
+                    .onPreferenceChange(TranscriptRowFrameKey.self) { frames in
+                        // 只有布局结果，不是动画；值没变（含亚像素抖动）时不写 state，
+                        // 避免「写 state → 重排 → 再上报」的自激循环
+                        if !Self.sameFrames(frames, rowFrames) { rowFrames = frames }
+                    }
                 }
                 // 阅读区不显示滚动条：句卡窄、滚动位置由「跟随播放」接管，条反而遮挡时间码
                 .scrollIndicators(.hidden)
@@ -230,20 +285,87 @@ private struct AlignedTranscript: View {
                 if !follow {
                     recenterButton {
                         follow = true
-                        scrollCurrent(proxy, at: activeIndex, next: location.next)
+                        scrollCurrent(proxy, to: highlight)
                         recenterTick &+= 1
                     }
                     .padding(.trailing, 14)
                     .padding(.bottom, 14)
                 }
             }
-            .onChange(of: activeIndex ?? -1) { _, _ in
-                if follow { scrollCurrent(proxy, at: activeIndex, next: location.next) }
+            // 交棒时刻（上一句结束 / 下一句起播）都要滚，用 highlight 而不是 activeIndex：
+            // 句间停顿时 activeIndex 是 nil，只认它会漏掉「停顿时就该滚到下一行」这一拍
+            .onChange(of: highlight ?? -1) { _, _ in
+                if follow { scrollCurrent(proxy, to: highlight) }
             }
             .onChange(of: recenterTick) { _, _ in
-                if follow { scrollCurrent(proxy, at: activeIndex, next: location.next) }
+                if follow { scrollCurrent(proxy, to: highlight) }
             }
         }
+    }
+
+    /// 两份行位置是否「实质相同」。
+    ///
+    /// 直接比 `==` 也能用，但帧是布局算出来的浮点值，缩放 / 分屏时可能出现 0.3pt 级别的
+    /// 反复抖动 —— 那会变成「写 state → 重排 → 再上报」的自激循环（CPU 直接飞起来）。
+    /// 这里给 0.5pt 容差：肉眼无差的位置变化不再触发重绘。
+    private static func sameFrames(_ a: [Int: CGRect], _ b: [Int: CGRect]) -> Bool {
+        guard a.count == b.count else { return false }
+        for (key, rect) in a {
+            guard let other = b[key] else { return false }
+            if abs(rect.minX - other.minX) > 0.5 || abs(rect.minY - other.minY) > 0.5
+                || abs(rect.width - other.width) > 0.5 || abs(rect.height - other.height) > 0.5 {
+                return false
+            }
+        }
+        return true
+    }
+
+    /// 当前该亮「播放底色」的那一行。
+    ///
+    /// ⚠️ 不能直接用 `location.index`：每句话播完到下一句起播之间是**句间停顿**，
+    /// 这段时间 `index` 是 nil，照它画底色就会整页熄灭（长停顿能灭一秒多），
+    /// 观感就是「一行播完切下一行时底色闪了一下」。
+    /// 现在的口径：停顿时底面直接交给**下一句有正文的句子**，跟滚动一起交棒，
+    /// 全程永远有一行是亮的；整段播完（没有下一句）才真的不亮。
+    ///
+    /// 另外 `[clears throat]` 这类拟声独占一句、界面上没有对应行的句子也不能当目标，
+    /// 所以查的是 `visibleCues`（有正文的句子），不是 `location.next`。
+    private func highlightIndex(atMs ms: Int, location: AudioTimeline.Location) -> Int? {
+        if let active = location.index, visibleCues.contains(where: { $0.index == active }) {
+            return active
+        }
+        // 停顿里 / 落在纯标签句上：交给下一句有正文的
+        return visibleCues.first(where: { $0.beginMs > ms })?.index
+    }
+
+    /// 播放底色层：一个始终存在的外壳 + 唯一一块底板。
+    ///
+    /// 为什么不再让每行各画一块：两块视图之间只能「淡出 + 淡入」，换行那一刻是闪一下。
+    /// 整篇只有一块时，换行只是这块底板的 `offset` / `height` 变了，SwiftUI 会把它
+    /// 补间成一次连续位移 —— 从上一行**滑**到下一行。
+    ///
+    /// `.animation` 只挂在这一层：这里的值只有 `highlight`（一句话变一次），
+    /// 逐字高亮那条 10Hz 路径完全不受影响。
+    private func highlightLayer(_ index: Int?) -> some View {
+        ZStack(alignment: .topLeading) {
+            if let index, let frame = rowFrames[index] {
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(AppColor.accentWash)
+                    // 左侧竖条跟着底板一起移动，与底色共用同一条补间
+                    Rectangle()
+                        .fill(AppColor.accentPrimary)
+                        .frame(width: 2)
+                        .padding(.vertical, 6)
+                }
+                .frame(width: frame.width, height: frame.height)
+                .offset(x: frame.minX, y: frame.minY)
+                // 首次出现（开始播放 / 从无到有）走淡入；换行是同一视图的属性变化，
+                // 不会触发 transition，只做位移补间
+                .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .animation(.easeInOut(duration: Self.highlightTravel), value: index)
     }
 
     /// 当前字在**自身时间窗**内的进度（0→1）。
@@ -262,8 +384,8 @@ private struct AlignedTranscript: View {
     ///
     /// 为什么需要单独一路插值：句子一旦不再是「当前句」，`activeWordIndex` 立刻变 -1，
     /// 整句颜色落到「已读色」常量上——末字上一帧还是全亮的 accentGlow，下一帧就是
-    /// 0xA8ABB4，中间没有过渡。而背景（accentWash）有 0.18s 淡出动画，观感上就成了
-    /// 「底色还在慢慢退，文字先灭了」。
+    /// 0xA8ABB4，中间没有过渡。而底色要滑到下一行（`highlightTravel` 0.34s），观感上就成了
+    /// 「底色还在路上，文字先灭了」。
     ///
     /// 返回 nil 表示这一句不需要插值（还没结束、或已经褪完），调用方拿到常量 1，
     /// 这样非当前句 / 已静止的句子不会因为每帧变化而重绘。
@@ -283,10 +405,12 @@ private struct AlignedTranscript: View {
     /// 既能抹掉硬跳又不会让「已读字还亮着」拖太久
     private static let tailFadeWindowMs: Double = 400
 
-    private func scrollCurrent(_ proxy: ScrollViewProxy, at index: Int?, next: Int?) {
-        // t 落在句间停顿时不高亮任何句，但跟随滚动仍指向下一句，避免视图停在两句之间
-        guard let target = index ?? next, timeline.sentences.indices.contains(target) else { return }
-        withAnimation(.easeOut(duration: 0.22)) {
+    /// 把当前高亮的一行滚到视野中央。
+    /// 传的是 `highlightIndex`（停顿时已经是下一句），所以换行不会出现「视图停在两句之间」。
+    /// ⚠️ 时长 / 曲线必须与 `highlightTravel` 一致：底色和滚动同一拍，才不会互相追。
+    private func scrollCurrent(_ proxy: ScrollViewProxy, to index: Int?) {
+        guard let target = index, timeline.sentences.indices.contains(target) else { return }
+        withAnimation(.easeInOut(duration: Self.highlightTravel)) {
             proxy.scrollTo(target, anchor: .center)
         }
     }
@@ -339,13 +463,24 @@ private struct SentenceCueRow: View, Equatable {
     }
 
     var body: some View {
-        // 语气 / 拟声标签从正文里摘出来单独成徽标（见 `TranscriptTagMarkup`）。
-        // 只在 body 重算时扫一次，且没有 `[` 的词直接原样返回，所以逐字高亮那条
-        // 10Hz 路径的开销与从前一致；`line.words` 与 `cue.words` 下标一一对应，
-        // `wordColor(at:)` 一个都不用改。
+        // 正文里**不显示**语气 / 拟声标签（`[serious]` / `[clears throat]`）：它们只是发给
+        // 合成引擎的指令，不是台词。`TranscriptTagMarkup` 把官方标签从词里摘掉，且
+        // `line.words` 与 `cue.words` **严格同长度** —— 逐字高亮的下标一个都不用改。
+        // 扫描只在 body 重算时发生，没有 `[` 的句子走快路径原样返回，10Hz 路径零开销。
+        //
+        // 整句只有标签（拟声独占一句，如 `[clears throat]`）时这一行**整体不占位**：
+        // 既不画正文，也不留一个孤立的时间码 + 空白行。
         let line = TranscriptTagMarkup.line(for: cue)
 
-        return HStack(alignment: .top, spacing: 10) {
+        return Group {
+            if line.hasBody {
+                row(words: line.words)
+            }
+        }
+    }
+
+    private func row(words: [String]) -> some View {
+        HStack(alignment: .top, spacing: 10) {
             // 只显示句首时间码：句末与下一句句首之间还有停顿，两列并排容易被读成
             // 「这句话一直持续到第二个时间」。句内进度交给逐字高亮本身表达。
             Text(PlayerTextMetrics.formatPrecise(cue.begin))
@@ -354,45 +489,17 @@ private struct SentenceCueRow: View, Equatable {
                 .frame(width: 50, alignment: .trailing)
                 .padding(.top, 3)
 
-            VStack(alignment: .leading, spacing: line.tags.isEmpty ? 0 : 6) {
-                if !line.tags.isEmpty {
-                    tagRow(line.tags)
-                }
-                // 整句只有标签（拟声独占一句）时不画正文，避免多出半行空白
-                if line.hasBody {
-                    wordLine(line.words)
-                        .font(.system(size: 14))
-                        .lineSpacing(9)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            wordLine(words)
+                .font(.system(size: 14))
+                .lineSpacing(9)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(isActive ? AppColor.accentWash : Color.clear)
-        // 句切换时让底色 / 左侧竖条淡入淡出，而不是硬切
-        .animation(.easeInOut(duration: 0.18), value: isActive)
-        .overlay(alignment: .leading) {
-            if isActive {
-                Rectangle()
-                    .fill(AppColor.accentPrimary)
-                    .frame(width: 2)
-                    .padding(.vertical, 6)
-            }
-        }
+        // 播放底色不在这里画：由 `AlignedTranscript.highlightLayer` 统一提供一块可滑动的底板
         .contentShape(Rectangle())
         .onTapGesture {
             player.seek(to: cue.begin)
-        }
-    }
-
-    /// 标签徽标行：一句里可能有多个（`[clears throat][curious]…`），按出现顺序排开
-    private func tagRow(_ tags: [TranscriptTagMarkup.Tag]) -> some View {
-        HStack(spacing: 5) {
-            ForEach(Array(tags.enumerated()), id: \.offset) { _, tag in
-                TranscriptTagBadge(tag: tag)
-            }
         }
     }
 
@@ -412,10 +519,10 @@ private struct SentenceCueRow: View, Equatable {
     /// 折行、左右轻微位移（用户反馈的「文字偶尔左右晃动」）。区分度全部交给颜色。
     ///
     /// `words` 是 `TranscriptTagMarkup` 摘掉官方标签后的正文（与 `cue.words` 同长度），
-    /// 语气 / 拟声标签已经另行渲染成徽标，不出现在这里。
+    /// 语气 / 拟声标签直接从正文里消失，不做任何额外渲染。
     private func wordLine(_ words: [String]) -> Text {
         // 句末褪色的落点是「最后一个**看得见**的词」：整句以标签收尾时，
-        // 末词是空串（标签已变徽标），拿它当落点会让真正的末字直接硬切成已读色。
+        // 末词是空串（标签已摘掉），拿它当落点会让真正的末字直接硬切成已读色。
         let lastBody = words.lastIndex { !$0.isEmpty } ?? -1
         var result = Text("")
         for (i, text) in words.enumerated() {
@@ -432,7 +539,7 @@ private struct SentenceCueRow: View, Equatable {
     /// - 句末最后一个字：句子结束后按 tailFade 继续从高亮色褪到已读色，
     ///   让颜色跨行换句时是连续的，而不是「上一帧还亮着，下一帧就灭了」
     ///
-    /// `lastBody` 是最后一个有正文的词下标（标签词已摘成徽标，不参与褪色落点）。
+    /// `lastBody` 是最后一个有正文的词下标（纯标签词已摘成空串，不参与褪色落点）。
     private func wordColor(at i: Int, lastBody: Int) -> Color {
         guard activeWordIndex >= 0 else {
             guard isDone else {
@@ -457,34 +564,16 @@ private struct SentenceCueRow: View, Equatable {
     }
 }
 
-// MARK: - 标签徽标
+// MARK: - 行位置偏好
 
-/// 语气 / 拟声标签徽标：emoji + 本地化名字（与编辑器里的标签同源同色系）。
+/// 每行在阅读区**内容坐标系**里的位置（`index → rect`）。
 ///
-/// 语气用暖色（accent）、拟声用冷色（statusInfo）—— 只是「一眼分清两类」的弱区分，
-/// 文字色仍压在正文之下，不跟逐字高亮抢注意力。
-private struct TranscriptTagBadge: View {
-
-    let tag: TranscriptTagMarkup.Tag
-
-    private var tint: Color {
-        tag.isSoundEffect ? AppColor.statusInfo : AppColor.accentPrimary
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(tag.emoji)
-                .font(.system(size: 10))
-            Text(tag.label.localized())
-                .font(.system(size: 10.5, weight: .medium))
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 7)
-        .frame(height: 18)
-        .background(Capsule().fill(tint.opacity(0.12)))
-        .overlay(Capsule().strokeBorder(tint.opacity(0.30), lineWidth: 1))
-        .clipShape(Capsule())
-        .fixedSize()
-        .accessibilityLabel(tag.label.localized())
+/// 播放底色是整篇唯一的一块，靠它定位并在换行时补间位移。
+/// 位置只在布局变化（换音频 / 改窗口大小）时变，滚动不会变 —— 所以这个 preference
+/// 不会在播放的 10Hz 路径上反复触发。
+private struct TranscriptRowFrameKey: PreferenceKey {
+    static var defaultValue: [Int: CGRect] = [:]
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
     }
 }

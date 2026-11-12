@@ -1121,7 +1121,7 @@ struct AudioGenerationModal: View {
         }
     }
 
-    /// 默认音频名：优先取输入文本的前 10 个字符，空则退回时间戳。
+    /// 默认语音名：优先取输入文本的前 20 个字符，空则退回时间戳。
     ///
     /// 两条细节：
     /// 1. 取的是 `plainText` —— 情感 / 拟声标签是编辑器里的 UI 装饰
@@ -1129,15 +1129,15 @@ struct AudioGenerationModal: View {
     /// 2. 文本是自由输入，必须先过一遍 `sanitizeFileName` 洗掉文件名不允许的字符
     ///    （`/`、`:` 等），这个名不只是显示，导出时还会直接变成保存面板的默认文件名。
     private func generateDefaultAudioName() -> String {
-        // 换行折叠成空格：否则"前 10 个字符"里可能一个有效字符都没有
+        // 换行折叠成空格：否则"前 20 个字符"里可能一个有效字符都没有
         let source = vm.plainText
             .components(separatedBy: .newlines)
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
-        // 先截 40 再清洗：10 个名额可能被非法字符占掉，留点余量；
+        // 先截 80 再清洗：20 个名额可能被非法字符占掉，保持 4:1 余量；
         // 顺带把正则的开销钉在常数级，长篇台词也不受影响
-        let cleaned = sanitizeFileName(String(source.prefix(40)))
-        let prefix = String(cleaned.prefix(10))
+        let cleaned = sanitizeFileName(String(source.prefix(80)))
+        let prefix = String(cleaned.prefix(20))
             .trimmingCharacters(in: CharacterSet(charactersIn: "-").union(.whitespaces))
         if !prefix.isEmpty { return prefix }
 

@@ -369,9 +369,15 @@ struct AppUpdateRecord: Decodable {
     }
 }
 
-// MARK: - 每次打开 App 申请评分（iOS / macOS 共用）
+// MARK: - 每次打开 App 申请评分
+//
+// ⚠️ 两个平台**入口不同**，别互相抄：
+//   - iOS：下面这个 `RequestReviewOnOpenModifier`，挂在根容器上；
+//   - macOS：`LaunchReviewRequester`（文件末尾），由 `applicationDidFinishLaunching` 触发。
+//     macOS 上没有挂修饰符 —— 那边必须等「窗口上屏 + App 前台」再申请，
+//     否则请求会被 StoreKit 挂起并反复投递，表现成一次启动弹好几个评分弹窗。
 
-/// 挂在根容器上：**每个进程启动后**申请一次 App Store 评分。
+/// 挂在根容器上：**每个进程启动后**申请一次 App Store 评分（**仅 iOS 使用**）。
 ///
 /// 产品口径：每次打开 App 弹一次；退到后台但没退出 App，再回到前台**不再重复弹**。
 /// 所以这里既不跟着 `scenePhase` 反复申请，也不做跨启动的本地计数 / 节流
@@ -408,10 +414,15 @@ private struct RequestReviewOnOpenModifier: ViewModifier {
     }
 
     private func scheduleReviewIfNeeded() {
-        guard ReviewRequestGate.claim() else { return }
-        // 启动瞬间窗口 / 场景还没稳定，StoreKit 会静默丢弃这次申请
+        guard ReviewRequestGate.claim() else {
+            // 一次启动里 `.task` 与 scenePhase 可能各来一次，第二次在这里被挡住
+            Log(message: "评分申请：本进程已申请过，忽略本次触发")
+            return
+        }
+        // 冷启动瞬间场景还没 active，StoreKit 会静默丢弃这次申请
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))
+            Log(message: "评分申请：调用 requestReview()")
             requestReview()
         }
     }
@@ -419,8 +430,9 @@ private struct RequestReviewOnOpenModifier: ViewModifier {
 
 /// 进程级一次性闸门：整个 App 生命周期（= 一次启动）只放行一次评分申请。
 ///
-/// `nonisolated(unsafe)`：只在主线程（SwiftUI 的 `.task` / `.onChange` / body）读写，
-/// 一个 Bool 不存在撕裂风险；加它只是为了绕开默认 MainActor 隔离在闭包里的调用限制。
+/// `nonisolated(unsafe)`：只在主线程（SwiftUI 的 `.task` / `.onChange`、AppKit 的
+/// `applicationDidFinishLaunching`）读写，一个 Bool 不存在撕裂风险；
+/// 加它只是为了绕开默认 MainActor 隔离在闭包里的调用限制。
 private enum ReviewRequestGate {
     nonisolated(unsafe) private static var claimed = false
 
@@ -432,8 +444,68 @@ private enum ReviewRequestGate {
     }
 }
 
+#if os(macOS)
+// MARK: - macOS：启动完成后申请一次评分
+
+/// macOS 侧的评分申请入口（**全平台唯一调用点**，不再挂 SwiftUI 修饰符）。
+///
+/// 为什么不复用 `RequestReviewOnOpenModifier`：
+/// - macOS 的评分必须由一个真实窗口的 `NSViewController` 发起
+///   （`AppStore.requestReview(in:)`），SwiftUI 的环境动作在窗口还没成为 key 时
+///   只是把请求挂起，等下一次激活才展示 —— 请求一旦挂起就会被反复投递，
+///   用户看到的就是「一次启动弹好几次」；
+/// - 修饰符挂在根视图上，`.task` / `scenePhase` 两个入口都会触发申请，
+///   而「启动完成」这个时机在 AppKit 里有确定的信号（窗口上屏 + App 激活）。
+///
+/// 现在的口径：`applicationDidFinishLaunching` 排队 → 等「已有前台窗口」→ 只调一次。
+/// 拿不到前台窗口就**不申请**（宁可这次不弹，也不把请求排进 StoreKit 的待展示队列）。
+@MainActor
+enum LaunchReviewRequester {
+
+    /// 进程内只排队一次（`ReviewRequestGate` 再兜一层，防其它入口重复申请）
+    private static var scheduled = false
+
+    static func requestOnceAfterLaunch() {
+        guard !scheduled else { return }
+        scheduled = true
+        guard ReviewRequestGate.claim() else { return }
+
+        Task { @MainActor in
+            // 最多等 20 秒：首帧 → 窗口上屏 → App 成为前台。
+            // 三个条件必须**同时**成立才申请：StoreKit 在 App 非前台时只会把请求挂起，
+            // 挂起的请求会在之后的每次激活时被重新投递 —— 这就是「一次启动弹好几次」。
+            for _ in 0..<200 {
+                if NSApp.isActive, let controller = presentingController() {
+                    // 首屏还在铺（更新检查 / 骨架 / 窗口淡入）时先让一段，别和首帧抢绘制
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard NSApp.isActive else { continue }
+                    Log(message: "评分申请：启动完成，requestReview(in:) 只调一次")
+                    AppStore.requestReview(in: controller)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            Log(message: "评分申请：20 秒内 App 未在前台就绪，放弃本次（不排进待展示队列）")
+        }
+    }
+
+    /// 发起评分所需的宿主控制器：优先 key / main 窗口，其次任意可见窗口
+    private static func presentingController() -> NSViewController? {
+        var candidates: [NSWindow] = []
+        if let key = NSApp.keyWindow { candidates.append(key) }
+        if let main = NSApp.mainWindow, main !== NSApp.keyWindow { candidates.append(main) }
+        candidates.append(contentsOf: NSApp.windows.filter { $0.isVisible })
+        for window in candidates {
+            if let controller = window.contentViewController { return controller }
+        }
+        return nil
+    }
+}
+#endif
+
 extension View {
-    /// 每次打开 App（每个进程）向系统申请一次 App Store 评分。
+    /// 每次打开 App（每个进程）向系统申请一次 App Store 评分。**仅 iOS 使用**：
+    /// macOS 走 `LaunchReviewRequester`（`applicationDidFinishLaunching`）。
     /// 后台↔前台来回切不会再申请，见 `RequestReviewOnOpenModifier`。
     func requestReviewOnEveryOpen() -> some View {
         modifier(RequestReviewOnOpenModifier())

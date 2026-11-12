@@ -572,12 +572,14 @@ final class VoiceStudioViewModel: ObservableObject {
                         }
 
                         var cues = assemble(applyOffsets: true)
+                        var usedOffsets = true
                         let overflow = (cues.last?.endMs ?? 0) - durationMs
                         if overflow > 500 {
                             let plain = assemble(applyOffsets: false)
                             let plainOverflow = (plain.last?.endMs ?? 0) - durationMs
                             if plainOverflow < overflow {
                                 cues = plain
+                                usedOffsets = false
                                 Log(message: "⚠️ 段偏移后末字超时 \(overflow)ms，改用上游绝对时间（超时 \(plainOverflow)ms）")
                             } else {
                                 Log(message: "⚠️ 段偏移后末字超时 \(overflow)ms，去掉偏移也对不上（\(plainOverflow)ms），保留偏移结果")
@@ -593,9 +595,23 @@ final class VoiceStudioViewModel: ObservableObject {
                         }
                         Log(message: "段数 \(segmentTimelines.count)，估算合计 \(String(format: "%.2f", segmentDurations.reduce(0, +)))s，实际时长 \(String(format: "%.2f", duration))s")
 
-                        let timeline = AudioTimeline(durationMs: durationMs, sentences: cues)
-                        let saved = AudioTimelineStore.save(timeline, fileName: finalFileName)
-                        Log(message: "字级时间轴: \(cues.count) 句 / \(timeline.anchorCount) 锚点, duration=\(duration)s, 保存=\(saved)")
+                        // 段偏移就是「各段实测时长」的累加，所以合计必须和合并后音频的真实
+                        // 时长吻合（误差只可能来自容器头 / 尾帧对齐，通常是毫秒级）。
+                        // 超过 6% 说明这一环根本不成立（丢段、格式判断错），沿着它算出来的
+                        // 偏移会把后半段整体推偏 —— 宁可这次不写时间轴、让阅读区走静态原文，
+                        // 也不要把「对不上的高亮」交给用户。
+                        let measuredTotalMs = Int((segmentDurations.reduce(0, +) * 1000).rounded())
+                        let driftMs = abs(measuredTotalMs - durationMs)
+                        let toleranceMs = max(400, Int(Double(durationMs) * 0.06))
+                        let offsetsTrustworthy = !usedOffsets || driftMs <= toleranceMs
+
+                        if offsetsTrustworthy {
+                            let timeline = AudioTimeline(durationMs: durationMs, sentences: cues)
+                            let saved = AudioTimelineStore.save(timeline, fileName: finalFileName)
+                            Log(message: "字级时间轴: \(cues.count) 句 / \(timeline.anchorCount) 锚点, duration=\(duration)s, 保存=\(saved)")
+                        } else {
+                            Log(message: "⚠️ 段长合计 \(measuredTotalMs)ms 与音频实际时长 \(durationMs)ms 相差 \(driftMs)ms（容差 \(toleranceMs)ms），段偏移不可信，本次不写时间轴")
+                        }
                     } else {
                         Log(message: "字级时间轴: 本次生成未获得完整 words[]，播放器将显示静态原文")
                     }

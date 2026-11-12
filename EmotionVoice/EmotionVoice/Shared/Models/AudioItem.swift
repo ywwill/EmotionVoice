@@ -857,6 +857,16 @@ extension AudioItem {
     }
 }
 
+extension AudioTimeline {
+    /// 正文里**真的会出现文字**的句子数。
+    ///
+    /// 阅读区不显示语气 / 拟声标签，只有标签的句子（`[clears throat]`）整行不占位，
+    /// 所以标题里的「N 句」不能直接用 `sentences.count`，否则会比看得到的句卡多。
+    nonisolated var transcriptSentenceCount: Int {
+        sentences.reduce(0) { $0 + (TranscriptTagMarkup.line(for: $1).hasBody ? 1 : 0) }
+    }
+}
+
 // MARK: - 字幕里的语气 / 拟声标签
 
 /// 阅读区把 `[serious]` / `[clears throat]` 这类 TTS 控制标签从正文里摘出来。
@@ -865,7 +875,8 @@ extension AudioItem {
 /// `words[].text` 直接来自上游 —— 语气标签会作为一个「词」混在句首
 /// （实测 `[serious]手机又震。`），拟声标签甚至独占一整句（`[clears throat]`）。
 /// 它们只是发给合成引擎的指令，不是台词，摆在正文里既抢眼又打断阅读，
-/// 所以这里按句摘出来、交给 UI 渲染成一枚小徽标。
+/// 所以这里按句摘出来 —— 阅读区**只显示台词**，标签一个字都不出现
+/// （早期版本把它们渲染成小徽标，用户明确要求正文里不要看到）。
 ///
 /// ⚠️ 只认 `Constants` 里的官方标签（24 语气 + 7 拟声）：
 /// 用户自己写的 `[注]` / `[1]` 不是 TTS 指令，必须原样保留 ——

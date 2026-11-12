@@ -13,8 +13,8 @@
 - ⚠️ **`language_hints` 是双端链路**：`Constants.nlLanguages[].languageHint` 唯一映射源（16 官方语言；**8 个中文方言留空、禁映射 `zh`**）→ `Constants.languageHint(forName:)` → VM `synthesizeWithTimeline(languageHint:)` → `buildSynthesizeRequest` 写 `payload["language_hints"]=[hint]`（**数组只放 1 值；无值不写字段**）→ 边缘函数 `ALLOWED_LANGUAGE_HINTS` 白名单。试听传 nil，时间戳降级重跑须保留 hint。
 - ⚠️ **改 `supabase/functions/bailian-tts/index.ts` 必须部署并核对版本**：`supabase functions deploy bailian-tts --project-ref dpyyhbqqmegencxekkcr` + `functions list` 看 VERSION/UPDATED_AT（11-11 已 v14）。曾只改本地、线上 v9 → 参数被静默丢弃、`words[]` 全空。旧客户端不传字段不受影响。
 - 字级时间戳走 `word_timestamp_enabled` → `sentence-end` 的 `words[]`（`sentence-begin` 的 words 恒空）；客户端 `synthesizeWithTimeline()`。
-- ⚠️ 字幕里的 `[clears throat]` 这类**含空格标签会被上游劈成两个 word**（`[clears` + `throat]但真正…`），所以 `TranscriptTagMarkup` 必须**把整句拼成字符流再扫**（记 owner[] 回填），逐词扫会全漏；匹配要忽略空白/大小写/全角括号。
-- ⚠️ **段时长必须按 MP3 帧累加**（`AudioConcatenator.mp3DurationSeconds`）：写死 32kbps 按字节估会成倍偏大（实测真实 211s → 估 2114s），段偏移累积把后几句推过音频末尾 = 逐字高亮追不上声音。`AudioItem.timeline` 有兜底校验：末字 > 时长×1.2 直接退回静态原文。
+- ⚠️ 字幕里的 `[clears throat]` 这类**含空格标签会被上游劈成两个 word**（`[clears` + `throat]但真正…`），所以 `TranscriptTagMarkup` 必须**把整句拼成字符流再扫**（记 owner[] 回填），逐词扫会全漏；匹配要忽略空白/大小写/全角括号。⚠️ 阅读区**不显示**标签（**不画徽标**，用户明确要求）：纯标签句 `hasBody=false` 整行不占位，标题句数用 `AudioTimeline.transcriptSentenceCount`，**禁退回 `sentences.count`**。
+- ⚠️ **段时长必须按 MP3 帧累加**（`AudioConcatenator.mp3DurationSeconds`）：写死 32kbps 按字节估会成倍偏大（实测真实 211s → 估 2114s），段偏移累积把后几句推过音频末尾 = 逐字高亮追不上声音。`AudioItem.timeline` 有兜底校验：末字 > 时长×1.2 直接退回静态原文。生成端另有「段长合计 vs 实测时长」6% 漂移闸：不通过就**不写 sidecar**（宁可静态原文）。
 - 时间轴存 `<fileName>.timestamps.json` sidecar（禁改 SQLite/禁 DROP），段偏移按**每段实际音频时长**累加，任一段缺 words 整条不写、播放器走静态原文，**禁估时伪造对齐**。
 - ⚠️ `words[].text` 是 `normalized_text`（繁→简）；v3 起落盘前 `TTSTimestampParser.alignToOriginal(_:source:)` 重分配文本，**对齐源首选自己发出去的 `segment.text`，上游 `original_text` 只作次选**。禁把 word.text 改回 normalized。
 - `remap` 三通道：①去空白字数相等→逐位映射；②**按词内占号字符数累计**（`sliceByUnitEnds`）；③上游 `begin_index/end_index`。末尾过 `previousEnd == unitVisible.count` 校验，对不上原样返回。`allowSurfaceMatch:false` 用于 v2+ 迁移。
@@ -42,6 +42,7 @@
 - ⚠️ CPU 暴涨根因 = 订阅拓扑：`PlaybackStatus` 只订阅单属性 publisher；高频显示只许 6 个小 View 各自 `@ObservedObject`，禁 `@StateObject player`、禁把 progress 传给所有行；macOS 音色库页面级只 `.onReceive($playingKey.removeDuplicates())`。
 - iOS 后台播放：AVAudioSession `.playback` + `iOSEmora-Info.plist` `UIBackgroundModes=[audio]`（数组键须 INFOPLIST_FILE 模板 + `plutil -extract` 验产物）；封面 `makeArtwork` 全幅不透明渐变。
 - `playingKey` 存 identifier、跨 key `reidentify(_:)`；⚠️ 并发闭包「外层 `guard let self` + `Task @MainActor`」。
+- ⚠️ 阅读区播放底色**两端都是「整篇唯一一块」**（mac `PlayerTranscriptView.highlightLayer` / iOS `PlayerDetailControls.highlightLayer`，画在内容 VStack 的 `background` 里），行位置各走自己的 fileprivate `TranscriptRowFrameKey`（`GeometryReader.frame(in:.named)`，坐标系挂内容 VStack → 滚动不触发上报）。**禁改回「每行各画一块」**：两块视图之间只能淡出+淡入，换行必闪。滑动时长 `highlightTravel`(0.34) 必须与 `scrollCurrent` 的动画同值同曲线，否则底色和文字互相追；`.animation(value:)` 只能挂在这一层，禁止放宽到逐字高亮路径。
 
 ## macOS 切页 / 音色库首屏
 - ⚠️ `ContentView.mainContent` ZStack 双层：访问过的 `.voiceStudio`/`.voices` 常驻只切 opacity，**禁 `.id(renderedSection)` 重建**（NSTextView + attachment + VM 全量重建 = 卡顿根因）；两页铺不透明 `bgPrimary`；隐藏时**保留视图树，禁 `Color.clear` 门控**。
@@ -58,7 +59,7 @@
 - `StudioParamValues`/`Store` 在 `Shared/ViewModels/VoiceStudioViewModel.swift`，键 `studioParam.*`；⚠️ 禁把 `AppState.defaultFormat`/`defaultSampleRate` 当存储，「重置」只调 `reset(on: vm)` = `.factory`(mp3/22050/1.0x/100%)；`VoiceStudioView.onAppear` 从设置页覆盖参数**已删，别加回来**。
 - ⚠️ **语言 chip 绝不写入指令输入框**（11-12）：`toggleLanguage()` 只切 `selectedLanguage`，语言经 `Constants.languageHint(forName:)` 走 `language_hints`；`updateNLInstruction()` 只由 `applyPreset()` 调用、只写 `nlPresets.instruction?.localized()`。**禁把语言名加回拼接**（先选语言再点预设就会漏进框里）。写入指令的文案必须 `.localized()`（中文原文兼 key，三份 strings 已有 24 语言名 + 6 预设译文；直接拼中文会让英/繁界面冒简体，11-11 实测）。iOS/macOS 共用此 VM。
 - `GenerationDialog` 清空须 `displayName: nil`，`hasResult = generatedAudioURL != nil && !isGenerating`；`PackageCard` 副标题禁 `.lineLimit(1)`。
-- ⚠️ 用户要求「**每次 App 打开都弹评分弹窗**」（与 ASO 文档相反，以用户为准）：`AppUpdateManager.requestReviewOnEveryOpen()` 两端根容器各挂一行，**不做本地节流**。口径是「**每进程一次**」：`ReviewRequestGate`（`nonisolated(unsafe) static var`）只放行一次。**禁把标记放回 `@State`、禁在 `scenePhase != .active` 时复位**（iOS 面板/控制中心/来电都走 active→inactive→active，复位即连环弹窗）。StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
+- ⚠️ 用户要求「**每次 App 打开弹一次评分**」（与 ASO 文档相反，以用户为准）。口径「**每进程一次**」，`ReviewRequestGate`（`nonisolated(unsafe) static var`）只放行一次；**禁把标记放回 `@State`、禁在 `scenePhase != .active` 时复位**（iOS 面板/控制中心/来电都走 active→inactive→active，复位即连环弹窗）。⚠️ **两端入口不同、禁互相抄**：iOS 仍 `requestReviewOnEveryOpen()` 挂 `iOSContentView`；**macOS 已改走 `AppDelegate.applicationDidFinishLaunching` → `LaunchReviewRequester`**（等「窗口上屏 + `NSApp.isActive`」再 `AppStore.requestReview(in: vc)`，单次调用，20s 等不到前台就不申请）——旧实现把修饰符挂根视图，启动瞬间申请时不是前台，请求被 StoreKit 挂起后反复投递 = 一次启动弹好几个。StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
 
 ## 商店页 / ASO（全部细节在 `产品/商店页/*.md`）
 - 入口：Mac `素材/gen_previews.py` + `商店页文案-多语言版本.md`；iPhone `gen_ios_previews.py` + `iOS商店页元数据-6语言.md`；iPad `prepare_ipad_real.py` + `gen_ios_previews_ipad.py`。尺寸 6.9" `1320×2868`(禁 alpha) / iPad 13" `2752×2064` / Mac `2880×1800`；⚠️ `素材/raw/` 未被 git 追踪曾被清理。

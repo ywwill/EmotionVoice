@@ -31,6 +31,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
+
+    /// App 启动完成（进程内只来一次）：排一次评分申请。
+    ///
+    /// ⚠️ 评分不要挂在 SwiftUI 根视图上：那儿有 `.task` / `scenePhase` 两个入口，
+    /// 启动瞬间就申请时窗口还不是 key，StoreKit 会把请求挂起、反复投递，
+    /// 用户看到的就是「一次启动弹好几次」。这里等「窗口上屏 + App 激活」再调一次，
+    /// 见 `LaunchReviewRequester`。
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        LaunchReviewRequester.requestOnceAfterLaunch()
+    }
 }
 
 @main

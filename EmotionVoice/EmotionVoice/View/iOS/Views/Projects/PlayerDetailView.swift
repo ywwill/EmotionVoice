@@ -200,7 +200,8 @@ struct PlayerDetailView: View {
                 let loaded = item.timeline
                 timeline = loaded
                 if let loaded, loaded.isAligned {
-                    sentenceCount = loaded.sentences.count
+                    // 只有标签的句子（`[clears throat]`）在阅读区不占位，句数跟着正文走
+                    sentenceCount = loaded.transcriptSentenceCount
                 } else {
                     sentenceCount = Self.countSentences(item.text)
                 }

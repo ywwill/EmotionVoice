@@ -543,17 +543,17 @@ struct GenerationDialog: View {
 
     /// 完成态默认名（与 macOS `AudioGenerationModal.generateDefaultAudioName()` 同规则）。
     ///
-    /// ① 换行折成空格 → 先截 40 字再 `sanitizeFileName`（洗掉 `/ : * ?` 等非法字符）→ 取前 10 字；
+    /// ① 换行折成空格 → 先截 80 字再 `sanitizeFileName`（洗掉 `/ : * ?` 等非法字符）→ 取前 20 字；
     ///    情感 / 拟声标签是编辑器装饰，只取 `plainText`，不混进名字。
-    /// ② 文本为空 / 洗完什么都不剩 → 退回本地化的「音频_MM-dd HH:mm」时间戳。
+    /// ② 文本为空 / 洗完什么都不剩 → 退回本地化的「语音_MM-dd HH:mm」时间戳。
     /// ⚠️ 时间戳兜底用带参数的 `.localized(...)`，不要写成 `String(format: "…%@…".localized(), …)`。
     private static func defaultAudioName(from plainText: String) -> String {
         let source = plainText
             .components(separatedBy: .newlines)
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
-        let cleaned = sanitizeFileName(String(source.prefix(40)))
-        let prefix = String(cleaned.prefix(10))
+        let cleaned = sanitizeFileName(String(source.prefix(80)))
+        let prefix = String(cleaned.prefix(20))
             .trimmingCharacters(in: CharacterSet(charactersIn: "-").union(.whitespaces))
         if !prefix.isEmpty { return prefix }
 

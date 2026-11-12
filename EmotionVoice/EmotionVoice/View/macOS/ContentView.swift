@@ -78,8 +78,10 @@ struct ContentView: View {
         .task { await updateManager.checkForUpdateAtLaunch() }
         // 空闲期预热音色库（与网络检查并行，互不阻塞）
         .task { await warmUpVoicesLibrary() }
-        // 每次打开 App 申请一次 App Store 评分（每个进程只一次）
-        .requestReviewOnEveryOpen()
+        // 评分申请不挂在这里：macOS 走 `AppDelegate.applicationDidFinishLaunching`
+        // → `LaunchReviewRequester`，等窗口上屏且 App 激活后只申请一次
+        // （挂在根视图上的 `.task` / `scenePhase` 两个入口会在启动瞬间就申请，
+        //   请求被 StoreKit 挂起后会反复投递，表现为「一次启动弹好几次」）。
         .onChange(of: appState.selectedSection) { _, newSection in
             // `.home` 已无侧边栏入口，历史上与工作台共用同一页面，归一化避免空白页
             scheduleContentSwap(to: newSection == .home ? .voiceStudio : newSection)
