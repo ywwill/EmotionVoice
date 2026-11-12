@@ -2,19 +2,11 @@
 //  IOSUIState.swift
 //  iOSEmora
 //
-//  跨标签页的浮层状态：购买 Sheet / Toast / 生成弹窗。
-//
-//  为什么放在全局而不是某个标签的 @State：
-//  1. 后台接收条在三个标签上都可见，点「查看」要能把生成弹窗重新唤起；
-//  2. 「积分不足」会从工作台直接唤起购买 Sheet，而购买入口本身在设置页；
-//  3. Toast（购买结果）需要盖在标签栏之上。
-//
 
 import Foundation
 import SwiftUI
-import Combine   // @Published / ObservableObject 在 Combine，SwiftUI 不再隐式导出
+import Combine
 
-/// Toast 提示（iOS 端独立实现；macOS 有自己的一套，两端不共用类型 / 状态）。
 struct ToastMessage: Identifiable, Equatable {
     enum Style {
         case success
@@ -25,7 +17,6 @@ struct ToastMessage: Identifiable, Equatable {
     let id = UUID()
     let text: String
     let style: Style
-    /// 自动消失时长：统一 1 秒。
     let duration: TimeInterval
 
     static func success(_ text: String, duration: TimeInterval = 1) -> ToastMessage {
@@ -35,9 +26,6 @@ struct ToastMessage: Identifiable, Equatable {
     static func info(_ text: String) -> ToastMessage { .init(text: text, style: .info, duration: 1) }
 }
 
-/// 底部「撤销」Toast：5 秒倒计时 + 尾随动作按钮。
-/// ⚠️ 与顶部购买结果 Toast 分开两条通道：一个在顶、一个占标签栏之上，
-///    撤销条显示时 mini player / 后台浮条让位，不叠放。
 struct UndoToastMessage: Identifiable, Equatable {
     let id = UUID()
     let text: String
@@ -53,8 +41,6 @@ final class IOSUIState: ObservableObject {
 
     static let shared = IOSUIState()
 
-    // MARK: 浮层
-
     /// 购买积分 Sheet（设置页账户卡 / 工作台积分不足，两个入口共用）
     @Published var purchaseSheetPresented: Bool = false
 
@@ -67,9 +53,6 @@ final class IOSUIState: ObservableObject {
     /// 多选工具条显示时让出 mini player 的位置（避免两层底栏叠放）
     @Published var hideMiniPlayer: Bool = false
 
-    /// 历史列表需要刷新的自增信号。
-    /// ⚠️ 播放详情页 / 最近删除页里撤销软删时，列表页早已 onAppear 过，
-    ///    光改 AudioFlagStore 不会让它重算；靠这个信号让 ProjectsView 重新 load()。
     @Published var historyReloadSignal: Int = 0
 
     /// 音色选择 Sheet（工作台「更换音色」）
@@ -81,12 +64,8 @@ final class IOSUIState: ObservableObject {
     private init() {}
 
     // MARK: - Toast
-
     func showToast(_ message: ToastMessage) {
         toastTask?.cancel()
-        // ⚠️ 出现动画必须显式带事务：ToastHost 的 `.transition` 只有在带动画的
-        //    事务里插入视图才会跑。以前直接赋值 → 瞬间蹦出来，却带 0.25s 消失动画。
-        //    `.id(message.id)` 让连着弹第二条时也重播一次入场。
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { toast = message }
         let d = message.duration
         toastTask = Task { @MainActor in
@@ -103,8 +82,7 @@ final class IOSUIState: ObservableObject {
         withAnimation(.easeOut(duration: 0.25)) { toast = nil }
     }
 
-    // MARK: - 撤销 Toast
-
+    // MARK: - 撤销
     func showUndoToast(text: String, onUndo: @escaping () -> Void) {
         undoTask?.cancel()
         let message = UndoToastMessage(text: text, onUndo: onUndo)
@@ -121,7 +99,6 @@ final class IOSUIState: ObservableObject {
         historyReloadSignal += 1
     }
 
-    /// 点「撤销」：先消费掉 Toast，再执行恢复闭包（避免倒计时任务把新 Toast 顶掉）。
     func consumeUndoToast() {
         undoTask?.cancel()
         undoTask = nil
@@ -131,23 +108,11 @@ final class IOSUIState: ObservableObject {
     }
 }
 
-// MARK: - 音色库筛选状态（仅当前进程，不落盘）
-
-/// iOS 音色库的筛选状态容器：**只在当前 App 进程内有效**。
-///
-/// 行为约定：
-/// - 切标签 / 页面跳转 / 音色库 View 被 SwiftUI 重建 → 分类、搜索词、收藏筛选原样保留；
-/// - App 进程结束（重启）→ 一律回到默认「全部音色 + 空搜索 + 非收藏」。
-///
-/// ⚠️ 绝不写 `UserDefaults`：`AppState` 里那 4 个 `voiceLibrary*` 字段带 `didSet` 落盘，
-///    macOS 音色库仍在用；iOS 以前读写它们，结果就是「重启后自动恢复上次分类」。
-///    现在 iOS 只读这里，磁盘上的历史残留首次访问时清掉，避免以后被误读带回来。
+// MARK: - 音色库筛选状态
 @MainActor
 final class VoiceLibraryFilterStore {
 
     static let shared = VoiceLibraryFilterStore()
-
-    /// nil = 全部音色
     var selectedCategory: VoiceCategory?
     var searchText: String = ""
     var showFavoritesOnly: Bool = false
@@ -169,9 +134,7 @@ final class VoiceLibraryFilterStore {
     }
 }
 
-// MARK: - Toast 视图
-
-/// 顶部落下的 Toast（购买结果）
+// MARK: - Toast
 struct ToastHost: View {
     @Environment(\.aurora) private var c
     let message: ToastMessage

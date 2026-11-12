@@ -2096,6 +2096,16 @@
 		6FA000000000000000001006 /* PlaybackKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		6FB270A430942B15007BD00D /* iOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSContentView.swift; sourceTree = "<group>"; };
 		6FB270A530942B15007BD00D /* iOSEmoraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSEmoraApp.swift; sourceTree = "<group>"; };
+		6FC9454C30A5B14400E4D76A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6FC9454D30A5B14400E4D76A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
+		6FC9454E30A5B14C00E4D76A /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6FC9454F30A5B14C00E4D76A /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
+		6FC9455030A5B15200E4D76A /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6FC9455130A5B15200E4D76A /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
+		6FC9455230A5B15900E4D76A /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6FC9455330A5B15900E4D76A /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
+		6FC9455430A5B16000E4D76A /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6FC9455530A5B16000E4D76A /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/VoiceCatalog.strings; sourceTree = "<group>"; };
 		6FCA9CE23060D7680005713F /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		6FCA9CE43060D7680005713F /* DeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentifier.swift; sourceTree = "<group>"; };
 		6FCA9CE53060D7680005713F /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
@@ -3276,6 +3286,11 @@
 				Base,
 				"zh-Hans",
 				"zh-HK",
+				ru,
+				ko,
+				ja,
+				fr,
+				de,
 			);
 			mainGroup = 6FEE97E2302705C600C39C26;
 			minimizedProjectReferenceProxies = 1;
@@ -4709,6 +4724,11 @@
 				6F209384303EC80500A770BB /* en */,
 				6F209385303EC80500A770BB /* zh-Hans */,
 				6F8763CE3088643500F260A9 /* zh-HK */,
+				6FC9454C30A5B14400E4D76A /* ru */,
+				6FC9454E30A5B14C00E4D76A /* ko */,
+				6FC9455030A5B15200E4D76A /* ja */,
+				6FC9455230A5B15900E4D76A /* fr */,
+				6FC9455430A5B16000E4D76A /* de */,
 			);
 			name = Localizable.strings;
 			sourceTree = "<group>";
@@ -4719,6 +4739,11 @@
 				A1B2C3D4E5F60718293A4B5D /* en */,
 				A1B2C3D4E5F60718293A4B5E /* zh-Hans */,
 				6F8763CF3088643500F260A9 /* zh-HK */,
+				6FC9454D30A5B14400E4D76A /* ru */,
+				6FC9454F30A5B14C00E4D76A /* ko */,
+				6FC9455130A5B15200E4D76A /* ja */,
+				6FC9455330A5B15900E4D76A /* fr */,
+				6FC9455530A5B16000E4D76A /* de */,
 			);
 			name = VoiceCatalog.strings;
 			sourceTree = "<group>";

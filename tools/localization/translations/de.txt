@@ -1,0 +1,537 @@
+Abbrechen
+Schließen
+Bestätigen
+Fertig
+Speichern
+Löschen
+Bearbeiten
+Suchen
+Stopp
+Favorit
+Alle anzeigen
+Meine Projekte
+Stimmenbibliothek
+Credits-Center
+Nutzungsstatistik
+Einstellungen
+Erstellen
+Sprachgenerierung
+Stimmennutzung
+Texteingabe
+%d Zeichen
+Text eingeben oder einfügen
+Tonfall-Steuerung
+Soundeffekte
+Geschwindigkeit
+Lautstärke
+Erstellen
+Empfangen: %@
+Verbleibend
+Geschätzt
+🎭 Stimmenauswahl
+%d verfügbar
+Ändern
+Weitere Stimmen ansehen
+🎚️ Sprachsteuerung
+Format
+📋 Sprachanweisungen
+Natürliche Sprache
+Sprachanruf
+KI-Stimme
+Online-Sprache
+Sprachsynthese
+Audio in CD-Qualität
+Professionelles Audio
+Mehr Details = bessere Ergebnisse
+⭐ Flaggschiff
+Generierung nicht möglich
+Bitte zuerst den zu synthetisierenden Text eingeben
+Bitte zuerst eine Stimme auswählen
+🌐 Sprache
+Wähle die wiederzugebende Stimme aus der Liste aus.
+Von Anfang abspielen
+15 Sekunden zurück
+5 Sekunden zurück
+5 Sekunden vor
+15 Sekunden vor
+Leertaste
+Wiedergabe / Pause
+5 Sekunden
+15 Sekunden
+Wiedergabe läuft
+Pausiert
+Wiedergabe beendet
+Bereit
+Kopieren
+Einfügen
+Kopiert
+Verbleibend
+%d Zeichen · %d Sätze
+Kein Originaltext
+Exportieren
+Stapelaktionen
+Stimme
+Flaggschiff-Stimme
+Alle
+Anwendungsbereich
+Keine passenden Stimmen gefunden
+Mittleres Alter
+Senior
+Junger Erwachsener
+Jugendlicher
+Kinder
+Rolle
+✨ Beschreibungsvorlagen
+Sanfte Frauenstimme
+Lebhafte Männerstimme
+Nachrichtensendung
+Hörbuch
+Werbesprecher
+Lehrerklärung
+Beschreibe die Stimme, die du hören möchtest...
+Eine sanfte Frauenstimme mit moderatem Tempo und weichem, warmem Klang
+Eine junge, energiegeladene Männerstimme mit schnellem Tempo und positivem Tonfall
+Standard-Nachrichtenstil mit klarer Artikulation und präziser Aussprache
+Ein intelligenter, gefasster Erzählstil mit ausdrucksstarker Darbietung
+Ein leidenschaftlicher, überzeugender Werbestil mit schwungvollem Rhythmus
+Ein geduldiger, ausführlicher Lehrstil mit klarer Logik
+So schreibst du gute Stimmbeschreibungen
+Grundprinzipien
+Konkret statt vage
+Verwende Wörter, die Stimmeigenschaften beschreiben, wie „tief“, „klar“ oder „schnell“, und vermeide vage Formulierungen wie „angenehm“ oder „gewöhnlich“.
+Mehrere Dimensionen statt einer
+Gute Beschreibungen decken mehrere Dimensionen ab, etwa Geschlecht, Alter und Emotion. Nur „Frauenstimme“ zu schreiben ist zu allgemein für eine charakteristische Stimme.
+Objektiv statt subjektiv
+Konzentriere dich auf physikalische und wahrnehmbare Merkmale der Stimme. Schreibe zum Beispiel „hohe Tonlage, energiegeladen“ statt „meine Lieblingsstimme“.
+Beschreiben, nicht imitieren
+Beschreibe die Eigenschaften der Stimme, statt die Nachahmung bestimmter Personen wie Prominenter oder Schauspieler zu verlangen. Das Modell unterstützt keine Imitation bestimmter Personen, und solche Anfragen können Urheberrechtsrisiken bergen.
+Knapp statt redundant
+Jedes Wort sollte eine klare Funktion haben. Vermeide doppelte Synonyme und bedeutungslose Ausschmückungen.
+Dimensionen der Stimmbeschreibung
+Kombiniere die folgenden Dimensionen: Je mehr du angibst, desto präziser das Ergebnis.
+Beispiele
+Standard-Nachrichtenstil
+Klare Artikulation und makellose Aussprache
+Junge Frauenstimme
+Schnelles Tempo mit deutlich steigender Intonation, ideal für die Vorstellung von Modeprodukten
+Gefasste Männerstimme mittleren Alters
+Langsames Tempo, tiefe, resonante Stimme, ideal für Nachrichten oder Dokumentarfilme
+Sanfte, intelligente Frauenstimme
+Um die 30 Jahre, ruhiger und gleichmäßiger Tonfall, ideal für Hörbuchlesungen
+Niedliche Kinderstimme
+Ein etwa achtjähriges Mädchen mit leicht kindlichem Ton, ideal für die Vertonung von Zeichentrickfiguren
+Dimension
+Beschreibungsbeispiele
+Geschlecht
+Männlich, weiblich, neutral
+Alter
+Kind, Jugendlicher, junger Erwachsener, mittleres Alter, Senior
+Tonhöhe
+Hoch, mittel, tief, eher hoch, eher tief
+Schnell, moderat, langsam, eher schnell, eher langsam
+Emotion
+Fröhlich, gefasst, sanft, ernst, lebhaft, ruhig, beruhigend
+Merkmale
+Resonant, klar, heiser, rund, süß, tief, kraftvoll
+Einsatz
+Nachrichten, Werbung, Hörbücher, Animation, Sprachassistenten
+Traurig
+Erstaunt
+Rufen
+Zittern
+Wut
+Aufgeregt
+Sarkasmus
+Neugier
+Tiefe Stimme
+Gelangweilt
+Müde
+Verächtlich
+Lautes Rufen
+ASMR
+Panik
+Schelmisch
+Empathisch
+Flüstern
+Widerwillig
+Weinen
+Ernst
+Sehr langsam
+Sehr schnell
+Lachen
+Kichern
+Seufzen
+Erschrockenes Einatmen
+Räuspern
+Husten
+Summen
+Steuerungs-Tags legen Emotion oder Stil der Stimme fest
+Schreibe das Tag in den Text; es gilt für den gesamten folgenden Text
+Bis zum nächsten Steuerungs-Tag oder bis es vorzeitig durch ein Unterbrechungs-Tag beendet wird
+Fügt an der aktuellen Position einen Soundeffekt ein
+Beeinflusst nicht Emotion oder Stil des umgebenden Textes
+Unterbrechen
+Beendet die Wirkung des vorherigen Tonfall-Tags
+Ab hier wird der Text im stimmeigenen Standardzustand gelesen, ohne jede emotionale Färbung
+Gilt bis zum nächsten Tonfall-Tag; Soundeffekte funktionieren dazwischen weiterhin
+Ein trauriger, gedrückter Tonfall mit einer Grundstimmung aus Sorge und Niedergeschlagenheit.
+Ein überraschter Tonfall mit Staunen und Schock.
+Tiefes, lautes Rufen.
+Eine zitternde Stimme, die Angst, Anspannung oder Aufregung vermittelt.
+Ein wütender, intensiver Tonfall mit starkem Unmut.
+Ein aufgeregter, energiegeladener Tonfall voller Begeisterung und Erwartung.
+Ein sarkastischer Tonfall mit Ironie und Spott.
+Ein neugieriger Tonfall.
+Ein Dracula-artiger Stil mit tiefer, unheimlicher Stimme.
+Ein gelangweilter Tonfall.
+Ein müder Tonfall mit langsamem Tempo und tieferer Tonlage.
+Ein verächtlicher Tonfall.
+Ein sanfter, leiser ASMR-Stil, ideal für Schlaf- und Entspannungsinhalte.
+Ein panischer, ängstlicher Tonfall mit Dringlichkeit und Not.
+Ein schelmischer, verspielter Tonfall mit einem Hauch von Neckerei.
+Ein empathischer Tonfall.
+Ein leiser Flüsterton, ideal für intime, geheimnisvolle oder private Szenen.
+Ein widerwilliger Tonfall.
+Eine weinende Stimme mit Schluchzen und ersticktem Weinen.
+Ein ernster, formeller Tonfall für Ansagen und Lesungen.
+Ein extrem langsames Tempo, ideal für Betonung, Nachdenken oder dramatische Pausen.
+Ein extrem schnelles Tempo, ideal für angespannte, aufgeregte oder hastige Dialoge.
+Seufzen.
+Überraschtes Einatmen.
+Schnauben oder höhnisches Lachen.
+Abgeschlossen
+Wird generiert
+Aufladen
+Aktuelles Guthaben
+Einsteiger-Paket
+Basis-Paket
+Fortgeschrittenen-Paket
+Pro-Paket
+Kaufen
+Empfohlen
+Ideal zum Ausprobieren
+Die Wahl für Creator
+Für häufige Nutzung
+Für Profis
+Unbegrenzt gültig
+Abrechnungsregeln
+Regeln zur Credit-Berechnung
+📋 Credit-Verlauf
+%d Einträge
+Typ
+Details
+Dauer
+Zeit
+Kein Credit-Verlauf
+2 Credits / 100 Zeichen
+Chinesische, japanische und koreanische Schriftzeichen zählen als 2 Zeichen
+Lateinische Buchstaben, Ziffern und Satzzeichen zählen als 1 Zeichen
+⭐ Empfohlen
+Sprachausgabe
+Standardformat
+Exportformat für Sprache
+Abtastrate
+Sprachqualität
+Datei
+Exportverzeichnis
+Cache automatisch bereinigen
+Temporäre Dateien regelmäßig löschen
+Speicherort für Sprachdateien
+Nicht festgelegt
+Öffnen...
+Ändern
+7 Tage
+30 Tage
+60 Tage
+Nie
+Credits
+Wird geladen...
+Keine Stimme verfügbar
+MP3 (empfohlen)
+Chinesisch
+Englisch
+Kantonesisch
+Chongqing-Dialekt
+Sichuan-Dialekt
+Nordostchinesischer Dialekt
+Henan-Dialekt
+Shaanxi-Dialekt
+Tianjin-Dialekt
+Shandong-Dialekt
+Französisch
+Deutsch
+Japanisch
+Koreanisch
+Russisch
+Portugiesisch
+Thailändisch
+Indonesisch
+Vietnamesisch
+Spanisch
+Italienisch
+Malaiisch
+Philippinisch
+Arabisch
+Flaggschiff
+Basis
+Weiblich
+Männlich
+Alltagsgespräch
+Emotionale Begleitung
+Hörbuchlesung
+Kundenservice
+Social Media
+Anime-Synchronisation
+Live-Commerce
+Klassisches Hörbuch
+Sportkommentar
+Hörbuch
+Nacht-Radio
+Wissensvermittlung
+Unterhaltung & Comedy
+Geschäftsbericht
+Smarter Assistent
+Rede & Rezitation
+Anime-Rolle
+Streamer-Rolle
+Klassische Rolle
+Radio-Rolle
+Sprache
+Altersgruppe
+%d Jahre
+Empfang läuft
+Sprachgenerierung abgeschlossen
+Schließen (Empfang läuft im Hintergrund weiter)
+%@ empfangen
+Die Audiodaten wachsen weiter — du kannst sie direkt nach Abschluss anhören
+Datenblöcke
+Verstrichene Zeit
+Bitrate
+%d
+Größe
+Verbrauch
+Noch %@ Credits
+⬇ Exportieren
+Wird exportiert…
+✓ Exportiert
+Sprache exportieren
+Wird verarbeitet…
+Neu laden
+%@ Credits gutgeschrieben
+Kauf abgeschlossen
+Kauf abgebrochen
+Warte auf Bestätigung — Credits werden nach Freigabe gutgeschrieben
+Kauf fehlgeschlagen
+Generierung fehlgeschlagen, bitte erneut versuchen
+Nicht genügend Credits
+Paket
+%d kbit/s
+Zurück
+Weiter
+%d–%d von %d
+Anzeigen
+Alle auswählen
+Auswahl aufheben
+Generierung bestätigen
+Stimme: %@<NL>Kosten: %@ Credits
+Kategorie wählen
+Duplizieren fehlgeschlagen
+Projekt
+Über
+Zweiseitig mit dem Wert in der Workbench synchronisiert — Änderungen werden sofort in UserDefaults geschrieben.
+Credits kaufen
+Credit-Verlauf
+%d Einträge
+Nach oben ziehen für mehr · %d / %d angezeigt
+Noch kein Credit-Verlauf
+Sprachformat
+MP3 ist kleiner, WAV bietet höhere Klangtreue.
+Eine höhere Abtastrate bedeutet eine größere Datei. WAV-Bytes pro Sekunde = Abtastrate × 2.
+Hohe Kompression, kleine Datei — ideal zum Teilen
+Verlustfreies Roh-PCM — ideal für die weitere Bearbeitung
+Gekaufte Credits verfallen nie.
+Nach Bestätigung des Kaufs wird dein App Store-Konto belastet.
+Produktinformationen werden geladen…
+Kauf läuft…
+Jetzt kaufen
+Tonfall
+Sound
+Leeren
+Inhalt leeren
+Alle Texte und Tags im Eingabefeld werden gelöscht. Das lässt sich nicht rückgängig machen.
+Gilt ab der Einfügeposition bis zum nächsten Tonfall-Tag oder einer Unterbrechung.
+Wird einmal an der Einfügeposition abgespielt und verändert den umgebenden Tonfall nicht.
+Erstellungsparameter
+Sprachsteuerung
+Keine Stimme ausgewählt
+Sprachanweisung
+Anweisung
+Aktuelle Stimme
+Stimme wechseln
+Beschreibungsvorlagen
+Beschreibe die gewünschte Stimme in einem Satz
+💡 Mehr Details = bessere Ergebnisse
+1. Zuerst Sprache und Dialekt
+Chinesisch, Kantonesisch, Sichuan-Dialekt…
+2. Dann Geschlecht und Alter
+Junger Mann, Frau mittleren Alters, Kinderstimme…
+3. Danach Klangfarbe und Tempo
+Sanft und weich, etwas schneller, positiver Tonfall…
+4. Zum Schluss der Einsatzzweck
+Ideal für Nachrichten / Hörbücher / Werbung…
+Nicht genügend Credits — noch %@ nötig
+OK
+Stimme auswählen
+Nach Name, Eigenschaft, Szene oder Sprache suchen
+Alle Kategorien
+%@ · %d
+Tippe oben auf die Schaltfläche, um neu auszuwählen
+Nur Favoriten
+Nur Favoriten · %d
+%d insgesamt · Flaggschiffe zuerst, dann nach Name
+Alle %d Stimmen angezeigt
+Versuche einen anderen Suchbegriff oder setze die Filter zurück
+Zu „%@“ gewechselt
+Zurücksetzen
+Filter nur für diese Ansicht
+Alle Stimmen
+Umbenennen
+Keine passende Stimme
+Mehrfachauswahl aktivieren
+Stimme kopiert
+Die ausgewählte Audiodatei existiert nicht
+Name der Stimme
+Pause
+Abspielen
+Noch etwa %@
+Wiedergabe läuft · %@
+In der Warteschlange
+Halte die App im Vordergrund — im Hintergrund kann der Empfang unterbrochen werden.
+Noch %@
+−%@ Credits
+Teilen
+Fenster ausblenden
+Stimme_%@
+%@ gelöscht
+%d in diesem Monat
+%d Clips
+<Q>%@<Q> bleibt 30 Tage in „Zuletzt gelöscht“ und kann jederzeit wiederhergestellt werden.
+Heute um %@
+Heute
+Wird 30 Tage aufbewahrt, danach automatisch entfernt
+%d Treffer in der Bibliothek
+Alle Felder
+Schreibe einen Text, wähle eine Stimme — und dein erstes Werk erscheint hier.
+Noch %d Tage
+Verlauf
+Jetzt erstellen
+Entfernen
+Name
+Duplizieren
+Fehlgeschlagen
+Gelöschte Einträge werden 30 Tage aufbewahrt, danach automatisch entfernt
+Zu Favoriten hinzugefügt
+Aus Favoriten entfernt
+%d Clips kopiert
+Text zurück in die Studio-Ansicht übernommen
+Endgültig gelöscht
+Stimme wiederhergestellt
+Löschen rückgängig gemacht
+„Zuletzt gelöscht“ geleert
+%d nach „Zuletzt gelöscht“ verschoben · 30 Tage wiederherstellbar
+Nach „Zuletzt gelöscht“ verschoben · 30 Tage wiederherstellbar
+%d ausgewählt
+Ausgewählt
+Umbenannt
+Endgültig löschen
+Das lässt sich nicht rückgängig machen; auch die Audiodatei wird entfernt.
+Endgültig löschen?
+Wiederherstellen
+Wiederhergestellte Einträge kehren in ihre ursprüngliche Datumsgruppe zurück; endgültiges Löschen ist nicht widerrufbar.
+Anderer Suchbegriff
+Versuche einen anderen Suchbegriff oder setze die Filter zurück.
+Sortierung
+Nach Name, Text oder Stimme suchen
+Rückgängig
+Datei fehlt
+Text
+Nicht verfügbar
+Gestern um %@
+Gestern
+Mehr
+Neueste zuerst
+Älteste zuerst
+Zuletzt gelöscht
+„Zuletzt gelöscht“ ist leer
+„Zuletzt gelöscht“ leeren
+„Zuletzt gelöscht“ leeren?
+Filter zurücksetzen
+Nach „Zuletzt gelöscht“ verschieben
+Nach „Zuletzt gelöscht“ verschieben?
+Ältere Einträge werden geladen…
+Noch keine Stimme generiert
+Die ausgewählten %d Clips bleiben 30 Tage in „Zuletzt gelöscht“ und können jederzeit wiederhergestellt werden.
+Stimme zum Verwalten auswählen
+Erneut bearbeiten
+Audiodatei fehlt
+Nach Updates suchen
+Prüfen
+Wird geprüft…
+Neue Version verfügbar
+Version %@ ist verfügbar
+Aktualisieren
+Jetzt aktualisieren
+Später
+Neuerungen
+Update-Details ansehen
+Aktuelle Version
+Du nutzt die neueste Version
+Version
+Geschwindigkeit, Lautstärke, Format und Abtastrate auf die Standardwerte zurücksetzen
+Wiedergabe folgen
+Zum aktuellen Satz
+Diese Stimme hat keine Zeitstempel auf Wortebene. Der Text wird unverändert angezeigt; eine Ausrichtung wird nicht mit geschätzten Zeiten vorgetäuscht.
+Satz %d / %d · %@ – %@
+Satz %d · %@
+Pause %@ · nächster Satz %d
+Der Text scrollt automatisch, damit der aktuelle Satz in der Mitte bleibt; manuelles Scrollen deaktiviert die Verfolgung vorübergehend.
+Folgen
+Satz %d / %d
+Doppeltippen, um ab diesem Satz abzuspielen
+Verfolgung ausschalten
+Verfolgung einschalten
+Entwürfe
+Aktuelles speichern
+Entwurf gespeichert
+Entwurf wiederhergestellt
+Entwurf gespeichert · <Q>%@<Q>
+Diesen Entwurf wiederherstellen?
+<Q>%@<Q> ersetzt den gesamten Inhalt des Editors, einschließlich Emotions-Tags, Stimme und Parametern.
+Der aktuelle Inhalt wird als neuer Entwurf gespeichert
+Wiederhergestellt aus <Q>%@<Q>
+Noch keine Entwürfe
+Kurz pausieren? Speichere deine Arbeit als Entwurf und mache mit einem Klick genau dort weiter.
+Letzte Bearbeitung
+Automatisch
+In Bearbeitung
+Gespeicherte Entwürfe
+Automatisch gespeichert
+Entwürfe suchen
+Name des Entwurfs
+Entwurf umbenennen
+Diesen Entwurf löschen?
+Das lässt sich nicht rückgängig machen.
+Alle löschen
+Alle Entwürfe löschen
+Alle Entwürfe löschen?
+Enthält Text, Tags, Stimme und alle Parameter
+Vor dem Wiederherstellen wird die aktuelle Arbeit automatisch gespeichert
+Alle Entwürfe
+⌘ S zum schnellen Speichern
+Kategorien
+Unbenannter Entwurf
+Generiert
+Kopie
+Keine passenden Entwürfe
+Speichern fehlgeschlagen
+Der Audioeintrag konnte nicht gespeichert werden. Bitte versuche es später erneut.

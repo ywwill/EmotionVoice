@@ -28,7 +28,8 @@
 - ⚠️ `AudioTimeline.currentVersion = 6`，对齐与切句共用、改任一条都 bump；`load` 低版本 `realign`、无原文 `regrade`；算法改动跑 `/tmp/ts_verify2.py`+`/tmp/ts_real.py`。逐字高亮禁 `.bold()`（折行晃动），颜色 `AppColor.blend(hex,hex,t)`。
 
 ## 本地化 / 音色 / 参数 / 语言 chip
-- `.localized()` 中文原文当 key；⚠️ 禁 `String(format:"…%@…".localized(), arg)`，须 `"…%@".localized(arg)`；改中文 key 须三份 strings + 两端引用一起改；繁体 OpenCC `s2t`+覆写、别用 s2hk。
+- `.localized()` 中文原文当 key；⚠️ 禁 `String(format:"…%@…".localized(), arg)`，须 `"…%@".localized(arg)`；改中文 key 须 **8 份** Localizable.strings（en/zh-Hans/zh-HK/ru/ko/ja/fr/de）+ 两端引用一起改；繁体 OpenCC `s2t`+覆写、别用 s2hk。
+- ⚠️ 11-12 起五语言译文由 `tools/localization/build_localizable.py` + `translations/{ru,ko,ja,fr,de}.txt` 生成（**禁手改这 5 份 `.lproj/Localizable.strings`**，会被重建覆盖）：以 en 的 value 为翻译源、中文 key 不动，译文每行一条按顺序对齐，转义用 `<NL>`/`<Q>` 标记，占位符 `%@/%d` 顺序必须与英文一致（`String(format:)` 按序取参）；`--check` 校验 + `plutil -lint`。`VoiceCatalog.strings` 五语言仍是英文副本，改它必须动 `tools/gen_basic_voices.py`。
 - 唯一数据源 `Voices/basic_voices.json`(v4)（改后跑 `tools/gen_basic_voices.py`）；标签唯一来源 `Constants.swift`（24 语气/7 拟声），商店图禁自造标签。
 - ⚠️ `VoiceCatalog.string()` NSCache 禁去；`VoiceService.cachedOrderedKeys` 无搜索词走 `orderedKeysWithoutSearch`；iOS 分类筛选只在进程内 `VoiceLibraryFilterStore`，禁读写 `AppState.voiceLibrary*`，取消 apply 也要 `commit(fresh,total)`+`onAppear` 自愈。
 - `toTTSAPIString()` 已弃（生成走 `toTTSSegments()`+`AudioConcatenator.merge()`）；胶囊整条热区 `contentShape(Rectangle())`。

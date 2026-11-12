@@ -1,0 +1,537 @@
+Annuler
+Fermer
+Confirmer
+Terminé
+Enregistrer
+Supprimer
+Modifier
+Rechercher
+Arrêter
+Favori
+Tout afficher
+Mes projets
+Bibliothèque de voix
+Centre de crédits
+Statistiques d'utilisation
+Réglages
+Créer
+Génération vocale
+Utilisation des voix
+Saisie de texte
+%d caractères
+Saisissez ou collez du texte
+Contrôle du ton
+Effets sonores
+Vitesse
+Volume
+Créer
+Reçu : %@
+Restant
+Estimé
+🎭 Sélection de la voix
+%d disponibles
+Modifier
+Voir plus de voix
+🎚️ Réglages de la voix
+Format
+📋 Instructions vocales
+Langage naturel
+Appel vocal
+Voix IA
+Voix en ligne
+Synthèse vocale
+Audio de qualité CD
+Audio professionnel
+Plus de détails = de meilleurs résultats
+⭐ Haut de gamme
+Génération impossible
+Veuillez d'abord saisir le texte à synthétiser
+Veuillez d'abord sélectionner une voix
+🌐 Langue
+Sélectionnez la voix à lire dans la liste.
+Lire depuis le début
+Reculer de 15 secondes
+Reculer de 5 secondes
+Avancer de 5 secondes
+Avancer de 15 secondes
+Espace
+Lecture / Pause
+5 secondes
+15 secondes
+Lecture en cours
+En pause
+Lecture terminée
+Prêt
+Copier
+Coller
+Copié
+Restant
+%d car. · %d phrases
+Aucun texte original
+Exporter
+Actions groupées
+Voix
+Voix haut de gamme
+Toutes
+Cas d'usage
+Aucune voix correspondante
+Âge mûr
+Senior
+Jeune adulte
+Adolescent
+Enfant
+Personnage
+✨ Descriptions prédéfinies
+Voix féminine douce
+Voix masculine enjouée
+Journal parlé
+Livre audio
+Voix off publicitaire
+Explication pédagogique
+Décrivez la voix que vous souhaitez entendre...
+Une voix féminine douce, à un rythme modéré, avec un timbre chaleureux et avenant
+Une voix masculine jeune et énergique, au rythme rapide et au ton positif
+Un style de radiodiffusion standard, avec une articulation nette et une prononciation précise
+Une narration posée et intelligente, expressive et captivante
+Un style publicitaire passionné et convaincant, au rythme enlevé
+Une explication pédagogique patiente et détaillée, à la logique claire
+Comment rédiger une bonne description de voix
+Principes essentiels
+Précis plutôt que vague
+Utilisez des mots qui décrivent le timbre, comme « grave », « clair » ou « rapide », et évitez les formulations vagues comme « agréable » ou « ordinaire ».
+Plusieurs dimensions plutôt qu'une seule
+Une bonne description couvre plusieurs dimensions : genre, âge, émotion, etc. Écrire seulement « voix féminine » est trop général pour obtenir une voix distinctive.
+Objectif plutôt que subjectif
+Concentrez-vous sur les caractéristiques physiques et perceptives de la voix. Par exemple, écrivez « timbre aigu et énergique » plutôt que « ma voix préférée ».
+Décrire, ne pas imiter
+Décrivez les caractéristiques de la voix au lieu de demander d'imiter une personne précise, comme une célébrité ou un acteur. Le modèle ne prend pas en charge l'imitation de personnes réelles et ce type de demande peut poser des problèmes de droits d'auteur.
+Concis plutôt que redondant
+Chaque mot doit avoir une utilité claire. Évitez les synonymes redondants et les ornements superflus.
+Dimensions de description d'une voix
+Combinez les dimensions ci-dessous : plus vous en indiquez, plus le résultat sera précis.
+Exemples
+Style de radiodiffusion standard
+Articulation nette et prononciation irréprochable
+Voix féminine jeune
+Rythme rapide avec une intonation nettement montante, idéale pour présenter des produits de mode
+Voix masculine mûre
+Rythme lent, voix grave et profonde, idéale pour les journaux ou les commentaires de documentaires
+Voix féminine douce et intellectuelle
+Environ 30 ans, ton calme et régulier, idéale pour la lecture de livres audio
+Voix enfantine adorable
+Une fillette d'environ 8 ans avec une légère naïveté dans la voix, idéale pour le doublage de personnages animés
+Dimension
+Exemples de description
+Genre
+Masculin, féminin, neutre
+Âge
+Enfant, adolescent, jeune adulte, âge mûr, senior
+Hauteur
+Aigu, médium, grave, plutôt aigu, plutôt grave
+Rapide, modéré, lent, plutôt rapide, plutôt lent
+Émotion
+Enjoué, posé, doux, sérieux, vif, calme, apaisant
+Caractéristiques
+Profond, clair, rauque, rond, sucré, grave, puissant
+Usage
+Journaux, publicité, livres audio, animation, assistants vocaux
+Tristesse
+Étonnement
+Cri
+Tremblement
+Colère
+Excitation
+Ironie
+Curiosité
+Voix grave
+Ennui
+Fatigue
+Mépris
+Cri puissant
+ASMR
+Panique
+Malice
+Empathie
+Chuchotement
+Réticence
+Pleurs
+Sérieux
+Très lent
+Très rapide
+Rire
+Gloussement
+Soupir
+Inspiration brusque
+Raclement de gorge
+Toux
+Fredonnement
+Les balises de contrôle définissent l'émotion ou le style de la voix
+Placez la balise dans le texte : elle s'applique à tout le texte qui suit
+Jusqu'à la prochaine balise de contrôle, ou jusqu'à une interruption anticipée par une balise d'arrêt
+Insère un effet sonore à la position actuelle
+N'affecte pas l'émotion ni le style du texte environnant
+Interrompre
+Met fin à l'effet de la balise de ton précédente
+À partir d'ici, le texte est lu dans l'état par défaut de la voix, sans aucune coloration émotionnelle
+L'effet dure jusqu'à la prochaine balise de ton ; les effets sonores restent possibles entre-temps
+Un ton triste et abattu, empreint de mélancolie et de découragement.
+Un ton surpris, marqué par l'inattendu et la stupéfaction.
+Un cri grave et puissant.
+Une voix tremblante traduisant la peur, la nervosité ou l'émotion.
+Un ton colérique et intense, exprimant un vif mécontentement.
+Un ton excité et énergique, plein d'enthousiasme et d'attente.
+Un ton ironique, empreint de sarcasme et de moquerie.
+Un ton curieux.
+Un style à la Dracula, avec une voix grave et inquiétante.
+Un ton blasé.
+Un ton fatigué, au rythme ralenti et à la hauteur plus basse.
+Un ton méprisant.
+Un style ASMR doux et feutré, idéal pour le sommeil et la détente.
+Un ton paniqué et effrayé, empreint d'urgence et de détresse.
+Un ton espiègle et ludique, avec une pointe de taquinerie.
+Un ton empathique.
+Un style de chuchotement doux, idéal pour les scènes intimes, mystérieuses ou privées.
+Un ton réticent.
+Une voix en pleurs, avec sanglots et étouffements chargés d'émotion.
+Un ton sérieux et formel, adapté aux annonces et à la lecture.
+Un rythme extrêmement lent, idéal pour l'accentuation, la réflexion ou les pauses dramatiques.
+Un rythme extrêmement rapide, idéal pour les dialogues tendus, excités ou pressés.
+Un soupir.
+Une inspiration de surprise.
+Un reniflement ou un ricanement moqueur.
+Terminé
+Génération en cours
+Recharger
+Solde actuel
+Pack découverte
+Pack de base
+Pack avancé
+Pack pro
+Acheter
+Recommandé
+Idéal pour découvrir
+Le choix des créateurs
+Pour un usage fréquent
+Pour les professionnels
+Sans expiration
+Règles de facturation
+Calcul des crédits
+📋 Historique des crédits
+%d entrées
+Type
+Détails
+Durée
+Date
+Aucun historique de crédits
+2 crédits / 100 caractères
+Les caractères chinois, japonais et coréens comptent pour 2 caractères
+Les lettres latines, les chiffres et la ponctuation comptent pour 1 caractère
+⭐ Recommandé
+Sortie vocale
+Format par défaut
+Format d'export de la voix
+Fréquence d'échantillonnage
+Qualité audio
+Fichier
+Dossier d'export
+Nettoyage auto du cache
+Supprime régulièrement les fichiers temporaires
+Emplacement d'enregistrement des fichiers audio
+Non défini
+Ouvrir...
+Modifier
+7 jours
+30 jours
+60 jours
+Jamais
+Crédits
+Chargement...
+Aucune voix disponible
+MP3 (recommandé)
+Chinois
+Anglais
+Cantonais
+Dialecte de Chongqing
+Dialecte du Sichuan
+Dialecte du Nord-Est
+Dialecte du Henan
+Dialecte du Shaanxi
+Dialecte de Tianjin
+Dialecte du Shandong
+Français
+Allemand
+Japonais
+Coréen
+Russe
+Portugais
+Thaï
+Indonésien
+Vietnamien
+Espagnol
+Italien
+Malais
+Philippin
+Arabe
+Haut de gamme
+Basique
+Femme
+Homme
+Conversation courante
+Compagnie émotionnelle
+Lecture de livres audio
+Service client
+Réseaux sociaux
+Doublage d'anime
+Commerce en direct
+Livre audio classique
+Commentaire sportif
+Livre audio
+Radio de nuit
+Partage de connaissances
+Divertissement et humour
+Rapport d'affaires
+Assistant intelligent
+Discours et récitation
+Personnage d'anime
+Personnage de streamer
+Personnage classique
+Animateur radio
+Langue
+Tranche d'âge
+%d ans
+Réception en cours
+Génération vocale terminée
+Fermer (la réception continue en arrière-plan)
+%@ reçu
+Les données audio continuent de s'accumuler : vous pourrez les écouter dès la fin
+Blocs
+Durée écoulée
+Débit binaire
+%d
+Taille
+Consommation
+%@ crédits restants
+⬇ Exporter
+Export en cours…
+✓ Exporté
+Exporter la voix
+Traitement…
+Recharger
+%@ crédits crédités
+Achat terminé
+Achat annulé
+En attente de validation — les crédits seront crédités après approbation
+Échec de l'achat
+Échec de la génération, veuillez réessayer
+Crédits insuffisants
+Offre
+%d kbit/s
+Précédent
+Suivant
+%d–%d sur %d
+Afficher
+Tout sélectionner
+Tout désélectionner
+Confirmer la génération
+Voix : %@<NL>Coût : %@ crédits
+Choisir une catégorie
+Échec de la duplication
+Projet
+À propos
+Synchronisé dans les deux sens avec la valeur de l'atelier : toute modification est immédiatement enregistrée dans UserDefaults.
+Acheter des crédits
+Historique des crédits
+%d entrées
+Tirez vers le haut pour charger plus · %d / %d affichées
+Aucun historique de crédits pour l'instant
+Format audio
+Le MP3 est plus léger, le WAV offre une meilleure fidélité.
+Une fréquence d'échantillonnage plus élevée donne un fichier plus volumineux. Octets par seconde en WAV = fréquence × 2.
+Forte compression, faible encombrement, idéal pour le partage
+PCM brut sans perte, idéal pour le montage ultérieur
+Les crédits achetés n'expirent jamais.
+Votre compte App Store sera débité après confirmation de l'achat.
+Récupération des produits…
+Achat en cours…
+Acheter maintenant
+Ton
+Effets
+Effacer
+Effacer le contenu
+Tout le texte et toutes les balises du champ seront supprimés. Cette action est irréversible.
+Agit à partir du point d'insertion jusqu'à la prochaine balise de ton ou une interruption.
+Joué une seule fois au point d'insertion, sans modifier le ton environnant.
+Paramètres de création
+Contrôle de la voix
+Aucune voix sélectionnée
+Instruction vocale
+Instruction
+Voix actuelle
+Changer de voix
+Descriptions prédéfinies
+Décrivez la voix souhaitée en une phrase
+💡 Plus de détails = de meilleurs résultats
+1. Commencez par la langue et le dialecte
+Chinois, cantonais, sichuanais…
+2. Puis le genre et l'âge
+Jeune homme, femme d'âge mûr, voix d'enfant…
+3. Ensuite le timbre et le rythme
+Douce et moelleuse, un peu rapide, ton positif…
+4. Enfin le contexte
+Idéal pour les journaux / livres audio / publicités…
+Crédits insuffisants — %@ de plus nécessaires
+OK
+Choisir une voix
+Rechercher par nom, trait, scène ou langue
+Toutes les catégories
+%@ · %d
+Touchez le bouton ci-dessus pour choisir à nouveau
+Favoris uniquement
+Favoris uniquement · %d
+%d au total · haut de gamme d'abord, puis par nom
+Les %d voix sont toutes affichées
+Essayez un autre mot-clé ou effacez les filtres
+Basculé vers « %@ »
+Réinitialiser
+Filtre limité à cette vue
+Toutes les voix
+Renommer
+Aucune voix correspondante
+Activer la sélection multiple
+Voix copiée
+Le fichier audio sélectionné n'existe pas
+Nom de la voix
+Pause
+Lire
+Environ %@ restant
+Lecture en cours · %@
+En attente
+Gardez l'application au premier plan pendant la réception : le passage en arrière-plan peut l'interrompre.
+%@ restant
+−%@ crédits
+Partager
+Masquer la fenêtre
+Voix_%@
+%@ supprimé
+%d ce mois-ci
+%d extraits
+<Q>%@<Q> restera dans « Supprimés récemment » pendant 30 jours et pourra être restauré à tout moment.
+Aujourd'hui à %@
+Aujourd'hui
+Conservé 30 jours, puis supprimé automatiquement
+%d résultats dans la bibliothèque
+Tous les champs
+Écrivez un texte, choisissez une voix, et votre première création apparaîtra ici.
+%d jours restants
+Historique
+Commencer à créer
+Retirer
+Nom
+Dupliquer
+Échec
+Les éléments supprimés sont conservés 30 jours, puis supprimés automatiquement
+Ajouté aux favoris
+Retiré des favoris
+%d clips copiés
+Texte renvoyé vers l'atelier
+Supprimé définitivement
+Voix restaurée
+Suppression annulée
+« Supprimés récemment » vidé
+%d déplacés vers « Supprimés récemment » · restaurables pendant 30 jours
+Déplacé vers « Supprimés récemment » · restaurable pendant 30 jours
+%d sélectionnés
+Sélectionné
+Renommé
+Supprimer définitivement
+Cette action est irréversible et le fichier audio sera également supprimé.
+Supprimer définitivement ?
+Restaurer
+Les éléments restaurés reviennent dans leur groupe de date d'origine ; la suppression définitive est irréversible.
+Autre mot-clé
+Essayez un autre mot-clé ou effacez les filtres.
+Trier par
+Rechercher par nom, texte ou voix
+Annuler
+Fichier introuvable
+Texte
+Indisponible
+Hier à %@
+Hier
+Plus
+Plus récents d'abord
+Plus anciens d'abord
+Supprimés récemment
+« Supprimés récemment » est vide
+Vider « Supprimés récemment »
+Vider « Supprimés récemment » ?
+Effacer les filtres
+Placer dans « Supprimés récemment »
+Déplacer vers « Supprimés récemment » ?
+Chargement des enregistrements plus anciens…
+Aucune voix générée pour l'instant
+Les %d clips sélectionnés resteront dans « Supprimés récemment » pendant 30 jours et pourront être restaurés à tout moment.
+Sélectionnez la voix à gérer
+Modifier à nouveau
+Fichier audio introuvable
+Rechercher des mises à jour
+Vérifier
+Vérification…
+Nouvelle version disponible
+La version %@ est disponible
+Mettre à jour
+Mettre à jour maintenant
+Plus tard
+Nouveautés
+Voir les détails de la mise à jour
+Version actuelle
+Vous utilisez la dernière version
+Version
+Rétablir les valeurs par défaut de la vitesse, du volume, du format et de la fréquence d'échantillonnage
+Suivre la lecture
+Revenir à la phrase actuelle
+Cette voix ne contient pas d'horodatage au mot. Le texte est affiché tel quel, aucun alignement n'est simulé à partir de durées estimées.
+Phrase %d / %d · %@ – %@
+Phrase %d · %@
+Pause %@ · phrase suivante %d
+Le texte défile automatiquement pour garder la phrase en cours au centre ; un défilement manuel désactive temporairement le suivi.
+Suivre
+Phrase %d / %d
+Touchez deux fois pour lire à partir de cette phrase
+Désactiver le suivi
+Activer le suivi
+Brouillons
+Enregistrer l'état actuel
+Brouillon enregistré
+Brouillon restauré
+Brouillon enregistré · <Q>%@<Q>
+Restaurer ce brouillon ?
+<Q>%@<Q> remplacera tout le contenu de l'éditeur, y compris les balises d'émotion, la voix et les paramètres.
+Le contenu actuel sera enregistré comme nouveau brouillon
+Restauré depuis <Q>%@<Q>
+Aucun brouillon
+Une pause ? Enregistrez votre travail comme brouillon et reprenez exactement où vous vous êtes arrêté.
+Dernière modification
+Auto
+En cours d'édition
+Brouillons enregistrés
+Enregistrement auto
+Rechercher des brouillons
+Nom du brouillon
+Renommer le brouillon
+Supprimer ce brouillon ?
+Cette action est irréversible.
+Tout supprimer
+Supprimer tous les brouillons
+Supprimer tous les brouillons ?
+Inclut le texte, les balises, la voix et tous les paramètres
+Votre travail actuel est enregistré automatiquement avant la restauration
+Tous les brouillons
+⌘ S pour enregistrer rapidement
+Catégories
+Brouillon sans titre
+Généré
+Copie
+Aucun brouillon correspondant
+Échec de l'enregistrement
+Impossible d'enregistrer l'élément audio. Veuillez réessayer plus tard.
