@@ -206,9 +206,15 @@ struct AuroraChip: View {
     let title: String
     var systemImage: String? = nil
     var isSelected: Bool = false
+    /// 选中态升级成「实色 CTA 底 + 白字 + 投影」。
+    /// 用于 chip 密集、选中项要一眼定位的单选维度（`StudioParamContent` 的
+    /// 「语言」「描述预设」两排都开）；默认 false，其它场景保持淡紫底选中。
+    var prominentSelection: Bool = false
     var fontSize: CGFloat = 12.5
     var height: CGFloat = 30
     let action: () -> Void
+
+    private var isProminent: Bool { isSelected && prominentSelection }
 
     var body: some View {
         Button(action: action) {
@@ -221,17 +227,19 @@ struct AuroraChip: View {
                     .font(.system(size: fontSize, weight: isSelected ? .semibold : .regular))
                     .lineLimit(1)
             }
-            .foregroundStyle(isSelected ? c.accent : c.textSecondary)
+            .foregroundStyle(isProminent ? c.ctaForeground : (isSelected ? c.accent : c.textSecondary))
             .padding(.horizontal, 11)
             .frame(height: height)
             .background(
                 Capsule(style: .continuous)
-                    .fill(isSelected ? c.accentSoft : c.surface3)
+                    .fill(isProminent ? c.ctaStart : (isSelected ? c.accentSoft : c.surface3))
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(isSelected ? c.accent.opacity(0.32) : c.line, lineWidth: 0.5)
+                            .strokeBorder(isProminent ? c.ctaStart : (isSelected ? c.accent.opacity(0.32) : c.line),
+                                          lineWidth: isProminent ? 1 : 0.5)
                     )
             )
+            .shadow(color: isProminent ? c.shadow.opacity(0.45) : .clear, radius: 3, x: 0, y: 1)
         }
         .buttonStyle(.plain)
     }

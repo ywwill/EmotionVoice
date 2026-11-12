@@ -639,15 +639,16 @@ final class BailianTTSService {
                 start = end
             }
 
-        case .data(let data):
-            let byteCount = data.count
+        case .data(_):
+//            let byteCount = data.count
 //            Log(message: "[WS RECV #\(n)][binary][\(byteCount) bytes]")
-            let shown: Data = dumpFullBinaryPayload ? data : Data(data.prefix(64))
-            let hex = shown.map { String(format: "%02x", Int($0)) }.joined(separator: " ")
+//            let shown: Data = dumpFullBinaryPayload ? data : Data(data.prefix(64))
+//            let hex = shown.map { String(format: "%02x", Int($0)) }.joined(separator: " ")
 //            Log(message: "[WS RECV #\(n)][hex\(dumpFullBinaryPayload ? " full" : " head")] \(hex)")
-            if !dumpFullBinaryPayload && byteCount > 64 {
+//            if !dumpFullBinaryPayload && byteCount > 64 {
 //                Log(message: "[WS RECV #\(n)] …余 \(byteCount - 64) bytes 未展开（dumpFullBinaryPayload = true 可全量打印）")
-            }
+//            }
+            break
 
         @unknown default:
             Log(message: "[WS RECV #\(n)][unknown frame]")

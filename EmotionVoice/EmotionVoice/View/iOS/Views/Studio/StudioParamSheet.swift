@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // 四项参数的持久化走 `Shared/ViewModels/VoiceStudioViewModel.swift` 里的
 // `StudioParamStore`（iOS / macOS 共用），本文件不再重复定义。
@@ -71,18 +72,66 @@ struct StudioParamContent: View {
     var sampleRateColumns: Int? = nil
 
     @State private var showInstructionGuide = false
+    /// 指令输入框的键盘焦点，由 `InstructionTextView` 的 UITextViewDelegate 回推。
+    /// ⚠️ 不用 `@FocusState`：自定义 `UIViewRepresentable` 的焦点回写不可靠，
+    ///    而点击输入框之外要收键盘全靠这个判断。清空按钮不碰它（清空后继续输入更顺手）。
+    @State private var instructionFocused = false
+    /// 键盘高度（屏幕坐标）。只在指令框聚焦时用于底部让位，避免主编辑器 /
+    /// 其它 sheet 的键盘误伤到常驻的 iPad 侧栏。
+    @State private var keyboardHeight: CGFloat = 0
 
     private static let instructionLimit = 1000
+    private static let instructionAnchor = "studioParamInstructionSection"
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                voiceSection
-                audioControlHeader
-                audioControlCard
-                sampleRateSection
-                instructionSection
-                Spacer(minLength: 20)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    voiceSection
+                    audioControlHeader
+                    audioControlCard
+                    sampleRateSection
+                    instructionSection
+                        .id(Self.instructionAnchor)
+                    Spacer(minLength: 20)
+                    // 键盘让位余量：指令框在正文最末尾，下面原本只有 20pt，
+                    // scrollTo 根本没有可滚动距离把输入框推到键盘上方。
+                    // ⚠️ 只在指令框聚焦时生效：别的输入框弹键盘 / iPad 常驻侧栏不受影响。
+                    Color.clear.frame(height: instructionFocused ? keyboardHeight : 0)
+                }
+                // 点击输入框外的空白 / 静态区域收键盘。
+                // ⚠️ 会吞掉点击的 Button / chip 收不到这一层手势，所以各自在 action 里
+                //    显式调用 dismissInstructionKeyboard()；指令输入框是 UIViewRepresentable
+                //    包的原生 UITextView，输入框内部的点击由它自己消费，不会走到这里。
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // 首次点输入框时焦点回推还没到，加这层判断是防止手势
+                    // 万一抢在 UITextView 前面触发，把刚弹起的键盘又收掉。
+                    if instructionFocused { dismissInstructionKeyboard() }
+                }
+            }
+            // 滚动同样是「输入框之外」的交互，沿用项目其它列表的既有口径
+            .scrollDismissesKeyboard(.immediately)
+            .onReceive(NotificationCenter.default.publisher(
+                for: UIResponder.keyboardWillShowNotification)) { note in
+                guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+                let duration = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval) ?? 0.25
+                withAnimation(.easeOut(duration: duration)) { keyboardHeight = frame.height }
+                // 键盘开始弹起就先滚一次，别等 DidShow（约 0.25s）才让位；
+                // 焦点回推晚一步时这一轮会被 guard 跳过，由 onChange / DidShow 补上。
+                DispatchQueue.main.async { scrollInstructionIntoView(proxy) }
+            }
+            .onReceive(NotificationCenter.default.publisher(
+                for: UIResponder.keyboardDidShowNotification)) { _ in
+                scrollInstructionIntoView(proxy)
+            }
+            .onReceive(NotificationCenter.default.publisher(
+                for: UIResponder.keyboardWillHideNotification)) { _ in
+                withAnimation(.easeOut(duration: 0.25)) { keyboardHeight = 0 }
+            }
+            .onChange(of: instructionFocused) { _, isOn in
+                // 键盘已经弹起时再点回输入框不会再发 keyboardDidShow，补滚一次。
+                if isOn { scrollInstructionIntoView(proxy) }
             }
         }
         .sheet(isPresented: $showInstructionGuide) {
@@ -92,12 +141,35 @@ struct StudioParamContent: View {
         }
     }
 
+    /// 把「语音指令」卡片底边滚到键盘上沿。
+    /// ⚠️ `scrollTo` 在布局前会按旧 contentSize 算偏移（项目里踩过），所以等键盘
+    ///    高度写入、布局生效后再滚；键盘高度还是 0 时直接跳过，由 DidShow 补触发。
+    private func scrollInstructionIntoView(_ proxy: ScrollViewProxy) {
+        guard instructionFocused, keyboardHeight > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard instructionFocused else { return }
+            withAnimation(.easeOut(duration: 0.22)) {
+                proxy.scrollTo(Self.instructionAnchor, anchor: .bottom)
+            }
+        }
+    }
+
+    /// 输入框交出焦点：FocusState + 全局 resign 双保险，键盘一定会收。
+    private func dismissInstructionKeyboard() {
+        instructionFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
+    }
+
     // MARK: 音色
 
     private var voiceSection: some View {
         VStack(spacing: 0) {
             GroupTitle(text: "音色".localized(), topPadding: 6)
-            Button { voicePickerPresented = true } label: {
+            Button {
+                dismissInstructionKeyboard()
+                voicePickerPresented = true
+            } label: {
                 HStack(spacing: 12) {
                     VoiceAvatar(text: voice?.localizedAvatar ?? "声",
                                 seed: voice?.key ?? "default",
@@ -155,6 +227,7 @@ struct StudioParamContent: View {
                 .foregroundStyle(c.textTertiary)
             Spacer(minLength: 0)
             Button {
+                dismissInstructionKeyboard()
                 StudioParamStore.shared.reset(on: vm)
             } label: {
                 HStack(spacing: 4) {
@@ -260,7 +333,10 @@ struct StudioParamContent: View {
                                 count: sampleRateColumns ?? metrics.sampleRateColumns)
             LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(Constants.sampleRates) { item in
-                    Button { vm.sampleRate = item.rate } label: {
+                    Button {
+                        dismissInstructionKeyboard()
+                        vm.sampleRate = item.rate
+                    } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.displayName)
@@ -307,7 +383,10 @@ struct StudioParamContent: View {
                     .font(AuroraFont.sectionTitle)
                     .foregroundStyle(c.textPrimary)
                 Spacer(minLength: 0)
-                Button { showInstructionGuide = true } label: {
+                Button {
+                    dismissInstructionKeyboard()
+                    showInstructionGuide = true
+                } label: {
                     Image(systemName: "info.circle")
                         .font(.system(size: 17))
                         .foregroundStyle(c.accent)
@@ -333,8 +412,12 @@ struct StudioParamContent: View {
                 // ⚠️ 语言 chip 只切选中态 / language_hints，不写下方指令输入框。
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(Constants.nlLanguages) { item in
+                        // 实色选中态：chip 密集时选中项要能一眼定位，淡紫底太弱。
+                        // 语言 / 描述预设两排共用同一套选中视觉。
                         AuroraChip(title: item.name.localized(),
-                                   isSelected: vm.selectedLanguage == item.name) {
+                                   isSelected: vm.selectedLanguage == item.name,
+                                   prominentSelection: true) {
+                            dismissInstructionKeyboard()
                             vm.toggleLanguage(item.name)
                         }
                     }
@@ -354,8 +437,12 @@ struct StudioParamContent: View {
 
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(vm.nlPresets, id: \.self) { preset in
+                        // 与语言 chip 同一套实色选中态：applyPreset 也是单选切换，
+                        // 只是「写入指令框」的语义不同，选中视觉口径保持一致。
                         AuroraChip(title: preset.localized(),
-                                   isSelected: vm.selectedPreset == preset) {
+                                   isSelected: vm.selectedPreset == preset,
+                                   prominentSelection: true) {
+                            dismissInstructionKeyboard()
                             vm.applyPreset(preset)
                         }
                     }
@@ -364,28 +451,39 @@ struct StudioParamContent: View {
 
                 Hairline().padding(.vertical, 12)
 
-                // 指令输入
+                // 指令输入：高度恒定 96，文字多了只在框内滚动（无滚动条），
+                // 不再把整个输入框撑高、把新换行挤出屏幕。
                 ZStack(alignment: .topLeading) {
                     if vm.nlInstruction.isEmpty {
                         Text("用一句话描述你想要的声音".localized())
                             .font(.system(size: 15))
                             .foregroundStyle(c.textTertiary)
-                            .padding(.horizontal, 12)
+                            .padding(.leading, 12)
+                            .padding(.trailing, 32)
                             .padding(.vertical, 10)
                     }
-                    TextEditor(text: $vm.nlInstruction)
-                        .font(.system(size: 15))
-                        .foregroundStyle(c.textPrimary)
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 96)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .onChange(of: vm.nlInstruction) { _, newValue in
-                            if newValue.count > Self.instructionLimit {
-                                vm.nlInstruction = String(newValue.prefix(Self.instructionLimit))
-                            }
-                        }
+                    InstructionTextView(text: $vm.nlInstruction,
+                                        isFocused: $instructionFocused,
+                                        font: .systemFont(ofSize: 15),
+                                        textColor: UIColor(c.textPrimary),
+                                        tintColor: UIColor(c.accent))
+                        // UIViewRepresentable 没有 intrinsicContentSize，不撑满会被 ZStack 压成 0 高。
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.leading, 12)
+                        // 右侧常驻留白给清空按钮：按钮出现 / 消失时正文不会重新折行
+                        .padding(.trailing, 32)
+                        .padding(.vertical, 10)
                 }
+                .frame(height: 96)
+                .onChange(of: vm.nlInstruction) { _, newValue in
+                    if newValue.count > Self.instructionLimit {
+                        vm.nlInstruction = String(newValue.prefix(Self.instructionLimit))
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if !vm.nlInstruction.isEmpty { clearInstructionButton }
+                }
+                .animation(.easeOut(duration: 0.16), value: vm.nlInstruction.isEmpty)
                 .background(
                     RoundedRectangle(cornerRadius: AuroraRadius.sm, style: .continuous)
                         .fill(c.surface3)
@@ -413,6 +511,27 @@ struct StudioParamContent: View {
         }
     }
 
+    /// 清空指令：只写正文，不碰语言 chip / 预设选中态，也不触发 `applyPreset` / `updateNLInstruction`。
+    /// 图标用 `xmark.circle.fill` —— SF Symbols 里没有 `x.circle.fill` 这个名字，
+    /// 写错会渲染成空白；与 `RenameDialog` 的清空按钮保持同一套样式。
+    /// 不清焦点：清空后通常紧接着重新输入，键盘不该收。
+    private var clearInstructionButton: some View {
+        Button {
+            vm.nlInstruction = ""
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(c.textTertiary)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("清空".localized())
+        .padding(.top, 4)
+        .padding(.trailing, 4)
+        .transition(.opacity)
+    }
+
     private var voice: Voice? { vm.voice }
 
     private func cardBackground(radius: CGFloat) -> some View {
@@ -422,5 +541,78 @@ struct StudioParamContent: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .strokeBorder(c.line, lineWidth: 0.5)
             )
+    }
+}
+
+// MARK: - 固定高度的指令输入框
+
+/// 指令输入框不用 SwiftUI `TextEditor`，改成自己包一层 `UITextView`：
+///  - `TextEditor` 只有 `minHeight`，文字一多就把自身撑到无限高，外层 ScrollView
+///    不会跟着滚，新换行落在屏幕外（旧实现「输入很多看不到」的根因）；
+///  - 内部 UIScrollView 的垂直滚动指示条没有 SwiftUI 侧开关，只能到 UIKit 关。
+/// 高度由调用方 `.frame(height: 96)` 固定；框内可滚动、不显示滚动条，插入点始终可见。
+private struct InstructionTextView: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var isFocused: Bool
+    var font: UIFont
+    var textColor: UIColor
+    var tintColor: UIColor
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UITextView {
+        let tv = UITextView()
+        tv.backgroundColor = .clear
+        tv.font = font
+        tv.textColor = textColor
+        tv.tintColor = tintColor
+        tv.isEditable = true
+        tv.isSelectable = true
+        tv.isScrollEnabled = true
+        // ⚠️ 不显示垂直滚动条，但保留滚动能力：长文本仍能在框内上下拖看。
+        tv.showsVerticalScrollIndicator = false
+        tv.showsHorizontalScrollIndicator = false
+        tv.alwaysBounceVertical = false
+        tv.textContainerInset = UIEdgeInsets(top: 0, left: 0, bottom: 6, right: 0)
+        tv.textContainer.lineFragmentPadding = 0
+        tv.text = text
+        tv.delegate = context.coordinator
+        return tv
+    }
+
+    func updateUIView(_ tv: UITextView, context: Context) {
+        context.coordinator.parent = self
+        // 主题切换时颜色要跟着走；字体固定 15pt，只在 makeUIView 设一次。
+        tv.textColor = textColor
+        tv.tintColor = tintColor
+        // 只有外部改写（预设 / 草稿恢复 / 清空 / 字数截断）才回写；打字时 textView
+        // 本身就是最新值，重建会把光标顶回开头、打断中文输入法的组合区。
+        guard tv.text != text else { return }
+        let caret = tv.selectedRange.location
+        tv.text = text
+        tv.selectedRange = NSRange(location: min(caret, (text as NSString).length), length: 0)
+        tv.layoutIfNeeded()
+        tv.scrollRangeToVisible(tv.selectedRange)
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: InstructionTextView
+        init(_ parent: InstructionTextView) { self.parent = parent }
+
+        func textViewDidChange(_ tv: UITextView) {
+            parent.text = tv.text ?? ""
+            // 换行 / 续打后立刻把插入点滚进可视区，新输入的内容不会被压在框外。
+            tv.layoutIfNeeded()
+            tv.scrollRangeToVisible(tv.selectedRange)
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            // 异步回推：UIKit 回调里同步改 SwiftUI @State 有「渲染过程中改状态」的风险。
+            DispatchQueue.main.async { self.parent.isFocused = true }
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            DispatchQueue.main.async { self.parent.isFocused = false }
+        }
     }
 }

@@ -498,6 +498,9 @@ private struct SentenceCueRow: View, Equatable {
         .padding(.vertical, 7)
         // 播放底色不在这里画：由 `AlignedTranscript.highlightLayer` 统一提供一块可滑动的底板
         .contentShape(Rectangle())
+        // 整行可点定位播放，悬浮时给手型提示；范围与上面的点击热区完全一致。
+        // onHover 不写任何 state，不会进入 10Hz 的逐字重绘路径。
+        .pointingHandCursor()
         .onTapGesture {
             player.seek(to: cue.begin)
         }

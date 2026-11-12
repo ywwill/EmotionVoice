@@ -55,7 +55,7 @@
 - ⚠️ 恢复前 `stashBeforeRestore(_:)` 新建 manual 草稿（禁 `save(before, source:.auto)` 覆盖单槽位）；`Draft.isSameEditState`（正文+音色+四项参数+指令）全同才跳过；恢复统一 `vm.apply(_:appState:)`（含 `StudioParamStore.save` 写回）。
 - ⚠️ 取快照前必须结算编辑器去抖（mac 0.35s）：View `commitEditor()`；⌘S `DraftStore.saveFromSharedVM()`→`PendingEditorCommit.flush()`；正文唯一格式 `[TTSContentItem]`，禁降纯文本；iOS 保存用 `TokenDocument.contentItems`。
 - ⚠️ 反馈两端统一 `AlertToast` `.toast(...)`+`.hud`（顶部居中、1.5s、`.complete`），iOS `.hud` 必传 `offsetY`；禁自绘提示条/撤销按钮；**打开 App 编辑区恒为空**（两端 `restoreLastEditIfNeeded()` 已删）。
-- ⚠️ iOS `DraftSheet` 浮层必须 `.overlay {}` 挂内容 VStack；macOS 草稿列表=窗口内自绘 modal（`showDraftModal`+`DraftModalView` 440 卡），禁 `.popover`；Dialog 一律 `presentDraftDialog(_:)`，`draftDialog`/`showDraftModal` 都要参与 `EmotionTokenEditor(isInteractive:)`；`DraftModalView.focusable` 紧跟 `.focusEffectDisabled()`；⌘S 走 `KeyboardShortcuts.Name.saveDraft`+`DraftShortcutController`（禁设置页 `Recorder`）。
+- ⚠️ iOS `DraftSheet` 浮层必须 `.overlay {}` 挂内容 VStack；macOS 草稿列表=窗口内自绘 modal（`showDraftModal`+`DraftModalView`，尺寸/字号以 `VoiceStudioDraft.swift` 为准），禁 `.popover`；Dialog 一律 `presentDraftDialog(_:)`，`draftDialog`/`showDraftModal` 都要参与 `EmotionTokenEditor(isInteractive:)`；`DraftModalView.focusable` 紧跟 `.focusEffectDisabled()`；⌘S 走 `KeyboardShortcuts.Name.saveDraft`+`DraftShortcutController`（禁设置页 `Recorder`）。
 
 ## 商店页 / ASO（细节全在 `产品/商店页/*.md`）
 - 尺寸 6.9" `1320×2868`(禁 alpha)/iPad 13" `2752×2064`/Mac `2880×1800`；iOS 无声音复刻 UI、字幕禁写能力数量；⚠️ 旧生成器未被 git 追踪、已消失，重做 01–04/06 只能改 tracked 的 `素材/html/*`；headless 底部 21px 白条靠 `html{background:#0B0C0F}` 兜底 + 底部 24px 亮度校验重渲。
