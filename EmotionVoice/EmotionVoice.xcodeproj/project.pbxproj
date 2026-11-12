@@ -45,7 +45,6 @@
 		6F2093B4303EC80500A770BB /* VoiceLibrarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */; };
 		6F2093B5303EC80500A770BB /* VoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209379303EC80500A770BB /* VoiceRow.swift */; };
 		6F2093B6303EC80500A770BB /* VoiceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937A303EC80500A770BB /* VoiceStudioView.swift */; };
-		6F2093C2303EC80500A770BC /* VoiceStudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */; };
 		6F2093B7303EC80500A770BB /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937C303EC80500A770BB /* Components.swift */; };
 		6F2093B8303EC80500A770BB /* EmotionHighlightedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */; };
 		6F2093B9303EC80500A770BB /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F20937E303EC80500A770BB /* FlowLayout.swift */; };
@@ -53,6 +52,7 @@
 		6F2093BB303EC80500A770BB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209382303EC80500A770BB /* ContentView.swift */; };
 		6F2093BC303EC80500A770BB /* EmotionVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209383303EC80500A770BB /* EmotionVoiceApp.swift */; };
 		6F2093C2303EC80500A770BB /* TTSEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BB /* TTSEndpoint.swift */; };
+		6F2093C2303EC80500A770BC /* VoiceStudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */; };
 		6F209615303EC80500A770BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F209381303EC80500A770BB /* Assets.xcassets */; };
 		6F209616303EC80500A770BB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F209386303EC80500A770BB /* Localizable.strings */; };
 		6F209788303EC80500A770BB /* CreditsPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F209789303EC80500A770BB /* CreditsPurchaseView.swift */; };
@@ -1304,7 +1304,6 @@
 		6F3AEA323090797A007975DD /* VoiceCatalog.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* VoiceCatalog.strings */; };
 		6F3AEA5530907A20007975DD /* VoicesLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4130907A20007975DD /* VoicesLibraryView.swift */; };
 		6F3AEA5630907A20007975DD /* StudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4D30907A20007975DD /* StudioView.swift */; };
-		6F3AEA5F30907A20007975DE /* StudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA5E30907A20007975DE /* StudioDraft.swift */; };
 		6F3AEA5730907A20007975DD /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4430907A20007975DD /* ProjectsView.swift */; };
 		6F3AEA5830907A20007975DD /* TabRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA3530907A20007975DD /* TabRouter.swift */; };
 		6F3AEA5930907A20007975DD /* VoicePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA5130907A20007975DD /* VoicePickerSheet.swift */; };
@@ -1314,6 +1313,7 @@
 		6F3AEA5D30907A20007975DD /* EmotionAccessoryBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */; };
 		6F3AEA5E30907A20007975DD /* CreditRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4630907A20007975DD /* CreditRecordsView.swift */; };
 		6F3AEA5F30907A20007975DD /* AuroraComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA3730907A20007975DD /* AuroraComponents.swift */; };
+		6F3AEA5F30907A20007975DE /* StudioDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA5E30907A20007975DE /* StudioDraft.swift */; };
 		6F3AEA6030907A20007975DD /* PurchaseSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4830907A20007975DD /* PurchaseSheet.swift */; };
 		6F3AEA6130907A20007975DD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4930907A20007975DD /* SettingsView.swift */; };
 		6F3AEA6230907A20007975DD /* PlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4330907A20007975DD /* PlayerDetailView.swift */; };
@@ -1327,8 +1327,6 @@
 		6F3AEA6A30907A20007975DD /* StudioParamSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */; };
 		6F3AEA6B30907A20007975DD /* GenerationDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA3D30907A20007975DD /* GenerationDialog.swift */; };
 		6F3AEA6C30907A20007975DD /* TokenDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3AEA4F30907A20007975DD /* TokenDocument.swift */; };
-		6F4152B630A43618005BC27A /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 6F4152B530A43618005BC27A /* AlertToast */; };
-		6F4152B930A4369F005BC27A /* AlertToast in Frameworks */ = {isa = PBXBuildFile; productRef = 6F4152B830A4369F005BC27A /* AlertToast */; };
 		6F45F03C305FA008004EE0D9 /* AudioGenerationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */; };
 		6F6702983081F0CE0001A3BE /* AudioConcatenator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */; };
 		6F8A519F309B03DA00C9DF9C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6F8A519E309B03DA00C9DF9C /* PrivacyInfo.xcprivacy */; };
@@ -1440,7 +1438,6 @@
 		6F209378303EC80500A770BB /* VoiceLibrarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLibrarySheet.swift; sourceTree = "<group>"; };
 		6F209379303EC80500A770BB /* VoiceRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRow.swift; sourceTree = "<group>"; };
 		6F20937A303EC80500A770BB /* VoiceStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioView.swift; sourceTree = "<group>"; };
-		6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioDraft.swift; sourceTree = "<group>"; };
 		6F20937C303EC80500A770BB /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		6F20937D303EC80500A770BB /* EmotionHighlightedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionHighlightedTextEditor.swift; sourceTree = "<group>"; };
 		6F20937E303EC80500A770BB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
@@ -1451,6 +1448,7 @@
 		6F209384303EC80500A770BB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6F209385303EC80500A770BB /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		6F2093C1303EC80500A770BB /* TTSEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSEndpoint.swift; sourceTree = "<group>"; };
+		6F2093C1303EC80500A770BC /* VoiceStudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStudioDraft.swift; sourceTree = "<group>"; };
 		6F209789303EC80500A770BB /* CreditsPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsPurchaseView.swift; sourceTree = "<group>"; };
 		6F209AC8303EC88F00A770BB /* basic_voices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = basic_voices.json; sourceTree = "<group>"; };
 		6F209AC9303EC88F00A770BB /* longanlingxin.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = longanlingxin.m4a; sourceTree = "<group>"; };
@@ -2077,11 +2075,11 @@
 		6F3AEA4B30907A20007975DD /* EmotionAccessoryBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionAccessoryBar.swift; sourceTree = "<group>"; };
 		6F3AEA4C30907A20007975DD /* StudioParamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioParamSheet.swift; sourceTree = "<group>"; };
 		6F3AEA4D30907A20007975DD /* StudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioView.swift; sourceTree = "<group>"; };
-		6F3AEA5E30907A20007975DE /* StudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioDraft.swift; sourceTree = "<group>"; };
 		6F3AEA4E30907A20007975DD /* TokenCapsuleOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenCapsuleOverlay.swift; sourceTree = "<group>"; };
 		6F3AEA4F30907A20007975DD /* TokenDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDocument.swift; sourceTree = "<group>"; };
 		6F3AEA5030907A20007975DD /* TokenTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenTextEditor.swift; sourceTree = "<group>"; };
 		6F3AEA5130907A20007975DD /* VoicePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePickerSheet.swift; sourceTree = "<group>"; };
+		6F3AEA5E30907A20007975DE /* StudioDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioDraft.swift; sourceTree = "<group>"; };
 		6F45F03B305FA008004EE0D9 /* AudioGenerationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerationModal.swift; sourceTree = "<group>"; };
 		6F54FABAB4D9ED871EACA8D6 /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
 		6F6702973081F0CE0001A3BE /* AudioConcatenator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConcatenator.swift; sourceTree = "<group>"; };
@@ -2147,7 +2145,6 @@
 				7A100000000000000000003B /* KeychainSwift in Frameworks */,
 				7A100000000000000000003C /* SQLite in Frameworks */,
 				7A100000000000000000003D /* Storage in Frameworks */,
-				6F4152B930A4369F005BC27A /* AlertToast in Frameworks */,
 				7A100000000000000000003E /* Functions in Frameworks */,
 				7A100000000000000000003F /* Supabase in Frameworks */,
 				7A1000000000000000000040 /* Realtime in Frameworks */,
@@ -2164,7 +2161,6 @@
 				6FCA9CED3060D7C50005713F /* KeychainSwift in Frameworks */,
 				6FEE97FB3027062400C39C26 /* SQLite in Frameworks */,
 				6FCA9D823060F2FB0005713F /* Storage in Frameworks */,
-				6F4152B630A43618005BC27A /* AlertToast in Frameworks */,
 				6FCA9D7C3060F2FB0005713F /* Functions in Frameworks */,
 				6FCA9D843060F2FB0005713F /* Supabase in Frameworks */,
 				6FCA9D803060F2FB0005713F /* Realtime in Frameworks */,
@@ -3221,7 +3217,6 @@
 				6FCA9D793060F2FB0005713F /* Auth */,
 				6FCA9D7D3060F2FB0005713F /* PostgREST */,
 				7B3A0000000000000000A002 /* AnimateNumberText */,
-				6F4152B830A4369F005BC27A /* AlertToast */,
 			);
 			productName = iOSEmora;
 			productReference = 6F3AE79A309055CE007975DD /* iOSEmora.app */;
@@ -3250,7 +3245,6 @@
 				6FCA9D813060F2FB0005713F /* Storage */,
 				6FCA9D833060F2FB0005713F /* Supabase */,
 				6FF4E270307E24DF00CC4211 /* KeyboardShortcuts */,
-				6F4152B530A43618005BC27A /* AlertToast */,
 			);
 			productName = EmotionVoice;
 			productReference = 6FEE97EB302705C600C39C26 /* Emora.app */;
@@ -3291,7 +3285,6 @@
 				6FCA9D783060F2FB0005713F /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				6FF4E26F307E24DF00CC4211 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 				6FA68B6B309C665600963DB6 /* XCRemoteSwiftPackageReference "AnimateNumberText" */,
-				6F4152B430A43618005BC27A /* XCRemoteSwiftPackageReference "AlertToast" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6FEE97EC302705C600C39C26 /* Products */;
@@ -5065,14 +5058,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6F4152B430A43618005BC27A /* XCRemoteSwiftPackageReference "AlertToast" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/elai950/AlertToast";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.9;
-			};
-		};
 		6FA68B6B309C665600963DB6 /* XCRemoteSwiftPackageReference "AnimateNumberText" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swift-man/AnimateNumberText";
@@ -5118,16 +5103,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		6F4152B530A43618005BC27A /* AlertToast */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6F4152B430A43618005BC27A /* XCRemoteSwiftPackageReference "AlertToast" */;
-			productName = AlertToast;
-		};
-		6F4152B830A4369F005BC27A /* AlertToast */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6F4152B430A43618005BC27A /* XCRemoteSwiftPackageReference "AlertToast" */;
-			productName = AlertToast;
-		};
 		6FCA9CEC3060D7C50005713F /* KeychainSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6FCA9CEB3060D7C50005713F /* XCRemoteSwiftPackageReference "keychain-swift" */;

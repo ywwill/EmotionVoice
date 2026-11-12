@@ -298,7 +298,7 @@ private struct DraftRowView: View {
                     )
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text(draft.title)
+                        Text(draft.displayTitle)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppColor.textPrimary)
                             .lineLimit(1)
@@ -470,7 +470,7 @@ struct DraftDialogView: View {
     private var message: String {
         switch kind {
         case .restore(let d):
-            return "「%@」会替换当前编辑区的全部内容，包含情绪标签、音色与参数。".localized(d.title)
+            return "「%@」会替换当前编辑区的全部内容，包含情绪标签、音色与参数。".localized(d.displayTitle)
         case .rename: return ""
         case .delete: return "删除后无法恢复。".localized()
         case .deleteAll: return "删除后无法恢复。".localized()

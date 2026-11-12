@@ -1034,6 +1034,18 @@ struct Draft: Codable, Identifiable, Hashable {
     var isAuto: Bool { source == .auto }
     var isGenerated: Bool { generatedAt != nil }
 
+    /// 自动草稿的默认标题只以**中文 key**落盘，显示时再按当前语言本地化。
+    /// ⚠️ 旧版本把本地化后的值直接写进了 `index.json`：切语言后列表会一直显示旧语言，
+    ///    所以 `displayTitle` 也要认得这些历史值；用户重命名过的标题原样显示。
+    static let autoTitleKey = "上次编辑"
+    private static let legacyAutoTitles: Set<String> = ["上次编辑", "上次編輯", "Last Edit"]
+
+    /// 列表 / 弹窗 / 搜索统一用这个标题，不要直接显示 `title`。
+    var displayTitle: String {
+        guard isAuto, Self.legacyAutoTitles.contains(title) else { return title }
+        return Self.autoTitleKey.localized()
+    }
+
     init(id: String,
          title: String,
          preview: String,
@@ -1145,7 +1157,7 @@ struct Draft: Codable, Identifiable, Hashable {
         let given = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let resolved: String
         if source == .auto {
-            resolved = "上次编辑".localized()
+            resolved = Self.autoTitleKey
         } else if !given.isEmpty {
             resolved = given
         } else if !firstLine.isEmpty {
@@ -1191,7 +1203,7 @@ struct Draft: Codable, Identifiable, Hashable {
         tagCount = s.tagCount
         updatedAt = Date()
         generatedAt = nil
-        if isAuto { title = "上次编辑".localized() }
+        if isAuto { title = Self.autoTitleKey }
     }
 }
 
@@ -1464,7 +1476,8 @@ final class DraftStore: ObservableObject {
         // 复制要正文；复制出来的是一条新文件，原草稿的文件不动。
         guard var copy = load(id: id) else { return nil }
         copy.id = UUID().uuidString
-        copy.title = "\(copy.title) \("副本".localized())"
+        // 自动草稿的 title 是未本地化的 key，副本要复制「显示名」而不是 key。
+        copy.title = "\(copy.displayTitle) \("副本".localized())"
         copy.source = .manual
         copy.createdAt = Date()
         copy.updatedAt = Date()

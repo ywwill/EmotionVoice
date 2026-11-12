@@ -7,12 +7,12 @@
 
 import SwiftUI
 import AppKit
-import AlertToast
 
 /// 语音合成工作台
 struct VoiceStudioView: View {
 
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject private var uiState: MacUIState
     @StateObject private var vm = VoiceStudioViewModel.shared
     @ObservedObject private var drafts = DraftStore.shared
     var isActive: Bool = true
@@ -36,11 +36,6 @@ struct VoiceStudioView: View {
     /// 恢复确认 / 重命名 / 删除共用一个自定义 Dialog，避免多个 .alert 互相覆盖。
     @State private var draftDialog: DraftDialog? = nil
     @State private var draftRenameText: String = ""
-    /// 保存 / 恢复反馈统一走 AlertToast：`.hud` 从顶部落下、水平居中，1.5s 自动收起。
-    /// 不再自绘提示条，也不再提供撤销（产品要求）。
-    private enum DraftToastKind { case saved, restored }
-    @State private var showDraftToast = false
-    @State private var draftToastKind: DraftToastKind = .saved
 
     var body: some View {
         studioContent
@@ -69,9 +64,6 @@ struct VoiceStudioView: View {
                                     onCancel: { draftDialog = nil },
                                     onConfirm: { confirmDraftDialog(dialog) })
                 }
-            }
-            .toast(isPresenting: $showDraftToast, duration: 1.0, tapToDismiss: false) {
-                draftToastAlert
             }
             .allowsHitTesting(isActive && !showGenerationModal)
             .suppressesCursorRects(showGenerationModal)
@@ -124,7 +116,7 @@ struct VoiceStudioView: View {
         .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
         // ⌘S / 文件菜单 / 卡片按钮共用 saveSignal，统一弹一条「草稿已保存」。
         .onChange(of: drafts.saveSignal) { _, _ in
-            presentDraftToast(.saved)
+            uiState.showToast(.success("草稿已保存".localized()))
         }
         // 退出 App 前再兜一次，覆盖「没切过页就直接 ⌘Q」的路径。
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
@@ -313,7 +305,7 @@ struct VoiceStudioView: View {
         // 正文不再被兜底覆盖，所以「编辑中」可以老实标在目标上（含「上次编辑」那条）。
         drafts.restore(full.id)
 
-        presentDraftToast(.restored)
+        uiState.showToast(.success("草稿已恢复".localized()))
     }
 
     /// 让编辑区交出键盘。
@@ -343,32 +335,6 @@ struct VoiceStudioView: View {
             drafts.deleteAll()
             draftDialog = nil
         }
-    }
-
-    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
-    private func presentDraftToast(_ kind: DraftToastKind) {
-        draftToastKind = kind
-        showDraftToast = false
-        DispatchQueue.main.async { self.showDraftToast = true }
-    }
-
-    /// 两条提示共用同一外观，只换文案与对勾颜色。
-    private var draftToastAlert: AlertToast {
-        let title: String
-        let color: Color
-        switch draftToastKind {
-        case .saved:
-            title = "草稿已保存".localized()
-            color = AppColor.statusSuccess
-        case .restored:
-            title = "草稿已恢复".localized()
-            color = AppColor.accentGlow
-        }
-        return AlertToast(displayMode: .hud,
-                          type: .complete(color),
-                          title: title,
-                          style: .style(backgroundColor: AppColor.bgTertiary,
-                                        titleColor: AppColor.textPrimary))
     }
 
     /// 工作台主体（不含生成弹窗）

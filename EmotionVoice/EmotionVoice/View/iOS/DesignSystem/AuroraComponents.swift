@@ -224,7 +224,9 @@ struct AuroraChip: View {
                         .font(.system(size: fontSize - 1.5, weight: .semibold))
                 }
                 Text(title)
-                    .font(.system(size: fontSize, weight: isSelected ? .semibold : .regular))
+                    // ⚠️ 选中时不要改字重：semibold 会把胶囊撑宽，FlowLayout 跟着重排，
+                    //    视觉上就是「点一下放大」。选中态只靠底色 / 字色区分，尺寸恒定。
+                    .font(.system(size: fontSize, weight: .regular))
                     .lineLimit(1)
             }
             .foregroundStyle(isProminent ? c.ctaForeground : (isSelected ? c.accent : c.textSecondary))
@@ -239,9 +241,21 @@ struct AuroraChip: View {
                                           lineWidth: isProminent ? 1 : 0.5)
                     )
             )
+            // 阴影半径恒定，选中只换颜色，不产生「外扩一圈」的尺寸感。
             .shadow(color: isProminent ? c.shadow.opacity(0.45) : .clear, radius: 3, x: 0, y: 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NoScaleButtonStyle())
+        // 选中态切换不带任何隐式动画（含 Layout 重排），点下去只换颜色。
+        .animation(nil, value: isSelected)
+    }
+}
+
+/// 按压零反馈：默认 ButtonStyle 会按 `isPressed` 改变 label 呈现（含缩放），
+/// 参数面板的 chip 只切选中态，按下/抬起都不允许尺寸变化。
+private struct NoScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .animation(nil, value: configuration.isPressed)
     }
 }
 

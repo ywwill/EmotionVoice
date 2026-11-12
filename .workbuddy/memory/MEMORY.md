@@ -6,7 +6,7 @@
 - SQLite 永不迁移：改 `createTables()` 必 bump `currentSchemaVersion` → DROP 重建。
 - `bash tools/ios_build.sh mac` 构建；`tools/ios_typecheck/typecheck.sh`（Shims 同步签名、MAC_ONLY 排除 mac 版 `AudioPreviewPlayer`）；workaround `IDEPackageSupportDisableManifestSandbox`/`-disable-sandbox`/`ONLY_ACTIVE_ARCH=YES`。
 - ⚠️ 默认 MainActor：后台纯计算 `nonisolated`（helper 同加）、静态非 Sendable `nonisolated(unsafe)`；Swift 5 仅 warning，grep 构建日志。
-- ⚠️ iOS `StudioView.swift` 的 `import AlertToast` 必须 `#if canImport` 包裹（Shims 替身），裸 import → typecheck no such module；macOS 侧不进 typecheck，11-11 决定保留裸 import。合并 dev-草稿 曾把 iOS 守卫弄丢。
+- ⚠️ 11-12 起 **AlertToast SPM 包已从工程删除**（pbxproj / Package.resolved 由用户清理）；iOS / macOS 两端都不再引用，`tools/ios_typecheck/Shims.swift` 里的 AlertToast 替身也已删。若以后重新引入，必须 `#if canImport(AlertToast)` 守卫，否则 typecheck `no such module`。
 - ⚠️ 合并分支后必查 `Package.resolved` 与冲突标记：`a1ff280` 把 BASE/P1 的 swift-asn1 1.7.4 退回 P2 的 1.7.3（已修回），并在两份 memory 里留下 `=======` / `>>>>>>> dev-草稿` 残留（已清）。
 - macOS 首屏 `.defaultSize(visibleFrame)`+`viewDidMoveToWindow()`，禁 `DispatchQueue.main.async` setFrame；SPM `unable to read tree`→`git fetch`；`Log()` 仅 DEBUG；mac 沙盒 Documents=`~/Library/Containers/<bundle>/Data/Documents`。
 
@@ -54,7 +54,8 @@
 - `DraftSnapshot`/`Draft`/`DraftStore` 全在 `VoiceStudioViewModel.swift` 尾部，禁进 SQLite / `AudioFlagStore`；`Documents/Drafts/` 下 `index.json` 只元数据、正文 `<id>.json`，禁退回单文件 `drafts.v1.json`；`loadedItems` 不参与 Codable，正文缺失 `load` 返回 nil（不是空正文）。
 - ⚠️ 恢复前 `stashBeforeRestore(_:)` 新建 manual 草稿（禁 `save(before, source:.auto)` 覆盖单槽位）；`Draft.isSameEditState`（正文+音色+四项参数+指令）全同才跳过；恢复统一 `vm.apply(_:appState:)`（含 `StudioParamStore.save` 写回）。
 - ⚠️ 取快照前必须结算编辑器去抖（mac 0.35s）：View `commitEditor()`；⌘S `DraftStore.saveFromSharedVM()`→`PendingEditorCommit.flush()`；正文唯一格式 `[TTSContentItem]`，禁降纯文本；iOS 保存用 `TokenDocument.contentItems`。
-- ⚠️ 反馈两端统一 `AlertToast` `.toast(...)`+`.hud`（顶部居中、1.5s、`.complete`），iOS `.hud` 必传 `offsetY`；禁自绘提示条/撤销按钮；**打开 App 编辑区恒为空**（两端 `restoreLastEditIfNeeded()` 已删）。
+- 反馈通道（11-12 起**两端各自实现，禁止共用类型/状态**）：iOS `IOSUIState.showToast` → `RootTabView` 顶部 `ToastHost`；macOS `MacUIState.showToast`（`MacToastMessage` + `MacToastHost` 全在 `View/macOS/ContentView.swift`）→ `ContentView` 顶部 overlay，由 `EmotionVoiceApp.WindowGroup` 注入 `.environmentObject(MacUIState.shared)`。⚠️ 两端 `duration` 统一 1s（默认参数 + 显式调用处都写 1），出现用 `withAnimation(.spring)` + `.id(message.id)` + `.transition`，消失用 `.easeOut(0.25)`；禁自绘提示条/撤销按钮；**打开 App 编辑区恒为空**（两端 `restoreLastEditIfNeeded()` 已删）。⚠️ 外观两端刻意不同：iOS = Aurora 实色胶囊 + 白字 + 同色光晕；macOS = Cold Luxury 浮层（`bgElevated` + `borderMedium` 0.5 描边 + 中性黑投影、`AppRadius.medium` 圆角矩形、高 42），状态色只给 24×24 图标方块、正文 `textPrimary`、info 用琥珀金 `accentPrimary`；禁把 iOS `ToastHost` 那套复制回 macOS。
+- ⚠️ 自动草稿标题**落盘只存中文 key** `Draft.autoTitleKey`（`index.json`）；显示 / 搜索 / 重命名预填 / 复制一律用 `draft.displayTitle`（对历史值 `"上次编辑"/"上次編輯"/"Last Edit"` 也重新本地化）。禁把 `.localized()` 结果写进草稿索引，否则切语言后英文仍显示中文。
 - ⚠️ iOS `DraftSheet` 浮层必须 `.overlay {}` 挂内容 VStack；macOS 草稿列表=窗口内自绘 modal（`showDraftModal`+`DraftModalView`，尺寸/字号以 `VoiceStudioDraft.swift` 为准），禁 `.popover`；Dialog 一律 `presentDraftDialog(_:)`，`draftDialog`/`showDraftModal` 都要参与 `EmotionTokenEditor(isInteractive:)`；`DraftModalView.focusable` 紧跟 `.focusEffectDisabled()`；⌘S 走 `KeyboardShortcuts.Name.saveDraft`+`DraftShortcutController`（禁设置页 `Recorder`）。
 
 ## 商店页 / ASO（细节全在 `产品/商店页/*.md`）

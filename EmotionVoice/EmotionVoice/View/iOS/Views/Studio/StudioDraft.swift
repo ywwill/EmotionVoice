@@ -44,7 +44,7 @@ struct DraftSheet: View {
     private var filteredManual: [Draft] {
         guard !search.isEmpty else { return store.manual }
         return store.manual.filter {
-            $0.title.localizedCaseInsensitiveContains(search)
+            $0.displayTitle.localizedCaseInsensitiveContains(search)
                 || $0.preview.localizedCaseInsensitiveContains(search)
         }
     }
@@ -52,7 +52,7 @@ struct DraftSheet: View {
     private var filteredAuto: [Draft] {
         guard !search.isEmpty else { return store.auto }
         return store.auto.filter {
-            $0.title.localizedCaseInsensitiveContains(search)
+            $0.displayTitle.localizedCaseInsensitiveContains(search)
                 || $0.preview.localizedCaseInsensitiveContains(search)
         }
     }
@@ -314,14 +314,14 @@ struct DraftSheet: View {
 
     /// 重命名入口：预填当前标题，交给 `RenameDialog` 输入。
     private func beginRename(_ d: Draft) {
-        renameText = d.title
+        renameText = d.displayTitle
         renameTarget = d
     }
 
     private func commitRename(_ d: Draft) {
         let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
         renameTarget = nil
-        guard !trimmed.isEmpty, trimmed != d.title else { return }
+        guard !trimmed.isEmpty, trimmed != d.displayTitle else { return }
         store.rename(id: d.id, title: trimmed)
     }
 
@@ -361,7 +361,7 @@ struct DraftSheet: View {
                         Text("恢复这份草稿？".localized())
                             .font(.system(size: 12.5, weight: .bold))
                             .foregroundStyle(c.textPrimary)
-                        Text(d.title)
+                        Text(d.displayTitle)
                             .font(.system(size: 11))
                             .foregroundStyle(c.textTertiary)
                             .lineLimit(1)
@@ -426,8 +426,8 @@ struct DraftSheet: View {
                     .font(.system(size: 12))
                     .foregroundStyle(c.textSecondary)
                     .multilineTextAlignment(.center)
-                if let d = f.draft, !d.title.isEmpty {
-                    Text(d.title)
+                if let d = f.draft, !d.displayTitle.isEmpty {
+                    Text(d.displayTitle)
                         .font(.system(size: 11.5))
                         .foregroundStyle(c.textTertiary)
                         .lineLimit(1)
@@ -486,7 +486,7 @@ private struct DraftCardView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(draft.title)
+                    Text(draft.displayTitle)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(c.textPrimary)
                         .lineLimit(1)

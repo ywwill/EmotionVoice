@@ -126,6 +126,7 @@ struct EmotionVoiceApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .environmentObject(MacUIState.shared)
                 .preferredColorScheme(.dark)
                 .background(WindowAccessor())
         }

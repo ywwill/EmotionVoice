@@ -2,19 +2,7 @@
 //  ProjectsView.swift
 //  iOSEmora
 //
-//  历史记录（项目标签页）。
-//
-//  按 UI/iOS/history-redesign.html v2 重做：
-//  - 大标题「历史记录」+ 副标题；标签栏仍叫「项目」（D1 默认不改标签名）
-//  - 全库检索（名称 / 文案 / 音色）+ 范围 chip + 命中高亮 + 结果计数
-//  - 统计条 / 全部·收藏筛选 / 时间分组（今天·昨天·其余按日 yyyy.MM.dd，组头吸顶）
-//  - 行内 32pt 就地试听 ≠ 点行进详情；mini player 全局常驻
-//  - 删除 = 移入最近删除（30 天）+ 5 秒撤销 Toast，不再是永久删除
-//  - 左滑四操作 / 多选工具条图标+文字 / 空态引导 / 骨架屏
-//
-//  ⚠️ 约定：磁盘 IO 一律在动画事务之外；列表刷新用 opacity+offset 可动画属性，
-//     `.id(scrollResetID)` 只负责滚动复位；同一层只挂一个 `.alert`。
-//
+//  历史记录
 
 import SwiftUI
 
@@ -28,12 +16,10 @@ struct ProjectsView: View {
     @StateObject private var vm = HistoryListViewModel()
     @StateObject private var flags = AudioFlagStore.shared
     @StateObject private var nowPlaying = NowPlayingStore.shared
-    // ⚠️ 列表宿主不订阅播放器：progress 10Hz 会让 ForEach 里所有行一起重算。
-    //    播放态走低频代理，行内进度条由「正在播放那一行」自己订阅。
+    
     @StateObject private var status = PlaybackStatus.shared
 
     // MARK: 多选 / 重命名 / 删除
-
     @State private var isSelecting = false
     @State private var selectedIDs: Set<Int64> = []
     @State private var renameTarget: AudioItem? = nil
@@ -42,12 +28,10 @@ struct ProjectsView: View {
     @State private var deleteMany = false
 
     // MARK: 分享 / 导出
-
     @State private var shareURLs: [URL] = []
     @State private var isSharing = false
 
     // MARK: 菜单 / 刷新节奏
-
     @State private var moreMenuPresented = false
     @State private var contentVisible = true
     @State private var scrollResetID = 0
@@ -157,11 +141,6 @@ struct ProjectsView: View {
     }
 
     /// iPad 大屏：按自然日分组，每组内一个多列网格。
-    ///
-    /// ⚠️ 三条 List 专属能力换了实现方式，功能不丢：
-    ///   ① `.swipeActions` 只能在 List 用 → 卡片改挂 `.contextMenu`（长按）提供同一组四操作；
-    ///   ② 分组头吸顶改用 `LazyVStack(pinnedViews: [.sectionHeaders])`；
-    ///   ③ mini player 占位由透明 Section 换成 ScrollView 末尾的等高占位。
     /// 刷新过渡（`.id` / opacity / offset / 动画参数）与 `phoneListArea` 完全一致。
     private var gridArea: some View {
         ScrollView {
@@ -200,7 +179,6 @@ struct ProjectsView: View {
                     }
                 }
 
-                // ⚠️ mini player 是 RootTabView 的全局浮层，不参与 ScrollView 的 safe area，
                 //    不给底部留占位，最后一行滚到底仍会被盖住。
                 if miniPlayerVisible {
                     Color.clear.frame(height: MiniPlayerView.height + 28)
@@ -273,8 +251,6 @@ struct ProjectsView: View {
                 }
             }
 
-            // ⚠️ mini player 是 RootTabView 的全局浮层，不参与 List 的 safe area。
-            //    不给底部留占位，最后一行滚到底也仍被盖住。
             if miniPlayerVisible {
                 Section {
                     Color.clear
@@ -288,32 +264,19 @@ struct ProjectsView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        // ⚠️ `.plain` List 从 iOS 15 起会给每个 section header 补一段系统留白
-        //    （UIKit sectionHeaderTopPadding / headerTopPadding，约 20pt+），首个 section
-        //    还要加上 scroll content 的顶部 margin 与 header 最小高度。叠在 chips 的
-        //    10pt 底部内边距上，筛选栏到「今天」分组头之间就会凭空多出一大截空白。
-        //    这里把系统间距全部清零，垂直节奏只由 HistoryFilterChips /
-        //    HistorySectionHeader 自己的 padding 决定（对齐设计稿 10 + 13）。
         .listSectionSpacing(0)
         .environment(\.defaultMinListHeaderHeight, 0)
         .contentMargins(.top, 0, for: .scrollContent)
-        // ⚠️ `.id` 只负责滚动复位；过渡靠可动画属性，不用容器 .transition
         .id(scrollResetID)
         .opacity(contentVisible ? 1 : 0)
         .offset(y: contentVisible ? 0 : 12)
         .animation(.easeOut(duration: 0.28), value: contentVisible)
         .animation(.spring(response: 0.34, dampingFraction: 0.9), value: vm.sections.count)
-        // 占位 Section 的插入 / 移除跟 mini player 的进出场同一节奏，
-        // 否则浮层是滑上来的、列表却先一步瞬跳 84pt。
         .animation(RootTabView.dockAnimation, value: miniPlayerVisible)
     }
 
     private var showEmpty: Bool { vm.sections.isEmpty && !vm.isLoading }
 
-    /// 与 `RootTabView.bottomDock` 的 mini player 显示条件对齐（键盘态除外：
-    /// 键盘弹起浮层会隐藏，此时多留一段底部空白没有副作用）。
-    /// ⚠️ 不要加 `status.playingKey != nil`：浮层只随 `currentItem` 存亡（用户点 ✕ 才收），
-    ///    否则播到结尾 / 试听顶掉 key 时浮层还在、这里的占位却先没了，最后一行会被盖住。
     private var miniPlayerVisible: Bool {
         !uiState.hideMiniPlayer
         && router.activePath.isEmpty
@@ -345,8 +308,6 @@ struct ProjectsView: View {
                    onRetry: { retry(audio) })
     }
 
-    // MARK: - ⋯ 菜单
-
     private var moreMenu: some View {
         HistoryMoreMenu(deletedCount: flags.deletedCount,
                         sortOrder: vm.sortOrder,
@@ -357,11 +318,9 @@ struct ProjectsView: View {
                             animateRefresh { vm.sortOrder = order }
                         },
                         onDismiss: { setMoreMenu(false) })
-            // 退场淡出（进场由菜单内部 appeared 驱动缩放 + 淡入）
             .transition(.opacity)
     }
 
-    /// ⚠️ 翻转必须落在动画事务里，overlay 的插入 / 移除才有过渡，否则瞬切。
     private func setMoreMenu(_ on: Bool) {
         withAnimation(.easeOut(duration: 0.2)) { moreMenuPresented = on }
     }
@@ -483,8 +442,6 @@ struct ProjectsView: View {
     }
 
     // MARK: - 刷新节奏
-
-    /// 打字：280ms 防抖，只重算不淡出（每敲一个字都闪一下太晃）。
     private func scheduleRefresh() {
         searchTask?.cancel()
         searchTask = Task { @MainActor in
@@ -530,7 +487,6 @@ struct ProjectsView: View {
     }
 
     // MARK: - 行为
-
     private func setSelecting(_ on: Bool) {
         withAnimation(.easeOut(duration: 0.18)) {
             isSelecting = on
@@ -564,11 +520,6 @@ struct ProjectsView: View {
             return
         }
         let voice = vm.voiceName(for: audio)
-        // ⚠️ 顺序不能反：**先 push，再接管播放**。
-        //    `attach` 会立刻把 `NowPlayingStore.currentItem` 写成这条，而此刻导航栈还是空的
-        //    → `RootTabView.bottomDock` 判定「该显示 mini player」，于是底部先滑出一个小条，
-        //    下一帧 path 变非空又把它收走 —— 观感就是「进详情页前底部弹了一下」。
-        //    path 先更新，同一帧里 `currentItem` 再怎么变都不满足 `activePath.isEmpty`。
         router.push(.player(audio))
         if status.playingKey == audio.fileName {
             nowPlaying.attach(audio, voiceName: voice)
@@ -587,11 +538,10 @@ struct ProjectsView: View {
     private func toggleFavorite(_ audio: AudioItem) {
         let on = flags.toggleFavorite(audio.id)
         vm.rebuild()
-        uiState.showToast(.success(on ? "已加入收藏".localized() : "已取消收藏".localized()))
+        uiState.showToast(.success(on ? "已加入收藏".localized() : "已取消收藏".localized(), duration: 1))
     }
 
     // MARK: 左滑四操作（数组从右到左：删除 / 复制 / 重命名 / 收藏）
-
     @ViewBuilder
     private func swipeButtons(_ audio: AudioItem) -> some View {
         Button(role: .destructive) { deleteTarget = audio } label: {
@@ -613,8 +563,6 @@ struct ProjectsView: View {
     }
 
     // MARK: 复制
-
-    /// ⚠️ 等左滑回弹走完 + 磁盘复制脱离主线程 + 纯插入，三步缺一就会复现「该行先消失」。
     private func duplicate(_ audio: AudioItem) {
         let sourceURL = audio.absoluteURL
         let ext = audio.fileExtension
@@ -658,7 +606,6 @@ struct ProjectsView: View {
     }
 
     // MARK: 重命名
-
     private func beginRename(_ audio: AudioItem) {
         renameTarget = audio
         renameText = audio.shownName
@@ -677,7 +624,6 @@ struct ProjectsView: View {
     }
 
     // MARK: 软删 + 撤销
-
     private var deletePresented: Binding<Bool> {
         Binding(get: { deleteTarget != nil || deleteMany },
                 set: { if !$0 { deleteTarget = nil; deleteMany = false } })
@@ -727,7 +673,6 @@ struct ProjectsView: View {
     }
 
     // MARK: 分享 / 收藏（多选）
-
     private func selectedAudios() -> [AudioItem] {
         vm.sections.flatMap(\.items).filter { selectedIDs.contains($0.id) }
     }
@@ -742,7 +687,6 @@ struct ProjectsView: View {
         isSharing = true
     }
 
-    /// 所选条目全部已收藏 → 按钮变「取消收藏」；否则是批量加入收藏。
     private var allSelectedFavorited: Bool {
         let ids = Array(selectedIDs)
         return !ids.isEmpty && ids.allSatisfy { flags.isFavorite($0) }
@@ -757,6 +701,6 @@ struct ProjectsView: View {
         vm.rebuild()
         uiState.showToast(.success(target
             ? "已加入收藏".localized()
-            : "已取消收藏".localized()))
+            : "已取消收藏".localized(), duration: 1))
     }
 }

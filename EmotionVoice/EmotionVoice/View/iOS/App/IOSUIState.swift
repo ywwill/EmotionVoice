@@ -14,7 +14,7 @@ import Foundation
 import SwiftUI
 import Combine   // @Published / ObservableObject 在 Combine，SwiftUI 不再隐式导出
 
-/// Toast 提示
+/// Toast 提示（iOS 端独立实现；macOS 有自己的一套，两端不共用类型 / 状态）。
 struct ToastMessage: Identifiable, Equatable {
     enum Style {
         case success
@@ -25,12 +25,14 @@ struct ToastMessage: Identifiable, Equatable {
     let id = UUID()
     let text: String
     let style: Style
-    /// 自动消失时长（成功 4s / 失败 8s）
+    /// 自动消失时长：统一 1 秒。
     let duration: TimeInterval
 
-    static func success(_ text: String) -> ToastMessage { .init(text: text, style: .success, duration: 4) }
-    static func failure(_ text: String) -> ToastMessage { .init(text: text, style: .failure, duration: 8) }
-    static func info(_ text: String) -> ToastMessage { .init(text: text, style: .info, duration: 3) }
+    static func success(_ text: String, duration: TimeInterval = 1) -> ToastMessage {
+        .init(text: text, style: .success, duration: duration)
+    }
+    static func failure(_ text: String) -> ToastMessage { .init(text: text, style: .failure, duration: 1) }
+    static func info(_ text: String) -> ToastMessage { .init(text: text, style: .info, duration: 1) }
 }
 
 /// 底部「撤销」Toast：5 秒倒计时 + 尾随动作按钮。
@@ -82,7 +84,10 @@ final class IOSUIState: ObservableObject {
 
     func showToast(_ message: ToastMessage) {
         toastTask?.cancel()
-        toast = message
+        // ⚠️ 出现动画必须显式带事务：ToastHost 的 `.transition` 只有在带动画的
+        //    事务里插入视图才会跑。以前直接赋值 → 瞬间蹦出来，却带 0.25s 消失动画。
+        //    `.id(message.id)` 让连着弹第二条时也重播一次入场。
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { toast = message }
         let d = message.duration
         toastTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(d * 1_000_000_000))
@@ -95,7 +100,7 @@ final class IOSUIState: ObservableObject {
     func hideToast() {
         toastTask?.cancel()
         toastTask = nil
-        toast = nil
+        withAnimation(.easeOut(duration: 0.25)) { toast = nil }
     }
 
     // MARK: - 撤销 Toast

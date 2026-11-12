@@ -272,6 +272,8 @@ struct RootTabView: View {
     private var toastLayer: some View {
         if let toast = uiState.toast {
             ToastHost(message: toast)
+                // 每条新消息换一次结构身份，连着弹第二条时也重播入场动画。
+                .id(toast.id)
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .zIndex(3)

@@ -6,44 +6,24 @@
 //
 
 import SwiftUI
+import Foundation   // TimeInterval
+import Combine   // @Published / ObservableObject
 
 struct ContentView: View {
 
     @EnvironmentObject var appState: AppState
+    /// macOS 端自己的 Toast 状态（不与 iOS 共用类型 / 状态）
+    @StateObject private var uiState = MacUIState.shared
 
     /// 检查更新：启动静默拉一次 `app_updates`，命中就出顶部横幅 / 强制更新弹窗
     @StateObject private var updateManager = AppUpdateManager.shared
 
     /// 实际渲染到右侧的内容分区。
     @State private var renderedSection: SidebarSection = .voiceStudio
-
-    /// 已经访问过的分区。
-    ///
-    /// ⚠️ 两个「重页面」（语音合成 / 音色库）一旦访问过就常驻在 ZStack 中，
-    /// 再次切入只切 opacity，**不再销毁重建**：
-    /// - VoiceStudioView 的 NSTextView（字形缓存、语气胶囊、attachment 状态表、
-    ///   Coordinator 与 first responder）保持同一个实例；
-    /// - VoicesLibraryView 的 @StateObject VM（分页缓存、筛选状态）保持同一个实例。
-    /// 旧实现用 `.id(renderedSection)` 强制换身份，每次切页都把这两棵树全量重建，
-    /// 是切页时 CPU / 内存尖峰与掉帧的根因。
     @State private var visitedSections: Set<SidebarSection> = [.voiceStudio]
 
-    /// 需要常驻（保留实例）的重页面。
-    /// 其余分区仍按需创建 / 销毁：历史记录、积分中心依赖 onAppear 重新拉数据，
-    /// 播放快捷键也依赖 onDisappear 注销，保留实例反而会改变语义。
     private static let retainedSections: Set<SidebarSection> = [.voiceStudio, .voices]
 
-    /// 音色库空闲预热的等待时长。
-    ///
-    /// 音色库首次出现要一次性完成：VM 初始化 + 27 个分类 chip 的 FlowLayout
-    /// 测量 + 20 张骨架卡 + 2 处 ultraThinMaterial 离屏层 + 首屏全表排序 /
-    /// 约 29 次全量 COUNT / 当前页 Voice 对象构建。以前这些全压在「点击音色库」
-    /// 那一帧上，用户感受到的就是「只有第一次卡」。
-    /// 现在启动后等首屏 + 更新检查 + 评分弹窗都过去，再在空闲期把页面挂进
-    /// ZStack（隐藏态），由它自己的 onAppear 把数据也一并备好；用户首次点击
-    /// 只剩一次 alpha 变化。
-    /// ⚠️ 别把这步塞进 `checkForUpdateAtLaunch()` 那条 `.task`：网络请求超时
-    /// 会把预热无限期推迟，必须单独一条 `.task`。
     private static let voicesWarmUpDelay: Duration = .milliseconds(800)
 
     var body: some View {
@@ -52,10 +32,6 @@ struct ContentView: View {
             Divider()
                 .background(AppColor.borderSubtle)
 
-            // 更新横幅浮在内容区顶部（Z 轴叠在内容之上，不占布局高度）：
-            // 不能再用 VStack 顶条 —— 那样横幅一出现就把 VoiceStudioView 等页面
-            // 整体往下挤，工作台的文本域、生成栏会跟着跳一下。
-            // 只叠在内容列之内，不越过 Divider 盖住侧边栏。
             mainContent
                 .overlay(alignment: .top) {
                     if updateManager.showsBanner, let info = updateManager.availableUpdate {
@@ -71,52 +47,43 @@ struct ContentView: View {
         // 生成弹窗 / 后台接收卡片挂在这一层：
         // 弹窗关闭后接收仍在后台跑，提示必须能跨页面存在（见 GenerationOverlay）
         .overlay { GenerationOverlay() }
+        // 顶部 Toast：macOS 独立实现，出现 / 消失都带动画，1s 自动收起。
+        .overlay(alignment: .top) {
+            if let toast = uiState.toast {
+                MacToastHost(message: toast)
+                    .id(toast.id)
+                    .padding(.top, 14)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(3)
+            }
+        }
         // 更新详情 / 强制更新弹窗
         .sheet(item: $updateManager.presentedUpdate) { info in
             AppUpdateSheetMac(manager: updateManager, info: info)
         }
         .task { await updateManager.checkForUpdateAtLaunch() }
-        // 空闲期预热音色库（与网络检查并行，互不阻塞）
         .task { await warmUpVoicesLibrary() }
-        // 评分申请不挂在这里：macOS 走 `AppDelegate.applicationDidFinishLaunching`
-        // → `LaunchReviewRequester`，等窗口上屏且 App 激活后只申请一次
-        // （挂在根视图上的 `.task` / `scenePhase` 两个入口会在启动瞬间就申请，
-        //   请求被 StoreKit 挂起后会反复投递，表现为「一次启动弹好几次」）。
         .onChange(of: appState.selectedSection) { _, newSection in
-            // `.home` 已无侧边栏入口，历史上与工作台共用同一页面，归一化避免空白页
             scheduleContentSwap(to: newSection == .home ? .voiceStudio : newSection)
         }
     }
 
-    private func scheduleContentSwap(to section: SidebarSection) {        guard section != renderedSection else { return }
-        // 所有切换都即时响应。旧的「首次进音色库先 sleep 100ms 让位给侧边栏
-        // spring」已删除：重页面现在在启动空闲期就预热好了，点击时没有视图构建，
-        // 等 100ms 只会变成「点了没反应」。即便预热未完成用户就点进来，
-        // 即时上屏（哪怕掉一帧）也比让人干等更跟手。
+    private func scheduleContentSwap(to section: SidebarSection) {
+        guard section != renderedSection else { return }
         applyContentSwap(to: section)
     }
 
-    /// 启动空闲期把音色库挂进常驻层（隐藏态），提前完成首次构建 + 首屏取数。
-    ///
-    /// `VoicesLibraryView(isActive: false)` 的 `onAppear` 会照常触发：
-    /// 先上静态骨架，再跨 32ms 跑 `vm.load()`。骨架扫光按 `isActive` 关闭，
-    /// 隐藏层不绘制、不拦截点击，因此预热期间既无可见变化也无常驻动画开销。
-    /// 预热完成后用户第一次点「音色库」只是把这一层的 opacity 从 0 切到 1。
     private func warmUpVoicesLibrary() async {
         try? await Task.sleep(for: Self.voicesWarmUpDelay)
         guard !Task.isCancelled else { return }
         // 用户抢在预热前自己点了进来 / 已经访问过，就不用重复插入
         guard !visitedSections.contains(.voices) else { return }
 
-        // 第 1 帧：只算数据缓存（全表排序 + 全量 COUNT），不碰视图树。
-        // 与下面挂视图树分到两帧，避免两个大头挤在同一帧造成启动后可感知的掉帧。
         VoiceService.shared.warmUpVoiceLibraryCache()
         try? await Task.sleep(for: .milliseconds(32))
         guard !Task.isCancelled else { return }
         guard !visitedSections.contains(.voices) else { return }
 
-        // 第 2 帧：挂隐藏视图树；它自己的 onAppear 会在 32ms 后跑完 vm.load()，
-        // 此时有序 key 与 chip 计数都已命中缓存，只剩取当前页这一窗 Voice 对象。
         visitedSections.insert(.voices)
     }
 
@@ -131,7 +98,6 @@ struct ContentView: View {
     @ViewBuilder
     private var mainContent: some View {
         ZStack(alignment: .topLeading) {
-            // —— 常驻层：访问过的重页面留在树里，靠 opacity 显隐 ——
             if visitedSections.contains(.voiceStudio) {
                 retainedPage(
                     VoiceStudioView(isActive: renderedSection == .voiceStudio),
@@ -145,7 +111,6 @@ struct ContentView: View {
                 )
             }
 
-            // —— 按需层：轻量页沿用「每次切入重建」，保持 onAppear 刷新语义 ——
             switch renderedSection {
             case .projects:
                 lightweightPage(HistoryView())
@@ -182,5 +147,107 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(AppColor.bgPrimary)
             .transition(.opacity.animation(.easeInOut(duration: 0.12)))
+    }
+}
+
+// MARK: - macOS 顶部 Toast
+struct MacToastMessage: Identifiable, Equatable {
+    enum Style { case success, failure, info }
+
+    let id = UUID()
+    let text: String
+    let style: Style
+    let duration: TimeInterval
+
+    static func success(_ text: String, duration: TimeInterval = 1) -> MacToastMessage {
+        .init(text: text, style: .success, duration: duration)
+    }
+    static func failure(_ text: String) -> MacToastMessage { .init(text: text, style: .failure, duration: 1) }
+    static func info(_ text: String) -> MacToastMessage { .init(text: text, style: .info, duration: 1) }
+}
+
+@MainActor
+final class MacUIState: ObservableObject {
+    static let shared = MacUIState()
+
+    @Published var toast: MacToastMessage? = nil
+    private var toastTask: Task<Void, Never>?
+    private init() {}
+
+    func showToast(_ message: MacToastMessage) {
+        toastTask?.cancel()
+        // ⚠️ 出现动画要显式带事务：`.transition` 只在带动画的事务里插入视图时才跑。
+        //    `.id(message.id)` 让连续两条 Toast 各自重播入场。
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { toast = message }
+        let d = message.duration
+        toastTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(d * 1_000_000_000))
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.25)) { self.toast = nil }
+            }
+        }
+    }
+}
+
+/// macOS 自绘顶部 Toast。
+///
+/// ⚠️ 刻意**不沿用 iOS 的 Aurora 风格**（高饱和实色胶囊 + 纯白字 + 同色光晕）：
+/// macOS 主项目是 Cold Luxury 冷调深色 + 琥珀金小面积强调，浮层统一走
+/// `bgElevated` 底 + `borderMedium` 0.5pt 描边 + 中性黑投影
+/// （同一套见 `AppUpdateBannerMac`、`AudioGenerationModal.header`）。
+/// 状态色只落在左侧 24×24 图标方块上，正文用 `textPrimary`，避免整块高亮色喧宾夺主。
+private struct MacToastHost: View {
+    let message: MacToastMessage
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(tint.opacity(0.12))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .stroke(tint.opacity(0.28), lineWidth: 1)
+                    )
+                Image(systemName: iconName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+
+            Text(message.text)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(AppColor.textPrimary)
+                .lineLimit(2)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 42)   // 与 AppUpdateBannerMac 同高，两张浮层视觉一致
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                .fill(AppColor.bgElevated)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
+                        .strokeBorder(AppColor.borderMedium, lineWidth: 0.5)
+                )
+        )
+        .shadow(color: .black.opacity(0.35), radius: 16, x: 0, y: 6)
+        .padding(.horizontal, 16)
+    }
+
+    private var iconName: String {
+        switch message.style {
+        case .success: return "checkmark.circle.fill"
+        case .failure: return "xmark.circle.fill"
+        case .info: return "info.circle.fill"
+        }
+    }
+
+    /// 只给图标上色：success / failure 沿用项目状态色，info 用琥珀金主强调色
+    /// （iOS 的 info 是蓝色，macOS 这里不跟着走蓝色）。
+    private var tint: Color {
+        switch message.style {
+        case .success: return AppColor.statusSuccess
+        case .failure: return AppColor.statusError
+        case .info: return AppColor.accentPrimary
+        }
     }
 }

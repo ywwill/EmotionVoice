@@ -153,7 +153,7 @@ struct PlayerDetailView: View {
                             let on = flags.toggleFavorite(item.id)
                             uiState.showToast(.success(on
                                 ? "已加入收藏".localized()
-                                : "已取消收藏".localized()))
+                                : "已取消收藏".localized(), duration: 1))
                         } label: {
                             let on = flags.isFavorite(item.id)
                             Image(systemName: on ? "heart.fill" : "heart")

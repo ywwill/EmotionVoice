@@ -6,10 +6,6 @@
 import SwiftUI
 import UIKit
 import Combine
-// typecheck 编不进 SPM 包，替身在 tools/ios_typecheck/Shims.swift；真机构建仍 import 真包。
-#if canImport(AlertToast)
-import AlertToast
-#endif
 
 enum IOSPerfDebug {
     static let usePlainTextEditor = false
@@ -45,9 +41,6 @@ struct StudioView: View {
     @State private var confirmGenerate = false
     @ObservedObject private var drafts = DraftStore.shared
     @State private var draftsPresented = false
-    private enum DraftToastKind { case saved, restored }
-    @State private var showDraftToast = false
-    @State private var draftToastKind: DraftToastKind = .saved
 
     /// 「键盘 + accessory」顶边的屏幕 Y（编辑器量出来的；nil = 键盘收起）
     @State private var keyboardTop: CGFloat? = nil
@@ -136,22 +129,6 @@ struct StudioView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             autoSaveCurrentDraft()
         }
-        .toast(isPresenting: $showDraftToast,
-               duration: 1.0,
-               tapToDismiss: false,
-               offsetY: draftToastOffsetY) {
-            draftToastAlert
-        }
-    }
-
-    private var draftToastOffsetY: CGFloat {
-        let window = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow }
-        let topInset = window?.safeAreaInsets.top ?? 0
-        let bar = AppUpdateBanner.navBarClearance + (metrics.isPadClass ? 8 : 0)
-        return max(0, topInset + bar + 8 - 33)
     }
 
     private var collapseChrome: Bool { !metrics.usesTwoColumnStudio && isEditingText }
@@ -632,7 +609,7 @@ struct StudioView: View {
         let snap = currentSnapshot
         guard !snap.isEmpty else { return }
         drafts.save(snap, source: .manual)
-        presentDraftToast(.saved)
+        uiState.showToast(.success("草稿已保存".localized(), duration: 1))
     }
 
     /// 静默兜底：退后台 / 离开创作页 / 恢复前，恒定覆盖单条「自动保存」。
@@ -660,33 +637,7 @@ struct StudioView: View {
         drafts.stashBeforeRestore(before)
         applyDraftSnapshot(full)
         drafts.restore(full.id)
-        presentDraftToast(.restored)
-    }
-
-    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
-    private func presentDraftToast(_ kind: DraftToastKind) {
-        draftToastKind = kind
-        showDraftToast = false
-        DispatchQueue.main.async { self.showDraftToast = true }
-    }
-
-    /// 两条提示共用同一外观，只换文案与对勾颜色。
-    private var draftToastAlert: AlertToast {
-        let title: String
-        let color: Color
-        switch draftToastKind {
-        case .saved:
-            title = "草稿已保存".localized()
-            color = c.success
-        case .restored:
-            title = "草稿已恢复".localized()
-            color = c.accent
-        }
-        return AlertToast(displayMode: .hud,
-                          type: .complete(color),
-                          title: title,
-                          style: .style(backgroundColor: c.surface,
-                                        titleColor: c.textPrimary))
+        uiState.showToast(.success("草稿已恢复".localized(), duration: 1))
     }
 
     private func restoreFromViewModel() {

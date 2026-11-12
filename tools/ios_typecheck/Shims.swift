@@ -220,42 +220,4 @@ final class DeviceIdentifier {
     func getUserUUID() -> String { "" }
 }
 
-// MARK: - 替身：AlertToast（真机构建走真包）
-//
-// `swiftc -typecheck` 解析不到 SPM module，StudioView.swift 用 `#if canImport(AlertToast)`
-// 跳过 import，这里补一份同签名的最小实现，只为校验 `.toast(...)` 与
-// `AlertToast(displayMode:type:title:style:)` 调用点的参数名 / 类型。
-#if !canImport(AlertToast)
-struct AlertToast: View {
-    enum BannerAnimation { case slide, pop }
-    enum DisplayMode { case alert, hud, banner(BannerAnimation) }
-    enum AlertType {
-        case complete(Color), error(Color), systemImage(String, Color), image(String, Color), loading, regular
-    }
-    enum AlertStyle {
-        case style(backgroundColor: Color? = nil,
-                   titleColor: Color? = nil,
-                   subTitleColor: Color? = nil,
-                   titleFont: Font? = nil,
-                   subTitleFont: Font? = nil)
-    }
-
-    init(displayMode: DisplayMode = .alert,
-         type: AlertType,
-         title: String? = nil,
-         subTitle: String? = nil,
-         style: AlertStyle? = nil) {}
-
-    var body: some View { EmptyView() }
-}
-
-extension View {
-    func toast(isPresenting: Binding<Bool>,
-               duration: Double = 2,
-               tapToDismiss: Bool = true,
-               offsetY: CGFloat = 0,
-               alert: @escaping () -> AlertToast,
-               onTap: (() -> Void)? = nil,
-               completion: (() -> Void)? = nil) -> some View { self }
-}
-#endif
+// AlertToast 替身已移除：SPM 包已从工程删除，iOS / macOS 两端都走自有 Toast。
