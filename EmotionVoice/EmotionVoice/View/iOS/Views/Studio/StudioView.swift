@@ -494,7 +494,7 @@ struct StudioView: View {
                 .accessibilityLabel("语音指令".localized())
             }
 
-            PrimaryButton(title: "生成音频".localized(), systemImage: "waveform",
+            PrimaryButton(title: "生成语音".localized(), systemImage: "waveform",
                           width: generateButtonWidth) {
                 requestGeneration()
             }
@@ -718,16 +718,6 @@ private struct ContentBottomKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
-/// 导航栏积分胶囊。
-///
-/// ⚠️ 必须是独立 View 且**自己订阅** appState：`.toolbar` 内容由 UIKit 托管，
-/// 从 StudioView 闭包里捕获的 `appState.creditsBalance` 不会随启动后的云端同步
-/// 重新求值，余额会一直停在初始值。子 View 自带 `@EnvironmentObject` 后，
-/// SwiftUI 会单独跟踪依赖，积分一到账立刻刷新。
-///
-/// ⚠️ 这里不用 `AnimateNumberText`：它靠 `onAppear` / `.task(id:)` 初始化内部
-/// `@State`、靠 `GeometryReader` 测字宽，在 ToolbarItem 的紧凑托管环境里可能
-/// 渲染出空列。改用系统 `.numericText` 过渡，同样是逐位滚动，且不依赖生命周期。
 private struct StudioCreditCapsule: View {
     @Environment(\.aurora) private var c
     @EnvironmentObject private var appState: AppState

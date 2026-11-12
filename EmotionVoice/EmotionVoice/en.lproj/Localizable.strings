@@ -24,7 +24,7 @@
 "拟声效果" = "Sound Effects";
 "语速" = "Speed";
 "音量" = "Volume";
-"生成音频" = "Create";
+"生成语音" = "Create";
 "已接收: %@" = "Received: %@";
 "剩余" = "Remaining";
 "预计" = "Estimated";

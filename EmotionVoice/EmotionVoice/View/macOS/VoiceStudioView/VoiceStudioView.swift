@@ -936,7 +936,7 @@ struct VoiceStudioView: View {
         
         return HStack(spacing: 10) {
             // 左侧：生成音频按钮
-            PrimaryButton(title: "生成音频".localized(), icon: "waveform") {
+            PrimaryButton(title: "生成语音".localized(), icon: "waveform") {
                 // 1. 验证文本和音色
                 if !validateInputs() { return }
                 // 2. 验证积分是否足够（按实际消耗的小数值比较，无向上取整）

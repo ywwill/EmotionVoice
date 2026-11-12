@@ -290,15 +290,7 @@ final class BailianTTSService {
             wordTimestampEnabled: wordTimestampEnabled
         )
 
-        // DEBUG: 输出文本（>200 字符时截断显示）便于排查「多标签只生效一个」问题
-        let preview: String
-        if text.count > 200 {
-            preview = String(text.prefix(200)) + "...（共 \(text.count) 字符）"
-        } else {
-            preview = text
-        }
-        Log(message: "发送 synthesize 请求，voice=\(voice) 文本长度: \(text.count) 字符")
-        Log(message: "  完整文本: \(preview)")
+        Log(message: "发送生成请求，request=\(request)")
 
         // 「建连 → 发 run-task → 等 task-started」是整条链路最脆的一段：
         // 日志里那种 `-1200 / errSSLClosedNoNotify / ECONNRESET with incomplete TLS handshake`
@@ -525,9 +517,7 @@ final class BailianTTSService {
         if let instruction = instruction, !instruction.isEmpty {
             payload["instruction"] = instruction
         }
-        // 百炼 run-task 的 parameters.language_hints 是 array[string]，当前版本
-        // 只处理第一个元素，所以只放一个值。未选语言 / 中文方言时不带该字段（默认空）。
-        // 边缘函数会校验白名单后原样透传，改这里记得同步 index.ts。
+        
         if let hint = languageHint, !hint.isEmpty {
             payload["language_hints"] = [hint]
         }

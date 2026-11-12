@@ -56,7 +56,7 @@
 ## 积分 / 参数 / 弹窗
 - 积分全链路 Double(≤2位) `CreditPrecision.normalize`，计费 `字符数/100*rate`（普通2/复刻5，CJK 算 2 字符），云端 `numeric(10,2)`。
 - `StudioParamValues`/`Store` 在 `Shared/ViewModels/VoiceStudioViewModel.swift`，键 `studioParam.*`；⚠️ 禁把 `AppState.defaultFormat`/`defaultSampleRate` 当存储，「重置」只调 `reset(on: vm)` = `.factory`(mp3/22050/1.0x/100%)；`VoiceStudioView.onAppear` 从设置页覆盖参数**已删，别加回来**。
-- ⚠️ **语音指令拼接必须 `.localized()`**：`updateNLInstruction()` 里 `nlLanguages.name`/`nlPresets.instruction` 是中文原文兼 key，三份 strings 已备 24 语言名 + 6 预设；**禁直接拼中文**（英文/繁中界面冒简体，11-11 实测）。iOS/macOS 共用此 VM。分隔符中文 `,`、英文 `, `（`AppLanguage.isChinese`）。
+- ⚠️ **语言 chip 绝不写入指令输入框**（11-12）：`toggleLanguage()` 只切 `selectedLanguage`，语言经 `Constants.languageHint(forName:)` 走 `language_hints`；`updateNLInstruction()` 只由 `applyPreset()` 调用、只写 `nlPresets.instruction?.localized()`。**禁把语言名加回拼接**（先选语言再点预设就会漏进框里）。写入指令的文案必须 `.localized()`（中文原文兼 key，三份 strings 已有 24 语言名 + 6 预设译文；直接拼中文会让英/繁界面冒简体，11-11 实测）。iOS/macOS 共用此 VM。
 - `GenerationDialog` 清空须 `displayName: nil`，`hasResult = generatedAudioURL != nil && !isGenerating`；`PackageCard` 副标题禁 `.lineLimit(1)`。
 - ⚠️ 用户要求「**每次 App 打开都弹评分弹窗**」（与 ASO 文档相反，以用户为准）：`AppUpdateManager.requestReviewOnEveryOpen()` 两端根容器各挂一行，**不做本地节流**。口径是「**每进程一次**」：`ReviewRequestGate`（`nonisolated(unsafe) static var`）只放行一次。**禁把标记放回 `@State`、禁在 `scenePhase != .active` 时复位**（iOS 面板/控制中心/来电都走 active→inactive→active，复位即连环弹窗）。StoreKit 365 天 3 次 / TestFlight 不弹是系统硬限制。
 

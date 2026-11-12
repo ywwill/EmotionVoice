@@ -191,29 +191,29 @@ final class VoiceStudioViewModel: ObservableObject {
     }
 
     /// 切换语言选择
+    ///
+    /// ⚠️ 语言 chip 只决定 TTS 请求的 `language_hints`（生成时走
+    /// `Constants.languageHint(forName: selectedLanguage)`），**不写入指令输入框**：
+    /// 输入框只放「想让声音怎么说话」的描述，语言名混进去会覆盖用户手打的指令。
+    /// iOS / macOS 共用本方法，一处改两端生效。
     func toggleLanguage(_ language: String) {
         if selectedLanguage == language {
             selectedLanguage = nil
         } else {
             selectedLanguage = language
         }
-        updateNLInstruction()
     }
 
-    /// 更新指令文本：拼接语言和预设
+    /// 更新指令文本：只写入描述预设，语言不参与拼接
     ///
-    /// ⚠️ 拼进指令框的必须是**当前界面语言**的文案，不能用中文 key 原文：
-    /// `nlLanguages.name` / `nlPresets.instruction` 都是中文原文（也是本地化 key），
-    /// 三份 Localizable.strings 里已有对应译文；直接写原文会让英文 / 繁中界面下
-    /// 指令框冒出简体中文。iOS 与 macOS 共用本方法，一处改两端生效。
+    /// ⚠️ 别把 `selectedLanguage` 加回来 —— 否则「先选语言、再点预设」时语言名
+    /// 会跟着拼进输入框。指令必须是**当前界面语言**的文案：
+    /// `nlPresets.instruction` 是中文原文兼本地化 key，三份 Localizable.strings
+    /// 里已有译文；直接写原文会让英文 / 繁中界面下指令框冒出简体中文。
+    /// iOS 与 macOS 共用本方法，一处改两端生效。
     private func updateNLInstruction() {
-        let parts: [String] = [
-            selectedLanguage?.localized(),
-            selectedPreset.flatMap { Constants.instructionForPreset($0)?.localized() }
-        ].compactMap { $0 }
-
-        // 中文沿用原来的半角逗号（零回归），英文补一个空格
-        nlInstruction = parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
+        nlInstruction = selectedPreset
+            .flatMap { Constants.instructionForPreset($0)?.localized() } ?? ""
     }
 
     // 生成状态
