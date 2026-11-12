@@ -42,6 +42,24 @@ final class EmotionTokenTextView: NSTextView {
     /// 选中区间变化时
     var onSelectionChange: (() -> Void)?
 
+    /// 立即、**同步**把当前内容推回外部（由 `EmotionTokenEditor.Coordinator` 注入）。
+    /// ⚠️ 与 `onContentChange` 是两条路：后者用 `Task` 延迟一拍，避免在 view update 期间改
+    ///    SwiftUI 状态；这条只给「用户主动动作」（保存 / 恢复草稿 / 生成）用，必须当场拿到最新内容。
+    var onCommitRequest: (@MainActor () -> Void)?
+
+    /// 当前活着的编辑器实例（全 App 只有一个）。
+    /// 供 SwiftUI 侧在动手前把还在去抖窗口里的输入结算掉。
+    static weak var active: EmotionTokenTextView?
+
+    /// 立刻结算去抖中的内容变更，**同步**执行。
+    /// ⚠️ 只允许在用户主动动作的调用栈里调用。绝不能在 `updateNSView` / `didChangeText`
+    ///    内部调用 —— 那等于在 view update 期间改 SwiftUI state。
+    func commitPendingChangesNow() {
+        contentChangeWorkItem?.cancel()
+        contentChangeWorkItem = nil
+        onCommitRequest?()
+    }
+
     // MARK: - 私有
 
     private var isInternalUpdate: Bool = false
@@ -304,8 +322,13 @@ final class EmotionTokenTextView: NSTextView {
 
     /// 用结构化数据替换整个编辑器内容。
     /// 当前选中区间会被推到末尾。
-    func setContent(_ items: [TTSContentItem]) {
-        guard let storage = textStorage else { return }
+    /// - Note: 返回是否真的写进去了。程序化整体替换**不受 `isEditable` 限制**：
+    ///   草稿恢复是「关弹窗 + 写内容」同一帧发生的，此时 `updateNSView` 可能还没来得及把
+    ///   `isEditable` 从 false 改回 true。若照旧走 `shouldChangeText`，NSTextView 在不可编辑
+    ///   状态下直接返回 false，整段正文原地不动 —— 表现就是「编辑器有内容时点恢复草稿没反应」。
+    @discardableResult
+    func setContent(_ items: [TTSContentItem]) -> Bool {
+        guard let storage = textStorage else { return false }
 
         // ⚠️ 三张文件级状态表按 attachment 的「对象身份」索引。setContent 会用一批全新的
         // attachment 整体替换 NSTextStorage，旧条目既不会走 removeToken 也不会走
@@ -339,18 +362,21 @@ final class EmotionTokenTextView: NSTextView {
         }
 
         let fullRange = NSRange(location: 0, length: storage.length)
+        // ⚠️ 只在可编辑时才问 `shouldChangeText`（它把 isEditable 当准入条件，delegate 也能拒绝）。
+        //    不可编辑时也允许写入：这是程序化的内容装载（恢复草稿 / 切分区），不是用户编辑。
+        if isEditable {
+            guard shouldChangeText(in: fullRange, replacementString: result.string) else { return false }
+        }
         if fullRange.length > 0 {
-            guard shouldChangeText(in: fullRange, replacementString: result.string) else { return }
             storage.replaceCharacters(in: fullRange, with: result)
         } else {
-            guard shouldChangeText(in: NSRange(location: 0, length: 0),
-                                  replacementString: result.string) else { return }
             storage.setAttributedString(result)
         }
         setSelectedRange(NSRange(location: storage.length, length: 0))
         typingAttributes = bodyAttrs
         didChangeText()
         flushPendingContentChange()
+        return true
     }
 
     // MARK: - 删除单个 token（统一入口）

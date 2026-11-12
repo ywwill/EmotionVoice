@@ -6,27 +6,18 @@
 //
 
 import SwiftUI
+import AppKit
+import AlertToast
 
 /// 语音合成工作台
 struct VoiceStudioView: View {
 
     @EnvironmentObject var appState: AppState
-    // 使用 shared 单例，保证页面切换时数据不丢失（文本/情感/语速音量等）
     @StateObject private var vm = VoiceStudioViewModel.shared
-    // 注意：这里刻意不订阅 AudioPreviewPlayer（不用 @ObservedObject）。
-    // 播放进度以 10Hz 刷新，一旦在页面层级订阅，整页（文本编辑器 + 全部面板）
-    // 都会跟着重算。需要播放态的地方下沉到子视图里订阅，见 VoiceRowPlayback。
-
-    /// 当前分区是否正显示。
-    /// ContentView 会常驻本页实例（切页只切 opacity），为 false 时必须：
-    /// 1) 让 NSTextView 不可编辑 / 不可选中，主动交出 first responder，
-    ///    否则隐藏页会继续吃掉其它分区的键盘输入；
-    /// 2) 关掉挂在自己身上的 sheet / popover，否则它们会跟着浮在别的页面上。
+    @ObservedObject private var drafts = DraftStore.shared
     var isActive: Bool = true
 
     @State private var showVoiceLibrarySheet: Bool = false
-    /// 生成弹窗的开关放在 AppState 上（全局承载，关掉后可从任意页面召回），
-    /// 这里只是读同一个值：接收中屏蔽下层交互与光标区。
     private var showGenerationModal: Bool { appState.showGenerationModal }
     /// 积分不足时弹出购买页面
     @State private var showCreditsPurchaseSheet: Bool = false
@@ -40,15 +31,49 @@ struct VoiceStudioView: View {
     /// 语音指令说明弹窗
     @State private var showNLRulePopover: Bool = false
 
+    // MARK: 草稿
+    @State private var showDraftModal: Bool = false
+    /// 恢复确认 / 重命名 / 删除共用一个自定义 Dialog，避免多个 .alert 互相覆盖。
+    @State private var draftDialog: DraftDialog? = nil
+    @State private var draftRenameText: String = ""
+    /// 保存 / 恢复反馈统一走 AlertToast：`.hud` 从顶部落下、水平居中，1.5s 自动收起。
+    /// 不再自绘提示条，也不再提供撤销（产品要求）。
+    private enum DraftToastKind { case saved, restored }
+    @State private var showDraftToast = false
+    @State private var draftToastKind: DraftToastKind = .saved
+
     var body: some View {
         studioContent
-            // 弹窗显示时屏蔽下层的点击与键盘事件，避免穿透到工作台的文本域；
-            // 分区隐藏时也要屏蔽，否则常驻的透明页会拦下其它分区的点击
+            .overlay {
+                if showDraftModal {
+                    DraftModalView(store: drafts,
+                                   isPresented: $showDraftModal,
+                                   isKeyboardActive: draftDialog == nil,
+                                   canSave: !currentSnapshot.isEmpty,
+                                   onSave: saveCurrentDraft,
+                                   onRestore: requestRestore,
+                                   onRename: { d in
+                                       draftRenameText = d.title
+                                       presentDraftDialog(.rename(d))
+                                   },
+                                   onDuplicate: { d in drafts.duplicate(id: d.id) },
+                                   onDelete: { d in presentDraftDialog(.delete(d)) },
+                                   onDeleteAll: { presentDraftDialog(.deleteAll) })
+                        .transition(.opacity)
+                }
+            }
+            .overlay {
+                if let dialog = draftDialog {
+                    DraftDialogView(kind: dialog,
+                                    renameText: $draftRenameText,
+                                    onCancel: { draftDialog = nil },
+                                    onConfirm: { confirmDraftDialog(dialog) })
+                }
+            }
+            .toast(isPresenting: $showDraftToast, duration: 1.0, tapToDismiss: false) {
+                draftToastAlert
+            }
             .allowsHitTesting(isActive && !showGenerationModal)
-            // 弹窗与工作台里的 NSTextView 共处同一窗口。SwiftUI 自绘内容不是 NSView，
-            // 不参与 AppKit 的 cursor rect 判定，下层的 I-beam 会穿透到弹窗上方
-            //（异常范围正好等于卡片内容区高度）。这里在弹窗期间禁用窗口的 cursor rects，
-            // 交给弹窗内各控件的 hover 决定光标；弹窗关闭后恢复。
             .suppressesCursorRects(showGenerationModal)
             .sheet(isPresented: $showVoiceLibrarySheet) {
                 VoiceLibrarySheet()
@@ -58,8 +83,6 @@ struct VoiceStudioView: View {
                 CreditsPurchaseView()
                     .frame(width: 600, height: 600)
             }
-            // 注：生成失败/校验的 alert 已移到 GenerationOverlay（全局层），
-            // 关掉弹窗后即便切到别的页面也能弹出来。
             .onAppear {
             // 初始化音色：上次使用的音色优先，没有则回落到旗舰默认音色（idx 1）
             appState.resolveSelectedVoice()
@@ -69,10 +92,6 @@ struct VoiceStudioView: View {
                 vm.selectedVoiceKey = appState.defaultVoiceKey
                 appState.selectedVoice = appState.defaultVoice
             }
-            // 四项音频参数：记住「上次用的」而不是「设置页默认值」。
-            // 设置页配的格式 / 采样率只作为「无存档时的起点」传进去；
-            // ⚠️ 不要把它传给 reset ——「重置」必须回出厂值（mp3），否则设置页
-            //    存过 WAV 时点重置会回到 WAV，与 iOS 不一致。见 audioControlCard。
             StudioParamStore.shared.restoreIfNeeded(to: vm, defaults: studioParamDefaults)
         }
         .onChange(of: appState.selectedVoice?.key) { _, newKey in
@@ -91,6 +110,10 @@ struct VoiceStudioView: View {
             showInterruptRulePopover = false
             showRichLanguageRulePopover = false
             showNLRulePopover = false
+            showDraftModal = false
+            draftDialog = nil
+            // 常驻页失活 = 用户离开创作台：静默兜底一条覆盖式「自动保存」。
+            autoSaveCurrent()
         }
         // 四项参数实时落盘：改完即使立刻退出 App 也不丢。
         // ⚠️ 不再像以前那样回写 `appState.defaultFormat` / `defaultSampleRate`：
@@ -99,17 +122,253 @@ struct VoiceStudioView: View {
         .onChange(of: vm.volume) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.selectedFormat) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
+        // ⌘S / 文件菜单 / 卡片按钮共用 saveSignal，统一弹一条「草稿已保存」。
+        .onChange(of: drafts.saveSignal) { _, _ in
+            presentDraftToast(.saved)
+        }
+        // 退出 App 前再兜一次，覆盖「没切过页就直接 ⌘Q」的路径。
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            autoSaveCurrent()
+        }
     }
 
-    /// macOS 专属：设置页能配「默认格式 / 采样率」，语速 / 音量没有对应设置项，用出厂值。
-    /// ⚠️ 只用于 `restoreIfNeeded` 的「无存档起点」，**不要传给 `reset`**：
-    ///    重置必须回出厂 mp3，否则设置页存过 WAV 就永远重置不回来。
-    /// `StudioParamStore.sanitize` 会把设置页里工作台不支持的格式（PCM / Opus）净化掉。
     private var studioParamDefaults: StudioParamValues {
         StudioParamValues(rate: StudioParamValues.factory.rate,
                           volume: StudioParamValues.factory.volume,
                           format: appState.defaultFormat,
                           sampleRate: appState.defaultSampleRate)
+    }
+
+    // MARK: - 草稿入口
+
+    private var currentSnapshot: DraftSnapshot { DraftSnapshot.capture(from: vm) }
+
+    private var clearButton: some View {
+        Button {
+            clearEditor()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("清空".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(AppColor.textSecondary)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(AppColor.borderMedium, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .disabled(currentSnapshot.isEmpty)
+        .opacity(currentSnapshot.isEmpty ? 0.45 : 1)
+        .help("清空".localized())
+    }
+
+    private var draftSaveButton: some View {
+        Button {
+            saveCurrentDraft()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("保存".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(AppColor.accentGlow)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(AppColor.accentWash)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(AppColor.accentLine,
+                                    style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .disabled(currentSnapshot.isEmpty)
+        .opacity(currentSnapshot.isEmpty ? 0.45 : 1)
+        .help("⌘ S 快速保存".localized())
+    }
+
+    /// 「草稿 N」：角标 >99 显示 99+、为 0 时隐藏。
+    private var draftListButton: some View {
+        Button {
+            // 打开前先结算编辑器去抖：列表里的「保存当前编辑」和空态判断都要读最新内容。
+            commitEditor()
+            withAnimation(.easeOut(duration: 0.16)) { showDraftModal = true }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "folder")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("草稿".localized())
+                    .font(.system(size: 10.5, weight: .semibold))
+                if drafts.count > 0 {
+                    Text(drafts.count > 99 ? "99+" : "\(drafts.count)")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundStyle(AppColor.bgPrimary)
+                        .frame(minWidth: 15, minHeight: 15)
+                        .padding(.horizontal, 3)
+                        .background(Capsule().fill(AppColor.accentPrimary))
+                }
+            }
+            .foregroundStyle(showDraftModal ? AppColor.accentGlow : AppColor.textSecondary)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(AppColor.borderMedium, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+
+    // MARK: - 草稿行为
+
+    /// 清空编辑区：复用 VM 的 `clearText()`（正文 + 标签 + 上一条生成结果），
+    /// 并把「编辑中」标记摘下 —— 工作区内容已与那条草稿不一致，不该再标它。
+    private func clearEditor() {
+        commitEditor()
+        guard !currentSnapshot.isEmpty else { return }
+        // `clearTokensTrigger` 会重建 NSTextView，先交出 firstResponder 避免光标错位
+        resignTextEditor()
+        vm.clearText()
+        drafts.markEditing(nil)
+    }
+
+    private func saveCurrentDraft() {
+        commitEditor()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        // 顶部提示统一由 saveSignal 弹，快捷键 / 菜单 / 按钮三条通道不会重复提示
+        drafts.save(snap, source: .manual)
+    }
+
+    /// 静默兜底：退后台 / 切分区 / 恢复前，恒定覆盖单条「自动保存」。
+    private func autoSaveCurrent() {
+        commitEditor()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .auto, notify: false)
+    }
+
+    /// 把编辑器里还在去抖窗口（0.35s）内的输入立刻结算给 VM。
+    /// ⚠️ 保存 / 恢复前必须调用：否则 `currentSnapshot` 读到的是旧内容，
+    ///    而那条迟到的回调会在 `vm.apply` 之后才跑，把刚恢复的正文又写回旧内容。
+    private func commitEditor() {
+        EmotionTokenTextView.active?.commitPendingChangesNow()
+    }
+
+    private func requestRestore(_ d: Draft) {
+        commitEditor()
+        // 状态矩阵：仅「当前编辑区非空 + 点草稿」才需要确认。
+        // ⚠️ 这里**不关**列表：确认层直接压在列表上，取消后还能接着挑另一条；
+        //    真正恢复成功才由 `performRestore` 收起 modal。
+        if currentSnapshot.isEmpty {
+            performRestore(d)
+        } else {
+            presentDraftDialog(.restore(d))
+        }
+    }
+
+    /// 打开草稿自定义 Dialog。**必须先让编辑区交出 firstResponder**：
+    /// 这层浮层是普通 SwiftUI overlay，不会自己变成 key window，NSTextView 仍然是
+    /// first responder —— 弹窗挡住编辑区的时候，打字 / 空格会继续落到下面的正文里。
+    /// ⚠️ 同时 `draftDialog != nil` 会参与 `isInteractive`，编辑区顺带变成不可编辑、
+    ///    不注册 I-beam；Dialog 关掉后 `updateNSView` 再把焦点还回编辑区。
+    private func presentDraftDialog(_ dialog: DraftDialog) {
+        resignTextEditor()
+        draftDialog = dialog
+    }
+
+    private func performRestore(_ d: Draft) {
+        // 恢复成功就收起草稿 modal（内容整体切换，留在列表上没有意义）。
+        showDraftModal = false
+        // ⚠️ 先把编辑器里未同步的输入结算给 VM，再取兜底快照：
+        //    否则 `before` 是旧内容，而且那条迟到的同步回调会在 `vm.apply` 之后才执行，
+        //    把刚写进 binding 的新正文又覆盖回旧内容 —— 表现就是「点恢复，编辑器没变化」。
+        commitEditor()
+        let before = currentSnapshot
+
+        guard let full = drafts.load(id: d.id) else { return }
+
+        // 恢复前兜底：现有内容存成**一条新的草稿**（不覆盖「上次编辑」那个单槽位）。
+        // 这样连续切换多份草稿，中间每一份内容都留得住，谁都不会被下一次兜底盖掉。
+        drafts.stashBeforeRestore(before)
+
+        // ⚠️ 恢复会重建 NSTextView 内容：先交出 firstResponder 再写，避免光标错位。
+        resignTextEditor()
+        vm.apply(full, appState: appState)
+        // 正文不再被兜底覆盖，所以「编辑中」可以老实标在目标上（含「上次编辑」那条）。
+        drafts.restore(full.id)
+
+        presentDraftToast(.restored)
+    }
+
+    /// 让编辑区交出键盘。
+    /// ⚠️ 先看 `mainWindow` 再看 `keyWindow`：从 NSPopover（草稿列表）里点出来的动作，
+    ///    `keyWindow` 可能是 popover 自己的窗口，拿它去找 NSTextView 会找不到、白跑一趟。
+    private func resignTextEditor() {
+        for window in [NSApp.mainWindow, NSApp.keyWindow].compactMap({ $0 }) {
+            if window.firstResponder is NSTextView {
+                window.makeFirstResponder(nil)
+                return
+            }
+        }
+    }
+
+    private func confirmDraftDialog(_ dialog: DraftDialog) {
+        switch dialog {
+        case .restore(let d):
+            draftDialog = nil
+            performRestore(d)
+        case .rename(let d):
+            drafts.rename(id: d.id, title: draftRenameText)
+            draftDialog = nil
+        case .delete(let d):
+            drafts.delete(id: d.id)
+            draftDialog = nil
+        case .deleteAll:
+            drafts.deleteAll()
+            draftDialog = nil
+        }
+    }
+
+    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
+    private func presentDraftToast(_ kind: DraftToastKind) {
+        draftToastKind = kind
+        showDraftToast = false
+        DispatchQueue.main.async { self.showDraftToast = true }
+    }
+
+    /// 两条提示共用同一外观，只换文案与对勾颜色。
+    private var draftToastAlert: AlertToast {
+        let title: String
+        let color: Color
+        switch draftToastKind {
+        case .saved:
+            title = "草稿已保存".localized()
+            color = AppColor.statusSuccess
+        case .restored:
+            title = "草稿已恢复".localized()
+            color = AppColor.accentGlow
+        }
+        return AlertToast(displayMode: .hud,
+                          type: .complete(color),
+                          title: title,
+                          style: .style(backgroundColor: AppColor.bgTertiary,
+                                        titleColor: AppColor.textPrimary))
     }
 
     /// 工作台主体（不含生成弹窗）
@@ -137,15 +396,26 @@ struct VoiceStudioView: View {
 
     // MARK: - 文本编辑器
 
+    /// 编辑区是否可交互 / 可抢焦点：分区可见、且没有被浮层（生成弹窗 / 草稿 modal / 草稿 Dialog）挡住。
+    /// ⚠️ 草稿列表改成 modal 后同样要参与这个判据，否则鼠标点卡片、按空格回车
+    ///    仍会落进底下的正文（overlay 不会自动变成 key window）。
+    /// ⚠️ 草稿 Dialog 虽然只是 SwiftUI overlay，但它出现时键盘必须归它所有；
+    ///    `presentDraftDialog` 会立刻交出 firstResponder，这里保证状态持续成立
+    ///    （打字、I-beam、选中全部关掉），Dialog 消失后 `updateNSView` 会把焦点还回编辑区。
+    private var isEditorInteractive: Bool {
+        isActive && !showGenerationModal && draftDialog == nil && !showDraftModal
+    }
+
     private var textEditorCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("文本输入".localized())
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
+            HStack(spacing: 8) {
                 Text("%d 字".localized(vm.charCount))
-                .font(AppFont.monoSmall)
-                .foregroundStyle(AppColor.textTertiary)
+                    .font(AppFont.monoSmall)
+                    .foregroundStyle(AppColor.textTertiary)
+                Spacer(minLength: 8)
+                draftSaveButton
+                draftListButton
+                clearButton
             }
             .padding(.bottom, 12)
             .overlay(alignment: .bottom) {
@@ -164,10 +434,10 @@ struct VoiceStudioView: View {
                 insertTokenCategory: vm.insertTokenCategory,
                 clearTrigger: vm.clearTokensTrigger,
                 textBinding: $vm.text,
-                // 生成弹窗 / 分区隐藏期间让文本域彻底不可交互：
+                // 生成弹窗 / 草稿 Dialog / 分区隐藏期间让文本域彻底不可交互：
                 // 不抢焦点、不注册 I-beam 光标区。isInteractive 变化时
                 // updateNSView 会置 isEditable/isSelectable = false 并交出 firstResponder。
-                isInteractive: isActive && !showGenerationModal
+                isInteractive: isEditorInteractive
             )
             .font(AppFont.bodyLarge)
             .foregroundStyle(AppColor.textPrimary)
@@ -940,6 +1210,8 @@ struct VoiceStudioView: View {
                 vm.generate { success in
                     if success {
                         state.refreshCredits()
+                        // 生成成功后音频进「项目 / 历史」；草稿只打标，30 天后清理，两者不混列。
+                        drafts.markGenerated()
                     }
                 }
             }

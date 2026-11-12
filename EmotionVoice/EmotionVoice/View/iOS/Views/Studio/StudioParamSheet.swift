@@ -88,7 +88,7 @@ struct StudioParamContent: View {
         .sheet(isPresented: $showInstructionGuide) {
             InstructionGuideSheet()
                 .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .presentationDragIndicator(.hidden)
         }
     }
 

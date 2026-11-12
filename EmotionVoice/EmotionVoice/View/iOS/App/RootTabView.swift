@@ -81,9 +81,8 @@ struct RootTabView: View {
             .sheet(isPresented: $uiState.purchaseSheetPresented) {
                 PurchaseSheet()
                     .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
             }
-            // 更新详情 / 强制更新弹窗（SheetNavBar 自带顶部抓手，不再用系统 drag indicator）
+            // 强制更新弹窗
             .sheet(item: $updateManager.presentedUpdate) { info in
                 AppUpdateSheet(manager: updateManager, info: info)
                     .presentationDetents([.medium, .large])

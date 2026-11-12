@@ -69,7 +69,7 @@ struct SettingsView: View {
             OptionPickerSheet(kind: kind)
                 .presentationDetents([.height(OptionPickerSheet.preferredDetentHeight(for: kind)),
                                       .large])
-                .presentationDragIndicator(.visible)
+                .presentationDragIndicator(.hidden)
         }
     }
 

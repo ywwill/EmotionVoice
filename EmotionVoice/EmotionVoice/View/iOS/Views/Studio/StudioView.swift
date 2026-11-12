@@ -2,10 +2,11 @@
 //  StudioView.swift
 //  iOSEmora
 //
-//  创作工作台
 
 import SwiftUI
 import UIKit
+import Combine
+import AlertToast
 
 enum IOSPerfDebug {
     static let usePlainTextEditor = false
@@ -39,8 +40,11 @@ struct StudioView: View {
     @State private var voicePickerPresented = false
     @State private var alertItem: AlertItem? = nil
     @State private var confirmGenerate = false
-
-    // MARK: 键盘让位（底部条不能压到 accessory）
+    @ObservedObject private var drafts = DraftStore.shared
+    @State private var draftsPresented = false
+    private enum DraftToastKind { case saved, restored }
+    @State private var showDraftToast = false
+    @State private var draftToastKind: DraftToastKind = .saved
 
     /// 「键盘 + accessory」顶边的屏幕 Y（编辑器量出来的；nil = 键盘收起）
     @State private var keyboardTop: CGFloat? = nil
@@ -52,36 +56,22 @@ struct StudioView: View {
     var body: some View {
         VStack(spacing: 0) {
             if metrics.usesTwoColumnStudio {
-                // ⚠️ GeometryReader 量的是「generateBar 之上」的真实可用高度，直接喂给编辑卡。
-                //    用 ScreenMetrics.height 减固定开销只能靠猜：iPad 竖屏 820×1180 上
-                //    editorMinHeight 原先把高度夹在 520pt，下半屏整整空掉四百多 pt。
-                //    实测高度下 ScrollView 内容刚好一屏（不产生滚动），滑动收键盘仍保留。
                 GeometryReader { geo in
                     ScrollView {
                         wideLayout(editorHeight: max(geo.size.height - 20,
                                                      metrics.editorMinHeight))
                             .padding(.bottom, 10)
                     }
-                    // 滚动 = 在浏览、不在打字 → 一开始滚就收键盘，把空间还给正文。
-                    // ⚠️ 用 `.immediately` 而不是 `.interactively`：本页的键盘让位（见 `keyboardSeam`）
-                    // 是「按实测差值 + 0.25s 动画」算出来的，interactive 那种键盘跟手走的过程
-                    // 会让底部条一路追着手指重排（抖），一次性收起反而干净。
-                    // 编辑器内部（窄屏）的滚动收起由 `TokenTextEditor` 的 `keyboardDismissMode` 负责。
                     .scrollDismissesKeyboard(.immediately)
                 }
             } else {
-                // 窄屏不套 ScrollView：音色行 + 参数行是固定高度，
-                // 输入框独占剩余空间撑到底部，与 generateBar 只隔 10pt。
                 narrowLayout
             }
 
             generateBar
-                // ⚠️ 键盘弹出时按实测的差值让位：SwiftUI 自带的键盘避让不一定算上
-                // `inputAccessoryView` 那一截，底部条会压进标签条里（见 `updateKeyboardSeam`）
                 .padding(.bottom, keyboardSeam)
         }
         .background(c.backgroundGrouped)
-        // 内容区底边（屏幕坐标 Y）：拿它跟「键盘 + accessory 顶边」比一下就知道压进去多少
         .background {
             GeometryReader { geo in
                 Color.clear.preference(
@@ -91,7 +81,6 @@ struct StudioView: View {
         }
         .onPreferenceChange(ContentBottomKey.self) { bottom in
             contentBottom = bottom
-            // ⚠️ 只在布局量完之后算：拿「键盘还没升起时」的旧底边去减键盘顶边会算出天价
             withAnimation(.easeOut(duration: 0.2)) { updateKeyboardSeam() }
         }
         .navigationTitle("创作".localized())
@@ -100,51 +89,70 @@ struct StudioView: View {
         .sheet(isPresented: $paramsPresented) {
             StudioParamSheet(vm: vm, voicePickerPresented: $voicePickerPresented)
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $voicePickerPresented) {
             VoicePickerSheet(selectedKey: $vm.selectedVoiceKey)
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $draftsPresented) {
+            DraftSheet(store: drafts,
+                       canSave: !currentSnapshot.isEmpty,
+                       needsConfirm: !currentSnapshot.isEmpty,
+                       onSave: {
+                           draftsPresented = false
+                           saveCurrentDraft()
+                       },
+                       onRestoreConfirmed: { d in
+                           draftsPresented = false
+                           performDraftRestore(d)
+                       })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
         }
         .alert(item: $alertItem) { item in
             Alert(title: Text(item.title), message: Text(item.message),
                   dismissButton: .default(Text("好".localized())))
         }
         .onAppear {
-            // 四项音频参数冷启动恢复（只跑一次，见 Store 里的 didRestore）
             StudioParamStore.shared.restoreIfNeeded(to: vm)
             restoreFromViewModel()
             restoreSelectedVoice()
+            PendingEditorCommit.handler = { [weak editor] in editor?.flush() }
         }
-        // 工作台里换音色（导航栏 🎭 / 标题行音色胶囊 / 音色 Sheet）也要同步给 AppState：
-        // 它才是音色库、历史记录这些页面读的那份状态，两边不一对，换完音色再进音色库会显示旧音色。
         .onChange(of: vm.selectedVoiceKey) { _, _ in
             if let voice = vm.voice { appState.selectedVoice = voice }
         }
-        // 四项参数实时落盘：Sheet 里拖完 slider 立刻杀进程也不丢。
-        // ⚠️ 挂在常驻的 StudioView 而不是 Sheet 上：Sheet 只在打开期间存在，
-        //    且冷启动恢复写进 VM 的这一步也靠它们把值补齐到磁盘。
-        // ⚠️ paramsText / sampleRateText 本来就已经读过这四个属性，不会新增订阅成本。
         .onChange(of: vm.rate) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.volume) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.selectedFormat) { _, _ in StudioParamStore.shared.save(from: vm) }
         .onChange(of: vm.sampleRate) { _, _ in StudioParamStore.shared.save(from: vm) }
-        // ⚠️ 只要离开创作页就收键盘：键盘还在屏上时进二级页，返回后底部那条会错位
-        // （成因与统一收口见 `TabRouter.push`）。这里同时兜住「切标签」这类不走 push 的离开。
-        .onDisappear(perform: finishEditing)
+        .onDisappear {
+            finishEditing()
+            autoSaveCurrentDraft()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            autoSaveCurrentDraft()
+        }
+        .toast(isPresenting: $showDraftToast,
+               duration: 1.0,
+               tapToDismiss: false,
+               offsetY: draftToastOffsetY) {
+            draftToastAlert
+        }
     }
 
-    /// 窄屏才让位：宽屏本来就两栏，没有空间压力
+    private var draftToastOffsetY: CGFloat {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        let topInset = window?.safeAreaInsets.top ?? 0
+        let bar = AppUpdateBanner.navBarClearance + (metrics.isPadClass ? 8 : 0)
+        return max(0, topInset + bar + 8 - 33)
+    }
+
     private var collapseChrome: Bool { !metrics.usesTwoColumnStudio && isEditingText }
 
-    // MARK: - 键盘让位
-
-    /// 内容区底边压进「键盘 + accessory」多少，就让开多少 —— 要求**不重叠、距离为 0**。
-    ///
-    /// ⚠️ 差值必须实测，不能写死：SwiftUI 自带的键盘避让带不带 accessory 那一截，
-    /// 同一条生命周期里都会变（通知里的键盘框有时只有键盘本身）。
-    /// ⚠️ 上限 260pt 只是兜底：真量错了（比如拿到键盘升起前的旧底边）不至于把整条顶飞。
     private func updateKeyboardSeam() {
         guard let top = keyboardTop, contentBottom > 0 else {
             keyboardSeam = 0
@@ -163,23 +171,12 @@ struct StudioView: View {
         }
     }
 
-    /// 宽屏两栏（左编辑 + 右参数）。
-    ///
-    /// `editorHeight` 由外层 GeometryReader 实测传入：ScrollView 里高度本来是无界的，
-    /// 不给确定值的话 `textCard` 里的 GeometryReader / UITextView 会塌成 0。
-    /// ⚠️ 水平边距只在最外层加一次；`pagePadding()` 会再叠一层（共 48pt），
-    /// 且 iPad 大屏下还会触发 `contentMaxWidth` 把两栏夹窄 —— 两栏必须自己管边距。
-    /// ⚠️ 侧栏按设备分流：**iPad 大屏**直接铺开 `StudioParamContent`（原 Sheet 的完整正文），
-    /// 不再用「摘要条 → 点开 Sheet」；折叠屏展开态横屏（高度只有 669pt）仍走摘要条，
-    /// 免得把本来就不够用的纵向空间吃光。
     private func wideLayout(editorHeight: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 16) {
             textCard(horizontalInset: 0)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: editorHeight)
             if metrics.isPadClass {
-                // 高度必须钉死：外层是 ScrollView（提案高度无界），侧栏自己的
-                // ScrollView 不定高就会按整份参数内容撑开，把两栏一起顶飞。
                 StudioParamContent(vm: vm,
                                    voicePickerPresented: $voicePickerPresented,
                                    sampleRateColumns: 2)
@@ -266,12 +263,6 @@ struct StudioView: View {
         return parts.joined(separator: " · ")
     }
 
-    // MARK: 参数摘要
-
-    /// 窄屏顶部唯一的横条：音频参数总览 + 语音指令状态，点开完整参数 Sheet。
-    ///
-    /// ⚠️ 键盘弹出时整条连同上下间距收成 0 高 —— 打字时可视区只剩两百出头，
-    /// 这 52pt 是最该让出来的空间（`collapseChrome`）。宽屏侧栏不参与收缩。
     private var paramsStrip: some View {
         paramsStripContent
             .padding(.horizontal, metrics.pageMargin)
@@ -321,8 +312,6 @@ struct StudioView: View {
         .background(Capsule(style: .continuous).fill(c.accentSoft))
     }
 
-    /// 宽屏（非 iPad 大屏）侧栏里的参数卡：点开完整参数 Sheet。
-    /// iPad 侧栏走 `StudioParamContent` 直接铺开，用不到这张摘要卡。
     private var paramsSummary: some View {
         Button { paramsPresented = true } label: {
             HStack(spacing: 10) {
@@ -363,8 +352,6 @@ struct StudioView: View {
     }
 
     // MARK: 文本卡
-
-    /// `horizontalInset`：窄屏自己带页面边距；两栏由 `wideLayout` 在外层统一加一次。
     private func textCard(horizontalInset: CGFloat) -> some View {
         VStack(spacing: 0) {
             cardHeader
@@ -407,34 +394,68 @@ struct StudioView: View {
         .frame(maxHeight: .infinity)   // 窄屏独占剩余高度
     }
 
-    /// 标题 + 当前音色 + 字数（32.5pt）。键盘弹出时收成 0 高，字数由底部生成条接着显示。
-    ///
-    /// 窄屏没有侧栏的音色区，已选音色名无处常驻 —— 收进这行的中间：
-    /// 既不被工具栏标题挤占，又随手可点换音色。宽屏两栏侧栏已有音色区，这里不重复。
     private var cardHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
-                if !metrics.usesTwoColumnStudio {
-                    voiceHeaderChip
+                if !collapseChrome {
+                    if !metrics.usesTwoColumnStudio {
+                        voiceHeaderChip
+                    }
                     Spacer(minLength: 4)
+                    Text("%d 字".localized(editor.charCount))
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(c.textTertiary)
                 } else {
                     Spacer(minLength: 0)
                 }
-
-                Text("%d 字".localized(editor.charCount))
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(c.textTertiary)
+                draftCapsule
             }
             .padding(.horizontal, 16)
-            .frame(height: 32)
+            .frame(height: collapseChrome ? 30 : 32)
 
-            Hairline()
-                .padding(.horizontal, 16)
+            if !collapseChrome {
+                Hairline()
+                    .padding(.horizontal, 16)
+            }
         }
-        .frame(height: collapseChrome ? 0 : 32.5)
-        .opacity(collapseChrome ? 0 : 1)
+        .frame(height: collapseChrome ? 30 : 32.5)
         .clipped()
         .animation(.easeOut(duration: 0.22), value: collapseChrome)
+    }
+
+    /// 草稿胶囊：26pt 高、accentSoft 底 + 描边、角标 16×16，>99 显示 99+、为 0 隐藏。
+    private var draftCapsule: some View {
+        Button {
+            // ⚠️ 打开 Sheet 前先收键盘；恢复后也不自动聚焦、不弹键盘。
+            finishEditing()
+            draftsPresented = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("草稿".localized())
+                    .font(.system(size: 11.5, weight: .bold))
+                if drafts.count > 0 {
+                    Text(drafts.count > 99 ? "99+" : "\(drafts.count)")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .padding(.horizontal, 3)
+                        .background(Capsule().fill(c.accent))
+                }
+            }
+            .foregroundStyle(c.accent)
+            .padding(.horizontal, 9)
+            .frame(height: 26)
+            .background(
+                Capsule()
+                    .fill(c.accentSoft)
+                    .overlay(Capsule().strokeBorder(c.line2, lineWidth: 0.5))
+            )
+            // 整条热区
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// 文本卡标题行中间的「当前音色」：窄屏专用，点开选音色 Sheet。
@@ -454,14 +475,6 @@ struct StudioView: View {
         .accessibilityLabel("当前音色".localized())
     }
 
-    // MARK: 底部生成条
-
-    /// 给全局 mini player 让位的高度。
-    /// ⚠️ 两者抢同一块地方：浮层是 56pt 高、底边贴在标签栏上方 9pt 处，而本页生成条
-    ///    高 60pt、底边在标签栏上方 8pt —— 实测只差 1pt，等于完全重合，
-    ///    不给让位的话「生成音频」按钮会被整块盖住。
-    /// ⚠️ 键盘弹起时浮层本来就不显示（`RootTabView` 里带 `!keyboardVisible`），
-    ///    这里同步归零，否则键盘上方会凭空多出 68pt 空白。
     private var miniPlayerInset: CGFloat {
         guard nowPlaying.currentItem != nil, keyboardTop == nil else { return 0 }
         return MiniPlayerView.height + 12
@@ -480,12 +493,8 @@ struct StudioView: View {
             .fixedSize()
             .lineLimit(1)
 
-            // ⚠️ 「生成音频」改成固定宽之后，多出来的横向空间得有东西吃掉：
-            // 不吃掉的话 HStack 会把它摊给各子视图，固定宽就白设了。
             Spacer(minLength: 8)
 
-            // iPad 侧栏已常驻完整参数面板（含语音指令输入），不需要再开一次 Sheet。
-            // iPhone / 折叠屏横屏仍留这个入口。
             if !metrics.isPadClass {
                 SecondaryButton(title: "", systemImage: "sparkles", height: 44, isFullWidth: false) {
                     paramsPresented = true
@@ -503,16 +512,10 @@ struct StudioView: View {
         }
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 8)
-        // ⚠️ 让位加在 bottom padding 上（而不是给 generateBar 外面套 padding）：
-        //    下面这层 `c.bar` 是跟在 padding 之后的，色块会一起长高，
-        //    mini player 就浮在这块同色底上，不会从底下漏出页面背景。
         .padding(.bottom, 8 + miniPlayerInset)
         .background(c.bar)
         .animation(RootTabView.dockAnimation, value: miniPlayerInset)
         .overlay(alignment: .top) { Hairline() }
-        // ⚠️ 二次确认挂在这里而不是 body 根视图：根视图上已经有一个 `.alert(item:)`，
-        // 同一层再挂一个 `.alert` 会互相覆盖（这也是上一版才退而求其次用了
-        // `confirmationDialog` 的原因 —— 挂子视图上就不冲突了）。
         .alert("确认生成语音".localized(), isPresented: $confirmGenerate) {
             Button("取消".localized(), role: .cancel) { }
             Button("确认".localized()) { startGeneration() }
@@ -521,15 +524,6 @@ struct StudioView: View {
         }
     }
 
-    /// 底部条右侧的「完成」：收键盘。
-    ///
-    /// ⚠️ 位置是从键盘 accessory 挪过来的：那一排 30 个胶囊里它既不起眼又和
-    /// 插标签的动作混在一起；底部生成条**不会被键盘压住**（这也是字数为什么要挪到这里的原因），
-    /// 挪过来之后「放下键盘」与「开始生成」两个出口并排，拇指不用离开这一行。
-    ///
-    /// ⚠️ UI 必须与「生成音频」拉开差距，否则两个同样大的实心按钮会互相抢：
-    ///  * **生成音频**（`PrimaryButton`）= 渐变实心 + 白字 + 投影 + 吃掉剩余宽度 → 主操作；
-    ///  * **完成** = 只有 1pt 描边、**没有填充也没有投影**、强调色文字、固定 74pt 宽 → 次要动作。
     private var doneButton: some View {
         Button { finishEditing() } label: {
             Text("完成".localized())
@@ -542,26 +536,13 @@ struct StudioView: View {
                 )
         }
         .buttonStyle(.plain)
-        // 键盘没弹出时它不是必需操作，压暗一档但保留可点（点一下也没有副作用）
         .opacity(isEditingText ? 1 : 0.55)
     }
 
-    /// 「语音指令」图标键的宽度：这一行要挤下「预计 + 图标 + 生成音频 + 完成」四组，
-    /// 窄屏（< 375pt）再让 6pt 出来。
     private var barIconWidth: CGFloat { metrics.width < 375 ? 40 : 46 }
 
-    /// 「生成音频」的固定宽度。
-    ///
-    /// ⚠️ 它原来是 `isFullWidth` 撑满剩余宽度 —— 于是「预计」的数字多一位、
-    /// 或者换个屏幕宽度，主操作按钮就跟着变长变短，看着像界面在抖。固定之后
-    /// 这一行只有「完成」在键盘弹出时切换透明度，宽度不再变。
-    /// 窄屏（< 375pt）按 375 算过：343 − 字数 90 − 图标 40 − 完成 66 − 三处间距 30 ≈ 117，取 112。
     private var generateButtonWidth: CGFloat { metrics.width < 375 ? 112 : 128 }
 
-    /// 收键盘。
-    ///
-    /// ⚠️ 先写 `isEditingText`：顶部横条要从「打字态」恢复到常规态，靠的就是这个值，
-    /// 等 `textViewDidEndEditing` 的异步回调回来才改会让横条慢半拍。
     private func finishEditing() {
         isEditingText = false
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
@@ -594,10 +575,6 @@ struct StudioView: View {
         }
     }
 
-    /// 导航栏左侧的音色切换按钮：只放一个 🎭 图标，不带任何文本
-    ///
-    /// ⚠️ 之前这里是「头像 + 音色名 + 下拉箭头」的胶囊，中文名一长就把标题挤没了，
-    /// 而且名称和右侧积分胶囊抢同一条横向空间。改成纯图标后左侧恒定 34pt。
     private var voiceSwapButton: some View {
         Button { voicePickerPresented = true } label: {
             Text("🎭")
@@ -640,7 +617,74 @@ struct StudioView: View {
             )
     }
 
-    // MARK: - 行为
+    // MARK: 草稿行为
+    private var currentSnapshot: DraftSnapshot {
+        var snap = DraftSnapshot.capture(from: vm)
+        snap.items = TokenDocument.contentItems(doc: editor.doc, marks: editor.marks)
+        return snap
+    }
+
+    private func saveCurrentDraft() {
+        editor.flush()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .manual)
+        presentDraftToast(.saved)
+    }
+
+    /// 静默兜底：退后台 / 离开创作页 / 恢复前，恒定覆盖单条「自动保存」。
+    private func autoSaveCurrentDraft() {
+        editor.flush()
+        let snap = currentSnapshot
+        guard !snap.isEmpty else { return }
+        drafts.save(snap, source: .auto, notify: false)
+    }
+
+    private func applyDraftSnapshot(_ d: Draft) {
+        finishEditing()
+        vm.apply(d, appState: appState)
+        let made = TokenDocument.make(items: d.items)
+        editor.replace(doc: made.doc, marks: made.marks)
+        vm.ttsItems = d.items
+        vm.text = TokenDocument.plainText(doc: made.doc)
+    }
+
+    private func performDraftRestore(_ d: Draft) {
+        // 未落盘的输入先提交给编辑器状态，再取快照（与 `autoSaveCurrentDraft` 一致）。
+        editor.flush()
+        let before = currentSnapshot
+        guard let full = drafts.load(id: d.id) else { return }
+        drafts.stashBeforeRestore(before)
+        applyDraftSnapshot(full)
+        drafts.restore(full.id)
+        presentDraftToast(.restored)
+    }
+
+    /// 触发一条短提示：先写 kind，再让 isPresenting 走一次 false→true，重启 AlertToast 的计时。
+    private func presentDraftToast(_ kind: DraftToastKind) {
+        draftToastKind = kind
+        showDraftToast = false
+        DispatchQueue.main.async { self.showDraftToast = true }
+    }
+
+    /// 两条提示共用同一外观，只换文案与对勾颜色。
+    private var draftToastAlert: AlertToast {
+        let title: String
+        let color: Color
+        switch draftToastKind {
+        case .saved:
+            title = "草稿已保存".localized()
+            color = c.success
+        case .restored:
+            title = "草稿已恢复".localized()
+            color = c.accent
+        }
+        return AlertToast(displayMode: .hud,
+                          type: .complete(color),
+                          title: title,
+                          style: .style(backgroundColor: c.surface,
+                                        titleColor: c.textPrimary))
+    }
 
     private func restoreFromViewModel() {
         guard editor.doc.isEmpty, !vm.ttsItems.isEmpty else { return }
@@ -648,13 +692,6 @@ struct StudioView: View {
         editor.replace(doc: made.doc, marks: made.marks)
     }
 
-    /// 音色对账：把 VM 里记着的音色与 AppState 对齐。
-    ///
-    /// 冷启动时 `VoiceStudioViewModel` 已经从 UserDefaults 读回了上次的音色，
-    /// `AppState` 也按同一个键解析过一遍，正常情况下两边一致 —— 这里只处理两种偏差：
-    ///  * **VM 的音色已不在音色库中**（音色被下线 / 表按新 schema 重建）→ 回落到
-    ///    AppState 解析出的音色（上次使用 → 旗舰默认），而不是留着 key 让「生成音频」报「请先选择音色」；
-    ///  * 两边不一致（一般只在启动早期出现）→ 以 VM 为准并回写 AppState。
     private func restoreSelectedVoice() {
         guard let voice = vm.voice else {
             vm.selectedVoiceKey = appState.selectedVoice?.key ?? appState.defaultVoiceKey
@@ -665,10 +702,6 @@ struct StudioView: View {
         }
     }
 
-    /// 点「生成音频」：先收键盘 + 同步内容 + 前置校验，通过后才弹二次确认。
-    ///
-    /// ⚠️ 前置校验放在弹窗**之前**：文本为空 / 没选音色时直接报警，
-    /// 不该让用户先过一道确认再被告知「生成不了」。
     private func requestGeneration() {
         // 可能还有一个「结束编辑」回调在路上，这里先收键盘，让顶部横条同步恢复
         finishEditing()
@@ -708,9 +741,13 @@ struct StudioView: View {
         }
 
         appState.showGenerationModal = true
-        vm.generate { _ in }
+        vm.generate { success in
+            // 生成成功后音频进「项目 / 历史」；草稿只打标，30 天后清理，两者不混列。
+            if success { drafts.markGenerated() }
+        }
     }
 }
+
 
 /// 内容区底边（屏幕坐标 Y）—— 键盘让位时拿它跟 accessory 顶边比对
 private struct ContentBottomKey: PreferenceKey {
