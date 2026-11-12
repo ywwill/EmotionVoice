@@ -5,14 +5,17 @@
 
 产出：
   1. basic_voices.json（v4）—— 只含语义数据与稳定 key，不含任何文案、不含冗余 id
-  2. 每个 .lproj 目录一份 VoiceCatalog.strings（zh-Hans / en / zh-HK …，自动扫描）
+  2. CATALOG_LOCALES 白名单内每语种一份 VoiceCatalog.strings（zh-Hans / zh-HK / en）
 
 设计要点：
   - 数据与文案彻底分离：JSON 零文案、零冗余字段
   - 本地化 key 统一为「短标识 stem」= 从 key 去掉模型前缀 qwen-audio-3.0-tts-plus- 得到
     （与 audio 文件名去扩展名一致），如 longcanzhuyue
   - 名字与特质都按 stem 取：voice.<stem>.name / voice.<stem>.feature
-  - 加新语言只需新增一个 .lproj/VoiceCatalog.strings，JSON 与数据库都不用动
+  - ⚠️ 界面新增语言**不要**顺手加 VoiceCatalog：音色名只有中/英两套命名（繁体只是
+    s2t 字形变体），`VoiceCatalog.lprojCandidates(for:)` 对非 .zh 一律读 en.lproj。
+    曾因扫描全部 .lproj 自动铺出 ru/ko/ja/fr/de 五份永不被读取的英文副本。
+    真要扩语种须同步改：CATALOG_LOCALES + pbxproj 的 PBXVariantGroup + Swift 读取链路。
 
 idx 规则：
   旗舰音色 idx = 1, 2；基础音色从 3 起顺序编号。idx 是便捷整数 id（DB 主键）。
@@ -38,6 +41,11 @@ SRC_JSON = os.path.join(LOCALE_ROOT, "Voices", "basic_voices.json")
 # 基准语种：JSON 之外的所有文案都以它为回退源（新增语种缺词条时先用简体顶上）
 BASE_LOCALE = "zh-Hans"
 
+# VoiceCatalog 实际维护的语种：中文简体 / 中文繁体（s2t 字形）/ 英文。
+# ⚠️ 必须与 VoiceCatalog.lprojCandidates(for:) 的候选链一致；界面语言目录比音色
+#    语种多得多，界面文案由 Localizable.strings 负责，非中文界面音色名统一取英文。
+CATALOG_LOCALES = {"zh-Hans", "zh-HK", "en"}
+
 # TTS 参数 key 的模型前缀，剥掉后得到短标识 stem
 MODEL_PREFIX = "qwen-audio-3.0-tts-plus-"
 
@@ -47,12 +55,17 @@ def strings_path(locale):
 
 
 def discover_locales():
-    """扫描所有 .lproj（Base 除外）——加新语言只需新增一个目录，本脚本不用改"""
+    """只返回 CATALOG_LOCALES 白名单内的语种目录。
+
+    ⚠️ 别改回「扫描全部 .lproj」：界面语言目录 != 音色语种，自动铺开的文件运行时
+    读不到（VoiceCatalog 只认 zh / en），既白占 bundle 又容易被误判成漏翻。
+    """
     return sorted(
         d[:-len(".lproj")]
         for d in os.listdir(LOCALE_ROOT)
-        if d.endswith(".lproj") and d != "Base.lproj"
+        if d.endswith(".lproj")
         and os.path.isdir(os.path.join(LOCALE_ROOT, d))
+        and d[:-len(".lproj")] in CATALOG_LOCALES
     )
 
 # ---------------------------------------------------------------------------
@@ -222,6 +235,16 @@ def build():
 def validate(payload, entries):
     errors = []
     voices = payload["voices"]
+
+    # 白名单语种必须齐全且文件非空：parse_strings 对缺失文件返回空表，不检查的话
+    # 会静默用简体回退重写一份，App 里英文名就变成中文了。
+    if set(entries) != CATALOG_LOCALES:
+        errors.append("VoiceCatalog 语种不齐: 期望 %s，实际 %s"
+                      % (sorted(CATALOG_LOCALES), sorted(entries)))
+    for loc in sorted(CATALOG_LOCALES):
+        p = strings_path(loc)
+        if not os.path.exists(p) or os.path.getsize(p) == 0:
+            errors.append("VoiceCatalog.strings 缺失或为空: %s" % p)
 
     seen_idx, seen_key = set(), set()
     for v in voices:
