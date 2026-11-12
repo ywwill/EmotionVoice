@@ -40,7 +40,8 @@
 - iOS：`ScreenMetrics` 四档；iPad `isPadClass = width>=740 && height>=700`（别用 sizeClass）；浮层用 `metrics.tabBarClearance` 禁硬写 58；参数面板唯一数据源 `StudioParamContent`；`TokenEditorStore` 打字不经 SwiftUI；`TokenCaretTextView` 只削 height + TextKit 1。
 - ⚠️ iOS 参数面板语言 chip 默认全展开（`ForEach(Constants.nlLanguages)`），禁加「展开全部」/`languagesExpanded`。
 - ⚠️ CPU 暴涨根因=订阅拓扑：`PlaybackStatus` 只订阅单属性 publisher；高频显示只许小 View 各自 `@ObservedObject`，禁 `@StateObject player`、禁 progress 传给所有行；macOS 音色库页面级只 `.onReceive($playingKey.removeDuplicates())`。
-- ⚠️ 两份同名 `AudioPreviewPlayer` 按 target 隔离。iOS 后台播放 `.playback`+`UIBackgroundModes=[audio]`（`plutil -extract` 验产物）；`playingKey` 存 identifier、跨 key `reidentify(_:)`；并发闭包「外层 `guard let self`+`Task @MainActor`」。
+- ⚠️ 两份同名 `AudioPreviewPlayer` 按目标隔离。iOS 后台播放 `.playback`+`UIBackgroundModes=[audio]`（`plutil -extract` 验产物）；`playingKey` 存 identifier、跨 key `reidentify(_:)`；并发闭包「外层 `guard let self`+`Task @MainActor`」。
+- ⚠️ iOS `AudioPreviewPlayer+iOS.swift`：**所有 `AVAudioSession.setCategory/setActive` 与 `AVAudioPlayer(contentsOf:)`/`prepareToPlay()` 必须在串行队列 `audioWorkQueue` 上跑**（Xcode 27 AVAudioSession Hang Risk）；Apple 建议的异步 activate/deactivate 是 iOS 27+，部署目标 17.6 用不了。主线程只做 `delegate`/`play()`/状态发布（delegate 回调依赖主线程 RunLoop）；`playRequestSerial` 防异步起播竞态，`stop()` 与 `play(url:)` 都要 `&+= 1`；`enableRate` 必须在 `prepareToPlay()` **之前**设，否则倍速失效。
 - ⚠️ 阅读区播放底色两端都是「整篇唯一一块」（mac `PlayerTranscriptView.highlightLayer`/iOS `PlayerDetailControls.highlightLayer`，画在内容 VStack 的 `background`），行位置各走 fileprivate `TranscriptRowFrameKey`；**禁改回「每行各画一块」**（换行必闪）；`highlightTravel`(0.34) 须与 `scrollCurrent` 同值同曲线；`.animation(value:)` 只挂这一层。
 - ⚠️ `ContentView.mainContent` ZStack 双层：访问过的 `.voiceStudio`/`.voices` 常驻只切 opacity，禁 `.id(renderedSection)` 重建、禁 `Color.clear` 门控；靠 `isActive` 补偿生命周期，禁失活时 cancel `loadTask`/重置 `voicesAppear`；`appState.voices` 变化须 `invalidateQueryCacheAndReload()`；首屏 `onAppear`→`Task.sleep(32ms)`→`vm.load()`（禁 `Task.yield()`）。
 

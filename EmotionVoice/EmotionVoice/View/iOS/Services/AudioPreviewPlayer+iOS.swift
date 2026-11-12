@@ -26,6 +26,59 @@ import UIKit
 import MediaPlayer
 import SwiftUI
 
+// MARK: - 音频阻塞操作的专用串行队列
+//
+// ⚠️ Xcode 27 的 "AVAudioSession Hang Risk" 诊断：
+//   `setCategory` / `setActive` 是到 mediaserverd 的同步 XPC，主线程调用会掉帧；
+//   `AVAudioPlayer(contentsOf:)` + `prepareToPlay()` 会 acquire 音频硬件，同样会被点名。
+// Apple 建议的异步 `activateWithOptions` / `deactivateWithOptions` 是 **iOS 27.0+**，
+// 本工程部署目标 17.6 用不了，所以统一把同步调用搬离主线程。
+// 队列是串行的：stop 的停用 → 起播的激活 → 创建/预热 天然 FIFO，不会交错。
+private let audioWorkQueue = DispatchQueue(
+    label: "com.emora.audio.work", qos: .userInitiated
+)
+
+/// 只在 `audioWorkQueue` 上调用；不碰任何 MainActor 状态。
+private enum AudioSessionWork {
+    static func activate() -> String? {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback,
+                                    mode: .spokenAudio,
+                                    options: [.allowAirPlay, .allowBluetoothA2DP])
+            try session.setActive(true)
+            return nil
+        } catch {
+            return "activate audio session failed: \(error)"
+        }
+    }
+
+    static func deactivate() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// `prepareToPlay()` 是整条链路里最重的一步，必须留在后台队列。
+    /// ⚠️ AVFAudio 头文件要求 `enableRate` 在 `prepareToPlay()` **之前**设置，
+    ///    否则 rate 不生效（旧实现是先 prepare 再 enableRate，倍速实际是失效的）。
+    static func makePreparedPlayer(url: URL, rate: Float) -> (AVAudioPlayer?, String?) {
+        do {
+            let p = try AVAudioPlayer(contentsOf: url)
+            p.enableRate = true
+            p.rate = rate
+            p.prepareToPlay()
+            return (p, nil)
+        } catch {
+            return (nil, "AVAudioPlayer failed: \(error)")
+        }
+    }
+}
+
+/// 把非 Sendable 的 AVAudioPlayer 从后台队列安全带回主线程。
+private final class PreparedPlayerBox: @unchecked Sendable {
+    let player: AVAudioPlayer
+    init(_ player: AVAudioPlayer) { self.player = player }
+}
+
 @MainActor
 final class AudioPreviewPlayer: NSObject, ObservableObject {
 
@@ -59,6 +112,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     private var cachedURLs: [String: URL] = [:]
     /// 播放结束时 `playingKey` 会被清空；锁屏按播放重播时要恢复它，mini player 才会回来。
     private var lastIdentifier: String?
+    /// 起播请求序号：后台预热完成后回主线程只认最后一次，防止快速切歌时旧请求覆盖新请求。
+    private var playRequestSerial: UInt64 = 0
 
     // MARK: 后台 / 锁屏状态
     private var mediaSessionConfigured = false
@@ -158,34 +213,67 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
         stop()
         // `stop()` 会释放音频会话，起播前必须重新激活，否则切歌后锁屏不再继续播。
-        activateSession()
+        // 媒体会话（UIApplication / MPRemoteCommandCenter）必须留在主线程；
+        // 音频会话与播放器预热走后台串行队列。
+        configureMediaSessionIfNeeded()
 
-        do {
-            let p = try AVAudioPlayer(contentsOf: url)
-            p.delegate = self
-            p.prepareToPlay()
-            p.enableRate = true           // ⚠️ 必须在设置 rate 之前
-            p.rate = playbackRate
-            if p.duration <= 0 {
-                return playWithAVPlayer(url: url, key: key)
+        playRequestSerial &+= 1
+        let serial = playRequestSerial
+        // 进入队列前把 MainActor 上的倍速快照下来（队列闭包不读主线程状态）。
+        let rate = playbackRate
+        // 单例生命周期长于 Task，这里强捕获不成环；默认 MainActor 下嵌套 weak
+        // 反而会触发 ImplicitStrongCapture。
+        let owner = self
+        audioWorkQueue.async {
+            var box: PreparedPlayerBox?
+            var failure: String?
+            if let sessionFailure = AudioSessionWork.activate() {
+                failure = sessionFailure
+            } else {
+                let (p, loadFailure) = AudioSessionWork.makePreparedPlayer(url: url, rate: rate)
+                box = p.map(PreparedPlayerBox.init)
+                failure = loadFailure
             }
-            guard p.play() else {
-                return playWithAVPlayer(url: url, key: key)
+            // 快照成 let 再交给并发闭包；只把 Sendable 的结果带回主线程，
+            // AVAudioPlayer 的 delegate / play() 一律在主线程设置与调用。
+            let resultBox = box
+            let resultFailure = failure
+            Task { @MainActor in
+                guard owner.playRequestSerial == serial else { return }
+                owner.finishStartPlayback(resultBox?.player,
+                                          failure: resultFailure,
+                                          url: url, key: key)
             }
-            player = p
-            duration = p.duration
-            playingKey = key
-            lastIdentifier = key
-            isPlaying = true
-            isPaused = false
-            isFinished = false
-            startProgressTimer()
-            refreshNowPlaying()
-            return true
-        } catch {
-            Log(message: "AudioPreviewPlayer(iOS): AVAudioPlayer failed for \(url.lastPathComponent): \(error)")
-            return playWithAVPlayer(url: url, key: key)
         }
+        // 公开签名与 macOS 版保持一致；Bool 语义为「起播请求已受理」，
+        // 真正起播在后台预热完成后回到主线程（调用方均忽略返回值）。
+        return true
+    }
+
+    /// 主线程收尾：`play()` 在这里调用，AVAudioPlayerDelegate 回调才落在主线程 RunLoop。
+    private func finishStartPlayback(_ p: AVAudioPlayer?, failure: String?, url: URL, key: String) {
+        if let failure {
+            Log(message: "AudioPreviewPlayer(iOS): \(url.lastPathComponent) \(failure)")
+        }
+        guard let p else {
+            _ = playWithAVPlayer(url: url, key: key)
+            return
+        }
+        // enableRate / rate 已在后台队列里、prepareToPlay 之前设好（AVFAudio 要求）。
+        p.delegate = self
+        guard p.duration > 0, p.play() else {
+            _ = playWithAVPlayer(url: url, key: key)
+            return
+        }
+        player = p
+        duration = p.duration
+        playingKey = key
+        lastIdentifier = key
+        isPlaying = true
+        isPaused = false
+        isFinished = false
+        startProgressTimer()
+        refreshNowPlaying()
     }
 
     @discardableResult
@@ -255,6 +343,8 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
     }
 
     func stop() {
+        // 让还在后台预热、尚未回主线程起播的请求作废（用户取消 / 快速切歌）。
+        playRequestSerial &+= 1
         let wasPlaying = isPlaying
         player?.stop()
         player = nil
@@ -477,21 +567,21 @@ final class AudioPreviewPlayer: NSObject, ObservableObject {
 
 private extension AudioPreviewPlayer {
 
+    /// 媒体会话（UIApplication / MPRemoteCommandCenter）仍在主线程配置；
+    /// 音频会话的同步 XPC 全部丢给后台串行队列。
+    /// ⚠️ resume / 中断恢复 / 锁屏重播走这里：这些路径下 session 通常仍是 active，
+    ///    队列里的 `setActive(true)` 只是幂等兜底，不阻塞紧随其后的主线程 `play()`。
     func activateSession() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playback,
-                                    mode: .spokenAudio,
-                                    options: [.allowAirPlay, .allowBluetoothA2DP])
-            try session.setActive(true)
-        } catch {
-            Log(message: "AudioPreviewPlayer(iOS): activate audio session failed: \(error)")
-        }
         configureMediaSessionIfNeeded()
+        audioWorkQueue.async {
+            if let failure = AudioSessionWork.activate() {
+                Log(message: "AudioPreviewPlayer(iOS): \(failure)")
+            }
+        }
     }
 
     func deactivateSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        audioWorkQueue.async { AudioSessionWork.deactivate() }
     }
 
     /// 来电 / Siri 等中断：挂起后按系统建议恢复。
