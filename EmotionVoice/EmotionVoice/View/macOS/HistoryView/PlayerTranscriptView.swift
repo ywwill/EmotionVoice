@@ -130,7 +130,7 @@ struct PlayerTranscriptView: View {
                     Image(systemName: "info.circle")
                         .font(.system(size: 13))
                         .foregroundStyle(AppColor.accentPrimary)
-                    Text("该音频没有字级时间戳，文本按原文静态展示，不使用估算时间伪造对齐。".localized())
+                    Text("该语音没有字级时间戳，文本按原文静态展示，不使用估算时间伪造对齐。".localized())
                         .font(.system(size: 11.5))
                         .foregroundStyle(AppColor.textSecondary)
                 }

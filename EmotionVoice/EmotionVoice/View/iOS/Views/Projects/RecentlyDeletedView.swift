@@ -90,7 +90,7 @@ struct RecentlyDeletedView: View {
         .alert(item: $confirmTarget) { target in
             Alert(
                 title: Text(target == .clearAll ? "清空最近删除？".localized() : "彻底删除？".localized()),
-                message: Text("彻底删除不可撤销，音频文件也会被移除。".localized()),
+                message: Text("彻底删除不可撤销，语音文件也会被移除。".localized()),
                 primaryButton: .destructive(
                     Text(target == .clearAll ? "清空".localized() : "彻底删除".localized()),
                     action: { performConfirm(target) }
@@ -253,7 +253,7 @@ struct RecentlyDeletedView: View {
         flags.restore([audio.id])
         uiState.requestHistoryReload()
         reload()
-        uiState.showToast(.success("已恢复音频".localized()))
+        uiState.showToast(.success("已恢复语音".localized()))
     }
 
     private func performConfirm(_ target: ConfirmTarget) {

@@ -120,7 +120,7 @@ struct ProjectsView: View {
             Text("历史记录".localized())
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(c.textPrimary)
-            Text(isSelecting ? "选择要操作的音频".localized() : "全部生成音频 · 按时间排列".localized())
+            Text(isSelecting ? "选择要操作的语音".localized() : "")
                 .font(.system(size: 12.5))
                 .foregroundStyle(c.textTertiary)
         }
@@ -546,7 +546,7 @@ struct ProjectsView: View {
     /// 行内 32pt 试听：就地播/停，不 push。
     private func preview(_ audio: AudioItem) {
         guard audio.isOnDisk else {
-            uiState.showToast(.failure("音频文件已丢失".localized()))
+            uiState.showToast(.failure("语音文件已丢失".localized()))
             return
         }
         nowPlaying.toggle(audio, voiceName: vm.voiceName(for: audio))
@@ -560,7 +560,7 @@ struct ProjectsView: View {
             return
         }
         guard audio.isOnDisk else {
-            uiState.showToast(.failure("音频文件已丢失".localized()))
+            uiState.showToast(.failure("语音文件已丢失".localized()))
             return
         }
         let voice = vm.voiceName(for: audio)
@@ -632,7 +632,7 @@ struct ProjectsView: View {
             withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
                 vm.insertItem(copy, after: sourceID)
             }
-            uiState.showToast(.success("已复制音频".localized()))
+            uiState.showToast(.success("已复制语音".localized()))
         }
     }
 
@@ -653,7 +653,7 @@ struct ProjectsView: View {
                 }
             }
             vm.load()
-            uiState.showToast(.success("已复制 %d 条音频".localized(copies.count)))
+            uiState.showToast(.success("已复制 %d 条语音".localized(copies.count)))
         }
     }
 
@@ -735,7 +735,7 @@ struct ProjectsView: View {
     private func shareSelected() {
         let urls = selectedAudios().compactMap { $0.isOnDisk ? $0.absoluteURL : nil }
         guard !urls.isEmpty else {
-            uiState.showToast(.failure("所选音频文件不存在".localized()))
+            uiState.showToast(.failure("所选语音文件不存在".localized()))
             return
         }
         shareURLs = urls

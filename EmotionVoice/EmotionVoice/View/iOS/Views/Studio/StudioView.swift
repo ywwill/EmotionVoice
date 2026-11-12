@@ -513,7 +513,7 @@ struct StudioView: View {
         // ⚠️ 二次确认挂在这里而不是 body 根视图：根视图上已经有一个 `.alert(item:)`，
         // 同一层再挂一个 `.alert` 会互相覆盖（这也是上一版才退而求其次用了
         // `confirmationDialog` 的原因 —— 挂子视图上就不冲突了）。
-        .alert("确认生成音频".localized(), isPresented: $confirmGenerate) {
+        .alert("确认生成语音".localized(), isPresented: $confirmGenerate) {
             Button("取消".localized(), role: .cancel) { }
             Button("确认".localized()) { startGeneration() }
         } message: {

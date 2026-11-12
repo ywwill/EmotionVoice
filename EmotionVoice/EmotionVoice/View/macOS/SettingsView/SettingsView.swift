@@ -122,10 +122,10 @@ struct SettingsView: View {
 
     private var voiceContent: some View {
         VStack(spacing: 20) {
-            sectionCard(icon: "🔊", title: "音频输出".localized()) {
+            sectionCard(icon: "🔊", title: "语音输出".localized()) {
                 settingRow(
                     label: "默认格式".localized(),
-                    desc: "导出音频文件格式".localized(),
+                    desc: "导出语音格式".localized(),
                     control: {
                         Picker("", selection: $appState.defaultFormat) {
                             Text("MP3 (推荐)").tag("MP3")
@@ -142,7 +142,7 @@ struct SettingsView: View {
 
                 settingRow(
                     label: "采样率".localized(),
-                    desc: "音频质量".localized(),
+                    desc: "语音质量".localized(),
                     control: {
                         Picker("", selection: Binding(
                             get: { appState.defaultSampleRate },
@@ -167,7 +167,7 @@ struct SettingsView: View {
             sectionCard(icon: "📁", title: "文件".localized()) {
                 settingRow(
                     label: "导出目录".localized(),
-                    desc: "音频文件保存位置".localized(),
+                    desc: "语音文件保存位置".localized(),
                     control: {
                         HStack() {
                             if let exportDir = appState.exportDirectory {

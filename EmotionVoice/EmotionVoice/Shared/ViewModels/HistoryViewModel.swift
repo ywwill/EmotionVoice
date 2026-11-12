@@ -192,7 +192,7 @@ class HistoryViewModel: ObservableObject {
         }
 
         let savePanel = NSSavePanel()
-        savePanel.title = "导出音频".localized()
+        savePanel.title = "导出语音".localized()
         savePanel.nameFieldStringValue = fileName
         savePanel.canCreateDirectories = true
 

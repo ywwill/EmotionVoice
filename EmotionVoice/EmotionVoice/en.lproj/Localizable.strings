@@ -15,7 +15,7 @@
 "使用统计" = "Usage Statistics";
 "设置" = "Settings";
 "创作" = "Create";
-"音频生成" = "Audio Generation";
+"语音生成" = "Voice Generation";
 "音色使用" = "Voice Usage";
 "文本输入" = "Text Input";
 "%d 字" = "%d characters";
@@ -32,7 +32,7 @@
 "%d 个可用" = "%d Available";
 "更换" = "Change";
 "查看更多音色" = "View More Voices";
-"🎚️ 音频控制" = "🎚️ Audio Controls";
+"🎚️ 语音控制" = "🎚️ Voice Controls";
 "格式" = "Format";
 "📋 语音指令" = "📋 Voice Instructions";
 "自然语言" = "Natural Language";
@@ -47,9 +47,8 @@
 "无法生成" = "Unable to Generate";
 "请先输入要合成的文本" = "Please enter text to synthesize first";
 "请先选择一个音色" = "Please select a voice first";
-"仅支持中文和英文输入" = "Only Chinese and English input is supported.";
 "🌐 语言" = "🌐 Language";
-"从列表中选择要播放的音频" = "Select the audio to play from the list.";
+"从列表中选择要播放的语音" = "Select the voice to play from the list.";
 "从头播放" = "Play from Beginning";
 "后退 15 秒" = "Skip Back 15 Seconds";
 "后退 5 秒" = "Skip Back 5 Seconds";
@@ -244,16 +243,16 @@
 "⭐ 推荐" = "⭐ Recommended";
 
 // 设置
-"音频输出" = "Audio Output";
+"语音输出" = "Voice Output";
 "默认格式" = "Default Format";
-"导出音频文件格式" = "Export audio file format";
+"导出语音格式" = "Export voice format";
 "采样率" = "Sample Rate";
-"音频质量" = "Audio Quality";
+"语音质量" = "Voice Quality";
 "文件" = "File";
 "导出目录" = "Export Directory";
 "自动清理缓存" = "Auto Clean Cache";
 "定期清理临时文件" = "Periodically clean up temporary files";
-"音频文件保存位置" = "Where audio files are saved";
+"语音文件保存位置" = "Where voice files are saved";
 "未设置" = "Not Set";
 "打开..." = "Open...";
 "更改" = "Change";
@@ -263,7 +262,7 @@
 "从不" = "Never";
 "积分" = "Points";
 "加载中..." = "Loading...";
-"暂无音频" = "No audio available";
+"暂无语音" = "No voice available";
 "MP3 (推荐)" = "MP3 (Best)";
 
 // 语言
@@ -323,10 +322,10 @@
 
 // 音频生成弹窗（接收中 / 完成）
 "正在接收" = "Receiving";
-"音频生成完成" = "Audio generation complete";
+"语音生成完成" = "Voice generation complete";
 "关闭（后台继续接收）" = "Close (receiving continues in background)";
 "%@ 已接收" = "%@ received";
-"音频数据持续累积中，接收完成后可立即试听" = "Audio data keeps accumulating — you can preview it once it finishes";
+"语音数据持续累积中，接收完成后可立即试听" = "Voice data keeps accumulating — you can preview it once it finishes";
 "数据块" = "Chunks";
 "已用时" = "Elapsed";
 "当前码率" = "Bitrate";
@@ -337,7 +336,7 @@
 "⬇ 导出" = "⬇ Export";
 "导出中…" = "Exporting…";
 "✓ 已导出" = "✓ Exported";
-"导出音频" = "Export audio";
+"导出语音" = "Export voice";
 "处理中…" = "Processing…";
 "重新加载" = "Reload";
 "已到账 %@ 积分" = "%@ credits added";
@@ -355,7 +354,7 @@
 "查看" = "Show";
 "全选" = "Select All";
 "取消全选" = "Deselect All";
-"确认生成音频" = "Confirm Generation";
+"确认生成语音" = "Confirm Generation";
 "音色：%@\n消耗：%@ 积分" = "Voice: %@\nCost: %@ credits";
 "选择分类" = "Choose Category";
 "复制失败" = "Duplication failed";
@@ -375,7 +374,7 @@
 "还没有积分记录" = "No credit history yet";
 
 // iOS · 选项选择（格式 / 采样率）
-"音频格式" = "Audio Format";
+"语音格式" = "Voice Format";
 "MP3 体积更小，WAV 保真度更高。" = "MP3 is smaller; WAV offers higher fidelity.";
 "更高的采样率意味着更大的文件。WAV 每秒字节数 = 采样率 × 2。" = "A higher sample rate means a larger file. WAV bytes per second = sample rate × 2.";
 "压缩率高，体积小，适合分享" = "High compression, small size — great for sharing";
@@ -397,7 +396,7 @@
 "从插入处一直生效，直到下一个语气标签或中断。" = "Takes effect from where it's inserted until the next tone tag or interrupt.";
 "只在插入处播放一次，不改变周围的语气。" = "Plays once at the insertion point without changing the surrounding tone.";
 "创作参数" = "Creation Parameters";
-"音频控制" = "Audio Control";
+"语音控制" = "Voice Control";
 "未选择音色" = "No voice selected";
 "语音指令" = "Voice Command";
 "指令" = "Command";
@@ -437,11 +436,11 @@
 
 // iOS · 项目
 "重命名" = "Rename";
-"没有匹配的音频" = "No matching audio";
+"没有匹配的语音" = "No matching voice";
 "进入多选" = "Enter Multi-Select";
-"已复制音频" = "Audio Copied";
-"所选音频文件不存在" = "The selected audio file does not exist";
-"音频名称" = "Audio Name";
+"已复制语音" = "Voice Copied";
+"所选语音文件不存在" = "The selected voice file does not exist";
+"语音名称" = "Voice Name";
 
 // iOS · 播放器
 "暂停" = "Pause";
@@ -456,34 +455,33 @@
 "−%@ 积分" = "−%@ credits";
 "分享" = "Share";
 "隐藏窗口" = "Hide Window";
-"音频_%@" = "Audio_%@";
+"语音_%@" = "Voice_%@";
 
 // iOS 历史记录
 "%@ 移入" = "Deleted %@";
 "%d 条本月" = "%d this month";
-"%d 条音频" = "%d clips";
+"%d 条语音" = "%d clips";
 "「%@」将保留 30 天，期间可随时恢复。" = "\"%@\" stays in Recently Deleted for 30 days and can be restored anytime.";
 "今天 %@ 移入" = "Today at %@";
 "今天" = "Today";
 "保留 30 天，到期自动清除" = "Kept for 30 days, then removed automatically";
 "全库命中 %d 条" = "%d matches in library";
 "全部字段" = "All fields";
-"全部生成音频 · 按时间排列" = "All generated audio · by date";
 "写一段文字、挑一个音色，第一条作品就会出现在这里。" = "Write some text, pick a voice, and your first clip will show up here.";
 "剩余 %d 天" = "%d days left";
 "历史记录" = "History";
 "去创作" = "Start Creating";
 "取消收藏" = "Remove";
 "名称" = "Name";
-"复制音频" = "Duplicate";
+"复制语音" = "Duplicate";
 "失败" = "Failed";
 "已删除的项目保留 30 天，到期自动清除" = "Deleted items are kept for 30 days, then removed automatically";
 "已加入收藏" = "Favorited";
 "已取消收藏" = "Removed from Favorites";
-"已复制 %d 条音频" = "%d clips copied";
+"已复制 %d 条语音" = "%d clips copied";
 "已将文案带回创作页" = "Text carried back to the Studio";
 "已彻底删除" = "Permanently deleted";
-"已恢复音频" = "Audio restored";
+"已恢复语音" = "Voice restored";
 "已撤销删除" = "Deletion undone";
 "已清空最近删除" = "Recently Deleted emptied";
 "已移入 %d 条 · 30 天内可恢复" = "%d moved to Recently Deleted · restorable for 30 days";
@@ -492,7 +490,7 @@
 "已选择" = "Selected";
 "已重命名" = "Renamed";
 "彻底删除" = "Delete Permanently";
-"彻底删除不可撤销，音频文件也会被移除。" = "This cannot be undone and the audio file will be removed.";
+"彻底删除不可撤销，语音文件也会被移除。" = "This cannot be undone and the voice file will be removed.";
 "彻底删除？" = "Delete Permanently?";
 "恢复" = "Restore";
 "恢复后会回到原来的时间分组；彻底删除不可撤销。" = "Restored items return to their original date group; permanent deletion cannot be undone.";
@@ -517,11 +515,11 @@
 "移入最近删除" = "Move to Recently Deleted";
 "移入最近删除？" = "Move to Recently Deleted?";
 "继续加载更早的记录…" = "Loading older records…";
-"还没有生成过音频" = "No audio generated yet";
+"还没有生成过语音" = "No voice generated yet";
 "选中的 %d 条将保留 30 天，期间可随时恢复。" = "%d selected clips stay in Recently Deleted for 30 days and can be restored anytime.";
-"选择要操作的音频" = "Select audio to manage";
+"选择要操作的语音" = "Select voice to manage";
 "重新编辑" = "Edit Again";
-"音频文件已丢失" = "Audio file is missing";
+"语音文件已丢失" = "Voice file is missing";
 
 // App 检查更新
 "检查更新" = "Check for Updates";
@@ -542,7 +540,7 @@
 // MARK: - Word timestamps / aligned reading
 "跟随播放" = "Follow playback";
 "回到当前句" = "Back to current";
-"该音频没有字级时间戳，文本按原文静态展示，不使用估算时间伪造对齐。" = "This audio has no word-level timestamps. The text is shown as-is; no estimated timing is used to fake alignment.";
+"该语音没有字级时间戳，文本按原文静态展示，不使用估算时间伪造对齐。" = "This voice has no word-level timestamps. The text is shown as-is; no estimated timing is used to fake alignment.";
 "第 %d / %d 句 · %@ – %@" = "Sentence %d / %d · %@ – %@";
 "第 %d 句 · %@" = "Sentence %d · %@";
 "句间停顿 %@ · 下一句 %d" = "Pause %@ · next sentence %d";

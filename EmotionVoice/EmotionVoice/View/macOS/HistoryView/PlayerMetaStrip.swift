@@ -29,7 +29,7 @@ struct PlayerMetaStrip: View {
         HStack(spacing: 10) {
             metric(icon: "clock", value: formatDuration(audio.duration), help: "时长".localized())
             divider
-            metric(icon: "waveform", value: formatText, help: "音频格式".localized())
+            metric(icon: "waveform", value: formatText, help: "语音格式".localized())
             divider
             metric(
                 icon: "sparkles",

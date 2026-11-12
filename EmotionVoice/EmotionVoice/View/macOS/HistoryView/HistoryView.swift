@@ -186,7 +186,7 @@ struct HistoryView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "music.note.list")
                                 .font(.system(size: 22))
-                            Text("暂无音频")
+                            Text("暂无语音")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AppColor.textSecondary)
                         }
@@ -233,7 +233,8 @@ struct HistoryView: View {
                 showRenameAlert = true
             },
             onExport: {
-                viewModel.selectAudio(audio)
+                // ⚠️ 别调 selectAudio()：它内部会 playAudio() 顺手起播，
+                // 用户只是点「更多 → 导出」，不该自动播放、也不该把这一行选中。
                 viewModel.exportAudio(audio)
             },
             onCopy: {
@@ -371,7 +372,7 @@ struct HistoryView: View {
                     .buttonStyle(.plain)
                     .disabled(isExporting)
                     .pointingHandCursor()
-                    .help("导出音频")
+                    .help("导出语音")
                 }
             }
             .padding(.horizontal, 22)
@@ -405,7 +406,7 @@ struct HistoryView: View {
                             .symbolEffect(.pulse)
                     }
 
-                    Text("从列表中选择要播放的音频")
+                    Text("从列表中选择要播放的语音")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppColor.textSecondary)
 
@@ -458,50 +459,80 @@ struct HistoryView: View {
     private func exportSelected() {
         guard !selectedAudioIds.isEmpty else { return }
 
-        // 获取选中的音频
+        // 快照：面板是异步的，回调里 selectedAudioIds 可能已经变了
         let selectedAudios = viewModel.displayedAudios.filter { selectedAudioIds.contains($0.id) }
 
-        // 打开目录选择面板
         let openPanel = NSOpenPanel()
-        openPanel.title = "选择导出目录".localized()
         openPanel.canChooseFiles = false
         openPanel.canChooseDirectories = true
         openPanel.canCreateDirectories = true
-        openPanel.prompt = "导出到此处".localized()
+        openPanel.prompt = "导出".localized()
 
         openPanel.begin { response in
+            // 取消选目录时保留编辑态，用户可能只是想换个目录重试
             guard response == .OK, let targetDirectory = openPanel.url else { return }
-
-            var exportedFiles: [URL] = []
-
-            for audio in selectedAudios {
-                guard let sourceURL = audio.absoluteURL as URL? else { continue }
-
-                // 使用 shownName + 源文件扩展名，确保导出的文件有正确的后缀
-                let fileName: String
-                if !audio.fileExtension.isEmpty {
-                    fileName = audio.shownName + "." + audio.fileExtension
-                } else {
-                    fileName = audio.shownName
-                }
-                let destinationURL = targetDirectory.appendingPathComponent(fileName)
-
-                do {
-                    if FileManager.default.fileExists(atPath: destinationURL.path) {
-                        try FileManager.default.removeItem(at: destinationURL)
-                    }
-                    try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-                    exportedFiles.append(destinationURL)
-                    Log(message: "HistoryView: 批量导出成功 - \(destinationURL.path)")
-                } catch {
-                    Log(message: "HistoryView: 批量导出失败 - \(error.localizedDescription)")
-                }
+            // NSOpenPanel 回调在主线程；沿用同目录 PlaybackKeyboardShortcuts 的写法，
+            // 把 MainActor 隔离调用收进来，避免在回调里直接写 @State / 调 VM 的并发告警。
+            MainActor.assumeIsolated {
+                self.exportAudios(selectedAudios, to: targetDirectory)
             }
+        }
+    }
 
-            // 打开导出目录
-            if !exportedFiles.isEmpty {
-                NSWorkspace.shared.activateFileViewerSelecting(exportedFiles)
+    /// 批量写盘 + 收尾。从 `exportSelected()` 拆出来是为了让所有隔离调用都在 `assumeIsolated` 里。
+    private func exportAudios(_ audios: [AudioItem], to directory: URL) {
+        var reservedNames: Set<String> = []
+        var exportedFiles: [URL] = []
+
+        for audio in audios {
+            guard let sourceURL = audio.absoluteURL as URL? else { continue }
+            let destinationURL = uniqueExportURL(for: audio, in: directory, reserved: &reservedNames)
+
+            do {
+                // ⚠️ 绝不 removeItem：旧实现会删掉目标目录里用户原有的同名文件，
+                // 同一批里后写的也会把先写的覆盖掉。目标名已保证唯一。
+                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                exportedFiles.append(destinationURL)
+                Log(message: "HistoryView: 批量导出成功 - \(destinationURL.path)")
+            } catch {
+                Log(message: "HistoryView: 批量导出失败 - \(error.localizedDescription)")
             }
+        }
+
+        if !exportedFiles.isEmpty {
+            NSWorkspace.shared.activateFileViewerSelecting(exportedFiles)
+        }
+
+        // 导出完成后退出编辑（多选）态，与批量删除保持一致
+        exitSelectionMode()
+    }
+
+    /// 给每条音频分配不冲突的目标名：同名追加 " (2)" / " (3)"。
+    /// `reserved` 记录本批已分配的名字，`fileExists` 覆盖目录里已有的文件；
+    /// 两者都按小写比较，避免 APFS 大小写不敏感下 `A.mp3` 撞 `a.mp3`。
+    private func uniqueExportURL(
+        for audio: AudioItem,
+        in directory: URL,
+        reserved: inout Set<String>
+    ) -> URL {
+        let rawName = audio.shownName.isEmpty ? "audio" : audio.shownName
+        // "/" 会被当成路径分隔符，":" 在 Finder 层是非法字符
+        let safeName = rawName
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        let ext = audio.fileExtension
+
+        var index = 1
+        while true {
+            let stem = index == 1 ? safeName : "\(safeName) (\(index))"
+            let fileName = ext.isEmpty ? stem : "\(stem).\(ext)"
+            let key = fileName.lowercased()
+            let url = directory.appendingPathComponent(fileName)
+            if !reserved.contains(key) && !FileManager.default.fileExists(atPath: url.path) {
+                reserved.insert(key)
+                return url
+            }
+            index += 1
         }
     }
 
@@ -525,10 +556,12 @@ struct HistoryView: View {
         }
 
         // 被删的正好是浮层上那一条 → 一起收起，别留一个播不出来的浮层
+        // ⚠️ 必须在 exitSelectionMode() 之前：它一执行就会清空 selectedAudioIds
         NowPlayingMiniStore.shared.clearIfMatches(selectedAudioIds)
 
-        // 清空选择
-        selectedAudioIds.removeAll()
+        // 批量删除完成后退出编辑（多选）态：只清选中集会让批量栏留着「0」、
+        // 行首勾选框也还在，用户还得再点一次「取消」。
+        exitSelectionMode()
     }
 }
 

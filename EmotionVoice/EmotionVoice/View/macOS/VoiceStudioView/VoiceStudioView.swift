@@ -607,7 +607,7 @@ struct VoiceStudioView: View {
     private var audioControlCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("🎚️ 音频控制".localized())
+                Text("🎚️ 语音控制".localized())
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 // 「重置」覆盖下面语速 / 音量 / 格式 / 采样率四项，与 iOS 参数 Sheet 同构。
@@ -791,16 +791,6 @@ struct VoiceStudioView: View {
                 Text("\(vm.nlInstruction.count) / 1000")
                     .font(AppFont.monoSmall)
                     .foregroundStyle(vm.nlInstruction.count >= 1000 ? AppColor.accentPrimary : AppColor.textTertiary)
-            }
-
-            // 提示：仅支持中英文
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.yellow)
-                Text("仅支持中文和英文输入")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.yellow)
             }
             
             // 输入框

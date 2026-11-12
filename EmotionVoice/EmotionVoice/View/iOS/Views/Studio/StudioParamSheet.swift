@@ -149,7 +149,7 @@ struct StudioParamContent: View {
     /// （`SheetNavBar` 两侧宽度不等会把标题挤偏）。
     private var audioControlHeader: some View {
         HStack(spacing: 8) {
-            Text("音频控制".localized().uppercased())
+            Text("语音控制".localized().uppercased())
                 .font(.system(size: 11.5, weight: .semibold))
                 .tracking(0.6)
                 .foregroundStyle(c.textTertiary)
@@ -405,15 +405,6 @@ struct StudioParamContent: View {
                                          ? c.accent : c.textTertiary)
                 }
                 .padding(.top, 8)
-
-                HStack(spacing: 5) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                    Text("仅支持中文和英文输入".localized())
-                        .font(.system(size: 11))
-                }
-                .foregroundStyle(c.warning)
-                .padding(.top, 6)
             }
             .padding(14)
             .background(cardBackground(radius: AuroraRadius.md))

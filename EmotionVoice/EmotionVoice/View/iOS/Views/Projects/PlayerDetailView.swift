@@ -507,7 +507,7 @@ struct PlayerDetailView: View {
                 renameText = currentName.isEmpty ? item.shownName : currentName
                 showRename = true
             }
-            detailAction("square.on.square", "复制音频".localized(), tint: c.textSecondary) {
+            detailAction("square.on.square", "复制语音".localized(), tint: c.textSecondary) {
                 duplicateCurrent()
             }
             detailAction("trash.fill", "删除".localized(), tint: c.danger) {
@@ -567,7 +567,7 @@ struct PlayerDetailView: View {
                 uiState.showToast(.failure("复制失败".localized()))
                 return
             }
-            uiState.showToast(.success("已复制音频".localized()))
+            uiState.showToast(.success("已复制语音".localized()))
         }
     }
 

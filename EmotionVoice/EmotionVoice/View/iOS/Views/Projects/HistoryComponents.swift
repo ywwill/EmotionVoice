@@ -22,7 +22,7 @@ struct HistoryStatBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            stat("%d 条音频".localized(count))
+            stat("%d 条语音".localized(count))
             divider
             stat(sizeText)
             divider
@@ -244,7 +244,7 @@ struct HistoryEmptyState: View {
                     .frame(width: 120, height: 120)
             }
 
-            Text(isSearching ? "没有匹配的音频".localized() : "还没有生成过音频".localized())
+            Text(isSearching ? "没有匹配的语音".localized() : "还没有生成过语音".localized())
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(c.textPrimary)
 

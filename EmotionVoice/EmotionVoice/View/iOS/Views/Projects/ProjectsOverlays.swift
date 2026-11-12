@@ -77,7 +77,7 @@ struct RenameDialog: View {
 
     private var field: some View {
         HStack(spacing: 8) {
-            TextField("音频名称".localized(), text: $text)
+            TextField("语音名称".localized(), text: $text)
                 .font(.system(size: 15.5))
                 .foregroundStyle(c.textPrimary)
                 .focused($focused)

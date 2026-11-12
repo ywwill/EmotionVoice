@@ -80,7 +80,7 @@ final class GenerationBackgroundKeeper {
         guard !expired else { return }
         guard UIApplication.shared.applicationState != .active else { return }
 
-//        notify(title: success ? "音频生成完成".localized() : "生成已结束".localized(),
+//        notify(title: success ? "语音生成完成".localized() : "生成已结束".localized(),
 //               body: "返回 App 查看结果".localized())
     }
 

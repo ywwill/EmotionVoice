@@ -197,7 +197,7 @@ struct GenerationDialog: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(hasResult ? "音频生成完成".localized() : "正在接收".localized())
+                Text(hasResult ? "语音生成完成".localized() : "正在接收".localized())
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(c.textPrimary)
             }
@@ -271,7 +271,7 @@ struct GenerationDialog: View {
             // 名称可编辑行：预填默认名（对齐 macOS AudioGenerationModal），右侧 × 一键清空。
             // 清空按钮只在有内容时出现，样式与项目页 RenameDialog 一致。
             HStack(spacing: 8) {
-                TextField("音频名称".localized(), text: $displayName)
+                TextField("语音名称".localized(), text: $displayName)
                     .font(.system(size: 15.5))
                     .foregroundStyle(c.textPrimary)
                     .focused($nameFocused)
@@ -559,7 +559,7 @@ struct GenerationDialog: View {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm"
-        return sanitizeFileName("音频_%@".localized(formatter.string(from: Date())))
+        return sanitizeFileName("语音_%@".localized(formatter.string(from: Date())))
     }
 
     /// 完成：写入自定义名称；点过「清空」则按「无自定义名」落库，列表回退到时间戳文件名。

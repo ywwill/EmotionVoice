@@ -682,7 +682,7 @@ struct AudioGenerationModal: View {
                     .foregroundStyle(hasResult ? AppColor.statusSuccess : AppColor.textPrimary)
             }
 
-            Text(hasResult ? "音频生成完成".localized() : "正在接收".localized())
+            Text(hasResult ? "语音生成完成".localized() : "正在接收".localized())
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.textPrimary)
                 
@@ -747,7 +747,7 @@ struct AudioGenerationModal: View {
                     .frame(width: 5, height: 5)
                     .opacity(blink ? 1 : 0.25)
                     .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: blink)
-                Text("音频数据持续累积中，接收完成后可立即试听".localized())
+                Text("语音数据持续累积中，接收完成后可立即试听".localized())
                     .font(.system(size: 11.5))
                     .foregroundStyle(AppColor.textTertiary)
             }
@@ -1144,7 +1144,7 @@ struct AudioGenerationModal: View {
         // 兜底：文本为空，或洗完什么都不剩
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm"
-        return sanitizeFileName("音频_%@".localized(formatter.string(from: Date())))
+        return sanitizeFileName("语音_%@".localized(formatter.string(from: Date())))
     }
 
     /// 保存编辑后的音频名称
@@ -1170,7 +1170,7 @@ struct AudioGenerationModal: View {
         let defaultFileName = "\(audioName).\(sourceURL.pathExtension)"
 
         let savePanel = NSSavePanel()
-        savePanel.title = "导出音频".localized()
+        savePanel.title = "导出语音".localized()
         savePanel.nameFieldStringValue = defaultFileName
         savePanel.canCreateDirectories = true
         savePanel.allowedContentTypes = [.audio]

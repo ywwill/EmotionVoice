@@ -42,8 +42,8 @@ enum SettingsOptionKind: Identifiable {
 
     var groupTitle: String {
         switch self {
-        case .defaultFormat: return "音频格式".localized()
-        case .sampleRate:    return "音频质量".localized()
+        case .defaultFormat: return "语音格式".localized()
+        case .sampleRate:    return "语音质量".localized()
         }
     }
 
