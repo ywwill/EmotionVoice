@@ -212,31 +212,49 @@ final class VoiceStudioViewModel: ObservableObject {
     /// 里已有译文；直接写原文会让英文 / 繁中界面下指令框冒出简体中文。
     /// iOS 与 macOS 共用本方法，一处改两端生效。
     private func updateNLInstruction() {
-        nlInstruction = composedNLInstruction
+        nlInstruction = presetInstruction
     }
 
-    /// 语言 + 预设拼出的指令文案。
-    /// ⚠️ 拼接必须走 `.localized()`：两个值都是中文 key，直接拼原文会让英文 / 繁中界面冒出简体中文。
-    private var composedNLInstruction: String {
-        let parts: [String] = [
-            selectedLanguage?.localized(),
-            selectedPreset.flatMap { Constants.instructionForPreset($0)?.localized() }
-        ].compactMap { $0 }
-        // 中文沿用原来的半角逗号（零回归），英文补一个空格
-        return parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
+    /// 指令框的「自动文案」：只由描述预设决定。
+    ///
+    /// ⚠️ 语言 chip 与 `nlInstruction` 之间**不允许有任何读写关系**：
+    /// `selectedLanguage` 只用于三处 —— chip 选中态、`language_hints`、草稿语义值。
+    /// 早期把语言名拼进指令，导致「先选语言 → 再点预设」「恢复带语言的草稿」
+    /// 时输入框冒出「英语,温柔的女性声音…」，还会覆盖用户手打的指令。
+    /// 11-12 修过一次，合并 dev-草稿 时被旧版 VM 覆盖回来，草稿的导出 / 恢复
+    /// 两条路径当时也没覆盖到；这三处必须一起改。
+    private var presetInstruction: String {
+        selectedPreset.flatMap { Constants.instructionForPreset($0)?.localized() } ?? ""
     }
 
     /// 草稿导出：只存语义值。指令框被用户手改过时原文照存，避免丢内容。
     func exportNLInstruction() -> (language: String?, preset: String?, custom: String?) {
-        let auto = composedNLInstruction
-        return (selectedLanguage, selectedPreset, nlInstruction == auto ? nil : nlInstruction)
+        let auto = presetInstruction
+        let isAuto = nlInstruction == auto
+            || nlInstruction == legacyInstruction(language: selectedLanguage, preset: selectedPreset)
+        return (selectedLanguage, selectedPreset, isAuto ? nil : nlInstruction)
     }
 
-    /// 草稿恢复：语义值按当前界面语言重新本地化拼接；自定义原文优先。
+    /// 草稿恢复：语言只恢复 chip 选中态，指令只按预设重算；自定义原文优先。
     func restoreNLInstruction(language: String?, preset: String?, custom: String?) {
         selectedLanguage = language
         selectedPreset = preset
-        nlInstruction = custom ?? composedNLInstruction
+        let auto = presetInstruction
+        let legacy = legacyInstruction(language: language, preset: preset)
+        // 旧草稿里可能存着「语言名,预设描述」这种自动文案，归一化掉，
+        // 别让语言名借恢复路径重新回到输入框。
+        nlInstruction = custom.map { ($0 == auto || $0 == legacy) ? auto : $0 } ?? auto
+    }
+
+    /// 旧版（语言参与拼接时）的自动文案，**只用于比对已落盘的旧草稿**，禁止写入指令框。
+    /// ⚠️ 拼接必须走 `.localized()`：语言名 / 预设文案都是中文 key。
+    private func legacyInstruction(language: String?, preset: String?) -> String {
+        let parts: [String] = [
+            language?.localized(),
+            preset.flatMap { Constants.instructionForPreset($0)?.localized() }
+        ].compactMap { $0 }
+        // 中文沿用原来的半角逗号（零回归），英文补一个空格
+        return parts.joined(separator: AppLanguage.isChinese ? "," : ", ")
     }
 
     // 生成状态
@@ -937,8 +955,9 @@ struct DraftSnapshot {
     var volume: Double
     var format: String
     var sampleRate: Int
-    /// 语音指令只存语义值：语言 / 预设是中文 key，恢复时按当前界面语言重新本地化拼接。
-    /// `customInstruction` 仅在用户手改过指令框、内容与自动拼接不一致时非空。
+    /// 语音指令只存语义值：`nlLanguage` 只恢复 chip 选中态与 language_hints，
+    /// **不参与指令文本拼接**；预设是中文 key，恢复时按当前界面语言重新本地化。
+    /// `customInstruction` 仅在用户手改过指令框、内容与预设自动文案不一致时非空。
     var nlLanguage: String?
     var nlPreset: String?
     var customInstruction: String?

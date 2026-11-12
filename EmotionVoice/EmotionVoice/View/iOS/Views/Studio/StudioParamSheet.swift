@@ -329,7 +329,8 @@ struct StudioParamContent: View {
                 }
                 .foregroundStyle(c.textSecondary)
 
-                // 语言默认全部展开，不提供收起入口（与 macOS 端一致）
+                // 语言默认全部展开，不提供收起入口（与 macOS 端一致）。
+                // ⚠️ 语言 chip 只切选中态 / language_hints，不写下方指令输入框。
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(Constants.nlLanguages) { item in
                         AuroraChip(title: item.name.localized(),

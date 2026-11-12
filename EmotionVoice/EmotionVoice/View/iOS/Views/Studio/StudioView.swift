@@ -6,7 +6,10 @@
 import SwiftUI
 import UIKit
 import Combine
+// typecheck 编不进 SPM 包，替身在 tools/ios_typecheck/Shims.swift；真机构建仍 import 真包。
+#if canImport(AlertToast)
 import AlertToast
+#endif
 
 enum IOSPerfDebug {
     static let usePlainTextEditor = false

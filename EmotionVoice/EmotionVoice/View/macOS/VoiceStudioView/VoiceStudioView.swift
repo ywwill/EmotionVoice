@@ -1107,7 +1107,8 @@ struct VoiceStudioView: View {
 
     // MARK: - 语言选择器
 
-    /// 语言选择区域：点击后切换语言选择（可与预设同时选中）
+    /// 语言选择区域：只切换 chip 选中态 / language_hints，与下方「描述预设」的指令输入框互不影响。
+    /// ⚠️ 别在这里调用 `vm.updateNLInstruction()` 之类把语言名写进输入框的方法。
     private var nlLanguageSelector: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("🌐 语言".localized())
