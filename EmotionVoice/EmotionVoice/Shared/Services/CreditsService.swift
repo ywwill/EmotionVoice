@@ -253,7 +253,9 @@ final class CreditsService {
             combinedRecords.append(CreditRecord(
                 id: "c_\(consume.id)",
                 type: .consumption,
-                title: VoiceService.shared.displayName(forKey: consume.voiceKey) ?? consume.voiceName,
+                // 落盘的 voice_name 只是保存时快照；显示一律按 voiceKey 取当前界面语言的名字
+                title: VoiceService.shared.resolvedVoiceName(forKey: consume.voiceKey,
+                                                            legacyName: consume.voiceName),
                 subtitle: "\(consume.formattedDuration)",
                 amount: consume.points,
                 createdAt: consume.createdAt

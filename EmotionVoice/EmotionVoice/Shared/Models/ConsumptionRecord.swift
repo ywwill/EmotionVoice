@@ -10,7 +10,7 @@ import Foundation
 /// 消耗记录
 struct ConsumptionRecord: Identifiable, Hashable {
     let id: Int64
-    /// 使用的音色名称
+    /// 使用的音色名称（保存时的文本快照；显示一律按 voiceKey 解析，见 CreditsService）
     let voiceName: String
     /// 音色 key
     let voiceKey: String

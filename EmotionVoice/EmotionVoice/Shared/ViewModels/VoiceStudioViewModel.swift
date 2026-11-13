@@ -1618,8 +1618,14 @@ extension Draft {
     }
 
     /// 元信息一行：字数 · 音色。标签数量不展示，时间由列表单独放右侧。
-    var metaText: String {
-        let voice = voiceName.isEmpty ? "—" : voiceName
+    ///
+    /// ⚠️ `voiceName` 只是保存时的文本快照：显示必须按 `voiceKey` 取当前界面语言的名字，
+    ///    否则切语言后草稿列表会一直定格在保存时的语言；key 查不到才回退快照。
+    /// ⚠️ 显式 @MainActor：解析走 `VoiceService` 的缓存 / DB，两端编译环境要一致。
+    @MainActor var metaText: String {
+        let resolved = VoiceService.shared.resolvedVoiceName(forKey: voiceKey,
+                                                            legacyName: voiceName)
+        let voice = resolved.isEmpty ? "—" : resolved
         return "\( "%d 字".localized(charCount)) · \(voice)"
     }
 }

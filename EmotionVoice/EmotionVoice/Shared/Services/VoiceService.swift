@@ -31,6 +31,10 @@ final class VoiceService {
 
     /// key -> 展示名 的缓存。列表行与播放详情过去是 `fetchAll().first(where:)`，
     /// 每次 body 求值都做一次全表扫描 + 全量排序；播放详情 10Hz 重绘时这会把主线程打满。
+    ///
+    /// ⚠️ 缓存键必须带界面语言（见 `cacheKey(for:)`）：`rowToVoice` 按当前界面语言
+    /// 烘焙名字，不带语言因子时同进程内语言一变就会一直返回旧语言的名字 ——
+    /// 显示层按 `voiceKey` 重新解析也会跟着读到旧名字。
     private let nameCache = NSCache<NSString, NSString>()
 
     /// key -> Voice 对象 的缓存（`NSCache` 只装类，故包一层）。
@@ -172,13 +176,30 @@ final class VoiceService {
     /// - Returns: 当前语言的展示名；key 为空或查不到时返回 nil
     func displayName(forKey key: String) -> String? {
         guard !key.isEmpty else { return nil }
-        let cacheKey = key as NSString
-        if let cached = nameCache.object(forKey: cacheKey) {
+        let ck = Self.cacheKey(for: key)
+        if let cached = nameCache.object(forKey: ck) {
             return cached as String
         }
         guard let voice = fetchByKeys([key]).first else { return nil }
-        nameCache.setObject(voice.localizedName as NSString, forKey: cacheKey)
+        nameCache.setObject(voice.localizedName as NSString, forKey: ck)
         return voice.localizedName
+    }
+
+    /// 按 `voiceKey` 解析当前界面语言的音色名 —— **持久化结构与写入逻辑一概不动**。
+    ///
+    /// ⚠️ 草稿 `index.json` 与 SQLite `voice_name` 存的是保存时的名字文本快照，
+    ///    直接显示会定格在保存时的语言。这里按 key 重新取名，`legacyName` 只在 key
+    ///    查不到（音色下架 / 脏数据）时兜底。草稿 / 账单显示统一走这个入口。
+    /// - Returns: 当前语言的展示名；都没有时返回空串，由调用方决定占位符。
+    func resolvedVoiceName(forKey key: String, legacyName: String) -> String {
+        if let name = displayName(forKey: key), !name.isEmpty { return name }
+        return legacyName
+    }
+
+    /// 缓存键带界面语言：`VoiceCatalog` 按 `AppLanguage.catalogLocale` 取 .lproj，
+    /// 同进程内语言变化后旧缓存必须自然失效（项目约定切语言需重启，这里再多一层保险）。
+    private static func cacheKey(for key: String) -> NSString {
+        "\(AppLanguage.catalogLocale)#\(key)" as NSString
     }
 
     // MARK: - 全量
@@ -199,10 +220,10 @@ final class VoiceService {
     /// 给 SwiftUI body 里的计算属性用：命中缓存后是常数时间，不再每次重绘全表扫描。
     func voice(forKey key: String) -> Voice? {
         guard !key.isEmpty else { return nil }
-        let cacheKey = key as NSString
-        if let hit = voiceCache.object(forKey: cacheKey) { return hit.value }
+        let ck = Self.cacheKey(for: key)
+        if let hit = voiceCache.object(forKey: ck) { return hit.value }
         guard let voice = fetchByKeys([key]).first else { return nil }
-        voiceCache.setObject(VoiceBox(voice), forKey: cacheKey)
+        voiceCache.setObject(VoiceBox(voice), forKey: ck)
         return voice
     }
 
@@ -328,12 +349,16 @@ final class VoiceService {
         return pred
     }
 
-    /// 内存搜索：命中当前语言的名 / 特质，或场景 / 语种的中文名
+    /// 内存搜索：中文名 / 中文特质 + 当前界面语言名 / 特质，外加场景 / 语种的本地化名。
+    ///
+    /// ⚠️ `name` / `desc` 恒为中文，`nameEn` / `descEn` 按当前界面语言烘焙（见 `rowToVoice`）。
+    ///    两套一起匹配：切语言后用任何一种语言的旧名字都还能搜到，避免搜索结果随界面语言漂移。
     private static func matchesSearch(_ v: Voice, _ searchText: String) -> Bool {
         let needle = searchText.trimmingCharacters(in: .whitespaces)
         guard !needle.isEmpty else { return true }
-        if v.localizedName.localizedCaseInsensitiveContains(needle) { return true }
-        if v.localizedDesc.localizedCaseInsensitiveContains(needle) { return true }
+        for candidate in [v.name, v.nameEn, v.desc, v.descEn] where !candidate.isEmpty {
+            if candidate.localizedCaseInsensitiveContains(needle) { return true }
+        }
         if v.scene.displayName.localizedCaseInsensitiveContains(needle) { return true }
         if v.lang.displayName.localizedCaseInsensitiveContains(needle) { return true }
         return false

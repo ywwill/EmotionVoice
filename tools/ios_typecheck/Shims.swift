@@ -110,6 +110,8 @@ final class VoiceService {
     private init() {}
 
     func displayName(forKey key: String) -> String? { nil }
+    /// 持久化记录按 key 解析展示名（签名与 Shared/Services/VoiceService.swift 对齐）
+    func resolvedVoiceName(forKey key: String, legacyName: String) -> String { legacyName }
     func voice(forKey key: String) -> Voice? { nil }
     func invalidateVoiceCache() {}
     func fetchAll() -> [Voice] { [] }
