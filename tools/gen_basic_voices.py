@@ -5,17 +5,19 @@
 
 产出：
   1. basic_voices.json（v4）—— 只含语义数据与稳定 key，不含任何文案、不含冗余 id
-  2. CATALOG_LOCALES 白名单内每语种一份 VoiceCatalog.strings（zh-Hans / zh-HK / en）
+  2. CATALOG_LOCALES 白名单内每语种一份 VoiceCatalog.strings（8 份）
 
 设计要点：
   - 数据与文案彻底分离：JSON 零文案、零冗余字段
   - 本地化 key 统一为「短标识 stem」= 从 key 去掉模型前缀 qwen-audio-3.0-tts-plus- 得到
     （与 audio 文件名去扩展名一致），如 longcanzhuyue
   - 名字与特质都按 stem 取：voice.<stem>.name / voice.<stem>.feature
-  - ⚠️ 界面新增语言**不要**顺手加 VoiceCatalog：音色名只有中/英两套命名（繁体只是
-    s2t 字形变体），`VoiceCatalog.lprojCandidates(for:)` 对非 .zh 一律读 en.lproj。
-    曾因扫描全部 .lproj 自动铺出 ru/ko/ja/fr/de 五份永不被读取的英文副本。
-    真要扩语种须同步改：CATALOG_LOCALES + pbxproj 的 PBXVariantGroup + Swift 读取链路。
+  - ⚠️ 本脚本**回读**已有 .strings 文案再按 idx 顺序重写，不重新分配名字。
+    fr / de / ja / ko / ru 的内容由 `tools/localization/gen_voice_catalog.py`
+    （词库 + 特质译文）首次生成，之后由本脚本同步维护顺序。改文案请改那边的词库/TSV，
+    再重跑两个脚本；只跑本脚本不会把本地名变回英文。
+  - ⚠️ 界面语言目录 != 音色语种，白名单必须显式维护，别改回扫描全部 .lproj。
+    新增语种须同步改：CATALOG_LOCALES + pbxproj 的 PBXVariantGroup + Swift 读取链路。
 
 idx 规则：
   旗舰音色 idx = 1, 2；基础音色从 3 起顺序编号。idx 是便捷整数 id（DB 主键）。
@@ -36,15 +38,16 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 LOCALE_ROOT = os.path.join(PROJECT_ROOT, "EmotionVoice", "EmotionVoice")
-SRC_JSON = os.path.join(LOCALE_ROOT, "Voices", "basic_voices.json")
+SRC_JSON = os.path.join(LOCALE_ROOT, "Shared", "Voices", "basic_voices.json")
 
 # 基准语种：JSON 之外的所有文案都以它为回退源（新增语种缺词条时先用简体顶上）
 BASE_LOCALE = "zh-Hans"
 
-# VoiceCatalog 实际维护的语种：中文简体 / 中文繁体（s2t 字形）/ 英文。
-# ⚠️ 必须与 VoiceCatalog.lprojCandidates(for:) 的候选链一致；界面语言目录比音色
-#    语种多得多，界面文案由 Localizable.strings 负责，非中文界面音色名统一取英文。
-CATALOG_LOCALES = {"zh-Hans", "zh-HK", "en"}
+# VoiceCatalog 实际维护的 8 个语种：简体 / 繁体（s2t 字形）/ 英文 /
+# 法德日韩俄（按特质意象重新命名，见 tools/localization/gen_voice_catalog.py）。
+# ⚠️ 必须与 VoiceCatalog 的界面语言候选链一致；界面语言目录 != 音色语种，
+#    别改成扫描全部 .lproj。⚠️ Localizable.strings 的 8 个引用与 knownRegions 须保留。
+CATALOG_LOCALES = {"zh-Hans", "zh-HK", "en", "fr", "de", "ja", "ko", "ru"}
 
 # TTS 参数 key 的模型前缀，剥掉后得到短标识 stem
 MODEL_PREFIX = "qwen-audio-3.0-tts-plus-"
@@ -57,8 +60,8 @@ def strings_path(locale):
 def discover_locales():
     """只返回 CATALOG_LOCALES 白名单内的语种目录。
 
-    ⚠️ 别改回「扫描全部 .lproj」：界面语言目录 != 音色语种，自动铺开的文件运行时
-    读不到（VoiceCatalog 只认 zh / en），既白占 bundle 又容易被误判成漏翻。
+    ⚠️ 别改回「扫描全部 .lproj」：界面语言目录 != 音色语种，自动铺出来的目录
+    既没有正式词条、又容易被误判成漏翻。白名单内的 8 份都由 Xcode 变体组打进 bundle。
     """
     return sorted(
         d[:-len(".lproj")]
@@ -298,10 +301,12 @@ def write_json(payload):
 
 
 def write_strings(path, entries):
+    # ⚠️ 与 tools/localization/gen_voice_catalog.py 的 HEADER 必须逐字一致：
+    # 两个脚本都会重写 8 份文件，header 不同会造成「跑哪个脚本就变一次」的假改动。
     lines = [
-        "/* Voice catalog — 由 tools/gen_basic_voices.py 生成，请勿手动编辑 */",
-        "/* 音色名与特质文案，按 voice.<stem>.name / voice.<stem>.feature 取值 */",
-        "/* stem = 从 key 去掉 qwen-audio-3.0-tts-plus- 前缀（与音频文件名去扩展名一致） */",
+        "/* Voice catalog — 由 tools/gen_basic_voices.py 与 tools/localization/gen_voice_catalog.py 共同生成，请勿手动编辑 */",
+        "/* 音色名按语种重新命名（非翻译）：zh / en 为既有两套，fr / de / ja / ko / ru 按特质意象生成 */",
+        "/* 词条：voice.<stem>.name / voice.<stem>.feature，stem 与音频文件名去扩展名一致 */",
         "",
     ]
     lines += ['"%s" = "%s";' % (k, escape_strings(v)) for k, v in entries]

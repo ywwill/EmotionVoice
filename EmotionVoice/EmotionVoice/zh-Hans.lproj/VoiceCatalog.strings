@@ -1,6 +1,6 @@
-/* Voice catalog — 由 tools/gen_basic_voices.py 生成，请勿手动编辑 */
-/* 音色名与特质文案，按 voice.<stem>.name / voice.<stem>.feature 取值 */
-/* stem = 从 key 去掉 qwen-audio-3.0-tts-plus- 前缀（与音频文件名去扩展名一致） */
+/* Voice catalog — 由 tools/gen_basic_voices.py 与 tools/localization/gen_voice_catalog.py 共同生成，请勿手动编辑 */
+/* 音色名按语种重新命名（非翻译）：zh / en 为既有两套，fr / de / ja / ko / ru 按特质意象生成 */
+/* 词条：voice.<stem>.name / voice.<stem>.feature，stem 与音频文件名去扩展名一致 */
 
 "voice.longanlingxin.name" = "龙安灵心";
 "voice.longanlingxin.feature" = "知心温暖";

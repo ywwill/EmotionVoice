@@ -40,6 +40,26 @@ enum AppLanguage {
         }
         return false
     }
+
+    /// 当前界面语言对应的 `VoiceCatalog.strings` 目录名。
+    ///
+    /// 取值固定为工程里 8 份 VoiceCatalog 的 .lproj 名；与 `isChinese` /
+    /// `prefersTraditionalChinese` 同源。界面语言与音色语种（`VoiceLangCode`
+    /// 只有 zh / en）是两件事：音色名按界面语言挑「哪一套重新命名」，
+    /// 而不是按音色能说什么语言。未知语言一律回落 en。
+    static var catalogLocale: String {
+        let preferred = Bundle.main.preferredLocalizations.first
+            ?? Locale.current.language.languageCode?.identifier
+            ?? "en"
+        let id = preferred.lowercased().replacingOccurrences(of: "_", with: "-")
+        if id.hasPrefix("zh") {
+            return prefersTraditionalChinese ? "zh-HK" : "zh-Hans"
+        }
+        for loc in ["fr", "de", "ja", "ko", "ru"] where id.hasPrefix(loc) {
+            return loc
+        }
+        return "en"
+    }
 }
 
 // MARK: - 音色层级
@@ -169,9 +189,19 @@ enum VoiceCatalog {
     /// key 里带上 lproj 候选链（含繁简字形），语言切换会自动落到不同条目。
     private static let stringCache = NSCache<NSString, NSString>()
 
-    /// 读取指定语种的 VoiceCatalog.strings 词条；缺失时回退到 key 本身
+    /// 按「音色语种」读取词条；缺失时回退到 key 本身。
+    /// 只用于需要显式拿中文 / 英文两套文案的场景；界面展示请用 `stringForInterface`。
     static func string(_ key: String, language: VoiceLangCode) -> String {
-        let lprojs = lprojCandidates(for: language)
+        string(key, lprojs: lprojCandidates(for: language))
+    }
+
+    /// 按「界面语言」读取词条：fr / de / ja / ko / ru 各读自己的目录，缺词条回落 en。
+    static func stringForInterface(_ key: String) -> String {
+        string(key, lprojs: interfaceLprojCandidates())
+    }
+
+    private static func string(_ key: String, lprojs: [String]) -> String {
+        // cacheKey 带上整条候选链，切界面语言自然落到不同条目，无需手动清缓存
         let cacheKey = (lprojs.joined(separator: "|") + "#" + key) as NSString
         if let hit = stringCache.object(forKey: cacheKey) {
             return String(hit)
@@ -192,15 +222,25 @@ enum VoiceCatalog {
         return result
     }
 
-    /// 中文按界面语言挑简体 / 繁体字形，英文固定 en
-    ///
-    /// 音色语种与界面语言无关（中文音色永远显示中文名），这里只决定用哪一套中文字形：
-    /// 繁体界面读 zh-HK.lproj，其余读 zh-Hans.lproj；缺词条时回退到简体。
+    /// 音色语种候选链：只用来显式取中文 / 英文两套文案。
+    /// 中文按界面语言挑简繁字形，英文固定 en。
     private static func lprojCandidates(for language: VoiceLangCode) -> [String] {
         guard language == .zh else { return ["en"] }
         return AppLanguage.prefersTraditionalChinese
             ? ["zh-HK", "zh-Hant", "zh-Hans"]
             : ["zh-Hans"]
+    }
+
+    /// 界面语言候选链：8 份 VoiceCatalog 各自对应一种界面语言。
+    /// 中文按简繁字形挑，法德日韩俄优先本地目录、缺词条回落英文，英文固定 en。
+    /// ⚠️ 音色名是「按语种重新命名」而非翻译，所以这里选的是哪一套命名，不是翻译目标。
+    static func interfaceLprojCandidates() -> [String] {
+        switch AppLanguage.catalogLocale {
+        case "zh-Hans": return ["zh-Hans"]
+        case "zh-HK":   return ["zh-HK", "zh-Hans"]
+        case "en":      return ["en"]
+        case let loc:   return [loc, "en"]
+        }
     }
 
     /// 音色名（指定语种）
@@ -211,5 +251,15 @@ enum VoiceCatalog {
     /// 音色特质（指定语种，未做"音"字裁剪）
     static func localizedVoiceFeature(stem: String, language: VoiceLangCode) -> String {
         string("voice.\(stem).feature", language: language)
+    }
+
+    /// 音色名（当前界面语言）
+    static func localizedVoiceNameForInterface(stem: String) -> String {
+        stringForInterface("voice.\(stem).name")
+    }
+
+    /// 音色特质（当前界面语言，未做"音"字裁剪）
+    static func localizedVoiceFeatureForInterface(stem: String) -> String {
+        stringForInterface("voice.\(stem).feature")
     }
 }

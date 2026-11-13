@@ -244,11 +244,13 @@ struct Voice: Identifiable, Hashable {
     let key: String
     /// 中文名（如 龙安灵心）
     let name: String
-    /// 英文名（如 Lynn）
+    /// 非中文界面的展示名（如 Lynn / Doucée / Lindlies / 優莉 / 온빛 / Нежнена）。
+    /// ⚠️ 字段名沿用早期「英文名」，实际由 `VoiceService.rowToVoice` 按当前界面语言
+    /// 从对应 .lproj 烘焙：音色名是「按语种重新命名」，不是翻译，也不是固定英文。
     let nameEn: String
     /// 中文特质描述（如 电台质感）
     let desc: String
-    /// 英文特质描述（如 Radio）
+    /// 非中文界面的特质描述（同样按当前界面语言烘焙，如 Radio / Grain radio）
     let descEn: String
     /// 层级：旗舰 / 基础
     let tier: VoiceTier

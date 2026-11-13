@@ -143,15 +143,14 @@ final class VoiceService {
     /// 有搜索词必须回退 `orderedVoices`，因为 matchesSearch 还要比对特质 / 场景 / 语种。
     private func orderedKeysWithoutSearch(showingFavorites: Bool, category: VoiceCategory?) -> [String] {
         do {
-            let useChinese = AppLanguage.isChinese
             let rows = try db.db.prepare(baseQuery(showingFavorites: showingFavorites,
                                                    category: category))
                 .map { row -> (key: String, premium: Bool, sortName: String) in
                     let stem = (row[db.voiceAudio] as NSString).deletingPathExtension
-                    let nameZh = VoiceCatalog.localizedVoiceName(stem: stem, language: .zh)
-                    let nameEn = VoiceCatalog.localizedVoiceName(stem: stem, language: .en)
-                    // 与 Voice.localizedName 的回退规则一致，保证排序结果与旧路径完全相同
-                    let sortName = useChinese ? nameZh : (nameEn.isEmpty ? nameZh : nameEn)
+                    // 直接按界面语言取名，与 Voice.localizedName 的展示名同源：
+                    // 原本这里只排中 / 英两套，五语言界面下排序会与实际显示不一致。
+                    // 顺带少读一次 VoiceCatalog 词条。
+                    let sortName = VoiceCatalog.localizedVoiceNameForInterface(stem: stem)
                     return (row[db.voiceKey],
                             row[db.voiceTier] == VoiceTier.premium.rawValue,
                             sortName)
@@ -385,26 +384,30 @@ final class VoiceService {
     /// 将 SQLite Row 转为 Voice
     ///
     /// 文案（名 / 特质）已从库里移除，这里按 audio 文件名的 stem 从 VoiceCatalog.strings
-    /// 分别读取中英文，烘焙进 Voice —— 因为项目约定跟随系统语言、无 App 内切换，
-    /// 启动时读一次即可，切换语言需重启。
+    /// 读取「中文」与「当前界面语言」两套，烘焙进 Voice —— 项目约定跟随系统语言、
+    /// 无 App 内切换，切语言需重启，因此进程内读一次即可。
+    ///
+    /// ⚠️ `nameEn` / `descEn` 沿用旧字段名，实际装的是「当前界面语言的非中文文案」：
+    /// 英文界面取 en，法 / 德 / 日 / 韩 / 俄界面取各自的重新命名与特质译文。
+    /// `Voice.localizedName` 仍按 `isChinese ? name : nameEn` 二值切换，下游无需改动。
     private static func rowToVoice(_ row: Row, db: DatabaseManager) -> Voice {
         let rawAge = row[db.voiceAge]
         let audio = row[db.voiceAudio]
         let stem = (audio as NSString).deletingPathExtension
 
         let nameZh = VoiceCatalog.localizedVoiceName(stem: stem, language: .zh)
-        let nameEn = VoiceCatalog.localizedVoiceName(stem: stem, language: .en)
+        let nameLocalized = VoiceCatalog.localizedVoiceNameForInterface(stem: stem)
         let featZhRaw = VoiceCatalog.localizedVoiceFeature(stem: stem, language: .zh)
-        let featEnRaw = VoiceCatalog.localizedVoiceFeature(stem: stem, language: .en)
+        let featLocalized = VoiceCatalog.localizedVoiceFeatureForInterface(stem: stem)
         // 中文特质去掉冗余的"音"字
         let featZh = featZhRaw.hasSuffix("音") ? String(featZhRaw.dropLast()) : featZhRaw
 
         return Voice(
             key: row[db.voiceKey],
             name: nameZh,
-            nameEn: nameEn,
+            nameEn: nameLocalized,
             desc: featZh,
-            descEn: featEnRaw,
+            descEn: featLocalized,
             tier: VoiceTier(code: row[db.voiceTier]),
             isFavorite: row[db.voiceIsFavorite],
             scene: VoiceSceneCode(code: row[db.voiceSceneKey]),
