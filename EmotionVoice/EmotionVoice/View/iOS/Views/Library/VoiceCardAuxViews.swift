@@ -37,26 +37,32 @@ struct VoiceCardSkeleton: View {
     @Environment(\.aurora) private var c
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 9) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(c.surface3)
-                    .frame(width: 38, height: 38)
+                    .frame(width: 34, height: 34)
+                VStack(alignment: .leading, spacing: 3) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(c.surface3)
+                        .frame(width: 64, height: 13)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(c.surface3)
+                        .frame(height: 10)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(c.surface3)
+                        .frame(width: 92, height: 10)
+                }
                 Spacer(minLength: 0)
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(c.surface3)
-                    .frame(width: 44, height: 11)
             }
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(c.surface3)
-                .frame(width: 72, height: 13)
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(c.surface3)
-                .frame(height: 10)
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(c.surface3)
-                .frame(width: 96, height: 10)
-            Spacer(minLength: 0)
+            .padding(.bottom, 8)
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(c.surface3).frame(width: 38, height: 16)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(c.surface3).frame(width: 38, height: 16)
+            }
+            .padding(.top, 6)
             HStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(c.surface3).frame(width: 28, height: 28)
@@ -65,9 +71,10 @@ struct VoiceCardSkeleton: View {
                 Spacer(minLength: 0)
                 Circle().fill(c.surface3).frame(width: 26, height: 26)
             }
+            .padding(.top, 8)
         }
-        .padding(12)
-        .frame(height: 168)
+        .padding(10)
+        .frame(height: 130)
         .background(
             RoundedRectangle(cornerRadius: AuroraRadius.md, style: .continuous)
                 .fill(c.surface)

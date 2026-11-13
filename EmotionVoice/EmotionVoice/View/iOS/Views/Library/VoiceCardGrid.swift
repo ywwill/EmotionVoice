@@ -4,8 +4,9 @@
 //
 //  音色卡片（照 macOS `VoiceCard` 的字段，重排成手机两列网格）
 //
-//  字段顺序：头像 + 旗舰徽章（或右上特质）→ 名称 → 2 行特质 → 年龄 / 性别 meta
+//  字段顺序：头像 + 名称 + 特质（一次）→ 旗舰徽章（仅旗舰卡右上）→ 年龄 / 性别 meta
 //  → 试听 / 收藏 / 使用。
+//  ⚠️ 特质 `desc` 只画一次；早年非旗舰卡在右上角又画了一遍，与名称下方重复。
 //  试听中的卡片整张转强调描边 + 投影，与 macOS 的 hover 高亮等价（iOS 没有 hover）。
 //
 
@@ -27,12 +28,11 @@ struct VoiceCardGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerRow
-            nameBlock
+            topBlock
             metaRow
             actionRow
         }
-        .padding(12)
+        .padding(10)
         .background { cardBackground }
         .contentShape(Rectangle())
         // ⚠️ 试听态的描边 / 投影要渐变，硬切会让人以为点错了卡。
@@ -46,7 +46,6 @@ struct VoiceCardGrid: View {
     /// 旗舰卡用品牌紫→玫瑰渐变打底，右上角只留一层极淡的暖金柔光做氛围，
     /// 配琥珀描边和淡紫投影拉开层级。
     /// ⚠️ 柔光不能压过「旗舰」徽章：强度与半径都收小，且徽章自带不透明底 +
-    ///    主题自适应的高对比金字（见 `premiumBadge`）。早年两层金色直接叠在一起，
     ///    浅色下亮金 #FFB457 对白底只有约 1.7:1，标识基本糊成一片。
     @ViewBuilder
     private var cardBackground: some View {
@@ -94,23 +93,28 @@ struct VoiceCardGrid: View {
         return .clear
     }
 
-    // MARK: 头部
+    // MARK: 头部（头像 + 名称 + 特质 + 旗舰徽章）
 
-    private var headerRow: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VoiceAvatar(text: voice.localizedAvatar, seed: voice.key, size: 38, corner: 11)
-            Spacer(minLength: 0)
-            if voice.isPremium {
-                premiumBadge
-            } else {
+    /// ⚠️ 修复：特质 `desc` 在此只出现一次。早年非旗舰卡在右上角又画了一遍 `desc`
+    ///    （旧 `headerRow`），与下方 `nameBlock` 的 `desc` 重复，肉眼看到两行一模一样的特质。
+    ///    现在把头像 / 名称 / 特质合并成一块，徽章只在旗舰卡右上角出现。
+    private var topBlock: some View {
+        HStack(alignment: .top, spacing: 9) {
+            VoiceAvatar(text: voice.localizedAvatar, seed: voice.key, size: 34, corner: 10)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(voice.localizedName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(c.textPrimary)
+                    .lineLimit(1)
                 Text(voice.localizedDesc)
-                    .font(.system(size: 11))
-                    .foregroundStyle(c.textSecondary)
-                    .multilineTextAlignment(.trailing)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(voice.isPremium ? c.textSecondary : c.textTertiary)
                     .lineLimit(2)
-                    .frame(height: 30, alignment: .topTrailing)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            Spacer(minLength: 0)
         }
+        .padding(.bottom, 8)
     }
 
     private var premiumBadge: some View {
@@ -135,23 +139,6 @@ struct VoiceCardGrid: View {
         )
     }
 
-    // MARK: 名称 + 特质
-
-    private var nameBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(voice.localizedName)
-                .font(.system(size: 14.5, weight: .semibold))
-                .foregroundStyle(c.textPrimary)
-                .lineLimit(1)
-                .padding(.top, 9)
-            Text(voice.localizedDesc)
-                .font(.system(size: 11))
-                .foregroundStyle(voice.isPremium ? c.textSecondary : c.textTertiary)
-                .lineLimit(2)
-                .frame(height: 28, alignment: .topLeading)
-        }
-    }
-
     // MARK: meta
 
     private var metaRow: some View {
@@ -160,8 +147,9 @@ struct VoiceCardGrid: View {
                 metaChip("%d 岁".localized(age))
             }
             metaChip(voice.localizedGender)
+            if voice.isPremium { premiumBadge }
         }
-        .padding(.top, 7)
+        .padding(.top, 6)
     }
 
     private func metaChip(_ text: String) -> some View {
@@ -203,7 +191,7 @@ struct VoiceCardGrid: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.top, 10)
+        .padding(.top, 8)
     }
 
     private func squareButton(systemImage: String,
