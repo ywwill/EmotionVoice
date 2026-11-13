@@ -11,8 +11,8 @@ import SwiftUI
 struct iOSContentView: View {
     var body: some View {
         RootTabView()
-            // 每次打开 App 申请一次 App Store 评分（每个进程只一次，
-            // 退到后台再回来不重弹；闸门见 AppUpdateManager.ReviewRequestGate）
+            // 每打开 3 次 App 申请一次 App Store 评分（次数跨启动计数，
+            // 退到后台再回来既不计次也不重弹；规则见 AppUpdateManager.ReviewRequestGate）
             .requestReviewOnEveryOpen()
     }
 }

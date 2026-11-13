@@ -377,11 +377,13 @@ struct AppUpdateRecord: Decodable {
 //     macOS 上没有挂修饰符 —— 那边必须等「窗口上屏 + App 前台」再申请，
 //     否则请求会被 StoreKit 挂起并反复投递，表现成一次启动弹好几个评分弹窗。
 
-/// 挂在根容器上：**每个进程启动后**申请一次 App Store 评分（**仅 iOS 使用**）。
+/// 挂在根容器上：**每打开 `ReviewRequestGate.openInterval`（=3）次 App** 申请一次
+/// App Store 评分（**仅 iOS 使用**）。
 ///
-/// 产品口径：每次打开 App 弹一次；退到后台但没退出 App，再回到前台**不再重复弹**。
-/// 所以这里既不跟着 `scenePhase` 反复申请，也不做跨启动的本地计数 / 节流
-/// （频率上限是 StoreKit 自己的配额，代码绕不过去也不用绕）。
+/// 产品口径：启动次数跨启动持久化在 `UserDefaults`（`review.launchCount`），
+/// 只在第 3、6、9… 次打开时申请；退到后台但没退出 App，再回到前台
+/// **不计数、也不再重复弹**。所以这里不跟着 `scenePhase` 反复申请，
+/// 进程内也只判断一次（频率上限另有 StoreKit 自己的配额）。
 ///
 /// ⚠️ `requestReview()` 只是向系统「申请」评分，弹不弹由 StoreKit 决定：
 ///   - 开发签名 / DEBUG：每次调用都会弹（方便调试）；
@@ -428,19 +430,40 @@ private struct RequestReviewOnOpenModifier: ViewModifier {
     }
 }
 
-/// 进程级一次性闸门：整个 App 生命周期（= 一次启动）只放行一次评分申请。
+/// 进程级闸门：整个 App 生命周期（= 一次启动）**只判断一次**，判断通过才放行评分申请。
+///
+/// 规则：每打开 App 都把 `UserDefaults` 里的 `review.launchCount` 加一，
+/// 只有累加到 `openInterval`（=3）的整数倍时才返回 `true` —— 即「每打开 3 次弹一次」。
+/// 计数在**首次被问到**时自增，一次启动只增一次，所以 `.task` 与 `scenePhase`
+/// 两个入口不会把同一次启动记成两次。
 ///
 /// `nonisolated(unsafe)`：只在主线程（SwiftUI 的 `.task` / `.onChange`、AppKit 的
 /// `applicationDidFinishLaunching`）读写，一个 Bool 不存在撕裂风险；
 /// 加它只是为了绕开默认 MainActor 隔离在闭包里的调用限制。
 private enum ReviewRequestGate {
-    nonisolated(unsafe) private static var claimed = false
+    /// 每打开这么多次 App 申请一次评分
+    nonisolated static let openInterval = 3
+    /// 启动次数键：跨启动持久化，卸载重装才会清零
+    nonisolated static let launchCountKey = "review.launchCount"
 
-    /// 抢占一次申请名额：第一次调用返回 `true`，之后（本次进程内）永远 `false`。
+    /// 本次进程是否已判断过（一次启动只判断一次，之后全部拒绝）
+    nonisolated(unsafe) private static var decided = false
+
+    /// 抢占一次申请名额：本次启动若正好是第 3/6/9… 次打开，首次调用返回 `true`；
+    /// 同一次启动内再次调用永远 `false`。
     nonisolated static func claim() -> Bool {
-        if claimed { return false }
-        claimed = true
-        return true
+        if decided { return false }
+        decided = true
+
+        let defaults = UserDefaults.standard
+        let launchCount = defaults.integer(forKey: launchCountKey) + 1
+        defaults.set(launchCount, forKey: launchCountKey)
+
+        let shouldAsk = launchCount % openInterval == 0
+        if !shouldAsk {
+            Log(message: "评分申请：第 \(launchCount) 次打开，每 \(openInterval) 次才申请，本次跳过")
+        }
+        return shouldAsk
     }
 }
 
@@ -504,9 +527,9 @@ enum LaunchReviewRequester {
 #endif
 
 extension View {
-    /// 每次打开 App（每个进程）向系统申请一次 App Store 评分。**仅 iOS 使用**：
+    /// 每打开 3 次 App 向系统申请一次 App Store 评分（次数跨启动计数）。**仅 iOS 使用**：
     /// macOS 走 `LaunchReviewRequester`（`applicationDidFinishLaunching`）。
-    /// 后台↔前台来回切不会再申请，见 `RequestReviewOnOpenModifier`。
+    /// 后台↔前台来回切既不计数也不会再申请，见 `RequestReviewOnOpenModifier`。
     func requestReviewOnEveryOpen() -> some View {
         modifier(RequestReviewOnOpenModifier())
     }
