@@ -382,7 +382,7 @@ Ideal für Nachrichten / Hörbücher / Werbung…
 Nicht genügend Credits — noch %@ nötig
 OK
 Stimme auswählen
-Nach Name, Eigenschaft, Szene oder Sprache suchen
+Nach Name, Eigenschaft oder Szene suchen
 Alle Kategorien
 %@ · %d
 Tippe oben auf die Schaltfläche, um neu auszuwählen

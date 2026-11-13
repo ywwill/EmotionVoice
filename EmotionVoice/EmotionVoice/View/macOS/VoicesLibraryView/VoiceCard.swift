@@ -61,7 +61,7 @@ struct VoiceCard: View {
 
     var body: some View {
         cardContent
-            .padding(14)
+            .padding(12)
             .background(cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
             .shadow(
@@ -70,21 +70,6 @@ struct VoiceCard: View {
                 x: 0,
                 y: isSelected ? 4 : 2
             )
-            .overlay(alignment: .topTrailing) {
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(AppColor.accentPrimary)
-                        .font(.system(size: 16))
-                        .background(
-                            Circle()
-                                .fill(AppColor.bgSecondary)
-                                .frame(width: 18, height: 18)
-                        )
-                        .offset(x: 6, y: -6)
-                        .allowsHitTesting(false)
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
             .onHover { hovering in
                 // 仅在状态真正变化时触发，避免鼠标移动过程中反复触发 body
                 if hovering != isHovered {
@@ -98,11 +83,8 @@ struct VoiceCard: View {
 
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 8) {
-            header
-
-            // 名称 + 年龄 / 性别（meta 标签右对齐到名称同一行）
-            nameRow
-
+            topBlock
+            metaRow
             actionRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -125,49 +107,42 @@ struct VoiceCard: View {
 
     // MARK: - 子视图（轻量化）
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            AvatarView(text: item.avatar, size: 40, seed: item.id)
-            
-            Spacer()
-            
-            VStack(alignment: .trailing) {
-                if item.isPremium {
-                    Text("⭐ 旗舰".localized())
-                        .font(AppFont.monoSmall)
-                        .foregroundStyle(AppColor.accentGlow)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppColor.accentPrimary.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+    /// 头像 / 名称 / 特质合并成一块，特质只出现一次（与 iOS `VoiceCardGrid` 一致）。
+    /// 选中标识放在「名称」同一行、靠右：水平对齐底部「使用」按钮，垂直对齐名称。
+    private var topBlock: some View {
+        HStack(alignment: .top, spacing: 10) {
+            AvatarView(text: item.avatar, size: 36, seed: item.id)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(item.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppColor.textPrimary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if isSelected { selectedMark }
                 }
                 Text(item.desc)
                     .font(AppFont.caption)
                     .foregroundStyle(AppColor.textSecondary)
                     .lineLimit(2)
-                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .animation(.easeOut(duration: 0.18), value: isSelected)
     }
 
-    /// 名称行：左侧音色名，右侧年龄 / 性别标签
-    private var nameRow: some View {
-        HStack(spacing: 6) {
-            Text(item.name)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.textPrimary)
-                .lineLimit(1)
-
-            Spacer(minLength: 6)
-
-            // fixedSize：窄卡片时优先截断名称，保证 meta 标签不被压缩
-            metaTags
-                .fixedSize(horizontal: true, vertical: false)
-        }
+    private var premiumBadge: some View {
+        Text("⭐ 旗舰".localized())
+            .font(AppFont.monoSmall)
+            .foregroundStyle(AppColor.accentGlow)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(AppColor.accentPrimary.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    /// 年龄 / 性别标签（与名称同一行，右对齐）
-    private var metaTags: some View {
+    /// 年龄 / 性别 meta：独立一行（不再与名称抢宽度，去掉 `fixedSize` 后名称可完整显示）
+    private var metaRow: some View {
         HStack(spacing: 6) {
             if let age = item.age {
                 metaTag("%d 岁".localized(age))
@@ -175,6 +150,8 @@ struct VoiceCard: View {
             if !item.gender.isEmpty {
                 metaTag(item.gender)
             }
+            
+            if item.isPremium { premiumBadge }
         }
     }
 
@@ -274,6 +251,16 @@ struct VoiceCard: View {
             .pointingHandCursor()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// 选中标识：与名称同一行（垂直对齐名称），靠右 6pt（水平对齐底部「使用」按钮）。
+    private var selectedMark: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 16))
+            .foregroundStyle(AppColor.accentPrimary)
+            .padding(.trailing, 6)
+            .allowsHitTesting(false)
+            .transition(.scale.combined(with: .opacity))
     }
 
     // MARK: - 播放波形

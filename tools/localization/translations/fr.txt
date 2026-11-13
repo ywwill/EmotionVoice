@@ -382,7 +382,7 @@ Idéal pour les journaux / livres audio / publicités…
 Crédits insuffisants — %@ de plus nécessaires
 OK
 Choisir une voix
-Rechercher par nom, trait, scène ou langue
+Rechercher par nom, trait ou scène
 Toutes les catégories
 %@ · %d
 Touchez le bouton ci-dessus pour choisir à nouveau

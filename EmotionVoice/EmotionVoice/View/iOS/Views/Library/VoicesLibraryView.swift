@@ -246,7 +246,7 @@ struct VoicesLibraryView: View {
 
     private var searchBar: some View {
         AuroraSearchField(text: $searchText,
-                          placeholder: "搜索音色名 / 特质 / 场景 / 语种".localized(),
+                          placeholder: "搜索音色名 / 特质 / 场景".localized(),
                           onSubmit: { commitSearch() })
         .padding(.horizontal, metrics.pageMargin)
         .padding(.top, 2)

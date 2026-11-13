@@ -418,7 +418,7 @@
 
 // iOS · 音色选择
 "选择音色" = "Select Voice";
-"搜索音色名 / 特质 / 场景 / 语种" = "Search voice name / traits / scenario / language";
+"搜索音色名 / 特质 / 场景" = "Search voice name / traits / scenario";
 "全部分类" = "All Categories";
 "%@ · %d 个" = "%@ · %d";
 "点上方按钮可重新选择" = "Tap the button above to reselect";
